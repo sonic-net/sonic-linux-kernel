@@ -1,0 +1,23 @@
+Always deselect channel after transaction for PCA954x.
+
+Roy <roy_lee@CicadaBuildServer.accton.com.tw>
+
+---
+ drivers/i2c/muxes/i2c-mux-pca954x.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/drivers/i2c/muxes/i2c-mux-pca954x.c b/drivers/i2c/muxes/i2c-mux-pca954x.c
+index 9bd4212..01c205b 100644
+--- a/drivers/i2c/muxes/i2c-mux-pca954x.c
++++ b/drivers/i2c/muxes/i2c-mux-pca954x.c
+@@ -233,8 +233,7 @@ static int pca954x_probe(struct i2c_client *client,
+ 		data->virt_adaps[num] =
+ 			i2c_add_mux_adapter(adap, &client->dev, client,
+ 				force, num, class, pca954x_select_chan,
+-				(pdata && pdata->modes[num].deselect_on_exit)
+-					? pca954x_deselect_mux : NULL);
++					 pca954x_deselect_mux);
+ 
+ 		if (data->virt_adaps[num] == NULL) {
+ 			ret = -ENODEV;
+
