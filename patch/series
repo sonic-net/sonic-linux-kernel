@@ -13,3 +13,4 @@ driver-support-sff-8436-eeprom-update.patch
 driver-hwmon-pmbus-add-dps460-support.patch
 driver-hwmon-pmbus-ucd9200-mlnx.patch
 driver-arista-piix4-mux-patch.patch
+driver-net-ethernet-intel-igb-v5.2.15.patch
