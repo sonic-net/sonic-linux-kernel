@@ -7,5 +7,5 @@ This repository contains the scripts and patches to build the kernel for SONiC.
 
 Usage:
 
-    ./build.sh
+    make DEST=<destination path>
 
