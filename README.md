@@ -9,3 +9,4 @@ Usage:
 
     make DEST=<destination path>
 
+If DEST is not set, package will stay in current directory
