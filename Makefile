@@ -34,5 +34,6 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_amd64_none
 	popd
 
+	ifneq($(DEST),)
 	mv $* $(DEST)/
-
+	endif
