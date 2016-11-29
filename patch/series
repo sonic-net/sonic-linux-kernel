@@ -1,4 +1,5 @@
 # This series applies on GIT commit 1451b36b2b0d62178e42f648d8a18131af18f7d8
+kernel-sched-core-fix-cgroup-fork-race.patch
 config-dell-s6000.patch
 config-mlnx-sn2700.patch
 driver-at24-fix-odd-length-two-byte-access.patch
