@@ -1,0 +1,90 @@
+diff --git a/drivers/net/ethernet/intel/igb/e1000_82575.c b/drivers/net/ethernet/intel/igb/e1000_82575.c
+index ee74f95..007b7f0 100644
+--- a/drivers/net/ethernet/intel/igb/e1000_82575.c
++++ b/drivers/net/ethernet/intel/igb/e1000_82575.c
+@@ -226,9 +226,14 @@ static s32 igb_init_phy_params_82575(struct e1000_hw *hw)
+ 	case I347AT4_E_PHY_ID:
+ 	case M88E1112_E_PHY_ID:
+ 	case M88E1111_I_PHY_ID:
++	case BCM54616_E_PHY_ID:
+ 		phy->type		= e1000_phy_m88;
+ 		phy->ops.check_polarity	= igb_check_polarity_m88;
+ 		phy->ops.get_phy_info	= igb_get_phy_info_m88;
++
++		if (phy->id == BCM54616_E_PHY_ID)
++			phy->type  	 = e1000_phy_bcm54616;
++
+ 		if (phy->id != M88E1111_I_PHY_ID)
+ 			phy->ops.get_cable_length =
+ 					 igb_get_cable_length_m88_gen2;
+@@ -559,6 +564,7 @@ static s32 igb_get_invariants_82575(struct e1000_hw *hw)
+ 	case E1000_DEV_ID_I350_FIBER:
+ 	case E1000_DEV_ID_I350_SERDES:
+ 	case E1000_DEV_ID_I350_SGMII:
++	case E1000_DEV_ID_I354_SGMII:
+ 		mac->type = e1000_i350;
+ 		break;
+ 	case E1000_DEV_ID_I210_COPPER:
+@@ -573,7 +579,6 @@ static s32 igb_get_invariants_82575(struct e1000_hw *hw)
+ 		mac->type = e1000_i211;
+ 		break;
+ 	case E1000_DEV_ID_I354_BACKPLANE_1GBPS:
+-	case E1000_DEV_ID_I354_SGMII:
+ 	case E1000_DEV_ID_I354_BACKPLANE_2_5GBPS:
+ 		mac->type = e1000_i354;
+ 		break;
+@@ -1595,6 +1600,9 @@ static s32 igb_setup_copper_link_82575(struct e1000_hw *hw)
+ 	case e1000_phy_82580:
+ 		ret_val = igb_copper_link_setup_82580(hw);
+ 		break;
++	case e1000_phy_bcm54616:
++		ret_val = E1000_SUCCESS;
++		break;
+ 	default:
+ 		ret_val = -E1000_ERR_PHY;
+ 		break;
+diff --git a/drivers/net/ethernet/intel/igb/e1000_defines.h b/drivers/net/ethernet/intel/igb/e1000_defines.h
+index 217f813..a2ed2e2 100644
+--- a/drivers/net/ethernet/intel/igb/e1000_defines.h
++++ b/drivers/net/ethernet/intel/igb/e1000_defines.h
+@@ -461,6 +461,7 @@
+ #define E1000_RAH_POOL_1 0x00040000
+ 
+ /* Error Codes */
++#define E1000_SUCCESS      0
+ #define E1000_ERR_NVM      1
+ #define E1000_ERR_PHY      2
+ #define E1000_ERR_CONFIG   3
+@@ -857,6 +858,7 @@
+ #define IGP03E1000_E_PHY_ID  0x02A80390
+ #define I82580_I_PHY_ID      0x015403A0
+ #define I350_I_PHY_ID        0x015403B0
++#define BCM54616_E_PHY_ID    0x03625D10
+ #define M88_VENDOR           0x0141
+ #define I210_I_PHY_ID        0x01410C00
+ #define M88E1543_E_PHY_ID    0x01410EA0
+diff --git a/drivers/net/ethernet/intel/igb/e1000_hw.h b/drivers/net/ethernet/intel/igb/e1000_hw.h
+index ce55ea5..762679c 100644
+--- a/drivers/net/ethernet/intel/igb/e1000_hw.h
++++ b/drivers/net/ethernet/intel/igb/e1000_hw.h
+@@ -128,6 +128,7 @@ enum e1000_phy_type {
+ 	e1000_phy_ife,
+ 	e1000_phy_82580,
+ 	e1000_phy_i210,
++	e1000_phy_bcm54616,
+ };
+ 
+ enum e1000_bus_type {
+diff --git a/drivers/net/ethernet/intel/igb/igb_main.c b/drivers/net/ethernet/intel/igb/igb_main.c
+index 4d2dc17..fe09534 100644
+--- a/drivers/net/ethernet/intel/igb/igb_main.c
++++ b/drivers/net/ethernet/intel/igb/igb_main.c
+@@ -74,7 +74,7 @@ static const struct e1000_info *igb_info_tbl[] = {
+ 
+ static const struct pci_device_id igb_pci_tbl[] = {
+ 	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I354_BACKPLANE_1GBPS) },
+-	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I354_SGMII) },
++	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I354_SGMII), board_82575 },
+ 	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I354_BACKPLANE_2_5GBPS) },
+ 	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I211_COPPER), board_82575 },
+ 	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I210_COPPER), board_82575 },
