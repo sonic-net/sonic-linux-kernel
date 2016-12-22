@@ -13,3 +13,5 @@ driver-support-sff-8436-eeprom-update.patch
 driver-hwmon-pmbus-add-dps460-support.patch
 driver-hwmon-pmbus-ucd9200-mlnx.patch
 driver-arista-piix4-mux-patch.patch
+driver-support-intel-avoton-ethernet-with-broadcom-phy.patch
+driver-support-new-broadcom-phys.patch
