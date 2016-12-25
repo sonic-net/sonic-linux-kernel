@@ -1,0 +1,4 @@
+config-accton-as7512_32x.patch
+driver-i2c-muxes-pca954x-always-deselect.patch
+driver-net-ethernet-intel-igb-v5.2.15.patch
+driver-patches-for-accton-as7512-fan-psu-cpld-led-sfp.patch

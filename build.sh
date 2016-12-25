@@ -1,5 +1,7 @@
 #!/bin/bash
 
+PATCH_FILE_PATH=$1
+
 # Obtaining the Debian kernel source
 wget https://launchpad.net/debian/+archive/primary/+files/linux_3.16.7-ckt11-1+deb8u3.dsc
 wget https://launchpad.net/debian/+archive/primary/+files/linux_3.16.7-ckt11.orig.tar.xz
@@ -23,7 +25,7 @@ git add .
 git add debian/build/build_amd64_none_amd64/.config -f
 git commit -m "unmodified debian source"
 stg init
-stg import -s ../patch/series
+stg import -s ../patch/$PATCH_FILE_PATH/series
 
 # Building a custom kernel from Debian kernel source
 fakeroot make -f debian/rules.gen -j $(nproc) binary-arch_amd64_none
