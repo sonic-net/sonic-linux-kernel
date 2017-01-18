@@ -1,0 +1,57 @@
+Force DMA accesses to be done in the 4G range due to a SB800 limitation
+This issue is seen on Arista DCS-7050QX-32 SKUs
+
+Index: linux-3.16/drivers/net/ethernet/broadcom/tg3.c
+===================================================================
+--- linux-3.16.orig/drivers/net/ethernet/broadcom/tg3.c
++++ linux-3.16/drivers/net/ethernet/broadcom/tg3.c
+@@ -16264,6 +16264,16 @@ static int tg3_get_invariants(struct tg3
+ 		} while (bridge);
+ 	}
+ 
++	/* The embedded nic in ATI's SB800 can only dma to 32bit
++	 * addresses.  partno(noe) rev 5785041
++	 */
++	if (tg3_asic_rev(tp) == ASIC_REV_5785) {
++		if ((tp->pdev->bus->number == 0) &&
++		    (tp->pdev->devfn == PCI_DEVFN(0x14, 0x6))) {
++			tg3_flag_set(tp, 4G_DMA_ONLY);
++		}
++	}
++
+ 	if (tg3_asic_rev(tp) == ASIC_REV_5704 ||
+ 	    tg3_asic_rev(tp) == ASIC_REV_5714)
+ 		tp->pdev_peer = tg3_find_peer(tp);
+@@ -16789,8 +16799,9 @@ static int tg3_get_invariants(struct tg3
+ 
+ 	if (tg3_asic_rev(tp) == ASIC_REV_5705 &&
+ 	    (grc_misc_cfg == GRC_MISC_CFG_BOARD_ID_5788 ||
+-	     grc_misc_cfg == GRC_MISC_CFG_BOARD_ID_5788M))
+-		tg3_flag_set(tp, IS_5788);
++	     grc_misc_cfg == GRC_MISC_CFG_BOARD_ID_5788M)) {
++		tg3_flag_set(tp, 4G_DMA_ONLY);
++	}
+ 
+ 	if (!tg3_flag(tp, IS_5788) &&
+ 	    tg3_asic_rev(tp) != ASIC_REV_5700)
+@@ -17703,7 +17714,7 @@ static int tg3_init_one(struct pci_dev *
+ 	 * On 64-bit systems without IOMMU, use 64-bit dma_mask and
+ 	 * do DMA address check in tg3_start_xmit().
+ 	 */
+-	if (tg3_flag(tp, IS_5788))
++	if (tg3_flag(tp, 4G_DMA_ONLY))
+ 		persist_dma_mask = dma_mask = DMA_BIT_MASK(32);
+ 	else if (tg3_flag(tp, 40BIT_DMA_BUG)) {
+ 		persist_dma_mask = dma_mask = DMA_BIT_MASK(40);
+Index: linux-3.16/drivers/net/ethernet/broadcom/tg3.h
+===================================================================
+--- linux-3.16.orig/drivers/net/ethernet/broadcom/tg3.h
++++ linux-3.16/drivers/net/ethernet/broadcom/tg3.h
+@@ -3102,6 +3102,7 @@ enum TG3_FLAGS {
+ 	TG3_FLAG_ROBOSWITCH,
+ 	TG3_FLAG_ONE_DMA_AT_ONCE,
+ 	TG3_FLAG_RGMII_MODE,
++	TG3_FLAG_4G_DMA_ONLY,
+ 
+ 	/* Add new flags before this comment and TG3_FLAG_NUMBER_OF_FLAGS */
+ 	TG3_FLAG_NUMBER_OF_FLAGS,	/* Last entry in enum TG3_FLAGS */
