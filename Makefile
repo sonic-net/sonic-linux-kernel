@@ -1,16 +1,20 @@
 .ONESHELL:
 SHELL = /bin/bash
 
-MAIN_TARGET = linux-image-3.16.0-4-amd64_3.16.36-1+deb8u2_amd64.deb
+KVERSION_SHORT ?= 3.16.0-4
+KVERSION ?= $(KVERSION_SHORT)-amd64
+KERNEL_VERSION ?= 3.16.36
+KERNEL_SUBVERSION ?= 1+deb8u2
 
-VERSION = 3.16.36
-SUBVERSION = 1+deb8u2
+MAIN_TARGET = linux-headers-$(KVERSION_SHORT)-common_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_amd64.deb
+DERIVED_TARGETS = linux-headers-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_amd64.deb \
+                 linux-image-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_amd64.deb
 
-DSC_FILE = linux_${VERSION}-${SUBVERSION}.dsc
-ORIG_FILE = linux_${VERSION}.orig.tar.xz
-DEBIAN_FILE = linux_${VERSION}-${SUBVERSION}.debian.tar.xz
+DSC_FILE = linux_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION).dsc
+ORIG_FILE = linux_$(KERNEL_VERSION).orig.tar.xz
+DEBIAN_FILE = linux_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION).debian.tar.xz
 URL = http://security.debian.org/debian-security/pool/updates/main/l/linux
-BUILD_DIR=linux-${VERSION}
+BUILD_DIR=linux-$(KERNEL_VERSION)
 
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Obtaining the Debian kernel source
@@ -44,5 +48,7 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	popd
 
 ifneq ($(DEST),)
-	mv $* $(DEST)/
+	mv $(DERIVED_TARGETS) $* $(DEST)/
 endif
+
+$(addprefix $(DEST)/, $(DERIVED_TARGETS)): $(DEST)/% : $(DEST)/$(MAIN_TARGET)
