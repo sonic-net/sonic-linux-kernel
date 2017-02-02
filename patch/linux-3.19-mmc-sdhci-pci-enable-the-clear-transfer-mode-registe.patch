@@ -1,0 +1,64 @@
+From d44f88da42d2a75eeac02f87455043f44e10d7cc Mon Sep 17 00:00:00 2001
+From: Vincent Wan <vincent.wan@amd.com>
+Date: Wed, 5 Nov 2014 14:09:14 +0800
+Subject: [PATCH 2/3] mmc: sdhci-pci: enable the clear transfer mode register
+ quirk for AMD sdhci
+
+This patch is to enable the quirk for AMD sdhci requiring transfer
+mode register need to be cleared for commands without data
+
+Signed-off-by: Vincent Wan <vincent.wan@amd.com>
+Signed-off-by: Wan Zongshun <mcuos.com@gmail.com>
+Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+---
+ drivers/mmc/host/sdhci-pci.c | 27 ++++++++++++++++++++++++++-
+ 1 file changed, 26 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/mmc/host/sdhci-pci.c b/drivers/mmc/host/sdhci-pci.c
+index c25639b..5a77f18 100644
+--- a/drivers/mmc/host/sdhci-pci.c
++++ b/drivers/mmc/host/sdhci-pci.c
+@@ -645,6 +645,23 @@ static const struct sdhci_pci_fixes sdhci_rtsx = {
+ 	.probe_slot	= rtsx_probe_slot,
+ };
+ 
++static int amd_probe(struct sdhci_pci_chip *chip)
++{
++	struct pci_dev	*smbus_dev;
++
++	smbus_dev = pci_get_device(PCI_VENDOR_ID_AMD,
++			PCI_DEVICE_ID_AMD_HUDSON2_SMBUS, NULL);
++
++	if (smbus_dev && (smbus_dev->revision < 0x51))
++		chip->quirks2 |= SDHCI_QUIRK2_CLEAR_TRANSFERMODE_REG_BEFORE_CMD;
++
++	return 0;
++}
++
++static const struct sdhci_pci_fixes sdhci_amd = {
++	.probe		= amd_probe,
++};
++
+ static const struct pci_device_id pci_ids[] = {
+ 	{
+ 		.vendor		= PCI_VENDOR_ID_RICOH,
+@@ -1044,7 +1061,15 @@ static const struct pci_device_id pci_ids[] = {
+ 		.subdevice	= PCI_ANY_ID,
+ 		.driver_data	= (kernel_ulong_t)&sdhci_o2,
+ 	},
+-
++	{
++		.vendor		= PCI_VENDOR_ID_AMD,
++		.device		= PCI_ANY_ID,
++		.class		= PCI_CLASS_SYSTEM_SDHCI << 8,
++		.class_mask	= 0xFFFF00,
++		.subvendor	= PCI_ANY_ID,
++		.subdevice	= PCI_ANY_ID,
++		.driver_data	= (kernel_ulong_t)&sdhci_amd,
++	},
+ 	{	/* Generic SD host controller */
+ 		PCI_DEVICE_CLASS((PCI_CLASS_SYSTEM_SDHCI << 8), 0xFFFF00)
+ 	},
+-- 
+2.5.0
+

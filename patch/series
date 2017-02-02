@@ -16,3 +16,6 @@ driver-hwmon-pmbus-ucd9200-mlnx.patch
 driver-arista-piix4-mux-patch.patch
 driver-arista-net-tg3-dma-mask-4g-sb800.patch
 driver-arista-net-tg3-access-regs-indirectly.patch
+linux-3.19-mmc-sdhci-Add-a-quirk-for-AMD-SDHC-transfer-mode-reg.patch
+linux-3.19-mmc-sdhci-pci-enable-the-clear-transfer-mode-registe.patch
+linux-3.19-mmc-sdhci-pci-enable-sdhci-doesn-t-support-hs200-qui.patch
