@@ -2,6 +2,7 @@
 kernel-sched-core-fix-cgroup-fork-race.patch
 config-dell-s6000.patch
 config-mlnx-sn2700.patch
+config-dell-z9100.patch
 driver-at24-fix-odd-length-two-byte-access.patch
 driver-hwmon-max6620.patch
 driver-hwmon-max6620-fix-rpm-calc.patch
