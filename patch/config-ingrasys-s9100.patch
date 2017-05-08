@@ -1,0 +1,33 @@
+Enable CONFIG_GPIO_PCA953X, CONFIG_I2C_GPIO
+
+From: wadelnn <wadelnn@users.noreply.github.com>
+
+---
+ debian/build/build_amd64_none_amd64/.config | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/debian/build/build_amd64_none_amd64/.config b/debian/build/build_amd64_none_amd64/.config
+index a57510b..6b6aea9 100644
+--- a/debian/build/build_amd64_none_amd64/.config
++++ b/debian/build/build_amd64_none_amd64/.config
+@@ -3190,7 +3190,7 @@ CONFIG_I2C_SCMI=m
+ CONFIG_I2C_DESIGNWARE_CORE=m
+ CONFIG_I2C_DESIGNWARE_PLATFORM=m
+ CONFIG_I2C_DESIGNWARE_PCI=m
+-# CONFIG_I2C_GPIO is not set
++CONFIG_I2C_GPIO=m
+ CONFIG_I2C_KEMPLD=m
+ CONFIG_I2C_OCORES=m
+ CONFIG_I2C_PCA_PLATFORM=m
+@@ -3304,7 +3304,7 @@ CONFIG_GPIO_SCH=m
+ #
+ # CONFIG_GPIO_MAX7300 is not set
+ # CONFIG_GPIO_MAX732X is not set
+-# CONFIG_GPIO_PCA953X is not set
++CONFIG_GPIO_PCA953X=m
+ # CONFIG_GPIO_PCF857X is not set
+ # CONFIG_GPIO_ADP5588 is not set
+ 
+-- 
+2.1.4
+

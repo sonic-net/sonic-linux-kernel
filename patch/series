@@ -3,6 +3,7 @@ kernel-sched-core-fix-cgroup-fork-race.patch
 config-dell-s6000.patch
 config-mlnx-sn2700.patch
 config-dell-z9100.patch
+config-ingrasys-s9100.patch
 driver-at24-fix-odd-length-two-byte-access.patch
 driver-hwmon-max6620.patch
 driver-hwmon-max6620-fix-rpm-calc.patch
@@ -17,6 +18,7 @@ driver-hwmon-pmbus-ucd9200-mlnx.patch
 driver-arista-piix4-mux-patch.patch
 driver-arista-net-tg3-dma-mask-4g-sb800.patch
 driver-arista-net-tg3-access-regs-indirectly.patch
+driver-pca954x-i2c-mux-force-deselect-on-exit-flag.patch
 linux-3.19-mmc-sdhci-Add-a-quirk-for-AMD-SDHC-transfer-mode-reg.patch
 linux-3.19-mmc-sdhci-pci-enable-the-clear-transfer-mode-registe.patch
 linux-3.19-mmc-sdhci-pci-enable-sdhci-doesn-t-support-hs200-qui.patch
