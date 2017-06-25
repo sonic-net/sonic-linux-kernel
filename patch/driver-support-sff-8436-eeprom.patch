@@ -6,7 +6,7 @@ From: Cumulus Networks <support@cumulusnetworks.com>
 ---
  drivers/misc/eeprom/Kconfig           |   12 
  drivers/misc/eeprom/Makefile          |    1 
- drivers/misc/eeprom/sff_8436_eeprom.c |  995 +++++++++++++++++++++++++++++++++
+ drivers/misc/eeprom/sff_8436_eeprom.c | 1262 +++++++++++++++++++++++++++++++++
  include/linux/i2c/sff-8436.h          |   33 +
  4 files changed, 1041 insertions(+)
  create mode 100644 drivers/misc/eeprom/sff_8436_eeprom.c
@@ -46,10 +46,10 @@ index 9507aec..235b5cc 100644
 +obj-$(CONFIG_EEPROM_SFF_8436) += sff_8436_eeprom.o
 diff --git a/drivers/misc/eeprom/sff_8436_eeprom.c b/drivers/misc/eeprom/sff_8436_eeprom.c
 new file mode 100644
-index 0000000..0b6bf31
+index 0000000..3be14d2
 --- /dev/null
 +++ b/drivers/misc/eeprom/sff_8436_eeprom.c
-@@ -0,0 +1,995 @@
+@@ -0,0 +1,1262 @@
 +/*
 + * sff_8436_eeprom.c - handle most SFF-8436 based QSFP EEPROMs
 + *
@@ -62,12 +62,15 @@ index 0000000..0b6bf31
 + */
 +
 +/*
-+ * 	Description:
-+ * 	a) SFF 8436 based qsfp read/write transactions are just like the at24 eeproms
-+ * 	b) The register/memory layout is up to 5 128 byte pages defined by a "pages valid"
-+ * 		register and switched via a "page select" register as explained in below diagram.
-+ * 	c) 256 bytes are mapped at a time. page 0 is always mapped to the first 128 bytes and
-+ * 	   the other 4 pages are selectively mapped to the second 128 bytes
++ *	Description:
++ *	a) SFF 8436 based qsfp read/write transactions are just like the
++ *		at24 eeproms
++ *	b) The register/memory layout is up to 5 128 byte pages defined by
++ *		a "pages valid" register and switched via a "page select"
++ *		register as explained in below diagram.
++ *	c) 256 bytes are mapped at a time. page 0 is always mapped to the
++ *		first 128 bytes and the other 4 pages are selectively mapped to
++ *		the second 128 bytes
 + *
 + *	                    SFF 8436 based QSFP Memory Map
 + *
@@ -139,16 +142,26 @@ index 0000000..0b6bf31
 +#include <linux/types.h>
 +#include <linux/memory.h>
 +
-+#define SFF_8436_EEPROM_SIZE       5*128
++#define SFF_8436_EEPROM_SIZE       (5 * 128)
 +#define SFF_8436_MAX_PAGE_COUNT    5
 +#define SFF_8436_MMAP_SIZE         256
 +#define SFF_8436_PAGE_SELECT_REG   0x7F
 +
 +#define  SFF_8436_OPTION_4_OFFSET           0xC3
-+#define   SFF_8436_PAGE_02_PRESENT          (1 << 7) /* Memory Page 02 present */
-+#define   SFF_8436_PAGE_01_PRESENT          (1 << 6) /* Memory Page 01 present */
++/* Memory Page 02 present */
++#define   SFF_8436_PAGE_02_PRESENT          (1 << 7)
++/* Memory Page 01 present */
++#define  SFF_8436_PAGE_01_PRESENT          (1 << 6)
 +#define  SFF_8436_STATUS_2_OFFSET           0x02
-+#define   SFF_8436_STATUS_PAGE_03_PRESENT_L  (1 << 2) /* Flat Memory:0- Paging, 1- Page 0 only */
++/* Flat Memory:0- Paging, 1- Page 0 only */
++#define   SFF_8436_STATUS_PAGE_03_PRESENT_L  (1 << 2)
++
++#define SFF_ID_OFFSET           0x00
++#define SFF_ID_LEN              1
++#define SFF_ID_SFP              0x03
++#define SFF_ID_QSFP_PLUS        0x0d
++#define SFF_ID_QSFP28           0x11
++#define SFF_8472_EEPROM_SIZE	(4 * 128)
 +
 +struct sff_8436_data {
 +	struct sff_8436_platform_data chip;
@@ -161,6 +174,7 @@ index 0000000..0b6bf31
 +	 */
 +	struct mutex lock;
 +	struct bin_attribute bin;
++	struct attribute_group attr_group;
 +
 +	u8 *writebuf;
 +	unsigned write_max;
@@ -170,12 +184,15 @@ index 0000000..0b6bf31
 +	u8  data[SFF_8436_EEPROM_SIZE];
 +	struct eeprom_device *eeprom_dev;
 +
++	/* Config variable to support SFF-8472/SFP+ standard */
++	int sfp_compat;
++
 +	struct i2c_client *client[];
 +};
 +
 +typedef enum qsfp_opcode {
-+    QSFP_READ_OP = 0,
-+    QSFP_WRITE_OP = 1
++	QSFP_READ_OP = 0,
++	QSFP_WRITE_OP = 1
 +} qsfp_opcode_e;
 +
 +/*
@@ -203,19 +220,20 @@ index 0000000..0b6bf31
 +
 +
 +/* create non-zero magic value for given eeprom parameters */
-+#define SFF_8436_DEVICE_MAGIC(_len, _flags) 		\
-+	((1 << SFF_8436_SIZE_FLAGS | (_flags)) 		\
++#define SFF_8436_DEVICE_MAGIC(_len, _flags)		\
++	((1 << SFF_8436_SIZE_FLAGS | (_flags))		\
 +	    << SFF_8436_SIZE_BYTELEN | ilog2(_len))
 +
 +static const struct i2c_device_id sff8436_ids[] = {
-+	{ "sff8436",SFF_8436_DEVICE_MAGIC(2048 / 8, 0) },
++	{ "sff8436", SFF_8436_DEVICE_MAGIC(2048 / 8, 0) },
 +	{ /* END OF LIST */ }
 +};
 +MODULE_DEVICE_TABLE(i2c, sff8436_ids);
 +
 +/*-------------------------------------------------------------------------*/
 +/*
-+ * This routine computes the addressing information to be used for a given r/w request.
++ * This routine computes the addressing information to be used for
++ * a given r/w request.
 + * Assumes that sanity checks for offset happened at sysfs-layer.
 + * Offset within Lower Page 00h and Upper Page 00h are not recomputed
 + */
@@ -224,23 +242,21 @@ index 0000000..0b6bf31
 +{
 +	unsigned page = 0;
 +
-+	if (*offset < SFF_8436_MMAP_SIZE) {
++	if (*offset < SFF_8436_MMAP_SIZE)
 +		return 0;
-+	}
 +
 +	page = (*offset >> 7)-1;
 +
-+	if (page > 0 ) {
++	if (page > 0)
 +		*offset = 0x80 + (*offset & 0x7f);
-+	} else {
++	else
 +		*offset &= 0xff;
-+	}
 +
 +	return page;
 +}
 +
 +static int sff_8436_read_reg(struct sff_8436_data *sff_8436,
-+                  uint8_t reg, uint8_t *val)
++				uint8_t reg, uint8_t *val)
 +{
 +	int count = 1, i = 0;
 +	struct i2c_client *client = sff_8436->client[0];
@@ -282,7 +298,7 @@ index 0000000..0b6bf31
 +			break;
 +
 +		default:
-+            i = 0;
++			i = 0;
 +			msgbuf[i++] = reg;
 +
 +			msg[0].addr = client->addr;
@@ -299,8 +315,10 @@ index 0000000..0b6bf31
 +				status = count;
 +			break;
 +		}
-+		dev_dbg(&client->dev, "read (using smbus %d) %d@%d --> %zd (%ld)\n",
-+				sff_8436->use_smbus, count, reg, status, jiffies);
++		dev_dbg(&client->dev,
++				"read (using smbus %d) %d@%d --> %zd (%ld)\n",
++				sff_8436->use_smbus, count, reg, status,
++				jiffies);
 +
 +		if (status == count)
 +			return count;
@@ -313,7 +331,7 @@ index 0000000..0b6bf31
 +}
 +
 +static int sff_8436_write_reg(struct sff_8436_data *sff_8436,
-+                  uint8_t reg, uint8_t val)
++				uint8_t reg, uint8_t val)
 +{
 +	uint8_t data[2] = { reg, val };
 +	int count = 1;
@@ -356,7 +374,8 @@ index 0000000..0b6bf31
 +			break;
 +		}
 +		dev_dbg(&client->dev, "write (using smbus %d) %d@%d --> %zd (%ld)\n",
-+				sff_8436->use_smbus, count, reg, status, jiffies);
++				sff_8436->use_smbus, count, reg, status,
++				jiffies);
 +
 +		if (status == count)
 +			return count;
@@ -369,17 +388,17 @@ index 0000000..0b6bf31
 +}
 +
 +static int sff_8436_write_page_reg(struct sff_8436_data *sff_8436,
-+                               uint8_t val)
++				uint8_t val)
 +{
 +	return sff_8436_write_reg(sff_8436, SFF_8436_PAGE_SELECT_REG, val);
 +}
 +
-+static ssize_t sff_8436_eeprom_read(struct sff_8436_data *sff_8436, char *buf,
++static ssize_t sff_8436_eeprom_read(struct sff_8436_data *sff_8436,
++		    struct i2c_client *client, char *buf,
 +		    unsigned offset, size_t count)
 +{
 +	struct i2c_msg msg[2];
 +	u8 msgbuf[2];
-+	struct i2c_client *client = sff_8436->client[0];
 +	unsigned long timeout, read_time;
 +	int status, i;
 +
@@ -468,10 +487,10 @@ index 0000000..0b6bf31
 +	return -ETIMEDOUT;
 +}
 +
-+static ssize_t sff_8436_eeprom_write(struct sff_8436_data *sff_8436, const char *buf,
-+		    unsigned offset, size_t count)
++static ssize_t sff_8436_eeprom_write(struct sff_8436_data *sff_8436,
++				struct i2c_client *client, const char *buf,
++				unsigned offset, size_t count)
 +{
-+	struct i2c_client *client = sff_8436->client[0];
 +	struct i2c_msg msg;
 +	ssize_t status;
 +	unsigned long timeout, write_time;
@@ -526,25 +545,25 @@ index 0000000..0b6bf31
 +		switch (sff_8436->use_smbus) {
 +		case I2C_SMBUS_I2C_BLOCK_DATA:
 +			status = i2c_smbus_write_i2c_block_data(client,
-+			              offset, count, buf);
++						offset, count, buf);
 +			if (status == 0)
 +				status = count;
 +			break;
 +		case I2C_SMBUS_WORD_DATA:
 +			if (count == 2) {
-+				status = i2c_smbus_write_word_data(
-+				            client,offset,(u16)((buf[0]) |
-+				            (buf[1] << 8)));
++				status = i2c_smbus_write_word_data(client,
++					offset, (u16)((buf[0])|(buf[1] << 8)));
 +			} else {
-+					/* count = 1 */
-+					status = i2c_smbus_write_byte_data(
-+					           client, offset, buf[0]);
++				/* count = 1 */
++				status = i2c_smbus_write_byte_data(client,
++					offset, buf[0]);
 +			}
 +			if (status == 0)
 +				status = count;
 +			break;
 +		case I2C_SMBUS_BYTE_DATA:
-+			status = i2c_smbus_write_byte_data(client, offset,  buf[0]);
++			status = i2c_smbus_write_byte_data(client, offset,
++						buf[0]);
 +			if (status == 0)
 +				status = count;
 +			break;
@@ -555,8 +574,8 @@ index 0000000..0b6bf31
 +			break;
 +		}
 +
-+		dev_dbg(&client->dev, "eeprom write %zu@%d --> %d (%ld)\n",
-+				count, offset, status, jiffies);
++		dev_dbg(&client->dev, "eeprom write %zu@%d --> %ld (%lu)\n",
++				count, offset, (long int) status, jiffies);
 +
 +		if (status == count)
 +			return count;
@@ -569,7 +588,7 @@ index 0000000..0b6bf31
 +}
 +
 +static ssize_t sff_8436_eeprom_update_client(struct sff_8436_data *sff_8436,
-+                                loff_t off, size_t count, qsfp_opcode_e opcode)
++				loff_t off, size_t count, qsfp_opcode_e opcode)
 +{
 +	struct i2c_client *client = sff_8436->client[0];
 +	ssize_t retval = 0;
@@ -580,8 +599,8 @@ index 0000000..0b6bf31
 +	page = sff_8436_translate_offset(sff_8436, &phy_offset);
 +
 +	dev_dbg(&client->dev,
-+					"sff_8436_eeprom_update_client off %lld  page:%d phy_offset:%lld, count:%d, opcode:%d\n",
-+					off, page, phy_offset, count, opcode);
++			"sff_8436_eeprom_update_client off %lld  page:%d phy_offset:%lld, count:%ld, opcode:%d\n",
++			off, page, phy_offset, (long int) count, opcode);
 +	if (page > 0) {
 +		ret = sff_8436_write_page_reg(sff_8436, page);
 +		if (ret < 0) {
@@ -596,9 +615,13 @@ index 0000000..0b6bf31
 +		ssize_t	status;
 +
 +		if (opcode == QSFP_READ_OP) {
-+			status =  sff_8436_eeprom_read(sff_8436, (char *)(&sff_8436->data[off]), phy_offset, count);
++			status =  sff_8436_eeprom_read(sff_8436, client,
++				(char *)(&sff_8436->data[off]), phy_offset,
++				count);
 +		} else {
-+			status =  sff_8436_eeprom_write(sff_8436, (char *)(&sff_8436->data[off]), phy_offset, count);
++			status =  sff_8436_eeprom_write(sff_8436, client,
++				(char *)(&sff_8436->data[off]), phy_offset,
++				count);
 +		}
 +		if (status <= 0) {
 +			if (retval == 0)
@@ -616,10 +639,120 @@ index 0000000..0b6bf31
 +		ret = sff_8436_write_page_reg(sff_8436, 0);
 +		if (ret < 0) {
 +			dev_err(&client->dev,
-+					"sff_8436_write_page_reg for page 0 failed ret:%d!\n", ret);
++				"sff_8436_write_page_reg for page 0 failed ret:%d!\n",
++				ret);
 +			return ret;
 +		}
 +	}
++	return retval;
++}
++
++/*
++ * API to return whether pluggable module is SFP+ or QSFP
++ */
++int get_module_id(struct sff_8436_data *sff_8436)
++{
++	struct i2c_client *client = sff_8436->client[0];
++	int ret;
++	u8 mod_id = 0;
++
++	mutex_lock(&sff_8436->lock);
++
++	ret = sff_8436_read_reg(sff_8436, SFF_ID_OFFSET, &mod_id);
++	if (ret < 0)  {
++		dev_dbg(&client->dev,
++			"sff_8436_read_reg for page 00h status failed %d!\n",
++			ret);
++		mod_id = -1;
++	}
++
++	mutex_unlock(&sff_8436->lock);
++
++	return mod_id;
++}
++
++/*
++ * Mechanism to handle addresses greater than 256 by 8 bit addressing mode is
++ * by registering addresses 256-512 as another chip
++ *
++ * This routine supports chips which consume multiple I2C addresses. It
++ * computes the addressing information to be used for a given r/w request.
++ * Assumes that sanity checks for offset happened at sysfs-layer.
++ *
++ */
++static struct i2c_client *sff_8472_translate_offset(struct sff_8436_data *sff_8436,
++				loff_t offset, loff_t *phy_offset)
++{
++	unsigned i;
++
++	i = offset >> 8;
++	*phy_offset = offset & 0xff;
++
++	return sff_8436->client[i];
++}
++
++/*
++ * Assumption:
++ * Buffer provided and returned by this driver is
++ * of size 5x128 (QSFP eeprom size) even though
++ * SFP+ eeprom size is 4x128.
++ *
++ * Read operation:
++ * Last page -513 to 640 will be 0xff
++ *
++ * Write operation:
++ * Last page : 513 to 640 will be ignored
++ *
++ */
++
++static ssize_t sff_8472_read_write(struct sff_8436_data *sff_8436,
++			loff_t off, size_t count, qsfp_opcode_e opcode)
++{
++	struct i2c_client *client;
++	ssize_t retval = 0;
++
++	if (unlikely(!count))
++		return count;
++
++	/*
++	 * Read data from chip, protecting against concurrent updates
++	 * from this host, but not from other I2C masters.
++	 */
++	mutex_lock(&sff_8436->lock);
++
++	while (count) {
++		ssize_t	status;
++		loff_t phy_offset = 0;
++
++		client = sff_8472_translate_offset(sff_8436, off, &phy_offset);
++		dev_dbg(&client->dev,
++			"sff_8472_read_write off %lld  offset:%lld, count:%ld, phy_offset:%lld\n",
++			off, off, (long int) count, phy_offset);
++
++		if (opcode == QSFP_READ_OP) {
++			status =  sff_8436_eeprom_read(sff_8436, client,
++					(char *)(&sff_8436->data[off]),
++					phy_offset, count);
++		} else {
++			status =  sff_8436_eeprom_write(sff_8436, client,
++					(char *)(&sff_8436->data[off]),
++					phy_offset, count);
++		}
++
++		if (status <= 0) {
++			if (retval == 0)
++				retval = status;
++			break;
++		}
++		off += status;
++		phy_offset += status;
++		count -= status;
++		retval += status;
++	}
++
++	mutex_unlock(&sff_8436->lock);
++
++
 +	return retval;
 +}
 +
@@ -631,25 +764,48 @@ index 0000000..0b6bf31
 +	u8 refresh_page = 0;
 +	int ret = 0;
 +	u8 val = 0;
++	u8 mod_id = 0;
 +	int err_timeout = 0;
 +	size_t pending_len = 0, page_len = 0;
 +	loff_t page_offset = 0, page_start_offset = 0;
++	size_t max_eeprom_size = SFF_8436_EEPROM_SIZE;
 +
 +	if (unlikely(!len))
 +		return len;
 +
-+	if (off > SFF_8436_EEPROM_SIZE)
-+		return 0;
 +
-+	if (off + len > SFF_8436_EEPROM_SIZE)
-+		len = SFF_8436_EEPROM_SIZE - off;
-+
-+	if (opcode == QSFP_READ_OP) {
-+		memset(sff_8436->data, 0xff, SFF_8436_EEPROM_SIZE);
-+	} else if (opcode == QSFP_WRITE_OP) {
-+		memcpy(&sff_8436->data[off], buf, len);
++	if (sff_8436->sfp_compat) {
++		mod_id = get_module_id(sff_8436);
++		if (mod_id == SFF_ID_SFP)
++			max_eeprom_size = SFF_8472_EEPROM_SIZE;
 +	}
 +
++	if (off > max_eeprom_size)
++		return 0;
++
++	if (off + len > max_eeprom_size)
++		len = max_eeprom_size - off;
++
++	memset(sff_8436->data, 0xff, SFF_8436_EEPROM_SIZE);
++
++	if (opcode == QSFP_WRITE_OP)
++		memcpy(&sff_8436->data[off], buf, len);
++
++	if (sff_8436->sfp_compat) {
++
++		dev_dbg(&client->dev,
++			"Module ID: %d, offset:%lld , len:%ld!\n",
++			mod_id, off, len);
++
++		if (mod_id == SFF_ID_SFP) {
++			ret =  sff_8472_read_write(sff_8436, off, len, opcode);
++
++			if (opcode == QSFP_READ_OP)
++				memcpy(buf, &sff_8436->data[off], len);
++
++			return ret;
++		}
++	}
 +	/*
 +	 * Read data from chip, protecting against concurrent updates
 +	 * from this host, but not from other I2C masters.
@@ -680,39 +836,44 @@ index 0000000..0b6bf31
 +			break;
 +		case 2:
 +			/* Upper page 01h */
-+			ret = sff_8436_read_reg(sff_8436, SFF_8436_OPTION_4_OFFSET, &val);
++			ret = sff_8436_read_reg(sff_8436,
++					SFF_8436_OPTION_4_OFFSET, &val);
 +			if (ret < 0)  {
 +				dev_dbg(&client->dev,
-+				"sff_8436_read_reg for page 01h status failed %d!\n", ret);
++				"sff_8436_read_reg for page 01h status failed %d!\n",
++				ret);
 +				goto err;
 +			}
-+			if (val & SFF_8436_PAGE_01_PRESENT) {
++			if (val & SFF_8436_PAGE_01_PRESENT)
 +				refresh_page = 1;
-+			}
++
 +			break;
 +		case 3:
 +			/* Upper page 02h */
-+			ret = sff_8436_read_reg(sff_8436, SFF_8436_OPTION_4_OFFSET, &val);
++			ret = sff_8436_read_reg(sff_8436,
++					SFF_8436_OPTION_4_OFFSET, &val);
 +			if (ret < 0)  {
 +				dev_dbg(&client->dev,
-+				"sff_8436_read_reg for page 02h status failed %d!\n", ret);
++				"sff_8436_read_reg for page 02h status failed %d!\n",
++				ret);
 +				goto err;
 +			}
-+			if (val & SFF_8436_PAGE_02_PRESENT) {
++			if (val & SFF_8436_PAGE_02_PRESENT)
 +				refresh_page = 1;
-+			}
++
 +			break;
 +		case 4:
 +			/* Upper page 03h */
-+			ret = sff_8436_read_reg(sff_8436, SFF_8436_STATUS_2_OFFSET, &val);
++			ret = sff_8436_read_reg(sff_8436,
++					SFF_8436_STATUS_2_OFFSET, &val);
 +			if (ret < 0)  {
 +				dev_dbg(&client->dev,
-+				"sff_8436_read_reg for page 03h status failed %d!\n", ret);
++				"sff_8436_read_reg for page 03h status failed %d!\n",
++				ret);
 +				goto err;
 +			}
-+			if (!(val & SFF_8436_STATUS_PAGE_03_PRESENT_L)) {
++			if (!(val & SFF_8436_STATUS_PAGE_03_PRESENT_L))
 +				refresh_page = 1;
-+			}
 +			break;
 +		default:
 +			/* Invalid page index */
@@ -730,54 +891,63 @@ index 0000000..0b6bf31
 +		 * Compute the offset and number of bytes to be read/write
 +		 * w.r.t requested page
 +		 *
-+		 * 1. start at offset 0 (within the page), and read/write the entire page
-+		 * 2. start at offset 0 (within the page) and read/write less than entire page
-+		 * 3. start at an offset not equal to 0 and read/write the rest of the page
-+		 * 4. start at an offset not equal to 0 and read/write less than (end of page - offset)
++		 * 1. start at offset 0 (within the page), and read/write
++		 *    the entire page
++		 * 2. start at offset 0 (within the page) and read/write less
++		 *    than entire page
++		 * 3. start at an offset not equal to 0 and read/write the rest
++		 *    of the page
++		 * 4. start at an offset not equal to 0 and read/write less than
++		 *    (end of page - offset)
 +		 *
 +		 */
 +		page_start_offset = page * SFF_8436_PAGE_SIZE;
 +
 +		if (page_start_offset < off) {
 +			page_offset = off;
-+			if (off + pending_len < page_start_offset + SFF_8436_PAGE_SIZE) {
++			if ((off + pending_len) < (page_start_offset +
++					SFF_8436_PAGE_SIZE))
 +				page_len = pending_len;
-+			} else {
++			else
 +				page_len = SFF_8436_PAGE_SIZE - off;
-+			}
 +		} else {
 +			page_offset = page_start_offset;
-+			if (pending_len > SFF_8436_PAGE_SIZE) {
++			if (pending_len > SFF_8436_PAGE_SIZE)
 +				page_len = SFF_8436_PAGE_SIZE;
-+			} else {
++			else
 +				page_len = pending_len;
-+			}
 +		}
 +
 +		pending_len = pending_len - page_len;
 +
 +		dev_dbg(&client->dev,
-+				"sff_read off %lld len %d page_start_offset %lld page_offset %lld page_len %d pending_len %d\n",
-+				off, len, page_start_offset, page_offset, page_len, pending_len);
++			"sff_read off %lld len %ld page_start_offset %lld page_offset %lld page_len %ld pending_len %ld\n",
++			off, (long int) len, page_start_offset, page_offset,
++			(long int) page_len, (long int) pending_len);
 +
 +		/* Refresh the data from offset for specified len */
-+		ret = sff_8436_eeprom_update_client(sff_8436, page_offset, page_len, opcode);
++		ret = sff_8436_eeprom_update_client(sff_8436, page_offset,
++				page_len, opcode);
 +		if (ret != page_len) {
 +			if (err_timeout) {
-+				dev_dbg(&client->dev, "sff_8436_update_client for %s page %d page_offset %lld page_len %d failed %d!\n",
-+							(page ? "Upper" : "Lower"), (page ? (page-1) : page), page_offset, page_len, ret);
++				dev_dbg(&client->dev, "sff_8436_update_client for %s page %d page_offset %lld page_len %ld failed %d!\n",
++					(page ? "Upper" : "Lower"),
++					(page ? (page-1) : page),
++					page_offset, (long int) page_len, ret);
 +				goto err;
 +			} else {
-+				dev_err(&client->dev, "sff_8436_update_client for %s page %d page_offset %lld page_len %d failed %d!\n",
-+							(page ? "Upper" : "Lower"), (page ? (page-1) : page), page_offset, page_len, ret);
++				dev_err(&client->dev, "sff_8436_update_client for %s page %d page_offset %lld page_len %ld failed %d!\n",
++					(page ? "Upper" : "Lower"),
++					(page ? (page-1) : page),
++					page_offset, (long int) page_len, ret);
 +			}
 +		}
 +	}
 +	mutex_unlock(&sff_8436->lock);
 +
-+	if (opcode == QSFP_READ_OP) {
++	if (opcode == QSFP_READ_OP)
 +		memcpy(buf, &sff_8436->data[off], len);
-+	}
++
 +	return len;
 +
 +err:
@@ -790,7 +960,8 @@ index 0000000..0b6bf31
 +		struct bin_attribute *attr,
 +		char *buf, loff_t off, size_t count)
 +{
-+	struct i2c_client *client = to_i2c_client(container_of(kobj, struct device, kobj));
++	struct i2c_client *client = to_i2c_client(container_of(kobj,
++				struct device, kobj));
 +	struct sff_8436_data *sff_8436 = i2c_get_clientdata(client);
 +
 +	return sff_8436_read_write(sff_8436, buf, off, count, QSFP_READ_OP);
@@ -801,7 +972,8 @@ index 0000000..0b6bf31
 +		struct bin_attribute *attr,
 +		char *buf, loff_t off, size_t count)
 +{
-+	struct i2c_client *client = to_i2c_client(container_of(kobj, struct device, kobj));
++	struct i2c_client *client = to_i2c_client(container_of(kobj,
++				struct device, kobj));
 +	struct sff_8436_data *sff_8436 = i2c_get_clientdata(client);
 +
 +	return sff_8436_read_write(sff_8436, buf, off, count, QSFP_WRITE_OP);
@@ -814,20 +986,23 @@ index 0000000..0b6bf31
 + * data generated on the manufacturing floor.
 + */
 +
-+static ssize_t sff_8436_macc_read(struct memory_accessor *macc, char *buf,
-+			 off_t offset, size_t count)
++static ssize_t sff_8436_macc_read(struct memory_accessor *macc,
++		char *buf, off_t offset, size_t count)
 +{
-+	struct sff_8436_data *sff_8436 = container_of(macc, struct sff_8436_data, macc);
++	struct sff_8436_data *sff_8436 = container_of(macc,
++					struct sff_8436_data, macc);
 +
 +	return sff_8436_read_write(sff_8436, buf, offset, count, QSFP_READ_OP);
 +}
 +
-+static ssize_t sff_8436_macc_write(struct memory_accessor *macc, const char *buf,
-+             off_t offset, size_t count)
++static ssize_t sff_8436_macc_write(struct memory_accessor *macc,
++		const char *buf, off_t offset, size_t count)
 +{
-+	struct sff_8436_data *sff_8436 = container_of(macc, struct sff_8436_data, macc);
++	struct sff_8436_data *sff_8436 = container_of(macc,
++					struct sff_8436_data, macc);
 +
-+	return sff_8436_read_write(sff_8436, buf, offset, count, QSFP_WRITE_OP);
++	return sff_8436_read_write(sff_8436, (char *) buf, offset,
++						count, QSFP_WRITE_OP);
 +}
 +
 +/*-------------------------------------------------------------------------*/
@@ -835,9 +1010,14 @@ index 0000000..0b6bf31
 +static int __devexit sff_8436_remove(struct i2c_client *client)
 +{
 +	struct sff_8436_data *sff_8436;
++	int i;
 +
 +	sff_8436 = i2c_get_clientdata(client);
++	sysfs_remove_group(&client->dev.kobj, &sff_8436->attr_group);
 +	sysfs_remove_bin_file(&client->dev.kobj, &sff_8436->bin);
++
++	for (i = 1; i < sff_8436->num_addresses; i++)
++		i2c_unregister_device(sff_8436->client[i]);
 +
 +	eeprom_device_unregister(sff_8436->eeprom_dev);
 +
@@ -845,6 +1025,52 @@ index 0000000..0b6bf31
 +	kfree(sff_8436);
 +	return 0;
 +}
++
++static ssize_t show_sfp_compat(struct device *dev,
++			struct device_attribute *dattr, char *buf)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct sff_8436_data *sff_8436 = i2c_get_clientdata(client);
++	ssize_t count;
++
++	mutex_lock(&sff_8436->lock);
++	count = sprintf(buf, "%d\n", sff_8436->sfp_compat);
++	mutex_unlock(&sff_8436->lock);
++
++	return count;
++}
++
++static ssize_t set_sfp_compat(struct device *dev,
++			struct device_attribute *attr,
++			const char *buf, size_t count)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct sff_8436_data *sff_8436 = i2c_get_clientdata(client);
++	int sfp_compat;
++
++	if (sscanf(buf, "%d", &sfp_compat) != 1 ||
++		sfp_compat < 0 || sfp_compat > 1)
++		return -EINVAL;
++
++	mutex_lock(&sff_8436->lock);
++	sff_8436->sfp_compat = sfp_compat;
++	mutex_unlock(&sff_8436->lock);
++
++	return count;
++}
++
++static DEVICE_ATTR(sfp_compatible,  S_IRUGO | S_IWUSR,
++					show_sfp_compat, set_sfp_compat);
++
++static struct attribute *sff_8436_attrs[] = {
++	&dev_attr_sfp_compatible.attr,
++	NULL,
++};
++
++static struct attribute_group sff_8436_attr_group = {
++	.attrs = sff_8436_attrs,
++};
++
 +static int sff_8436_eeprom_probe(struct i2c_client *client,
 +			const struct i2c_device_id *id)
 +{
@@ -853,6 +1079,8 @@ index 0000000..0b6bf31
 +	struct sff_8436_platform_data chip;
 +	struct sff_8436_data *sff_8436;
 +	kernel_ulong_t magic;
++	int num_addresses = 0;
++	int i = 0;
 +
 +	if (client->dev.platform_data) {
 +		chip = *(struct sff_8436_platform_data *)client->dev.platform_data;
@@ -861,7 +1089,8 @@ index 0000000..0b6bf31
 +		 * SFF-8436 MMAP is 256 bytes long
 +		 */
 +		magic = SFF_8436_DEVICE_MAGIC(2048 / 8, 0);
-+		chip.byte_len = BIT(magic & SFF_8436_BITMASK(SFF_8436_SIZE_BYTELEN));
++		chip.byte_len = BIT(magic &
++				SFF_8436_BITMASK(SFF_8436_SIZE_BYTELEN));
 +		magic >>= SFF_8436_SIZE_BYTELEN;
 +		chip.flags = magic & SFF_8436_BITMASK(SFF_8436_SIZE_FLAGS);
 +		/*
@@ -906,7 +1135,17 @@ index 0000000..0b6bf31
 +		}
 +	}
 +
-+	if (!(sff_8436 = kzalloc(sizeof(struct sff_8436_data) +  sizeof(struct i2c_client *), GFP_KERNEL))) {
++	/* Mechanism to handle addresses greater than 256 by 8 bit
++	 * addressing mode is by registering addresses 256-512 as
++	 * another chip
++	 */
++	 num_addresses = 2;
++
++	sff_8436 = kzalloc(sizeof(struct sff_8436_data) +
++			num_addresses * sizeof(struct i2c_client *),
++			GFP_KERNEL);
++
++	if (!sff_8436) {
 +		err = -ENOMEM;
 +		goto exit;
 +	}
@@ -914,6 +1153,7 @@ index 0000000..0b6bf31
 +	mutex_init(&sff_8436->lock);
 +	sff_8436->use_smbus = use_smbus;
 +	sff_8436->chip = chip;
++	sff_8436->num_addresses = num_addresses;
 +
 +	/*
 +	 * Export the EEPROM bytes through sysfs, since that's convenient.
@@ -934,11 +1174,10 @@ index 0000000..0b6bf31
 +				I2C_FUNC_SMBUS_WRITE_WORD_DATA) ||
 +			i2c_check_functionality(client->adapter,
 +				I2C_FUNC_SMBUS_WRITE_BYTE_DATA)) {
-+		//unsigned write_max = chip.page_size;
 +		/*
 +		 * NOTE: AN-2079
-+		 * Finisar recommends that the host implement 1 byte writes only,
-+		 * since this module only supports 32 byte page boundaries.
++		 * Finisar recommends that the host implement 1 byte writes
++		 * only since this module only supports 32 byte page boundaries.
 +		 * 2 byte writes are acceptable for PE and Vout changes per
 +		 * Application Note AN-2071.
 +		 */
@@ -970,12 +1209,33 @@ index 0000000..0b6bf31
 +
 +	sff_8436->client[0] = client;
 +
++	/* use dummy devices for multiple-address chips */
++	for (i = 1; i < num_addresses; i++) {
++		sff_8436->client[i] = i2c_new_dummy(client->adapter,
++					client->addr + i);
++		if (!sff_8436->client[i]) {
++			dev_err(&client->dev, "address 0x%02x unavailable\n",
++				client->addr + i);
++			err = -EADDRINUSE;
++			goto err_struct;
++		}
++	}
++
 +	/* create the sysfs eeprom file */
 +	err = sysfs_create_bin_file(&client->dev.kobj, &sff_8436->bin);
 +	if (err)
 +		goto err_struct;
 +
-+	sff_8436->eeprom_dev = eeprom_device_register(&client->dev, chip.eeprom_data);
++	sff_8436->attr_group = sff_8436_attr_group;
++	sff_8436->sfp_compat = 0;
++
++	err = sysfs_create_group(&client->dev.kobj, &sff_8436->attr_group);
++	if (err) {
++		dev_err(&client->dev, "failed to create sysfs attribute group.\n");
++		goto err_struct;
++	}
++	sff_8436->eeprom_dev = eeprom_device_register(&client->dev,
++							chip.eeprom_data);
 +	if (IS_ERR(sff_8436->eeprom_dev)) {
 +		dev_err(&client->dev, "error registering eeprom device.\n");
 +		err = PTR_ERR(sff_8436->eeprom_dev);
@@ -1001,8 +1261,15 @@ index 0000000..0b6bf31
 +	return 0;
 +
 +err_sysfs_cleanup:
++	sysfs_remove_group(&client->dev.kobj, &sff_8436->attr_group);
 +	sysfs_remove_bin_file(&client->dev.kobj, &sff_8436->bin);
++
 +err_struct:
++	for (i = 1; i < num_addresses; i++) {
++		if (sff_8436->client[i])
++			i2c_unregister_device(sff_8436->client[i]);
++	}
++
 +	kfree(sff_8436->writebuf);
 +exit_kfree:
 +	kfree(sff_8436);
