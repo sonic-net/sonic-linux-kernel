@@ -1,0 +1,48 @@
+From 7f7d6a7dd958ff68da96a78442ffa6a404aa976a Mon Sep 17 00:00:00 2001
+From: admin <admin@debian>
+Date: Tue, 13 Jun 2017 10:49:50 -0400
+Subject: [PATCH] TUNTAP driver support carrier configuration
+
+---
+ drivers/net/tun.c           | 12 ++++++++++++
+ include/uapi/linux/if_tun.h |  1 +
+ 2 files changed, 13 insertions(+)
+
+diff --git a/drivers/net/tun.c b/drivers/net/tun.c
+index 999484f..0b1327f 100644
+--- a/drivers/net/tun.c
++++ b/drivers/net/tun.c
+@@ -2102,6 +2102,18 @@ static long __tun_chr_ioctl(struct file *file, unsigned int cmd,
+ 			break;
+ 		ret = 0;
+ 		break;
++        
++    case TUNSETCARRIER:
++        if (arg) {
++            netif_carrier_on(tun->dev);
++		} else {
++            netif_carrier_off(tun->dev);
++        }
++
++		tun_debug(KERN_INFO, tun, "carrier %s\n",
++			  arg ? "on" : "off");
++
++		break;
+ 
+ 	default:
+ 		ret = -EINVAL;
+diff --git a/include/uapi/linux/if_tun.h b/include/uapi/linux/if_tun.h
+index e9502dd..319a129 100644
+--- a/include/uapi/linux/if_tun.h
++++ b/include/uapi/linux/if_tun.h
+@@ -58,6 +58,7 @@
+ #define TUNSETQUEUE  _IOW('T', 217, int)
+ #define TUNSETIFINDEX	_IOW('T', 218, unsigned int)
+ #define TUNGETFILTER _IOR('T', 219, struct sock_fprog)
++#define TUNSETCARRIER _IOW('T', 220, int)
+ 
+ /* TUNSETIFF ifr flags */
+ #define IFF_TUN		0x0001
+-- 
+2.1.4
+
