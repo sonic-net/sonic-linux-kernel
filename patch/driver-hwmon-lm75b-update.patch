@@ -1,0 +1,44 @@
+From 7e24a7bf79b4ae6c12cd3306f0340883b6b0fd73 Mon Sep 17 00:00:00 2001
+From: Abhisit Sangjan <asang@celestica.com>
+Date: Fri, 30 Jun 2017 10:13:12 +0700
+Subject: [PATCH] hwmon: Update to support lm75b
+
+* Add lm75b
+---
+ drivers/hwmon/lm75.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/hwmon/lm75.c b/drivers/hwmon/lm75.c
+index 479ffbe..38b6f8f 100644
+--- a/drivers/hwmon/lm75.c
++++ b/drivers/hwmon/lm75.c
+@@ -44,6 +44,7 @@ enum lm75_type {		/* keep sorted in alphabetical order */
+ 	g751,
+ 	lm75,
+ 	lm75a,
++	lm75b,
+ 	max6625,
+ 	max6626,
+ 	mcp980x,
+@@ -232,6 +233,10 @@ lm75_probe(struct i2c_client *client, const struct i2c_device_id *id)
+ 		data->resolution = 9;
+ 		data->sample_time = HZ / 2;
+ 		break;
++	case lm75b:
++		data->resolution = 11;
++		data->sample_time = HZ / 4;
++		break;
+ 	case max6625:
+ 		data->resolution = 9;
+ 		data->sample_time = HZ / 4;
+@@ -315,6 +320,7 @@ static const struct i2c_device_id lm75_ids[] = {
+ 	{ "g751", g751, },
+ 	{ "lm75", lm75, },
+ 	{ "lm75a", lm75a, },
++	{ "lm75b", lm75b, },
+ 	{ "max6625", max6625, },
+ 	{ "max6626", max6626, },
+ 	{ "mcp980x", mcp980x, },
+-- 
+1.9.1
+
