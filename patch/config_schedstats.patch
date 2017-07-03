@@ -1,0 +1,22 @@
+Enable CONFIG_SCHEDSTATS
+
+From: Pavel Shirshov <pavelsh@microsoft.com.com>
+
+
+---
+ debian/build/build_amd64_none_amd64/.config |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/debian/build/build_amd64_none_amd64/.config b/debian/build/build_amd64_none_amd64/.config
+index aa7dd42..d0797e1 100644
+--- a/debian/build/build_amd64_none_amd64/.config
++++ b/debian/build/build_amd64_none_amd64/.config
+@@ -6370,7 +6370,7 @@ CONFIG_BOOTPARAM_HUNG_TASK_PANIC_VALUE=0
+ CONFIG_PANIC_ON_OOPS_VALUE=0
+ CONFIG_PANIC_TIMEOUT=0
+ CONFIG_SCHED_DEBUG=y
+-# CONFIG_SCHEDSTATS is not set
++CONFIG_SCHEDSTATS=y
+ CONFIG_TIMER_STATS=y
+ 
+ #
