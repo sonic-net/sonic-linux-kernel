@@ -23,3 +23,4 @@ driver-pca954x-i2c-mux-force-deselect-on-exit-flag.patch
 linux-3.19-mmc-sdhci-Add-a-quirk-for-AMD-SDHC-transfer-mode-reg.patch
 linux-3.19-mmc-sdhci-pci-enable-the-clear-transfer-mode-registe.patch
 linux-3.19-mmc-sdhci-pci-enable-sdhci-doesn-t-support-hs200-qui.patch
+rtnetlink-catch-EOPNOTSUPP-errors.patch
