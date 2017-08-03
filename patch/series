@@ -8,7 +8,6 @@ driver-at24-fix-odd-length-two-byte-access.patch
 driver-hwmon-max6620.patch
 driver-hwmon-max6620-fix-rpm-calc.patch
 driver-hwmon-max6620-update.patch
-driver-hwmon-lm75b-update.patch
 driver-hwmon-pmbus-dni_dps460.patch
 driver-hwmon-pmbus-dni_dps460-update-pmbus-core.patch
 driver-i2c-bus-intel-ismt-add-delay-param.patch
@@ -24,3 +23,4 @@ linux-3.19-mmc-sdhci-Add-a-quirk-for-AMD-SDHC-transfer-mode-reg.patch
 linux-3.19-mmc-sdhci-pci-enable-the-clear-transfer-mode-registe.patch
 linux-3.19-mmc-sdhci-pci-enable-sdhci-doesn-t-support-hs200-qui.patch
 rtnetlink-catch-EOPNOTSUPP-errors.patch
+bridge-per-port-multicast-broadcast-flood-flags.patch

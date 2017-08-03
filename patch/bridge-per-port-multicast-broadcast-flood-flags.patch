@@ -1,0 +1,138 @@
+commit a90be3726e45565415d1d0c04edbbb9ecd0944a1
+Author: jipan yang <jipan.yang@gmail.com>
+Date:   Tue Aug 1 23:40:26 2017 -0700
+
+    Porting bridge port multicast/broadcast flood flag support, excluding netlink parts.
+    
+    https://github.com/torvalds/linux/commit/b6cb5ac8331b6bcfe9ce38c7f7f58db6e1d6270a
+    net: bridge: add per-port multicast flood flag
+    Add a per-port flag to control the unknown multicast flood, similar to the
+    unknown unicast flood flag and break a few long lines in the netlink flag
+    exports.
+    
+    Signed-off-by: Nikolay Aleksandrov <nikolay@cumulusnetworks.com>
+    Signed-off-by: David S. Miller <davem@davemloft.net>
+    
+    https://github.com/torvalds/linux/commit/99f906e9ad7b6e79ffeda30f45906a8448b9d6a2
+    bridge: add per-port broadcast flood flag
+    Support for l2 multicast flood control was added in commit b6cb5ac
+    ("net: bridge: add per-port multicast flood flag"). It allows broadcast
+    as it was introduced specifically for unknown multicast flood control.
+    But as broadcast is a special case of multicast, this may also need to
+    be disabled. For this purpose, introduce a flag to disable the flooding
+    of received l2 broadcasts. This approach is backwards compatible and
+    provides flexibility in filtering for the desired packet types.
+    
+    Cc: Nikolay Aleksandrov <nikolay@cumulusnetworks.com>
+    Signed-off-by: Mike Manning <mmanning@brocade.com>
+    Reviewed-by: Nikolay Aleksandrov <nikolay@cumulusnetworks.com>
+    Signed-off-by: David S. Miller <davem@davemloft.net>
+
+diff --git a/net/bridge/br_forward.c b/net/bridge/br_forward.c
+index 056b67b..7cdb3c7 100644
+--- a/net/bridge/br_forward.c
++++ b/net/bridge/br_forward.c
+@@ -174,13 +174,37 @@ static void br_flood(struct net_bridge *br, struct sk_buff *skb,
+ {
+ 	struct net_bridge_port *p;
+ 	struct net_bridge_port *prev;
++	const unsigned char *dest = skb->data;
++	enum br_pkt_type pkt_type = BR_PKT_UNICAST;
+ 
+ 	prev = NULL;
+ 
++	dest = eth_hdr(skb)->h_dest;
++	if (is_multicast_ether_addr(dest)) {
++		pkt_type = BR_PKT_MULTICAST;
++		if (is_broadcast_ether_addr(dest)) {
++			pkt_type = BR_PKT_BROADCAST;
++		}
++	}
++
+ 	list_for_each_entry_rcu(p, &br->port_list, list) {
+-		/* Do not flood unicast traffic to ports that turn it off */
+-		if (unicast && !(p->flags & BR_FLOOD))
+-			continue;
++		/* Do not flood unicast traffic to ports that turn it off, nor
++		 * other traffic if flood off, except for traffic we originate
++		 */
++		switch (pkt_type) {
++		case BR_PKT_UNICAST:
++			if (!(p->flags & BR_FLOOD))
++				continue;
++			break;
++		case BR_PKT_MULTICAST:
++			if (!(p->flags & BR_MCAST_FLOOD) && skb->dev != br->dev)
++				continue;
++			break;
++		case BR_PKT_BROADCAST:
++			if (!(p->flags & BR_BCAST_FLOOD) && skb->dev != br->dev)
++				continue;
++			break;
++		}
+ 		prev = maybe_deliver(prev, p, skb, __packet_hook);
+ 		if (IS_ERR(prev))
+ 			goto out;
+diff --git a/net/bridge/br_if.c b/net/bridge/br_if.c
+index 3eca3fd..9426d14 100644
+--- a/net/bridge/br_if.c
++++ b/net/bridge/br_if.c
+@@ -330,7 +330,7 @@ static struct net_bridge_port *new_nbp(struct net_bridge *br,
+ 	p->path_cost = port_cost(dev);
+ 	p->priority = 0x8000 >> BR_PORT_BITS;
+ 	p->port_no = index;
+-	p->flags = BR_LEARNING | BR_FLOOD;
++	p->flags = BR_LEARNING | BR_FLOOD | BR_MCAST_FLOOD | BR_BCAST_FLOOD;
+ 	br_init_port(p);
+ 	p->state = BR_STATE_DISABLED;
+ 	br_stp_port_timer_init(p);
+diff --git a/net/bridge/br_private.h b/net/bridge/br_private.h
+index 4fd47a1..f0db2ee 100644
+--- a/net/bridge/br_private.h
++++ b/net/bridge/br_private.h
+@@ -173,6 +173,9 @@ struct net_bridge_port
+ #define BR_AUTO_MASK (BR_FLOOD | BR_LEARNING)
+ #define BR_PROMISC		0x00000080
+ 
++#define BR_MCAST_FLOOD		BIT(11)
++#define BR_BCAST_FLOOD		BIT(14)
++
+ #ifdef CONFIG_BRIDGE_IGMP_SNOOPING
+ 	struct bridge_mcast_own_query	ip4_own_query;
+ #if IS_ENABLED(CONFIG_IPV6)
+@@ -407,6 +410,13 @@ int br_fdb_sync_static(struct net_bridge *br, struct net_bridge_port *p);
+ void br_fdb_unsync_static(struct net_bridge *br, struct net_bridge_port *p);
+ 
+ /* br_forward.c */
++/* br_forward.c */
++enum br_pkt_type {
++	BR_PKT_UNICAST,
++	BR_PKT_MULTICAST,
++	BR_PKT_BROADCAST
++};
++
+ void br_deliver(const struct net_bridge_port *to, struct sk_buff *skb);
+ int br_dev_queue_push_xmit(struct sk_buff *skb);
+ void br_forward(const struct net_bridge_port *to,
+diff --git a/net/bridge/br_sysfs_if.c b/net/bridge/br_sysfs_if.c
+index e561cd5..57e11da 100644
+--- a/net/bridge/br_sysfs_if.c
++++ b/net/bridge/br_sysfs_if.c
+@@ -170,6 +170,8 @@ BRPORT_ATTR_FLAG(bpdu_guard, BR_BPDU_GUARD);
+ BRPORT_ATTR_FLAG(root_block, BR_ROOT_BLOCK);
+ BRPORT_ATTR_FLAG(learning, BR_LEARNING);
+ BRPORT_ATTR_FLAG(unicast_flood, BR_FLOOD);
++BRPORT_ATTR_FLAG(multicast_flood, BR_MCAST_FLOOD);
++BRPORT_ATTR_FLAG(broadcast_flood, BR_BCAST_FLOOD);
+ 
+ #ifdef CONFIG_BRIDGE_IGMP_SNOOPING
+ static ssize_t show_multicast_router(struct net_bridge_port *p, char *buf)
+@@ -213,6 +215,8 @@ static const struct brport_attribute *brport_attrs[] = {
+ 	&brport_attr_multicast_router,
+ 	&brport_attr_multicast_fast_leave,
+ #endif
++	&brport_attr_multicast_flood,
++	&brport_attr_broadcast_flood,
+ 	NULL
+ };
+ 
