@@ -3,8 +3,8 @@ SHELL = /bin/bash
 
 KVERSION_SHORT ?= 3.16.0-4
 KVERSION ?= $(KVERSION_SHORT)-amd64
-KERNEL_VERSION ?= 3.16.36
-KERNEL_SUBVERSION ?= 1+deb8u2
+KERNEL_VERSION ?= 3.16.43
+KERNEL_SUBVERSION ?= 2+deb8u5
 
 MAIN_TARGET = linux-headers-$(KVERSION_SHORT)-common_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_amd64.deb
 DERIVED_TARGETS = linux-headers-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_amd64.deb \
@@ -16,9 +16,9 @@ DEBIAN_FILE = linux_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION).debian.tar.xz
 URL = http://security.debian.org/debian-security/pool/updates/main/l/linux
 BUILD_DIR=linux-$(KERNEL_VERSION)
 
-DSC_FILE_URL = "https://sonicstorage.blob.core.windows.net/packages/linux_3.16.36-1+deb8u2.dsc?sv=2015-04-05&sr=b&sig=9wBtvznS4Ih4JTT2%2FWZzlnaW0XY4iCQlzIhdaHlA3dw%3D&se=2030-11-07T19%3A41%3A19Z&sp=r"
-DEBIAN_FILE_URL = "https://sonicstorage.blob.core.windows.net/packages/linux_3.16.36-1+deb8u2.debian.tar.xz?sv=2015-04-05&sr=b&sig=wlcTymPDhkX8HOsM5im7789b76%2BewwCILOFUpFZYBvk%3D&se=2030-11-07T19%3A40%3A30Z&sp=r"
-ORIG_FILE_URL = "https://sonicstorage.blob.core.windows.net/packages/linux_3.16.36.orig.tar.xz?sv=2015-04-05&sr=b&sig=ez%2Fv4ci4ADs7gnoflCr%2BrCMAK0e1WPN8%2F68sw33f9%2Bc%3D&se=2030-11-07T19%3A40%3A52Z&sp=r"
+DSC_FILE_URL = "https://sonicstorage.blob.core.windows.net/packages/linux_3.16.43-2+deb8u5.dsc?sv=2015-04-05&sr=b&sig=%2B4UumAxZB5X%2BSurMCEY4JqL2%2BYxTRfJjecnIZvo%2BxCg%3D&se=2154-10-14T01%3A34%3A34Z&sp=r"
+DEBIAN_FILE_URL = "https://sonicstorage.blob.core.windows.net/packages/linux_3.16.43-2+deb8u5.debian.tar.xz?sv=2015-04-05&sr=b&sig=p1wv%2BId57XVyabKQe%2B22B33%2F9FWIIK5WLP1x6uNC%2BCo%3D&se=2154-10-14T01%3A33%3A51Z&sp=r"
+ORIG_FILE_URL = "https://sonicstorage.blob.core.windows.net/packages/linux_3.16.43.orig.tar.xz?sv=2015-04-05&sr=b&sig=n2iMEnfMv%2B1YMXKrvixfB6Ua6xRnaOwtwErr5aZkfMQ%3D&se=2154-10-14T01%3A34%3A57Z&sp=r"
 
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Obtaining the Debian kernel source
