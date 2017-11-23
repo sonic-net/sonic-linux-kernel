@@ -1,4 +1,4 @@
-[![Build Status](https://sonic-jenkins.westus.cloudapp.azure.com/job/common/job/linux-kernel-build/badge/icon)](https://sonic-jenkins.westus.cloudapp.azure.com/job/common/job/linux-kernel-build/)
+[![Build Status](https://sonic-jenkins.westus2.cloudapp.azure.com/job/common/job/linux-kernel-build/badge/icon)](https://sonic-jenkins.westus2.cloudapp.azure.com/job/common/job/linux-kernel-build/)
 
 # SONiC - Kernel
 
