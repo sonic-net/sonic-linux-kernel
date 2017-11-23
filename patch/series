@@ -27,3 +27,4 @@ linux-3.19-mmc-sdhci-pci-enable-sdhci-doesn-t-support-hs200-qui.patch
 rtnetlink-catch-EOPNOTSUPP-errors.patch
 bridge-per-port-multicast-broadcast-flood-flags.patch
 driver-support-tun-config-carrier-enable.patch
+linux-3.16.40-driver-i2c-core-null-ptr-dereference.patch
