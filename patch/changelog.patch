@@ -1,18 +1,33 @@
---- debian/changelog.orig	2016-09-19 23:37:25.157879132 +0000
-+++ debian/changelog	2016-09-19 23:37:32.141853134 +0000
+From a96e033ed01d4a68a0825c187bebe45a527fb868 Mon Sep 17 00:00:00 2001
+From: Qi Luo <qiluo-msft@users.noreply.github.com>
+Date: Wed, 10 Jan 2018 01:18:57 +0000
+Subject: [PATCH] Update changelog
+
+Signed-off-by: Qi Luo <qiluo-msft@users.noreply.github.com>
+---
+ debian/changelog | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/debian/changelog b/debian/changelog
+index baeab31..9cdcdfc 100644
+--- a/debian/changelog
++++ b/debian/changelog
 @@ -1,3 +1,15 @@
-+linux (3.16.43-2+deb8u5) acs; urgency=high
++linux (3.16.51-3+deb8u1) sonic; urgency=high
 +
 +  * add driver patches for MLNX SN2700
 +
 + -- Guohan Lu <gulv@microsoft.com>  Sun, 19 Dec 2015 01:50:04 +0100
 +
-+linux (3.16.43-2+deb8u5) acs; urgency=high
++linux (3.16.51-3+deb8u1) sonic; urgency=high
 +
 +  * add support for S6000
 +
 + -- Shuotian Cheng <shuche@microsoft.com>  Sun, 19 Dec 2015 01:50:04 +0100
 +
- linux (3.16.43-2+deb8u5) jessie-security; urgency=medium
+ linux (3.16.51-3+deb8u1) jessie-security; urgency=high
+ 
+   * dccp: CVE-2017-8824: use-after-free in DCCP code
+-- 
+2.1.4
 
-   * [amd64] mm: revert ELF_ET_DYN_BASE base changes (fixes regression of ASan)
