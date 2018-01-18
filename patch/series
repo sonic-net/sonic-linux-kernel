@@ -5,6 +5,7 @@ config-mlnx-sn2700.patch
 config-dell-z9100.patch
 config-ingrasys-s9100.patch
 config-arista-7060-cx32s.patch
+config-mitac-ly1200.patch
 driver-at24-fix-odd-length-two-byte-access.patch
 driver-hwmon-max6620.patch
 driver-hwmon-max6620-fix-rpm-calc.patch
@@ -28,3 +29,5 @@ linux-3.19-mmc-sdhci-pci-enable-sdhci-doesn-t-support-hs200-qui.patch
 rtnetlink-catch-EOPNOTSUPP-errors.patch
 bridge-per-port-multicast-broadcast-flood-flags.patch
 driver-support-tun-config-carrier-enable.patch
+driver-i2c-bus-ismt-i801-support-intel-denverton.patch
+driver-hwmon-max31790.patch
