@@ -5,6 +5,7 @@ config-mlnx-sn2700.patch
 config-dell-z9100.patch
 config-ingrasys-s9100.patch
 config-arista-7060-cx32s.patch
+config-quanta-ix1b.patch
 driver-at24-fix-odd-length-two-byte-access.patch
 driver-hwmon-max6620.patch
 driver-hwmon-max6620-fix-rpm-calc.patch
