@@ -1,0 +1,44 @@
+diff --git a/debian/build/build_amd64_none_amd64/.config b/debian/build/build_amd64_none_amd64/.config
+index e9b840e..dea8b32 100644
+--- a/debian/build/build_amd64_none_amd64/.config
++++ b/debian/build/build_amd64_none_amd64/.config
+@@ -3090,13 +3090,13 @@ CONFIG_HVC_IRQ=y
+ CONFIG_HVC_XEN=y
+ CONFIG_HVC_XEN_FRONTEND=y
+ CONFIG_VIRTIO_CONSOLE=m
+-CONFIG_IPMI_HANDLER=m
++CONFIG_IPMI_HANDLER=y
+ # CONFIG_IPMI_PANIC_EVENT is not set
+-CONFIG_IPMI_DEVICE_INTERFACE=m
+-CONFIG_IPMI_SI=m
+-# CONFIG_IPMI_SI_PROBE_DEFAULTS is not set
+-CONFIG_IPMI_WATCHDOG=m
+-CONFIG_IPMI_POWEROFF=m
++CONFIG_IPMI_DEVICE_INTERFACE=y
++CONFIG_IPMI_SI=y
++CONFIG_IPMI_SI_PROBE_DEFAULTS=y
++CONFIG_IPMI_WATCHDOG=y
++CONFIG_IPMI_POWEROFF=y
+ CONFIG_HW_RANDOM=m
+ # CONFIG_HW_RANDOM_TIMERIOMEM is not set
+ CONFIG_HW_RANDOM_INTEL=m
+@@ -3648,7 +3648,7 @@ CONFIG_BCMA_HOST_PCI=y
+ #
+ # Multifunction device drivers
+ #
+-CONFIG_MFD_CORE=m
++CONFIG_MFD_CORE=y
+ # CONFIG_MFD_CS5535 is not set
+ # CONFIG_MFD_BCM590XX is not set
+ # CONFIG_MFD_CROS_EC is not set
+@@ -3656,8 +3656,8 @@ CONFIG_MFD_CORE=m
+ # CONFIG_MFD_MC13XXX_SPI is not set
+ # CONFIG_MFD_MC13XXX_I2C is not set
+ # CONFIG_HTC_PASIC3 is not set
+-CONFIG_LPC_ICH=m
+-CONFIG_LPC_SCH=m
++CONFIG_LPC_ICH=y
++CONFIG_LPC_SCH=y
+ # CONFIG_MFD_JANZ_CMODIO is not set
+ CONFIG_MFD_KEMPLD=m
+ # CONFIG_EZX_PCAP is not set
