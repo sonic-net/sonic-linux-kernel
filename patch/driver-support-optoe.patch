@@ -1,6 +1,7 @@
 From 280cea4bd2b98b15382a730a3697f95994544381 Mon Sep 17 00:00:00 2001
+
 From: Don Bollinger <don@thebollingers.org>
-Date: Thu, 8 Feb 2018 18:40:46 -0800
+
 Subject: [PATCH] drivers/misc/eeprom: Add optoe driver (SFP/QSFP EEPROM
  Read/Write)
 
@@ -10,12 +11,25 @@ Subject: [PATCH] drivers/misc/eeprom: Add optoe driver (SFP/QSFP EEPROM
 
 Signed-off-by: Don Bollinger <don@thebollingers.org>
 ---
- drivers/misc/eeprom/Kconfig  |   18 +
- drivers/misc/eeprom/Makefile |    1 +
- drivers/misc/eeprom/optoe.c  | 1126 ++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 1145 insertions(+)
- create mode 100755 drivers/misc/eeprom/optoe.c
+ debian/build/build_amd64_none_amd64/.config |    1 
+ drivers/misc/eeprom/Kconfig                 |   18 
+ drivers/misc/eeprom/Makefile                |    1 
+ drivers/misc/eeprom/optoe.c                 | 1126 +++++++++++++++++++++++++++
+ 4 files changed, 1146 insertions(+)
+ create mode 100644 drivers/misc/eeprom/optoe.c
 
+diff --git a/debian/build/build_amd64_none_amd64/.config b/debian/build/build_amd64_none_amd64/.config
+index ae681ac..6bd2b13 100644
+--- a/debian/build/build_amd64_none_amd64/.config
++++ b/debian/build/build_amd64_none_amd64/.config
+@@ -1787,6 +1787,7 @@ CONFIG_EEPROM_MAX6875=m
+ CONFIG_EEPROM_93CX6=m
+ # CONFIG_EEPROM_93XX46 is not set
+ CONFIG_EEPROM_SFF_8436=m
++CONFIG_EEPROM_OPTOE=m
+ CONFIG_CB710_CORE=m
+ # CONFIG_CB710_DEBUG is not set
+ CONFIG_CB710_DEBUG_ASSUMPTIONS=y
 diff --git a/drivers/misc/eeprom/Kconfig b/drivers/misc/eeprom/Kconfig
 index 484e3e1..33e4030 100644
 --- a/drivers/misc/eeprom/Kconfig
@@ -46,16 +60,16 @@ index 484e3e1..33e4030 100644
  	tristate "Allwinner sunxi security ID support"
  	depends on ARCH_SUNXI && SYSFS
 diff --git a/drivers/misc/eeprom/Makefile b/drivers/misc/eeprom/Makefile
-index 235b5cc..f82a2b0 100644
+index 235b5cc..2a95beb 100644
 --- a/drivers/misc/eeprom/Makefile
 +++ b/drivers/misc/eeprom/Makefile
 @@ -7,3 +7,4 @@ obj-$(CONFIG_EEPROM_93XX46)	+= eeprom_93xx46.o
  obj-$(CONFIG_EEPROM_SUNXI_SID)	+= sunxi_sid.o
  obj-$(CONFIG_EEPROM_DIGSY_MTC_CFG) += digsy_mtc_eeprom.o
  obj-$(CONFIG_EEPROM_SFF_8436) += sff_8436_eeprom.o
-+obj-$(CONFIG_OPTOE) += optoe.o
++obj-$(CONFIG_EEPROM_OPTOE) += optoe.o
 diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
-new file mode 100755
+new file mode 100644
 index 0000000..7425bf6
 --- /dev/null
 +++ b/drivers/misc/eeprom/optoe.c
@@ -1186,6 +1200,3 @@ index 0000000..7425bf6
 +MODULE_DESCRIPTION("Driver for optical transceiver (SFP, QSFP, ...) EEPROMs");
 +MODULE_AUTHOR("DON BOLLINGER <don@thebollingers.org>");
 +MODULE_LICENSE("GPL");
--- 
-2.1.4
-
