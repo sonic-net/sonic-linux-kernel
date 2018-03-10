@@ -33,3 +33,4 @@ driver-support-tun-config-carrier-enable.patch
 driver-i2c-bus-ismt-i801-support-intel-denverton.patch
 driver-hwmon-max31790.patch
 driver-support-optoe.patch
+driver-support-optoe-EOF_fix.patch
