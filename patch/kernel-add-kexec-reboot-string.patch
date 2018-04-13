@@ -1,0 +1,25 @@
+From cc1ab16f0e641a8b3cd90c802c2e48a4c89c238b Mon Sep 17 00:00:00 2001
+From: Joe LeVeque <jolevequ@microsoft.com>
+Date: Fri, 13 Apr 2018 19:32:25 +0000
+Subject: [PATCH] Add kexec reboot string
+
+---
+ kernel/kexec.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/kernel/kexec.c b/kernel/kexec.c
+index 4b8f0c9..52cf984 100644
+--- a/kernel/kexec.c
++++ b/kernel/kexec.c
+@@ -1681,7 +1681,7 @@ int kernel_kexec(void)
+ #endif
+ 	{
+ 		kexec_in_progress = true;
+-		kernel_restart_prepare(NULL);
++		kernel_restart_prepare("kexec reboot");
+ 		migrate_to_reboot_cpu();
+ 
+ 		/*
+-- 
+2.1.4
+
