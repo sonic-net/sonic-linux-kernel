@@ -7,6 +7,7 @@ config-ingrasys-s9100.patch
 config-arista-7060-cx32s.patch
 config-mitac-ly1200.patch
 config-quanta-ix1b.patch
+config-quanta-ix4.patch
 driver-at24-fix-odd-length-two-byte-access.patch
 driver-hwmon-max6620.patch
 driver-hwmon-max6620-fix-rpm-calc.patch
