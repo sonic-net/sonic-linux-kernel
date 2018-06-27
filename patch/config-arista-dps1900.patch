@@ -1,0 +1,9 @@
+diff --git a/debian/build/build_amd64_none_amd64/.config b/debian/build/build_amd64_none_amd64/.config
+index 6b6aea9..14e32cb 100644
+--- a/debian/build/build_amd64_none_amd64/.config
++++ b/debian/build/build_amd64_none_amd64/.config
+@@ -6820,3 +6821,4 @@ CONFIG_FONT_SUPPORT=y
+ # CONFIG_FONTS is not set
+ CONFIG_FONT_8x8=y
+ CONFIG_FONT_8x16=y
++CONFIG_SENSORS_DPS1900=m
