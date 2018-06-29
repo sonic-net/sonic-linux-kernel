@@ -1,0 +1,56 @@
+From c235ccc1c4d6fd8b7d48b976b87416230ffd5149 Mon Sep 17 00:00:00 2001
+From: Peter Hurley <peter@hurleysoftware.com>
+Date: Tue, 2 Sep 2014 17:39:13 -0400
+Subject: [PATCH] serial: core: Fix x_char race
+
+The UART driver is expected to clear port->x_char after
+transmission while holding the port->lock. However, the serial
+core fails to take the port->lock before assigning port->xchar.
+This allows for the following race
+
+CPU 0                         |  CPU 1
+                              |
+                              | serial8250_handle_irq
+                              |   ...
+                              |   serial8250_tx_chars
+                              |     if (port->x_char)
+                              |       serial_out(up, UART_TX, port->x_char)
+uart_send_xchar               |
+  port->x_char = ch           |
+                              |       port->x_char = 0
+  port->ops->start_tx()       |
+                              |
+
+The x_char on CPU 0 will never be sent.
+
+Take the port->lock in uart_send_xchar() before assigning port->x_char.
+
+Signed-off-by: Peter Hurley <peter@hurleysoftware.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/tty/serial/serial_core.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/tty/serial/serial_core.c b/drivers/tty/serial/serial_core.c
+index 0742f77ac410..bd20cf51e912 100644
+--- a/drivers/tty/serial/serial_core.c
++++ b/drivers/tty/serial/serial_core.c
+@@ -600,12 +600,11 @@ static void uart_send_xchar(struct tty_struct *tty, char ch)
+ 	if (port->ops->send_xchar)
+ 		port->ops->send_xchar(port, ch);
+ 	else {
++		spin_lock_irqsave(&port->lock, flags);
+ 		port->x_char = ch;
+-		if (ch) {
+-			spin_lock_irqsave(&port->lock, flags);
++		if (ch)
+ 			port->ops->start_tx(port);
+-			spin_unlock_irqrestore(&port->lock, flags);
+-		}
++		spin_unlock_irqrestore(&port->lock, flags);
+ 	}
+ }
+ 
+-- 
+2.17.1
+
