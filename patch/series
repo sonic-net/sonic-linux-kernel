@@ -25,6 +25,7 @@ driver-arista-net-tg3-dma-mask-4g-sb800.patch
 driver-arista-net-tg3-access-regs-indirectly.patch
 driver-arista-net-tg3-disallow-broadcom-default-mac.patch
 driver-pca954x-i2c-mux-force-deselect-on-exit-flag.patch
+linux-3.17-serial-core-Fix-x_char-race.patch
 linux-3.19-mmc-sdhci-Add-a-quirk-for-AMD-SDHC-transfer-mode-reg.patch
 linux-3.19-mmc-sdhci-pci-enable-the-clear-transfer-mode-registe.patch
 linux-3.19-mmc-sdhci-pci-enable-sdhci-doesn-t-support-hs200-qui.patch
