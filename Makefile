@@ -33,6 +33,7 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	pushd $(BUILD_DIR)
 	git init
 	git add -f *
+	git commit -m "check in all lose files and diffs"
 
 	# patch debian changelog and update kernel package version
 	git am ../patch/changelog.patch
