@@ -27,9 +27,9 @@ LINUX_IMAGE_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-pu
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Obtaining the Debian kernel packages
 	rm -rf $(BUILD_DIR)
-	wget -O $(LINUX_HEADER_COMMON) $(LINUX_HEADER_COMMON_URL)
-	wget -O $(LINUX_HEADER_AMD64) $(LINUX_HEADER_AMD64_URL)
-	wget -O $(LINUX_IMAGE) $(LINUX_IMAGE_URL)
+	wget --no-use-server-timestamps -O $(LINUX_HEADER_COMMON) $(LINUX_HEADER_COMMON_URL)
+	wget --no-use-server-timestamps -O $(LINUX_HEADER_AMD64) $(LINUX_HEADER_AMD64_URL)
+	wget --no-use-server-timestamps -O $(LINUX_IMAGE) $(LINUX_IMAGE_URL)
 
 ifneq ($(DEST),)
 	mv $(DERIVED_TARGETS) $* $(DEST)/
