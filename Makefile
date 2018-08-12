@@ -2,10 +2,10 @@
 SHELL = /bin/bash
 .SHELLFLAGS += -e
 
-KVERSION_SHORT ?= 4.9.0-5
+KVERSION_SHORT ?= 4.9.0-7
 KVERSION ?= $(KVERSION_SHORT)-amd64
-KERNEL_VERSION ?= 4.9.65
-KERNEL_SUBVERSION ?= 3+deb9u2
+KERNEL_VERSION ?= 4.9.110
+KERNEL_SUBVERSION ?= 3+deb9u1
 kernel_procure_method ?= build
 
 LINUX_HEADER_COMMON = linux-headers-$(KVERSION_SHORT)-common_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_all.deb
@@ -18,11 +18,11 @@ DERIVED_TARGETS = $(LINUX_HEADER_AMD64) $(LINUX_IMAGE)
 ifneq ($(kernel_procure_method), build)
 # Downloading kernel
 
-LINUX_HEADER_COMMON_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-public/linux-headers-4.9.0-5-common_4.9.65-3+deb9u2_all.deb?sv=2015-04-05&sr=b&sig=LtMcms7eBqw6IaJq37FdHXXN8GBrlIXouSnPEmmoxMM%3D&se=2155-07-04T07%3A33%3A59Z&sp=r"
+LINUX_HEADER_COMMON_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-public/linux-headers-4.9.0-7-common_4.9.110-3+deb9u1_all.deb?sv=2015-04-05&sr=b&sig=1%2FgRlKSoUnmnuwBoylk2Scn9lGxQMksXjLGTsNnl4pk%3D&se=2155-07-06T08%3A50%3A06Z&sp=r"
 
-LINUX_HEADER_AMD64_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-public/linux-headers-4.9.0-5-amd64_4.9.65-3+deb9u2_amd64.deb?sv=2015-04-05&sr=b&sig=PTCh3FhHxOlSvqlKZIARbAsjcGVQWjogewNzKN%2FtPDM%3D&se=2024-04-24T15%3A33%3A34Z&sp=r"
+LINUX_HEADER_AMD64_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-public/linux-headers-4.9.0-7-amd64_4.9.110-3+deb9u1_amd64.deb?sv=2015-04-05&sr=b&sig=3JlLD0%2FXIuv5MYmi8UAlsCyzNbKbIkilo1c1JJtIimM%3D&se=2155-07-06T08%3A51%3A34Z&sp=r"
 
-LINUX_IMAGE_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-public/linux-image-4.9.0-5-amd64_4.9.65-3+deb9u2_amd64.deb?sv=2015-04-05&sr=b&sig=eWBMDs2pooGGYC9VF%2Bm2GW%2BG%2F4T4%2BXHk9K86vwbX2Og%3D&se=2155-07-04T07%3A34%3A51Z&sp=r"
+LINUX_IMAGE_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-public/linux-image-4.9.0-7-amd64_4.9.110-3+deb9u1_amd64.deb?sv=2015-04-05&sr=b&sig=D5SXjaNrVCOkkwyeq2Wye%2BHSR86I3cFJEzVFOxJwPC0%3D&se=2155-07-06T08%3A50%3A58Z&sp=r"
 
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Obtaining the Debian kernel packages
@@ -77,6 +77,7 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Applying patches and configuration changes
 	git add debian/build/build_amd64_none_amd64/.config -f
 	git add debian/config.defines.dump -f
+	git add debian/control -f
 	git commit -m "unmodified debian source"
 
 	# Learning new git repo head (above commit) by calling stg repair.
