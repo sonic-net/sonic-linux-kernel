@@ -5,7 +5,7 @@ SHELL = /bin/bash
 KVERSION_SHORT ?= 4.9.0-7
 KVERSION ?= $(KVERSION_SHORT)-amd64
 KERNEL_VERSION ?= 4.9.110
-KERNEL_SUBVERSION ?= 3+deb9u1
+KERNEL_SUBVERSION ?= 3+deb9u2
 kernel_procure_method ?= build
 
 LINUX_HEADER_COMMON = linux-headers-$(KVERSION_SHORT)-common_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_all.deb
