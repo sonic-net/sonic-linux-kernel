@@ -18,11 +18,11 @@ DERIVED_TARGETS = $(LINUX_HEADER_AMD64) $(LINUX_IMAGE)
 ifneq ($(kernel_procure_method), build)
 # Downloading kernel
 
-LINUX_HEADER_COMMON_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-public/linux-headers-4.9.0-7-common_4.9.110-3+deb9u1_all.deb?sv=2015-04-05&sr=b&sig=1%2FgRlKSoUnmnuwBoylk2Scn9lGxQMksXjLGTsNnl4pk%3D&se=2155-07-06T08%3A50%3A06Z&sp=r"
+LINUX_HEADER_COMMON_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-public/linux-headers-4.9.0-7-common_4.9.110-3+deb9u2_all.deb?sv=2015-04-05&sr=b&sig=LlKqKecY6MDSwFMTxpKErh7FX1Lrvse2yVt3niYnhds%3D&se=2128-02-24T04%3A47%3A48Z&sp=r"
 
-LINUX_HEADER_AMD64_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-public/linux-headers-4.9.0-7-amd64_4.9.110-3+deb9u1_amd64.deb?sv=2015-04-05&sr=b&sig=3JlLD0%2FXIuv5MYmi8UAlsCyzNbKbIkilo1c1JJtIimM%3D&se=2155-07-06T08%3A51%3A34Z&sp=r"
+LINUX_HEADER_AMD64_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-public/linux-headers-4.9.0-7-amd64_4.9.110-3+deb9u2_amd64.deb?sv=2015-04-05&sr=b&sig=SfQLjiBPPMcRUOmBPvXq2%2F6SsW3ul9%2FlaROplXdGij0%3D&se=2128-02-24T04%3A48%3A38Z&sp=r"
 
-LINUX_IMAGE_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-public/linux-image-4.9.0-7-amd64_4.9.110-3+deb9u1_amd64.deb?sv=2015-04-05&sr=b&sig=D5SXjaNrVCOkkwyeq2Wye%2BHSR86I3cFJEzVFOxJwPC0%3D&se=2155-07-06T08%3A50%3A58Z&sp=r"
+LINUX_IMAGE_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-public/linux-image-4.9.0-7-amd64_4.9.110-3+deb9u2_amd64.deb?sv=2015-04-05&sr=b&sig=PNKGpLjELZem0IacUMM1jU%2Ft5ujoVvUb9JzxrUhE1Wk%3D&se=2128-02-24T04%3A48%3A57Z&sp=r"
 
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Obtaining the Debian kernel packages
