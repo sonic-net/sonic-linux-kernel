@@ -1,0 +1,47 @@
+From 7ee4581b48b8fd6378eccab07d1d2620d6a50e4d Mon Sep 17 00:00:00 2001
+From: Sergey Popovich <sergey.popovich@ordnance.co>
+Date: Wed, 14 Mar 2018 08:58:28 +0200
+Subject: i2c: ismt: add i2c bus retry feature
+
+Make it disabled by default and configurable through module parameter.
+
+This, when enabled, will alter behaviour of i2c-core.c::i2c_smbus_xfer()
+forcing it to retry instead of giving up on errors.
+
+Signed-off-by: Sergey Popovich <sergey.popovich@ordnance.co>
+---
+ drivers/i2c/busses/i2c-ismt.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/drivers/i2c/busses/i2c-ismt.c b/drivers/i2c/busses/i2c-ismt.c
+index 193dfb3..fa1b09b 100644
+--- a/drivers/i2c/busses/i2c-ismt.c
++++ b/drivers/i2c/busses/i2c-ismt.c
+@@ -202,6 +202,11 @@ MODULE_PARM_DESC(bus_speed, "Bus Speed in kHz (1000 by default)");
+ module_param(delay, uint, S_IRUGO);
+ MODULE_PARM_DESC(delay, "Delay in microsecs before access (1000 by default)");
+ 
++/* Force smbus transfer caller to retry on error instead of giving up */
++static bool smbus_xfer_retry __read_mostly;
++module_param(smbus_xfer_retry, bool, S_IRUGO);
++MODULE_PARM_DESC(smbus_xfer_retry, "Make smbus xfer caller retry on error (false by default)");
++
+ /**
+  * __ismt_desc_dump() - dump the contents of a specific descriptor
+  */
+@@ -616,6 +621,12 @@ out:
+ 	priv->head++;
+ 	priv->head %= ISMT_DESC_ENTRIES;
+ 
++	/* Add i2c bus retry feature */
++	if (smbus_xfer_retry && ret) {
++		dev_dbg(dev, "Retry i2c-ismt access\n");
++		return -EAGAIN;
++	}
++
+ 	return ret;
+ }
+ 
+-- 
+2.1.4
+

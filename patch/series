@@ -10,7 +10,7 @@
 0009-platform-mellonox-introduce-mlxreg-io-driver-and-add.patch
 0010-config-mellanox-configuration.patch
 0011-support-Broadcom-54616-Phy-for-Intel-igb-driver.patch
-0012-platform-mellanox-mlxreg-hotplug-driver-add-check-fo.patch
+0013-platform-mellanox-mlxreg-hotplug-driver-add-check-fo.patch
 driver-arista-net-tg3-dma-mask-4g-sb800.patch
 driver-arista-net-tg3-disallow-broadcom-default-mac.patch
 driver-arista-net-tg3-access-regs-indirectly.patch
@@ -21,6 +21,7 @@ driver-sff-8436-use-nvmem-framework.patch
 driver-sff-8436-use-nvmem_device_read.patch
 driver-support-sff-8436-read-write-fix.patch
 driver-i2c-bus-intel-ismt-add-delay-param.patch
+driver-i2c-bus-ismt-add-bus-retry-feature.patch
 driver-pca954x-i2c-mux-force-deselect-on-exit-flag.patch
 kernel-add-kexec-reboot-string.patch
 driver-hwmon-max6620.patch
