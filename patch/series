@@ -40,6 +40,7 @@ config-arista-dps1900.patch
 config-arista-7060-cx32s.patch
 config-mitac-ly1200.patch
 config-optoe.patch
+config-inventec-d7032.patch
 0014-mlxsw-qsfp_sysfs-Support-CPLD-version-reading-based-.patch
 0015-platform-x86-mlx-platform-Add-support-for-new-msn201.patch
 0016-platform-mellanox-mlxreg-hotplug-add-extra-run-cycle.patch
