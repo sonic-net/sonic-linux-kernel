@@ -1,0 +1,71 @@
+From 487a2e6ffeb26d3ed36d68a472d15dc7894d9df9 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Thu, 15 Mar 2018 14:01:03 +0000
+Subject: [backport 4.9 16/20] platform/mellanox: mlxreg-hotplug: add extra run
+ cycle for hotplug work queue
+
+It adds missed logic for signal acknowledge, by adding an extra run for
+work queue in case no signal assertion is detected. This extra run will
+allow to acknowlede the missed signal, which can happen for example in
+case several units are remover or inserted at the same time.
+
+Fixes: 1f976f6978bf ("platform/x86: Move Mellanox platform hotplug driver to platform/mellanox")
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/platform/mellanox/mlxreg-hotplug.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/drivers/platform/mellanox/mlxreg-hotplug.c b/drivers/platform/mellanox/mlxreg-hotplug.c
+index ba9241e..57fe24d 100644
+--- a/drivers/platform/mellanox/mlxreg-hotplug.c
++++ b/drivers/platform/mellanox/mlxreg-hotplug.c
+@@ -58,6 +58,7 @@
+ #define MLXREG_HOTPLUG_PROP_STATUS	"status"
+ 
+ #define MLXREG_HOTPLUG_ATTRS_MAX	24
++#define MLXREG_HOTPLUG_NOT_ASSERT	3
+ 
+ /**
+  * struct mlxreg_hotplug_priv_data - platform private data:
+@@ -74,6 +75,7 @@
+  * @cell: location of top aggregation interrupt register;
+  * @mask: top aggregation interrupt common mask;
+  * @aggr_cache: last value of aggregation register status;
++ * @not_asserted: number of entries in workqueue with no signal assertion;
+  */
+ struct mlxreg_hotplug_priv_data {
+ 	int irq;
+@@ -94,6 +96,7 @@ struct mlxreg_hotplug_priv_data {
+ 	u32 mask;
+ 	u32 aggr_cache;
+ 	bool after_probe;
++	u8 not_asserted;
+ };
+ 
+ #if defined(CONFIG_OF_DYNAMIC)
+@@ -472,6 +475,13 @@ static void mlxreg_hotplug_work_handler(struct work_struct *work)
+ 	aggr_asserted = priv->aggr_cache ^ regval;
+ 	priv->aggr_cache = regval;
+ 
++	if (priv->not_asserted == MLXREG_HOTPLUG_NOT_ASSERT) {
++		priv->not_asserted = 0;
++		aggr_asserted = pdata->mask;
++	}
++	if (!aggr_asserted)
++		goto unmask_event;
++
+ 	/* Handle topology and health configuration changes. */
+ 	for (i = 0; i < pdata->counter; i++, item++) {
+ 		if (aggr_asserted & item->aggr_mask) {
+@@ -503,6 +513,8 @@ static void mlxreg_hotplug_work_handler(struct work_struct *work)
+ 		return;
+ 	}
+ 
++unmask_event:
++	priv->not_asserted++;
+ 	/* Unmask aggregation event (no need acknowledge). */
+ 	ret = regmap_write(priv->regmap, pdata->cell +
+ 			   MLXREG_HOTPLUG_AGGR_MASK_OFF, pdata->mask);
+-- 
+2.1.4
+

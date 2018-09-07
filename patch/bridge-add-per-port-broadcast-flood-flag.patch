@@ -1,0 +1,120 @@
+commit 948010ebbfb6bca0b6345fb4e944ed9d60be03a1
+Author: Jipan Yang <jipan.yang@alibaba-inc.com>
+Date:   Sat Jan 6 15:22:54 2018 -0800
+
+    Backport bridge port broadcast flood flag support, excluding netlink parts.
+    
+    Signed-off-by: Jipan Yang <jipan.yang@alibaba-inc.com>
+    
+    commit 99f906e9ad7b6e79ffeda30f45906a8448b9d6a2
+    Author: Mike Manning <mmanning@brocade.com>
+    Date:   Wed Apr 26 14:48:09 2017 +0100
+    
+        bridge: add per-port broadcast flood flag
+    
+        Support for l2 multicast flood control was added in commit b6cb5ac8331b
+        ("net: bridge: add per-port multicast flood flag"). It allows broadcast
+        as it was introduced specifically for unknown multicast flood control.
+        But as broadcast is a special case of multicast, this may also need to
+        be disabled. For this purpose, introduce a flag to disable the flooding
+        of received l2 broadcasts. This approach is backwards compatible and
+        provides flexibility in filtering for the desired packet types.
+    
+        Cc: Nikolay Aleksandrov <nikolay@cumulusnetworks.com>
+        Signed-off-by: Mike Manning <mmanning@brocade.com>
+        Reviewed-by: Nikolay Aleksandrov <nikolay@cumulusnetworks.com>
+        Signed-off-by: David S. Miller <davem@davemloft.net>
+
+diff --git a/include/linux/if_bridge.h b/include/linux/if_bridge.h
+index c6587c0..da20877 100644
+--- a/include/linux/if_bridge.h
++++ b/include/linux/if_bridge.h
+@@ -47,6 +47,8 @@ struct br_ip_list {
+ #define BR_PROXYARP_WIFI	BIT(10)
+ #define BR_MCAST_FLOOD		BIT(11)
+ 
++#define BR_BCAST_FLOOD		BIT(14)
++
+ #define BR_DEFAULT_AGEING_TIME	(300 * HZ)
+ 
+ extern void brioctl_set(int (*ioctl_hook)(struct net *, unsigned int, void __user *));
+diff --git a/include/uapi/linux/if_link.h b/include/uapi/linux/if_link.h
+index b4fba66..d92f9df 100644
+--- a/include/uapi/linux/if_link.h
++++ b/include/uapi/linux/if_link.h
+@@ -319,6 +319,7 @@ enum {
+ 	IFLA_BRPORT_MULTICAST_ROUTER,
+ 	IFLA_BRPORT_PAD,
+ 	IFLA_BRPORT_MCAST_FLOOD,
++	IFLA_BRPORT_BCAST_FLOOD,
+ 	__IFLA_BRPORT_MAX
+ };
+ #define IFLA_BRPORT_MAX (__IFLA_BRPORT_MAX - 1)
+diff --git a/net/bridge/br_forward.c b/net/bridge/br_forward.c
+index 8498e35..3b827c8 100644
+--- a/net/bridge/br_forward.c
++++ b/net/bridge/br_forward.c
+@@ -183,13 +183,23 @@ void br_flood(struct net_bridge *br, struct sk_buff *skb,
+ 	struct net_bridge_port *p;
+ 
+ 	list_for_each_entry_rcu(p, &br->port_list, list) {
+-		/* Do not flood unicast traffic to ports that turn it off */
+-		if (pkt_type == BR_PKT_UNICAST && !(p->flags & BR_FLOOD))
+-			continue;
+-		/* Do not flood if mc off, except for traffic we originate */
+-		if (pkt_type == BR_PKT_MULTICAST &&
+-		    !(p->flags & BR_MCAST_FLOOD) && skb->dev != br->dev)
+-			continue;
++		/* Do not flood unicast traffic to ports that turn it off, nor
++		 * other traffic if flood off, except for traffic we originate
++		 */
++		switch (pkt_type) {
++		case BR_PKT_UNICAST:
++			if (!(p->flags & BR_FLOOD))
++				continue;
++			break;
++		case BR_PKT_MULTICAST:
++			if (!(p->flags & BR_MCAST_FLOOD) && skb->dev != br->dev)
++				continue;
++			break;
++		case BR_PKT_BROADCAST:
++			if (!(p->flags & BR_BCAST_FLOOD) && skb->dev != br->dev)
++				continue;
++			break;
++		}
+ 
+ 		/* Do not flood to ports that enable proxy ARP */
+ 		if (p->flags & BR_PROXYARP)
+diff --git a/net/bridge/br_if.c b/net/bridge/br_if.c
+index ed0dd33..d175e42 100644
+--- a/net/bridge/br_if.c
++++ b/net/bridge/br_if.c
+@@ -362,7 +362,7 @@ static struct net_bridge_port *new_nbp(struct net_bridge *br,
+ 	p->path_cost = port_cost(dev);
+ 	p->priority = 0x8000 >> BR_PORT_BITS;
+ 	p->port_no = index;
+-	p->flags = BR_LEARNING | BR_FLOOD | BR_MCAST_FLOOD;
++	p->flags = BR_LEARNING | BR_FLOOD | BR_MCAST_FLOOD | BR_BCAST_FLOOD;
+ 	br_init_port(p);
+ 	br_set_state(p, BR_STATE_DISABLED);
+ 	br_stp_port_timer_init(p);
+diff --git a/net/bridge/br_sysfs_if.c b/net/bridge/br_sysfs_if.c
+index 8bd5696..09e44d6 100644
+--- a/net/bridge/br_sysfs_if.c
++++ b/net/bridge/br_sysfs_if.c
+@@ -172,6 +172,7 @@ BRPORT_ATTR_FLAG(unicast_flood, BR_FLOOD);
+ BRPORT_ATTR_FLAG(proxyarp, BR_PROXYARP);
+ BRPORT_ATTR_FLAG(proxyarp_wifi, BR_PROXYARP_WIFI);
+ BRPORT_ATTR_FLAG(multicast_flood, BR_MCAST_FLOOD);
++BRPORT_ATTR_FLAG(broadcast_flood, BR_BCAST_FLOOD);
+ 
+ #ifdef CONFIG_BRIDGE_IGMP_SNOOPING
+ static ssize_t show_multicast_router(struct net_bridge_port *p, char *buf)
+@@ -218,6 +219,7 @@ static const struct brport_attribute *brport_attrs[] = {
+ 	&brport_attr_proxyarp,
+ 	&brport_attr_proxyarp_wifi,
+ 	&brport_attr_multicast_flood,
++	&brport_attr_broadcast_flood,
+ 	NULL
+ };
+ 

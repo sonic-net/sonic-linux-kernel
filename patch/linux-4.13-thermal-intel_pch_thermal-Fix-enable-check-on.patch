@@ -1,0 +1,46 @@
+From 595536e0b2475a9eac23709cd461143178c12e0e Mon Sep 17 00:00:00 2001
+From: Ed Swierk <eswierk@skyportsystems.com>
+Date: Wed, 19 Jul 2017 17:44:40 -0700
+Subject: [PATCH] thermal: intel_pch_thermal: Fix enable check on Broadwell-DE
+
+Using the TSDSS flag to determine whether the thermal sensor is
+enabled is problematic. Broadwell-DE (Xeon D-1500) does not support
+dynamic shutdown and the TSDSS flag always reads 0 (contrary to the
+current datasheet). Even on hardware supporting dynamic shutdown, the
+driver does nothing to configure it, and the dynamic shutdown state
+should not prevent the driver from loading. The ETS flag itself
+indicates whether the thermal sensor is enabled, so use it instead of
+the TSDSS flag on all hardware platforms.
+
+Signed-off-by: Ed Swierk <eswierk@skyportsystems.com>
+Reviewed-by: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+Signed-off-by: Zhang Rui <rui.zhang@intel.com>
+---
+ drivers/thermal/intel_pch_thermal.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/thermal/intel_pch_thermal.c b/drivers/thermal/intel_pch_thermal.c
+index 9e8fb782b521..c60b1cfcc64e 100644
+--- a/drivers/thermal/intel_pch_thermal.c
++++ b/drivers/thermal/intel_pch_thermal.c
+@@ -125,7 +125,7 @@ static int pch_wpt_init(struct pch_thermal_device *ptd, int *nr_trips)
+ 	*nr_trips = 0;
+ 
+ 	/* Check if BIOS has already enabled thermal sensor */
+-	if (WPT_TSS_TSDSS & readb(ptd->hw_base + WPT_TSS)) {
++	if (WPT_TSEL_ETS & readb(ptd->hw_base + WPT_TSEL)) {
+ 		ptd->bios_enabled = true;
+ 		goto read_trips;
+ 	}
+@@ -141,7 +141,7 @@ static int pch_wpt_init(struct pch_thermal_device *ptd, int *nr_trips)
+ 	}
+ 
+ 	writeb(tsel|WPT_TSEL_ETS, ptd->hw_base + WPT_TSEL);
+-	if (!(WPT_TSS_TSDSS & readb(ptd->hw_base + WPT_TSS))) {
++	if (!(WPT_TSEL_ETS & readb(ptd->hw_base + WPT_TSEL))) {
+ 		dev_err(&ptd->pdev->dev, "Sensor can't be enabled\n");
+ 		return -ENODEV;
+ 	}
+-- 
+2.17.0
+

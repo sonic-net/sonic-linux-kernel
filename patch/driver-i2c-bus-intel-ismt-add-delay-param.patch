@@ -10,18 +10,18 @@ timed out' error message.
  1 file changed, 10 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/i2c/busses/i2c-ismt.c b/drivers/i2c/busses/i2c-ismt.c
-index d9ee43c..b2b3856 100644
+index f573448..d2243e4 100644
 --- a/drivers/i2c/busses/i2c-ismt.c
 +++ b/drivers/i2c/busses/i2c-ismt.c
-@@ -70,6 +70,7 @@
+@@ -66,6 +66,7 @@
  #include <linux/i2c.h>
  #include <linux/acpi.h>
  #include <linux/interrupt.h>
 +#include <linux/delay.h>
  
- #include <asm-generic/io-64-nonatomic-lo-hi.h>
+ #include <linux/io-64-nonatomic-lo-hi.h>
  
-@@ -192,9 +193,12 @@ static const struct pci_device_id ismt_ids[] = {
+@@ -189,9 +190,12 @@ static const struct pci_device_id ismt_ids[] = {
  MODULE_DEVICE_TABLE(pci, ismt_ids);
  
  /* Bus speed control bits for slow debuggers - refer to the docs for usage */
@@ -36,7 +36,7 @@ index d9ee43c..b2b3856 100644
  
  /**
   * __ismt_desc_dump() - dump the contents of a specific descriptor
-@@ -391,6 +395,9 @@ static int ismt_access(struct i2c_adapter *adap, u16 addr,
+@@ -389,6 +393,9 @@ static int ismt_access(struct i2c_adapter *adap, u16 addr,
  	struct ismt_priv *priv = i2c_get_adapdata(adap);
  	struct device *dev = &priv->pci_dev->dev;
  
@@ -46,7 +46,7 @@ index d9ee43c..b2b3856 100644
  	desc = &priv->hw[priv->head];
  
  	/* Initialize the DMA buffer */
-@@ -756,7 +763,7 @@ static void ismt_hw_init(struct ismt_priv *priv)
+@@ -754,7 +761,7 @@ static void ismt_hw_init(struct ismt_priv *priv)
  		bus_speed = 1000;
  		break;
  	}

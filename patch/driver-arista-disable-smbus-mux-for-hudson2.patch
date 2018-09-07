@@ -1,0 +1,37 @@
+Disable the SMBus mux on the Hudson2 cpu
+
+Support for multiplexed SMBus adapter was added in linux-4.5 (2fee61d2),
+Unfortunately it enables mux support on the 7050QX-32S, where it wasn't enabled
+previously.  It changes bus numbers and i2c-1 (in 3.18) becomes i2c-4 (in 4.9).
+It isn't expected by EOS, since bus number is hardcoded in many places.
+
+Fix it by disabling mux support for the CPU used by the 7050QX-32S.
+
+Signed-off-by: Vasiliy Khoruzhick <vasilykh@arista.com>
+Signed-off-by: Samuel Angebault <staphylo@arista.com>
+---
+ drivers/i2c/busses/i2c-piix4.c |   10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/i2c/busses/i2c-piix4.c b/drivers/i2c/busses/i2c-piix4.c
+index e34d82e..563a63c 100644
+--- a/drivers/i2c/busses/i2c-piix4.c
++++ b/drivers/i2c/busses/i2c-piix4.c
+@@ -731,8 +731,16 @@ static int piix4_add_adapters_sb800(struct pci_dev *dev, unsigned short smba)
+ 	struct i2c_piix4_adapdata *adapdata;
+ 	int port;
+ 	int retval;
++	int adapters = PIIX4_MAX_ADAPTERS;
+ 
+-	for (port = 0; port < PIIX4_MAX_ADAPTERS; port++) {
++	/* Arista BUG204903: don't use muxed adapters on Hudson 2
++	 * because we want AUX bus to be i2c-1
++	 */
++	if (dev->vendor == PCI_VENDOR_ID_AMD &&
++	    dev->device == PCI_DEVICE_ID_AMD_HUDSON2_SMBUS)
++		adapters = 1;
++
++	for (port = 0; port < adapters; port++) {
+ 		retval = piix4_add_adapter(dev, smba, true, port,
+ 					   piix4_main_port_names_sb800[port],
+ 					   &piix4_main_adapters[port]);

@@ -1,0 +1,39 @@
+From 1958bec50c3c98a2e964ada753de6020c1b461f6 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Thu, 15 Mar 2018 18:02:40 +0000
+Subject: [backport 4.9 18/20] platform/x86: mlx-platform: fix module aliases
+
+Missing prefix 'pn' in MODULE_ALIAS lines causes the module to
+not load automatically. The driver should use MODULE_DEVICE_TABLE
+together with existing mlxplat_dmi_table instead.
+
+commit 580d834fe166c695f37c942e9cd92d1743bdc5d4
+Author: Ivan Vecera <ivecera@redhat.com>
+Fixes: 6613d18e9038 ("platform/x86: mlx-platform: Move module from arch/x86")
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/platform/x86/mlx-platform.c | 10 ----------
+ 1 file changed, 10 deletions(-)
+
+diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
+index 2a2d00c..9ad1fc9 100644
+--- a/drivers/platform/x86/mlx-platform.c
++++ b/drivers/platform/x86/mlx-platform.c
+@@ -1301,13 +1301,3 @@ module_exit(mlxplat_exit);
+ MODULE_AUTHOR("Vadim Pasternak (vadimp@mellanox.com)");
+ MODULE_DESCRIPTION("Mellanox platform driver");
+ MODULE_LICENSE("Dual BSD/GPL");
+-MODULE_ALIAS("dmi:*:*Mellanox*:MSN24*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*:MSN27*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*:MSB*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*:MSX*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*:MSN21*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*MSN274*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*MSN201*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*QMB7*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*SN37*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*QM34*:");
+-- 
+2.1.4
+

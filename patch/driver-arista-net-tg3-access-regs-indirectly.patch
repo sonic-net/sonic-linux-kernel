@@ -1,10 +1,10 @@
 Fix kernel hangs seen and easily reproducable using ethtool -t
 This issue is seen at least on Arista DCS-7050QX-32 SKUs
 
-Index: linux-3.16/drivers/net/ethernet/broadcom/tg3.c
+Index: linux-4.9/drivers/net/ethernet/broadcom/tg3.c
 ===================================================================
---- linux-3.16.orig/drivers/net/ethernet/broadcom/tg3.c
-+++ linux-3.16/drivers/net/ethernet/broadcom/tg3.c
+--- linux-4.9.orig/drivers/net/ethernet/broadcom/tg3.c
++++ linux-4.9/drivers/net/ethernet/broadcom/tg3.c
 @@ -998,6 +998,7 @@ static void tg3_disable_ints(struct tg3 
  static void tg3_enable_ints(struct tg3 *tp)
  {
@@ -13,7 +13,7 @@ Index: linux-3.16/drivers/net/ethernet/broadcom/tg3.c
  
  	tp->irq_sync = 0;
  	wmb();
-@@ -1010,6 +1011,22 @@ static void tg3_enable_ints(struct tg3 *
+@@ -1010,6 +1011,22 @@ static void tg3_enable_ints(struct tg3 *tp)
  		struct tg3_napi *tnapi = &tp->napi[i];
  
  		tw32_mailbox_f(tnapi->int_mbox, tnapi->last_tag << 24);
@@ -36,7 +36,7 @@ Index: linux-3.16/drivers/net/ethernet/broadcom/tg3.c
  		if (tg3_flag(tp, 1SHOT_MSI))
  			tw32_mailbox_f(tnapi->int_mbox, tnapi->last_tag << 24);
  
-@@ -16271,6 +16288,7 @@ static int tg3_get_invariants(struct tg3
+@@ -16298,6 +16315,7 @@ static int tg3_get_invariants(struct tg3 *tp, const struct pci_device_id *ent)
  		if ((tp->pdev->bus->number == 0) &&
  		    (tp->pdev->devfn == PCI_DEVFN(0x14, 0x6))) {
  			tg3_flag_set(tp, 4G_DMA_ONLY);
@@ -44,7 +44,7 @@ Index: linux-3.16/drivers/net/ethernet/broadcom/tg3.c
  		}
  	}
  
-@@ -16530,13 +16548,6 @@ static int tg3_get_invariants(struct tg3
+@@ -16557,13 +16575,6 @@ static int tg3_get_invariants(struct tg3 *tp, const struct pci_device_id *ent)
  		tp->write32_mbox = tg3_write_indirect_mbox;
  		tp->write32_tx_mbox = tg3_write_indirect_mbox;
  		tp->write32_rx_mbox = tg3_write_indirect_mbox;

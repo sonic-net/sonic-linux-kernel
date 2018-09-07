@@ -2,15 +2,16 @@ Adding PCA9548 I2C MUX force deselect-on-exit flag.
 
 From: wadelnn <wadelnn@users.noreply.github.com>
 
+
 ---
- drivers/i2c/muxes/i2c-mux-pca954x.c | 7 ++++++-
+ drivers/i2c/muxes/i2c-mux-pca954x.c |    7 ++++++-
  1 file changed, 6 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/i2c/muxes/i2c-mux-pca954x.c b/drivers/i2c/muxes/i2c-mux-pca954x.c
-index 9bd4212..2ed7758 100644
+index 9c4ac26..7dd92a2 100644
 --- a/drivers/i2c/muxes/i2c-mux-pca954x.c
 +++ b/drivers/i2c/muxes/i2c-mux-pca954x.c
-@@ -116,6 +116,11 @@ static const struct i2c_device_id pca954x_id[] = {
+@@ -120,6 +120,11 @@ static const struct i2c_device_id pca954x_id[] = {
  };
  MODULE_DEVICE_TABLE(i2c, pca954x_id);
  
@@ -19,18 +20,15 @@ index 9bd4212..2ed7758 100644
 +module_param(force_deselect_on_exit, uint, S_IRUGO);
 +MODULE_PARM_DESC(force_deselect_on_exit, "Force deselect-on-exit feature for PCA954X devices. Default is disabled.");
 +
- /* Write to mux register. Don't use i2c_transfer()/i2c_smbus_xfer()
-    for this as they will try to lock adapter a second time */
- static int pca954x_reg_write(struct i2c_adapter *adap,
-@@ -233,7 +238,7 @@ static int pca954x_probe(struct i2c_client *client,
- 		data->virt_adaps[num] =
- 			i2c_add_mux_adapter(adap, &client->dev, client,
- 				force, num, class, pca954x_select_chan,
--				(pdata && pdata->modes[num].deselect_on_exit)
-+				(pdata && pdata->modes[num].deselect_on_exit) || force_deselect_on_exit
- 					? pca954x_deselect_mux : NULL);
+ #ifdef CONFIG_OF
+ static const struct of_device_id pca954x_of_match[] = {
+ 	{ .compatible = "nxp,pca9540", .data = &chips[pca_9540] },
+@@ -273,7 +278,7 @@ static int pca954x_probe(struct i2c_client *client,
+ 			idle_disconnect_pd = pdata->modes[num].deselect_on_exit;
+ 		}
+ 		data->deselect |= (idle_disconnect_pd ||
+-				   idle_disconnect_dt) << num;
++				   idle_disconnect_dt || force_deselect_on_exit) << num;
  
- 		if (data->virt_adaps[num] == NULL) {
--- 
-2.1.4
-
+ 		ret = i2c_mux_add_adapter(muxc, force, num, class);
+ 

@@ -1,13 +1,22 @@
+enable MAX6697 for arista 7060 cx32s
+
+From: Guohan Lu <gulv@microsoft.com>
+
+
+---
+ debian/build/build_amd64_none_amd64/.config |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
 diff --git a/debian/build/build_amd64_none_amd64/.config b/debian/build/build_amd64_none_amd64/.config
-index 6b6aea9..e0a959c 100644
+index c9881a9..b0402b3 100644
 --- a/debian/build/build_amd64_none_amd64/.config
 +++ b/debian/build/build_amd64_none_amd64/.config
-@@ -3455,7 +3455,7 @@ CONFIG_SENSORS_MAX6639=m
+@@ -3912,7 +3912,7 @@ CONFIG_SENSORS_MAX6639=m
  CONFIG_SENSORS_MAX6642=m
  CONFIG_SENSORS_MAX6650=m
  CONFIG_SENSORS_MAX6620=m
 -# CONFIG_SENSORS_MAX6697 is not set
 +CONFIG_SENSORS_MAX6697=m
- # CONFIG_SENSORS_HTU21 is not set
+ # CONFIG_SENSORS_MAX31790 is not set
  # CONFIG_SENSORS_MCP3021 is not set
- CONFIG_SENSORS_ADCXX=m
+ CONFIG_SENSORS_MENF21BMC_HWMON=m

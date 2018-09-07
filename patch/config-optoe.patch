@@ -1,0 +1,21 @@
+enable CONFIG_EEPROM_OPTOE=m
+
+From: Guohan Lu <gulv@microsoft.com>
+
+
+---
+ debian/build/build_amd64_none_amd64/.config |    1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/debian/build/build_amd64_none_amd64/.config b/debian/build/build_amd64_none_amd64/.config
+index 5bc6c67..0a94577 100644
+--- a/debian/build/build_amd64_none_amd64/.config
++++ b/debian/build/build_amd64_none_amd64/.config
+@@ -2036,6 +2036,7 @@ CONFIG_EEPROM_MAX6875=m
+ CONFIG_EEPROM_93CX6=m
+ # CONFIG_EEPROM_93XX46 is not set
+ CONFIG_EEPROM_SFF_8436=m
++CONFIG_EEPROM_OPTOE=m
+ CONFIG_CB710_CORE=m
+ # CONFIG_CB710_DEBUG is not set
+ CONFIG_CB710_DEBUG_ASSUMPTIONS=y

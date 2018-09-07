@@ -1,23 +1,22 @@
-From: "Eddy.Weng" <eddy.weng@mic.com.tw>
-- Use SENSORS_MAX31790 to access MAX31790
- CONFIG_SENSORS_MAX31790=m
+enable MAX31790 for mitac ly1200
+
+From: Eddy.Weng <eddy.weng@mic.com.tw>
+
 
 ---
- debian/build/build_amd64_none_amd64/.config | 1 ++
- 1 file changed, 1 insertions(+)
+ debian/build/build_amd64_none_amd64/.config |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/debian/build/build_amd64_none_amd64/.config b/debian/build/build_amd64_none_amd64/.config
-index 6b6aea9..417c419 100644
+index 9aac028..5bc6c67 100644
 --- a/debian/build/build_amd64_none_amd64/.config
 +++ b/debian/build/build_amd64_none_amd64/.config
-@@ -3451,6 +3451,7 @@ CONFIG_SENSORS_MAX16065=m
- CONFIG_SENSORS_MAX1619=m
- CONFIG_SENSORS_MAX1668=m
- # CONFIG_SENSORS_MAX197 is not set
-+CONFIG_SENSORS_MAX31790=m
- CONFIG_SENSORS_MAX6639=m
- CONFIG_SENSORS_MAX6642=m
+@@ -3913,7 +3913,7 @@ CONFIG_SENSORS_MAX6642=m
  CONFIG_SENSORS_MAX6650=m
--- 
-2.1.4
-
+ CONFIG_SENSORS_MAX6620=m
+ CONFIG_SENSORS_MAX6697=m
+-# CONFIG_SENSORS_MAX31790 is not set
++CONFIG_SENSORS_MAX31790=m
+ # CONFIG_SENSORS_MCP3021 is not set
+ CONFIG_SENSORS_MENF21BMC_HWMON=m
+ CONFIG_SENSORS_ADCXX=m

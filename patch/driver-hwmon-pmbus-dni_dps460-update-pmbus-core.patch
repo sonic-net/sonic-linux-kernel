@@ -10,7 +10,7 @@ Update this data structure to meet current kernel (3.16.x) implementation.
  1 file changed, 17 insertions(+), 25 deletions(-)
 
 diff --git a/drivers/hwmon/pmbus/dni_dps460.c b/drivers/hwmon/pmbus/dni_dps460.c
-index c687217..1607b65 100644
+index ad29134..7332480 100644
 --- a/drivers/hwmon/pmbus/dni_dps460.c
 +++ b/drivers/hwmon/pmbus/dni_dps460.c
 @@ -39,41 +39,32 @@ enum chips { dni_dps460 };

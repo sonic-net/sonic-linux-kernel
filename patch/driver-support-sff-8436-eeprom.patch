@@ -13,10 +13,10 @@ From: Cumulus Networks <support@cumulusnetworks.com>
  create mode 100644 include/linux/i2c/sff-8436.h
 
 diff --git a/drivers/misc/eeprom/Kconfig b/drivers/misc/eeprom/Kconfig
-index 9536852..484e3e1 100644
+index c4e41c2..1df5e28 100644
 --- a/drivers/misc/eeprom/Kconfig
 +++ b/drivers/misc/eeprom/Kconfig
-@@ -96,6 +96,18 @@ config EEPROM_DIGSY_MTC_CFG
+@@ -100,4 +100,16 @@ config EEPROM_DIGSY_MTC_CFG
  
  	  If unsure, say N.
  
@@ -32,18 +32,16 @@ index 9536852..484e3e1 100644
 +	  This driver can also be built as a module.  If so, the module
 +	  will be called sff_8436.
 +
- config EEPROM_SUNXI_SID
- 	tristate "Allwinner sunxi security ID support"
- 	depends on ARCH_SUNXI && SYSFS
+ endmenu
 diff --git a/drivers/misc/eeprom/Makefile b/drivers/misc/eeprom/Makefile
-index 9507aec..235b5cc 100644
+index fc1e81d..db9097c 100644
 --- a/drivers/misc/eeprom/Makefile
 +++ b/drivers/misc/eeprom/Makefile
-@@ -6,3 +6,4 @@ obj-$(CONFIG_EEPROM_93CX6)	+= eeprom_93cx6.o
+@@ -5,3 +5,4 @@ obj-$(CONFIG_EEPROM_MAX6875)	+= max6875.o
+ obj-$(CONFIG_EEPROM_93CX6)	+= eeprom_93cx6.o
  obj-$(CONFIG_EEPROM_93XX46)	+= eeprom_93xx46.o
- obj-$(CONFIG_EEPROM_SUNXI_SID)	+= sunxi_sid.o
  obj-$(CONFIG_EEPROM_DIGSY_MTC_CFG) += digsy_mtc_eeprom.o
-+obj-$(CONFIG_EEPROM_SFF_8436) += sff_8436_eeprom.o
++obj-$(CONFIG_EEPROM_SFF_8436)	+= sff_8436_eeprom.o
 diff --git a/drivers/misc/eeprom/sff_8436_eeprom.c b/drivers/misc/eeprom/sff_8436_eeprom.c
 new file mode 100644
 index 0000000..0b6bf31
