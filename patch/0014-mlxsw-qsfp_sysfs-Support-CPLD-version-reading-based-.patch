@@ -62,14 +62,14 @@ index 3bc6cf8..07cc7ea 100644
  	return sprintf(buf, "%u\n", version);
  }
  
-+static int __init mlxsw_qsfp_dmi_set_cpld_num(const struct dmi_system_id *dmi)
++static int mlxsw_qsfp_dmi_set_cpld_num(const struct dmi_system_id *dmi)
 +{
 +	mlxsw_qsfp_cpld_num = MLXSW_QSFP_MAX_CPLD_NUM;
 +
 +	return 1;
 +};
 +
-+static struct dmi_system_id mlxsw_qsfp_dmi_table[] __initdata = {
++static const struct dmi_system_id mlxsw_qsfp_dmi_table[] = {
 +	{
 +		.callback = mlxsw_qsfp_dmi_set_cpld_num,
 +		.matches = {
