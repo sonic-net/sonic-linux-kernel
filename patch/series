@@ -21,6 +21,8 @@ driver-sff-8436-use-nvmem-framework.patch
 driver-sff-8436-use-nvmem_device_read.patch
 driver-support-sff-8436-read-write-fix.patch
 driver-i2c-bus-intel-ismt-add-delay-param.patch
+driver-uart-fix-race-between-uart_put_char-and-uart_shutdow.patch
+driver-uart-fix-another-race-between-uart_put_char-and-uart_shutdow.patch
 driver-pca954x-i2c-mux-force-deselect-on-exit-flag.patch
 kernel-add-kexec-reboot-string.patch
 driver-hwmon-max6620.patch
