@@ -15,6 +15,7 @@ driver-hwmon-lm75b-update.patch
 driver-hwmon-pmbus-dni_dps460.patch
 driver-hwmon-pmbus-dni_dps460-update-pmbus-core.patch
 driver-i2c-bus-intel-ismt-add-delay-param.patch
+driver-uart-fix-race-between-uart_put_char-and-uart_shutdown.patch
 driver-support-sff-8436-eeprom.patch
 driver-support-sff-8436-eeprom-update.patch
 driver-hwmon-pmbus-add-dps460-support.patch
