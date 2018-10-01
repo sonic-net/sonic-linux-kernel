@@ -1,0 +1,28 @@
+uart: fix another race between uart_put_char() and uart_shutdown()
+
+From: Guohan Lu <gulv@microsoft.com>
+
+this is complete the fix in a5ba1d95e46ecaea638ddd7cd144107c783acb5d
+---
+ drivers/tty/serial/serial_core.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/tty/serial/serial_core.c b/drivers/tty/serial/serial_core.c
+index 53e6db8..ec1187d 100644
+--- a/drivers/tty/serial/serial_core.c
++++ b/drivers/tty/serial/serial_core.c
+@@ -530,10 +530,12 @@ static int uart_put_char(struct tty_struct *tty, unsigned char c)
+ 	int ret = 0;
+ 
+ 	circ = &state->xmit;
+-	if (!circ->buf)
++	port = uart_port_lock(state, flags);
++	if (!circ->buf) {
++		uart_port_unlock(port, flags);
+ 		return 0;
++	}
+ 
+-	port = uart_port_lock(state, flags);
+ 	if (port && uart_circ_chars_free(circ) != 0) {
+ 		circ->buf[circ->head] = c;
+ 		circ->head = (circ->head + 1) & (UART_XMIT_SIZE - 1);
