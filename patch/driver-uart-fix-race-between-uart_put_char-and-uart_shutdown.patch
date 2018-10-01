@@ -71,11 +71,11 @@ Date:   Fri Jul 6 10:24:57 2018 -0600
     Cc: stable <stable@vger.kernel.org>
     Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 ---
- drivers/tty/serial/serial_core.c |   17 ++++++++++++-----
- 1 file changed, 12 insertions(+), 5 deletions(-)
+ drivers/tty/serial/serial_core.c |   23 ++++++++++++++++-------
+ 1 file changed, 16 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/tty/serial/serial_core.c b/drivers/tty/serial/serial_core.c
-index b51b912..9043910 100644
+index b51b912..f9db242 100644
 --- a/drivers/tty/serial/serial_core.c
 +++ b/drivers/tty/serial/serial_core.c
 @@ -134,6 +134,7 @@ static int uart_port_startup(struct tty_struct *tty, struct uart_state *state,
@@ -131,3 +131,18 @@ index b51b912..9043910 100644
  }
  
  /**
+@@ -476,10 +483,12 @@ static inline int __uart_put_char(struct uart_port *port,
+ 	unsigned long flags;
+ 	int ret = 0;
+ 
+-	if (!circ->buf)
++	spin_lock_irqsave(&port->lock, flags);
++	if (!circ->buf) {
++		spin_unlock_irqrestore(&port->lock, flags);
+ 		return 0;
++	}
+ 
+-	spin_lock_irqsave(&port->lock, flags);
+ 	if (uart_circ_chars_free(circ) != 0) {
+ 		circ->buf[circ->head] = c;
+ 		circ->head = (circ->head + 1) & (UART_XMIT_SIZE - 1);
