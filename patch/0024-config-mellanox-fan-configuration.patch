@@ -1,0 +1,28 @@
+From 204cb504381c07a62c8a2829f1d3107eed0c133b Mon Sep 17 00:00:00 2001
+From: Oleksandr Shamray <oleksandrs@mellanox.com>
+Date: Thu, 13 Sep 2018 14:50:45 +0300
+Subject: [patchV1] config: mellanox fan configuration It adds configuration
+ flag, used by Mellanox systems:
+
+SENSORS_MLXREG_FAN=m
+
+Signed-off-by: Oleksandr Shamray <oleksandrs@melanox.com>
+---
+ debian/build/build_amd64_none_amd64/.config | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/debian/build/build_amd64_none_amd64/.config b/debian/build/build_amd64_none_amd64/.config
+index 7473276..f39f782 100644
+--- a/debian/build/build_amd64_none_amd64/.config
++++ b/debian/build/build_amd64_none_amd64/.config
+@@ -701,6 +701,7 @@ CONFIG_ACPI_EXTLOG=y
+ # CONFIG_PMIC_OPREGION is not set
+ # CONFIG_ACPI_CONFIGFS is not set
+ CONFIG_SFI=y
++CONFIG_SENSORS_MLXREG_FAN=m
+ 
+ #
+ # CPU Frequency scaling
+-- 
+1.9.1
+
