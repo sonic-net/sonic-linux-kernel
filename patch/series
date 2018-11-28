@@ -36,6 +36,7 @@ driver-support-optoe.patch
 driver-support-optoe-EOF_fix.patch
 driver-support-optoe-chunk-offset-fix.patch
 bridge-add-per-port-broadcast-flood-flag.patch
+driver-net-tg3-add-param-short-preamble-and-reset.patch
 config-dell-s6000.patch
 config-dell-z9100.patch
 config-ingrasys-s9100.patch
