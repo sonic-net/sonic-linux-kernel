@@ -5,11 +5,11 @@ Subject: [PATCH] Add 2 more parameter for tg3.c.
 
 Signed-off-by: roy_lee <roy_lee@accton.com>
 ---
- drivers/net/ethernet/broadcom/tg3.c | 19 +++++++++++++++++++
- 1 file changed, 19 insertions(+)
+ drivers/net/ethernet/broadcom/tg3.c | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
 
 diff --git a/drivers/net/ethernet/broadcom/tg3.c b/drivers/net/ethernet/broadcom/tg3.c
-index d658255..d19cf15 100644
+index d658255..d31c395 100644
 --- a/drivers/net/ethernet/broadcom/tg3.c
 +++ b/drivers/net/ethernet/broadcom/tg3.c
 @@ -234,6 +234,14 @@ static int tg3_debug = -1;	/* -1 == use TG3_DEF_MSG_ENABLE as value */
@@ -39,12 +39,11 @@ index d658255..d19cf15 100644
  	tw32_f(MAC_MI_MODE, tp->mi_mode);
  	udelay(80);
  
-@@ -2704,6 +2717,12 @@ static int tg3_phy_reset(struct tg3 *tp)
+@@ -2704,6 +2717,11 @@ static int tg3_phy_reset(struct tg3 *tp)
  		}
  	}
  
 +	if (bcm5718s_reset && tp->phy_id == TG3_PHY_ID_BCM5718S) {
-+	    netdev_info(tp->dev, "BCM5718S reset...");
 +	    __tg3_writephy(tp, 0x8, 0x10, 0x1d0); /* set internal phy 0x8 to make linkup */
 +	    __tg3_writephy(tp, 0x1f, 0x4, 0x5e1); /* enable 10/100 cability of external phy */
 +	}
