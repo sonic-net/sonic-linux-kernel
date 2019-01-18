@@ -1,0 +1,24 @@
+diff -ruNa a/drivers/mfd/intel-lpss-pci.c b/drivers/mfd/intel-lpss-pci.c
+--- a/drivers/mfd/intel-lpss-pci.c	2018-03-23 11:31:27.983359036 +0800
++++ b/drivers/mfd/intel-lpss-pci.c	2018-03-23 11:30:57.803359036 +0800
+@@ -158,7 +158,7 @@
+ 	{ PCI_VDEVICE(INTEL, 0x1aee), (kernel_ulong_t)&bxt_uart_info },
+ 
+ 	/* APL */
+-	{ PCI_VDEVICE(INTEL, 0x5aac), (kernel_ulong_t)&apl_i2c_info },
++	//{ PCI_VDEVICE(INTEL, 0x5aac), (kernel_ulong_t)&apl_i2c_info },
+ 	{ PCI_VDEVICE(INTEL, 0x5aae), (kernel_ulong_t)&apl_i2c_info },
+ 	{ PCI_VDEVICE(INTEL, 0x5ab0), (kernel_ulong_t)&apl_i2c_info },
+ 	{ PCI_VDEVICE(INTEL, 0x5ab2), (kernel_ulong_t)&apl_i2c_info },
+@@ -166,8 +166,8 @@
+ 	{ PCI_VDEVICE(INTEL, 0x5ab6), (kernel_ulong_t)&apl_i2c_info },
+ 	{ PCI_VDEVICE(INTEL, 0x5ab8), (kernel_ulong_t)&apl_i2c_info },
+ 	{ PCI_VDEVICE(INTEL, 0x5aba), (kernel_ulong_t)&apl_i2c_info },
+-	{ PCI_VDEVICE(INTEL, 0x5abc), (kernel_ulong_t)&bxt_uart_info },
+-	{ PCI_VDEVICE(INTEL, 0x5abe), (kernel_ulong_t)&bxt_uart_info },
++	//{ PCI_VDEVICE(INTEL, 0x5abc), (kernel_ulong_t)&bxt_uart_info },
++	//{ PCI_VDEVICE(INTEL, 0x5abe), (kernel_ulong_t)&bxt_uart_info },
+ 	{ PCI_VDEVICE(INTEL, 0x5ac0), (kernel_ulong_t)&bxt_uart_info },
+ 	{ PCI_VDEVICE(INTEL, 0x5ac2), (kernel_ulong_t)&bxt_info },
+ 	{ PCI_VDEVICE(INTEL, 0x5ac4), (kernel_ulong_t)&bxt_info },
+
