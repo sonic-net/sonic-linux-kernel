@@ -60,6 +60,15 @@ linux-4.13-thermal-intel_pch_thermal-Fix-enable-check-on.patch
 0023-platform-x86-mlx-platform-Add-support-for-register-a.patch
 0024-config-mellanox-fan-configuration.patch
 0025-net-udp_l3mdev_accept-support.patch
+0026-mlxsw-qsfp_sysfs-Support-extended-port-numbers-for-S.patch
+0027-mlxsw-thermal-monitoring-amendments.patch
+0028-watchdog-mlx-wdt-introduce-watchdog-driver-for-Mella.patch
+0029-mlxsw-qsfp_sysfs-Support-port-numbers-initialization.patch
+0030-update-kernel-config.patch
+0031-mlxsw-Align-code-with-kernel-v-5.0.patch
+0032-sonic-update-kernel-config-mlsxw-pci.patch
+0033-hwmon-pmbus-Fix-driver-info-initialization-in-probe-.patch
+0034-mlxsw-thermal-disable-highest-zone-calculation.patch
 #
 # This series applies on GIT commit 1451b36b2b0d62178e42f648d8a18131af18f7d8
 # Tkernel-sched-core-fix-cgroup-fork-race.patch
