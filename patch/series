@@ -47,6 +47,7 @@ config-mitac-ly1200.patch
 config-optoe.patch
 config-l3mdev-cgroup.patch
 config-inventec-d7032.patch
+config-cig-cs6436-serail_new.patch
 0014-mlxsw-qsfp_sysfs-Support-CPLD-version-reading-based-.patch
 0015-platform-x86-mlx-platform-Add-support-for-new-msn201.patch
 0016-platform-mellanox-mlxreg-hotplug-add-extra-run-cycle.patch
