@@ -1,0 +1,92 @@
+diff --git a/drivers/hwmon/lm90.c b/drivers/hwmon/lm90.c
+index 841f242..310efc1 100644
+--- a/drivers/hwmon/lm90.c
++++ b/drivers/hwmon/lm90.c
+@@ -486,6 +486,33 @@ static inline int lm90_select_remote_channel(struct i2c_client *client,
+ 	return 0;
+ }
+ 
++static int lm90_write_convrate(struct i2c_client *client, int val)
++{
++	int err_c = 0;
++	int err;
++	int config_orig, config_stop;
++
++	/* Save config and stop conversion*/
++	config_orig = lm90_read_reg(client, LM90_REG_R_CONFIG1);
++	if (config_orig < 0)
++		return config_orig;
++	config_stop = config_orig | 0x40;
++	if (config_orig != config_stop) {
++		err = i2c_smbus_write_byte_data(client, LM90_REG_W_CONFIG1, config_stop);
++		if (err < 0)
++			return err;
++	}
++
++	/* Set conv rate */
++	err = i2c_smbus_write_byte_data(client, LM90_REG_W_CONVRATE, val);
++
++	/* Revert change to config */
++	if (config_orig != config_stop)
++		err_c = i2c_smbus_write_byte_data(client, LM90_REG_W_CONFIG1, config_orig);
++
++	return err < 0 ? err : err_c;
++}
++
+ /*
+  * Set conversion rate.
+  * client->update_lock must be held when calling this function (unless we are
+@@ -502,13 +529,16 @@ static int lm90_set_convrate(struct i2c_client *client, struct lm90_data *data,
+ 
+ 	/* find the nearest update rate */
+ 	for (i = 0, update_interval = LM90_MAX_CONVRATE_MS << 6;
+-	     i < data->max_convrate; i++, update_interval >>= 1)
++		i < data->max_convrate; i++, update_interval >>= 1)
+ 		if (interval >= update_interval * 3 / 4)
+ 			break;
+ 
+-	err = i2c_smbus_write_byte_data(client, LM90_REG_W_CONVRATE, i);
++	err = lm90_write_convrate(client, i);
++	if (err < 0)
++	    return err;
++
+ 	data->update_interval = DIV_ROUND_CLOSEST(update_interval, 64);
+-	return err;
++	return 0;
+ }
+ 
+ static int lm90_update_limits(struct device *dev)
+@@ -1512,8 +1542,7 @@ static void lm90_restore_conf(void *_data)
+ 	struct i2c_client *client = data->client;
+ 
+ 	/* Restore initial configuration */
+-	i2c_smbus_write_byte_data(client, LM90_REG_W_CONVRATE,
+-				  data->convrate_orig);
++	lm90_write_convrate(client, data->convrate_orig);
+ 	i2c_smbus_write_byte_data(client, LM90_REG_W_CONFIG1,
+ 				  data->config_orig);
+ }
+@@ -1521,6 +1550,7 @@ static void lm90_restore_conf(void *_data)
+ static int lm90_init_client(struct i2c_client *client, struct lm90_data *data)
+ {
+ 	int config, convrate;
++	int err;
+ 
+ 	convrate = lm90_read_reg(client, LM90_REG_R_CONVRATE);
+ 	if (convrate < 0)
+@@ -1530,12 +1560,14 @@ static int lm90_init_client(struct i2c_client *client, struct lm90_data *data)
+ 	/*
+ 	 * Start the conversions.
+ 	 */
+-	lm90_set_convrate(client, data, 500);	/* 500ms; 2Hz conversion rate */
+ 	config = lm90_read_reg(client, LM90_REG_R_CONFIG1);
+ 	if (config < 0)
+ 		return config;
+ 	data->config_orig = config;
+ 
++	err = lm90_set_convrate(client, data, 500);	/* 500ms; 2Hz conversion rate */
++	if (err < 0)
++		return err;
+ 	/* Check Temperature Range Select */
+ 	if (data->kind == adt7461 || data->kind == tmp451) {
+ 		if (config & 0x04)
