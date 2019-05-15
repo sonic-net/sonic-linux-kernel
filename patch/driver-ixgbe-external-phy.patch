@@ -1,0 +1,54 @@
+diff -Naur a/drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c b/drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c
+--- a/drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c	2018-06-26 08:08:09.000000000 +0800
++++ b/drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c	2015-12-19 08:50:04.000000000 +0800
+@@ -429,6 +429,9 @@
+ 	case X557_PHY_ID:
+ 		phy_type = ixgbe_phy_x550em_ext_t;
+ 		break;
++        case BCM54616S_E_PHY_ID:
++		phy_type = ixgbe_phy_ext_1g_t;
++		break;
+ 	default:
+ 		phy_type = ixgbe_phy_unknown;
+ 		break;
+diff -Naur a/drivers/net/ethernet/intel/ixgbe/ixgbe_type.h b/drivers/net/ethernet/intel/ixgbe/ixgbe_type.h
+--- a/drivers/net/ethernet/intel/ixgbe/ixgbe_type.h	2018-06-26 08:08:09.000000000 +0800
++++ b/drivers/net/ethernet/intel/ixgbe/ixgbe_type.h	2019-03-20 11:56:14.021285800 +0800
+@@ -1401,6 +1401,7 @@
+ 
+ /* PHY Types */
+ #define IXGBE_M88E1145_E_PHY_ID  0x01410CD0
++#define BCM54616S_E_PHY_ID	0x03625D10
+ 
+ /* Special PHY Init Routine */
+ #define IXGBE_PHY_INIT_OFFSET_NL 0x002B
+@@ -3060,6 +3061,7 @@
+ 	ixgbe_phy_x550em_kr,
+ 	ixgbe_phy_x550em_kx4,
+ 	ixgbe_phy_x550em_ext_t,
++	ixgbe_phy_ext_1g_t,
+ 	ixgbe_phy_cu_unknown,
+ 	ixgbe_phy_qt,
+ 	ixgbe_phy_xaui,
+diff -Naur a/drivers/net/ethernet/intel/ixgbe/ixgbe_x550.c b/drivers/net/ethernet/intel/ixgbe/ixgbe_x550.c
+--- a/drivers/net/ethernet/intel/ixgbe/ixgbe_x550.c	2018-06-26 08:08:09.000000000 +0800
++++ b/drivers/net/ethernet/intel/ixgbe/ixgbe_x550.c	2019-03-20 11:55:44.639399900 +0800
+@@ -1714,9 +1714,16 @@
+ 		else
+ 			*speed = IXGBE_LINK_SPEED_10GB_FULL;
+ 	} else {
+-		*speed = IXGBE_LINK_SPEED_10GB_FULL |
++               if(hw->phy.type==ixgbe_phy_ext_1g_t)
++               {
++                   *speed = IXGBE_LINK_SPEED_1GB_FULL;
++               }               
++               else
++               {
++		    *speed = IXGBE_LINK_SPEED_10GB_FULL |
+ 			 IXGBE_LINK_SPEED_1GB_FULL;
+-		*autoneg = true;
++               }
++               *autoneg = true;
+ 	}
+ 	return 0;
+ }
