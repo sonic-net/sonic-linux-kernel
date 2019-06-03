@@ -1,0 +1,63 @@
+From a81114d03e4a529c4b68293249f75438b3c1783f Mon Sep 17 00:00:00 2001
+From: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+Date: Sat, 3 Feb 2018 11:25:20 +0100
+Subject: [PATCH] firmware: dmi: handle missing DMI data gracefully
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Currently, when booting a kernel with DMI support on a platform that has
+no DMI tables, the following output is emitted into the kernel log:
+
+  [    0.128818] DMI not present or invalid.
+  ...
+  [    1.306659] dmi: Firmware registration failed.
+  ...
+  [    2.908681] dmi-sysfs: dmi entry is absent.
+
+The first one is a pr_info(), but the subsequent ones are pr_err()s that
+complain about a condition that is not really an error to begin with.
+
+So let's clean this up, and give up silently if dma_available is not set.
+
+Signed-off-by: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+Acked-by: Martin Hundebøll <mnhu@prevas.dk>
+Signed-off-by: Jean Delvare <jdelvare@suse.de>
+---
+ drivers/firmware/dmi-sysfs.c | 2 +-
+ drivers/firmware/dmi_scan.c  | 6 ++----
+ 2 files changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/firmware/dmi-sysfs.c b/drivers/firmware/dmi-sysfs.c
+index ef76e5eecf0b..d401d69ee2a7 100644
+--- a/drivers/firmware/dmi-sysfs.c
++++ b/drivers/firmware/dmi-sysfs.c
+@@ -651,7 +651,7 @@ static int __init dmi_sysfs_init(void)
+ 	int val;
+ 
+ 	if (!dmi_kobj) {
+-		pr_err("dmi-sysfs: dmi entry is absent.\n");
++		pr_debug("dmi-sysfs: dmi entry is absent.\n");
+ 		error = -ENODATA;
+ 		goto err;
+ 	}
+diff --git a/drivers/firmware/dmi_scan.c b/drivers/firmware/dmi_scan.c
+index 42844c318445..74a6a3c5185c 100644
+--- a/drivers/firmware/dmi_scan.c
++++ b/drivers/firmware/dmi_scan.c
+@@ -686,10 +686,8 @@ static int __init dmi_init(void)
+ 	u8 *dmi_table;
+ 	int ret = -ENOMEM;
+ 
+-	if (!dmi_available) {
+-		ret = -ENODATA;
+-		goto err;
+-	}
++	if (!dmi_available)
++		return 0;
+ 
+ 	/*
+ 	 * Set up dmi directory at /sys/firmware/dmi. This entry should stay
+-- 
+2.21.0
+
