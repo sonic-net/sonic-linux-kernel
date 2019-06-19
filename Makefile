@@ -45,7 +45,7 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	fakeroot make -f debian/rules.gen setup_amd64_none_amd64
 
 	# Applying patches and configuration changes
-	git diff
+	git --no-pager diff
 	git add debian/build/build_amd64_none_amd64/.config -f
 	git add debian/config.defines.dump -f
 	git commit -m "unmodified debian source"
