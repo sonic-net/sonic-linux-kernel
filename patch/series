@@ -55,6 +55,7 @@ linux-4.13-thermal-intel_pch_thermal-Fix-enable-check-on.patch
 0022-platform-x86-mlx-platform-backport-from-4.19.patch
 0023-platform-x86-mlx-platform-Add-support-for-register-a.patch
 0024-config-mellanox-fan-configuration.patch
+0025-mlxsw-qsfp_sysfs-Remove-qsfp-valid-time.patch
 #
 # This series applies on GIT commit 1451b36b2b0d62178e42f648d8a18131af18f7d8
 # Tkernel-sched-core-fix-cgroup-fork-race.patch

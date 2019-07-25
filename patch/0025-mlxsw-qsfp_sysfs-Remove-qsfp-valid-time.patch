@@ -1,0 +1,28 @@
+From 0f91b46dcf3122df41e4385c53b2f66b3e0e405f Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Wed, 29 May 2019 16:15:37 +0000
+Subject: [PATCH v1 net] mlxsw: qsfp_sysfs: Remove qsfp valid time
+
+ Remove QSFP valid time caching.
+.
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+index 347f9823e375..fdf2b796e724 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+@@ -49,7 +49,7 @@
+ #define MLXSW_QSFP_LAST_SUB_PAGE_SIZE	32
+ #define MLXSW_QSFP_MAX_NUM		64
+ #define MLXSW_QSFP_MIN_REQ_LEN		4
+-#define MLXSW_QSFP_STATUS_VALID_TIME	(120 * HZ)
++#define MLXSW_QSFP_STATUS_VALID_TIME	(HZ)
+ #define MLXSW_QSFP_MAX_CPLD_NUM		3
+ #define MLXSW_QSFP_MIN_CPLD_NUM		1
+ 
+-- 
+2.11.0
+
