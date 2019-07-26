@@ -1,0 +1,27 @@
+From: Rakesh Datta <rakesh_datta@dell.com>
+Date: Thu, 27 Jun 2019 11:07:08 +0100
+Subject: [PATCH] net: Introduce psample and sample modules - adding the below config:
+
+CONFIG_PSAMPLE=m
+CONFIG_NET_ACT_SAMPLE=m
+
+Signed-off-by: Rakesh Datta <rakesh_datta@dell.com>
+---
+ debian/build/build_amd64_none_amd64/.config | 2 +
+ 1 file changed, 2 insertion(+)
+
+diff --git a/debian/build/build_amd64_none_amd64/.config b/debian/build/build_amd64_none_amd64/.config
+index db2a5c1..9851a0c 100644
+--- a/debian/build/build_amd64_none_amd64/.config
++++ b/debian/build/build_amd64_none_amd64/.config
+@@ -47,6 +47,8 @@ CONFIG_DEFCONFIG_LIST="/lib/modules/$UNAME_RELEASE/.config"
+ CONFIG_IRQ_WORK=y
+ CONFIG_BUILDTIME_EXTABLE_SORT=y
+ CONFIG_THREAD_INFO_IN_TASK=y
++CONFIG_PSAMPLE=m
++CONFIG_NET_ACT_SAMPLE=m
+
+ #
+ # General setup
+-- 
+2.7.4
