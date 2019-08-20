@@ -14,18 +14,18 @@ index 026b840..88c8a43 100644
 --- a/debian/changelog
 +++ b/debian/changelog
 @@ -1,3 +1,15 @@
-+linux (4.9.168-1+deb9u3) sonic; urgency=high
++linux (4.9.168-1+deb9u5) sonic; urgency=high
 +
 +  * add driver patches for MLNX SN2700
 +
 + -- Guohan Lu <gulv@microsoft.com>  Sun, 19 Dec 2015 01:50:04 +0100
 +
-+linux (4.9.168-1+deb9u3) sonic; urgency=high
++linux (4.9.168-1+deb9u5) sonic; urgency=high
 +
 +  * add support for S6000
 +
 + -- Shuotian Cheng <shuche@microsoft.com>  Sun, 19 Dec 2015 01:50:04 +0100
 +
- linux (4.9.168-1+deb9u3) stretch-security; urgency=high
- 
-   [ Salvatore Bonaccorso ]
+ linux (4.9.168-1+deb9u5) stretch-security; urgency=high
+
+   * [amd64] Add mitigation for Spectre v1 swapgs (CVE-2019-1125):
