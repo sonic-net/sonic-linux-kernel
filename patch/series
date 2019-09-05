@@ -81,6 +81,7 @@ linux-4.13-thermal-intel_pch_thermal-Fix-enable-check-on.patch
 0043-mellanox-platform-Backporting-Melanox-drivers-from-v.patch
 0044-mlxsw-minimal-Provide-optimization-for-module-number.patch
 0045-mlxsw-minimal-Add-validation-for-FW-version.patch
+0046-mfd-lpc-ich-extend-with-additional-chipsets-support.patch
 linux-4.16-firmware-dmi-handle-missing-DMI-data-gracefully.patch
 mellanox-backport-introduce-psample-a-new-genetlink-channel.patch
 mellanox-backport-introduce-tc-sample-action.patch
