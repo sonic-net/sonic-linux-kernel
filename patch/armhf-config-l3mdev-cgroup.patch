@@ -1,0 +1,24 @@
+From a21f766847130f5ff9889fd2c96ccdb093bdea9f Mon Sep 17 00:00:00 2001
+From: Antony Rheneus <arheneus@marvell.com>
+Date: Tue, 24 Sep 2019 17:32:37 +0000
+Subject: [PATCH] enable l3mdev cgroup
+
+---
+ debian/build/build_armhf_none_armmp/.config | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/debian/build/build_armhf_none_armmp/.config b/debian/build/build_armhf_none_armmp/.config
+index 841c145..78016d6 100644
+--- a/debian/build/build_armhf_none_armmp/.config
++++ b/debian/build/build_armhf_none_armmp/.config
+@@ -1543,6 +1543,7 @@
+ # CONFIG_HSR is not set
+ CONFIG_NET_SWITCHDEV=y
+ CONFIG_NET_L3_MASTER_DEV=y
++CONFIG_CGROUP_L3MDEV=y
+ # CONFIG_NET_NCSI is not set
+ CONFIG_RPS=y
+ CONFIG_RFS_ACCEL=y
+-- 
+2.11.0
+
