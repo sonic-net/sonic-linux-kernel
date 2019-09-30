@@ -1,0 +1,98 @@
+# This series applies on GIT commit 18c5597832fcf6988111b05a9a1607ae148723c
+0001-i2c-mlxcpld-add-master-driver-for-Mellanox-systems.patch
+0002-i2c-mux-mlxcpld-add-driver-for-Mellanox-systems.patch
+0003-platform-mellanox-Introduce-Mellanox-hardware-platfo.patch
+0004-platform-x86-Introduce-support-for-Mellanox-hotplug-.patch
+0005-leds-add-driver-for-support-Mellanox-regmap-LEDs-for.patch
+0006-Mellanox-switch-drivers-changes.patch
+0007-hwmon-pmbus-Add-support-for-Intel-VID-protocol-VR13.patch
+0008-hwmon-pmbus-Add-support-for-Texas-Instruments-tps536.patch
+0009-platform-mellonox-introduce-mlxreg-io-driver-and-add.patch
+#0010-config-mellanox-configuration.patch
+0011-support-Broadcom-54616-Phy-for-Intel-igb-driver.patch
+0012-platform-mellanox-mlxreg-hotplug-driver-add-check-fo.patch
+driver-arista-net-tg3-dma-mask-4g-sb800.patch
+driver-arista-net-tg3-disallow-broadcom-default-mac.patch
+driver-arista-net-tg3-access-regs-indirectly.patch
+driver-arista-disable-smbus-mux-for-hudson2.patch
+driver-support-sff-8436-eeprom.patch
+driver-support-sff-8436-eeprom-update.patch
+driver-sff-8436-use-nvmem-framework.patch
+driver-sff-8436-use-nvmem_device_read.patch
+driver-support-sff-8436-read-write-fix.patch
+driver-i2c-bus-intel-ismt-add-delay-param.patch
+driver-pca954x-i2c-mux-force-deselect-on-exit-flag.patch
+driver-l3mdev-cgroup.patch
+kernel-add-kexec-reboot-string.patch
+driver-hwmon-max6620.patch
+driver-hwmon-max6620-fix-rpm-calc.patch
+driver-hwmon-max6620-update.patch
+driver-hwmon-max6658-fix-write-convrate.patch
+driver-hwmon-pmbus-dni_dps460.patch
+driver-hwmon-pmbus-dni_dps460-update-pmbus-core.patch
+driver-hwmon-pmbus-dps1900.patch
+driver-support-tun-config-carrier-enable.patch
+driver-support-optoe.patch
+driver-support-optoe-EOF_fix.patch
+driver-support-optoe-chunk-offset-fix.patch
+driver-support-optoe-QSFP_DD.patch
+bridge-add-per-port-broadcast-flood-flag.patch
+driver-net-tg3-add-param-short-preamble-and-reset.patch
+#config-dell-s6000.patch
+#config-dell-z9100.patch
+#config-ingrasys-s9100.patch
+#config-arista-dps1900.patch
+#config-arista-7060-cx32s.patch
+#config-mitac-ly1200.patch
+#config-optoe.patch
+#config-l3mdev-cgroup.patch
+#config-inventec-d7032.patch
+#config-cig-cs6436-serail_new.patch
+0014-mlxsw-qsfp_sysfs-Support-CPLD-version-reading-based-.patch
+0015-platform-x86-mlx-platform-Add-support-for-new-msn201.patch
+0016-platform-mellanox-mlxreg-hotplug-add-extra-run-cycle.patch
+0017-platform-mellanox-add-new-OEM-system-types-to-mlx-pl.patch
+0018-platform-x86-mlx-platform-fix-module-aliases.patch
+0019-platform-x86-mlx-platform-Add-bus-detection-and-diff.patch
+0020-i2c-busses-Add-capabilities-to-i2c-mlxcpld.patch
+linux-4.13-thermal-intel_pch_thermal-Fix-enable-check-on.patch
+0021-Mellanox-backport-patchwork-from-kernels-4.17-4.19.patch
+0022-platform-x86-mlx-platform-backport-from-4.19.patch
+0023-platform-x86-mlx-platform-Add-support-for-register-a.patch
+#0024-config-mellanox-fan-configuration.patch
+0025-net-udp_l3mdev_accept-support.patch
+0026-mlxsw-qsfp_sysfs-Support-extended-port-numbers-for-S.patch
+0027-mlxsw-thermal-monitoring-amendments.patch
+0028-watchdog-mlx-wdt-introduce-watchdog-driver-for-Mella.patch
+0029-mlxsw-qsfp_sysfs-Support-port-numbers-initialization.patch
+#0030-update-kernel-config.patch
+0031-mlxsw-Align-code-with-kernel-v-5.0.patch
+#0032-sonic-update-kernel-config-mlsxw-pci.patch
+0033-hwmon-pmbus-Fix-driver-info-initialization-in-probe-.patch
+0034-mlxsw-thermal-disable-highest-zone-calculation.patch
+0035-platform-x86-mlx-platform-Add-CPLD4-register.patch
+0036-watchdog-mlx-wdt-kernel-upstream-and-wd-type2-change.patch
+0037-mlxsw-Align-code-with-kernel-v-5.1.patch
+0038-mlxsw-core-Add-check-for-split-port-during-thermal-z.patch
+0039-mlxsw-core-Prevent-reading-unsupported-slave-address.patch
+0040-mlxsw-core-add-support-for-Gear-Box-temperatures-in-.patch
+0041-mlxsw-minimal-Provide-optimization-for-I2C-bus-acces.patch
+0042-mlxsw-core-Skip-port-split-entries-in-hwmon-subsyste.patch
+0043-mellanox-platform-Backporting-Melanox-drivers-from-v.patch
+0044-mlxsw-minimal-Provide-optimization-for-module-number.patch
+0045-mlxsw-minimal-Add-validation-for-FW-version.patch
+linux-4.16-firmware-dmi-handle-missing-DMI-data-gracefully.patch
+mellanox-backport-introduce-psample-a-new-genetlink-channel.patch
+mellanox-backport-introduce-tc-sample-action.patch
+arm64-sonic-kernel-config.patch
+#kernel-enable-psample-and-act_sample-drivers.patch
+#
+# This series applies on GIT commit 1451b36b2b0d62178e42f648d8a18131af18f7d8
+# Tkernel-sched-core-fix-cgroup-fork-race.patch
+# Tconfig-mlnx-sn2700.patch
+# Tdriver-at24-fix-odd-length-two-byte-access.patch
+# Tdriver-hwmon-lm75b-update.patch
+# Tdriver-hwmon-pmbus-add-dps460-support.patch
+# Tdriver-hwmon-pmbus-ucd9200-mlnx.patch
+# Trtnetlink-catch-EOPNOTSUPP-errors.patch
+# Tbridge-per-port-multicast-broadcast-flood-flags.patch

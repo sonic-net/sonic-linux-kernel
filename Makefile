@@ -8,10 +8,11 @@ KVERSION ?= $(KVERSION_SHORT)-amd64
 KERNEL_VERSION ?= 4.9.168
 KERNEL_SUBVERSION ?= 1+deb9u5
 kernel_procure_method ?= build
+CONFIGURED_ARCH ?= amd64
 
 LINUX_HEADER_COMMON = linux-headers-$(KVERSION_SHORT)-common_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_all.deb
-LINUX_HEADER_AMD64 = linux-headers-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_amd64.deb
-LINUX_IMAGE = linux-image-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_amd64.deb
+LINUX_HEADER_AMD64 = linux-headers-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_$(CONFIGURED_ARCH).deb
+LINUX_IMAGE = linux-image-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_$(CONFIGURED_ARCH).deb
 
 MAIN_TARGET = $(LINUX_HEADER_COMMON)
 DERIVED_TARGETS = $(LINUX_HEADER_AMD64) $(LINUX_IMAGE)
@@ -73,10 +74,19 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	debian/bin/gencontrol.py
 
 	# generate linux build file for amd64_none_amd64
-	fakeroot make -f debian/rules.gen setup_amd64_none_amd64
+ifneq (,$(filter $(CONFIGURED_ARCH), armhf arm64))
+	fakeroot make -f debian/rules.gen setup_$(CONFIGURED_ARCH)_none
+else
+	fakeroot make -f debian/rules.gen setup_$(CONFIGURED_ARCH)_none_$(CONFIGURED_ARCH)
+endif
 
 	# Applying patches and configuration changes
-	git add debian/build/build_amd64_none_amd64/.config -f
+ifeq ($(CONFIGURED_ARCH), armhf)
+	git add debian/build/build_$(CONFIGURED_ARCH)_none_armmp/.config -f
+	git add debian/build/build_$(CONFIGURED_ARCH)_none_armmp-lpae/.config -f
+else
+	git add debian/build/build_$(CONFIGURED_ARCH)_none_$(CONFIGURED_ARCH)/.config -f
+endif
 	git add debian/config.defines.dump -f
 	git add debian/control -f
 	git add debian/rules.gen -f
@@ -85,11 +95,15 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 
 	# Learning new git repo head (above commit) by calling stg repair.
 	stg repair
+ifneq (,$(filter $(CONFIGURED_ARCH), armhf arm64))
+	stg import -s ../patch/series_$(CONFIGURED_ARCH)
+else
 	stg import -s ../patch/series
+endif
 
 	# Building a custom kernel from Debian kernel source
 	DO_DOCS=False fakeroot make -f debian/rules -j $(shell nproc) binary-indep
-	fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_amd64_none
+	fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none
 	popd
 
 ifneq ($(DEST),)
