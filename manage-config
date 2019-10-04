@@ -1,0 +1,104 @@
+#!/bin/bash
+
+#
+# SPDX-License-Identifier:     GPL-2.0
+#
+# Add / Remove options in kernel configuration,
+# and Verify the kernel configuration afterwards.
+#
+# To remove options from the kernel, add the options into the flat text file
+# patch/kconfig-exclusions
+#
+# Example:
+#   CONFIG_SOUND
+#   CONFIG_ISDN
+#
+# To add options into the kernel, add the options into the flat text file
+# patch/kconfig-inclusions
+#
+# Example:
+#   CONFIG_AD5064=y
+#
+
+# Configuration file to change
+ARCH=amd64
+if [ $# = 1 ]; then
+    ARCH=$1
+fi
+case "$ARCH" in
+    amd64)
+        CONFIG_FILE_LOC=debian/build/build_amd64_none_amd64
+        ;;
+    *)
+        CONFIG_FILE_LOC=debian/build/build_amd64_none_amd64
+        ;;
+esac
+CONFIG_FILE=${CONFIG_FILE_LOC}/.config
+
+ret=0
+if [ -e ../patch/kconfig-exclusions -o -e ../patch/kconfig-inclusions ];
+then
+
+    # Process any exclusions in the kernel
+    if [ -f ../patch/kconfig-exclusions ]; then
+        while read -r opt; do
+            if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
+                scripts/config --file ${CONFIG_FILE} -d $opt
+            fi
+        done < ../patch/kconfig-exclusions;
+    fi
+
+    # Process any inclusions in the kernel
+    if [ -f ../patch/kconfig-inclusions ]; then
+        while read -r opt; do
+            if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
+                echo $opt >> ${CONFIG_FILE}
+            fi
+        done < ../patch/kconfig-inclusions;
+    fi
+
+    # Update the .config file to be sure it's consistent
+    make -C ${CONFIG_FILE_LOC} olddefconfig
+
+    # Verify that the kernel options we want to remove are not in the updated configuration
+    if [ -f ../patch/kconfig-exclusions ]; then
+        echo
+        echo "Checking removed kernel options..."
+        while read -r opt; do
+            if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
+                s=$(scripts/config --file ${CONFIG_FILE} -k --state $opt)
+                if [ ! "$s" = "undef" -a ! "$s" = "n" ]; then
+                    ret=1
+                    echo "Option $opt should not be set, but is set to [$s]"
+                fi
+            fi
+        done < ../patch/kconfig-exclusions;
+        if [ $ret = 0 ]; then
+            echo "No error"
+        fi
+    fi
+
+    # Verify that the kernel options we want to add are now in the updated configuration
+    if [ -f ../patch/kconfig-inclusions ]; then
+        echo
+        echo "Checking added kernel options..."
+        while read -r opt; do
+            if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
+                n=${opt%=*}
+                v="${opt#*=}"
+                s=$(scripts/config --file ${CONFIG_FILE} -k --state $n)
+                if [ ! "$s" = "$v" ]; then
+                    ret=2
+                    echo "Option $n should be set to [$v] instead of [$s]"
+                fi
+            fi
+        done < ../patch/kconfig-inclusions;
+        if [ ! $ret = 2 ]; then
+            echo "No error"
+        fi
+    fi
+
+    echo
+fi
+
+exit $ret
