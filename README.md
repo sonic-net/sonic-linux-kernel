@@ -17,3 +17,15 @@ Usage:
     make DEST=<destination path>
 
 If DEST is not set, package will stay in current directory
+
+## Incremental Kernel Build
+
+Normally, rebuilding the kernel involves removing the previously built kernel source tree, downloading the stock kernel, applying all the SONiC patches, and compiling the kernel and the kernel modules. In a development environment, you might want to skip downloading the kernel and applying all the patches, and just rebuild the kernel. This option is enabled by setting the value for DEFAULT_KERNEL_PROCURE_METHOD to "incremental" in the rules/config file.
+
+Procedure to rebuild the kernel:
+
+    make target/debs/stretch/linux-headers-4.9.0-9-2-common_4.9.168-1+deb9u5_all.deb-clean
+    make target/debs/stretch/linux-headers-4.9.0-9-2-common_4.9.168-1+deb9u5_all.deb
+
+You can then upload and install the kernel archive in the switch:
+target/debs/stretch/linux-image-4.9.0-9-2-amd64_4.9.168-1+deb9u5_amd64.deb

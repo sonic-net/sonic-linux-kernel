@@ -16,7 +16,7 @@ LINUX_IMAGE = linux-image-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_amd
 MAIN_TARGET = $(LINUX_HEADER_COMMON)
 DERIVED_TARGETS = $(LINUX_HEADER_AMD64) $(LINUX_IMAGE)
 
-ifneq ($(kernel_procure_method), build)
+ifeq ($(kernel_procure_method), download)
 # Downloading kernel
 
 # TBD, need upload the new kernel packages
@@ -51,16 +51,29 @@ DSC_FILE_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-sourc
 DEBIAN_FILE_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-source/linux_4.9.168-1+deb9u5.debian.tar.xz?sv=2015-04-05&sr=b&sig=koCXHDvmY39smVGcI3cPJrBDZMmdpKiLkyJPfMdNPwU%3D&se=2033-04-28T06%3A14%3A51Z&sp=r"
 ORIG_FILE_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-source/linux_4.9.168.orig.tar.xz?sv=2015-04-05&sr=b&sig=ArvSGD3N46WGh%2BTYF8J1JgdT9x0BrFu4JhSuyyr3nNw%3D&se=2033-04-09T01%3A00%3A47Z&sp=r"
 
+ifneq ($(wildcard $(BUILD_DIR)),)
+ifeq ($(kernel_procure_method), incremental)
+INCR_BUILD = YES
+endif
+endif
+
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Obtaining the Debian kernel source
+ifeq ($(INCR_BUILD),)
 	rm -rf $(BUILD_DIR)
 	wget -O $(DSC_FILE) $(DSC_FILE_URL)
 	wget -O $(ORIG_FILE) $(ORIG_FILE_URL)
 	wget -O $(DEBIAN_FILE) $(DEBIAN_FILE_URL)
 
 	dpkg-source -x $(DSC_FILE)
+endif
 
 	pushd $(BUILD_DIR)
+
+ifneq ($(INCR_BUILD),)
+	# Force kernel build
+	rm -f debian/stamps/build_amd64_none_amd64
+else
 	git init
 	git add -f *
 	git commit -qm "check in all loose files and diffs"
@@ -86,6 +99,7 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Learning new git repo head (above commit) by calling stg repair.
 	stg repair
 	stg import -s ../patch/series
+endif
 
 	# Building a custom kernel from Debian kernel source
 	DO_DOCS=False fakeroot make -f debian/rules -j $(shell nproc) binary-indep
