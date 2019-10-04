@@ -92,6 +92,11 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	stg repair
 	stg import -s ../patch/series
 
+	# Optionally add/remove kernel options
+	if [ -f ../manage-config ]; then
+		../manage-config amd64
+	fi
+
 	# Building a custom kernel from Debian kernel source
 	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) DEB_BUILD_PROFILES=nodoc fakeroot make -f debian/rules -j $(shell nproc) binary-indep
 ifeq ($(CONFIGURED_ARCH), armhf)
