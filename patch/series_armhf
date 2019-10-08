@@ -87,7 +87,6 @@ mellanox-backport-introduce-psample-a-new-genetlink-channel.patch
 mellanox-backport-introduce-tc-sample-action.patch
 #kernel-enable-psample-and-act_sample-drivers.patch
 0042-Marvell-a385-Micron-4G-flash-support.patch
-0042-Marvell-a385-update-mvebu_v7_defconfig.patch
 armhf-sonic-kernel-config.patch
 armhf-sonic-lpae-config.patch
 armhf-nand-flash-config.patch
