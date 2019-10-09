@@ -82,6 +82,7 @@ endif
 
 	# Applying patches and configuration changes
 ifeq ($(CONFIGURED_ARCH), armhf)
+    	# ARM32 (ARMHF) target does kconfig for both 32bit and PAE mode
 	git add debian/build/build_$(CONFIGURED_ARCH)_none_armmp/.config -f
 	git add debian/build/build_$(CONFIGURED_ARCH)_none_armmp-lpae/.config -f
 else
