@@ -4,6 +4,16 @@ Date: Wed, 18 Sep 2019 02:54:13 -0700
 Subject: [PATCH] net: ipv6: Allow shorthand delete of all
  nexthops in  multipath route
 
+This was already supported by IPv4 but missing for IPv6. This commit
+brings shorthand delete of IPv6 multipath routes in kernel.
+
+Successive delete of multi-path routes(32 paths) was not clearing all routes in kernel though frr was sending RTM_DELROUTE when last nexthop was getting deleted. Reason being For IPv6 delete route in kernel, expects all nhops to be sent. On counter part, IPv4 route delete in kernel does NOT expect all nhops to be sent. FRR currently doesnt send any nhops when operation is RTM_DELROUTE for both IPv4 & IPv6.
+
+back porting below changes from newer version of kernel
+https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/net/ipv6/route.c?h=v4.14.144&id=0ae8133586ad1c9be894411aaf8b17bb58c8efe5
+
+After importing above patch, there were no stale IPv6 routes in kernel.
+
 Signed-off-by: Preetham Singh <preetham.singh@broadcom.com>
 ---
  include/net/ip6_fib.h |  4 ++-
