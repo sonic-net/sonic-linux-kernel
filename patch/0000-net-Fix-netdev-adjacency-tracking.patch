@@ -1,0 +1,1302 @@
+From 962236dd11d64946c9d0c80982b1f75adb1c0780 Mon Sep 17 00:00:00 2001
+From: ps407411 <ps407411@contoso.com>
+Date: Wed, 4 Sep 2019 10:22:48 +0000
+Subject: [PATCH] net: Fix netdev adjacency tracking
+
+
+Note: This patch is no longer required in kernel version >=4.10
+
+Refer to below patches which have been combined into single patch.
+
+https://github.com/torvalds/linux/commit/67b62f98a1de962277b60d77c0c208b76867dbae#diff-3ce2f1b11ea5a4b9c88ef0b4159bd481
+https://github.com/torvalds/linux/commit/0f524a80ff35af8a7664d7661d948107da142e04#diff-3ce2f1b11ea5a4b9c88ef0b4159bd481
+https://github.com/torvalds/linux/commit/f1170fd462c67c4ae2f20734566d94e0f8f62f69#diff-3ce2f1b11ea5a4b9c88ef0b4159bd481
+https://github.com/torvalds/linux/commit/1a3f060c1a47dba4e12ac21ce62b57666b9c4e95#diff-3ce2f1b11ea5a4b9c88ef0b4159bd481
+https://github.com/torvalds/linux/commit/790510d99f39cee7f275d001aa5024032ed9bb48#diff-3ce2f1b11ea5a4b9c88ef0b4159bd481
+
+https://github.com/torvalds/linux/commit/453d39329ad03f9f6d93ec6d0d57bf7a1e2a20c7#diff-66286e176927fcbf186d37fce71bc94e
+https://github.com/torvalds/linux/commit/e0e79c8e74b08976d9b45e52b704b9228c6965c7#diff-598fcd5f9f85a0fea3a53a7022974457
+
+https://github.com/torvalds/linux/commit/b3208b2024c9089106df52ae25ebf39068d6f9fc#diff-ce347f03cd1a8602476d0774dd8dde24
+
+https://github.com/torvalds/linux/commit/1cd127fc7d3a6d6a0fc9f9cca47ca3a16ee79679#diff-69464fa7779eabc57449a324cd70bbcb
+
+https://github.com/torvalds/linux/commit/dd82364c3ab93a96bb1e45d22106a4b1ea4bef39#diff-5a740fc1e7dea601fffed2ecbbb8e7c8
+
+https://github.com/torvalds/linux/commit/cf2d67408b2f9a840f27d25a0219070b5b5deec4#diff-c0c1e518eebaabb2ad27194986805291
+
+Signed-off-by: Preetham Singh <preetham.singh@broadcom.com>
+---
+ drivers/infiniband/core/core_priv.h           |   9 +-
+ drivers/infiniband/core/roce_gid_mgmt.c       |  42 ++-
+ drivers/infiniband/ulp/ipoib/ipoib_main.c     |  37 +-
+ drivers/net/bonding/bond_alb.c                |  81 ++--
+ drivers/net/bonding/bond_main.c               |  18 +-
+ drivers/net/ethernet/intel/ixgbe/ixgbe_main.c | 132 ++++---
+ .../net/ethernet/mellanox/mlxsw/spectrum.c    |  37 +-
+ drivers/net/ethernet/rocker/rocker_main.c     |  32 +-
+ include/linux/netdevice.h                     |  40 +-
+ net/core/dev.c                                | 349 +++++++++---------
+ 10 files changed, 423 insertions(+), 354 deletions(-)
+
+diff --git a/drivers/infiniband/core/core_priv.h b/drivers/infiniband/core/core_priv.h
+index 19d499d..0c0bea0 100644
+--- a/drivers/infiniband/core/core_priv.h
++++ b/drivers/infiniband/core/core_priv.h
+@@ -127,14 +127,7 @@ void ib_cache_release_one(struct ib_device *device);
+ static inline bool rdma_is_upper_dev_rcu(struct net_device *dev,
+ 					 struct net_device *upper)
+ {
+-	struct net_device *_upper = NULL;
+-	struct list_head *iter;
+-
+-	netdev_for_each_all_upper_dev_rcu(dev, _upper, iter)
+-		if (_upper == upper)
+-			break;
+-
+-	return _upper == upper;
++	return netdev_has_upper_dev_all_rcu(dev, upper);
+ }
+ 
+ int addr_init(void);
+diff --git a/drivers/infiniband/core/roce_gid_mgmt.c b/drivers/infiniband/core/roce_gid_mgmt.c
+index 06556c3..3a64a08 100644
+--- a/drivers/infiniband/core/roce_gid_mgmt.c
++++ b/drivers/infiniband/core/roce_gid_mgmt.c
+@@ -437,6 +437,28 @@ static void callback_for_addr_gid_device_scan(struct ib_device *device,
+ 			  &parsed->gid_attr);
+ }
+ 
++struct upper_list {
++	struct list_head list;
++	struct net_device *upper;
++};
++
++static int netdev_upper_walk(struct net_device *upper, void *data)
++{
++	struct upper_list *entry = kmalloc(sizeof(*entry), GFP_ATOMIC);
++	struct list_head *upper_list = data;
++
++	if (!entry) {
++		pr_info("roce_gid_mgmt: couldn't allocate entry to delete ndev\n");
++		return 0;
++	}
++
++	list_add_tail(&entry->list, upper_list);
++	dev_hold(upper);
++	entry->upper = upper;
++
++	return 0;
++}
++
+ static void handle_netdev_upper(struct ib_device *ib_dev, u8 port,
+ 				void *cookie,
+ 				void (*handle_netdev)(struct ib_device *ib_dev,
+@@ -444,30 +466,12 @@ static void handle_netdev_upper(struct ib_device *ib_dev, u8 port,
+ 						      struct net_device *ndev))
+ {
+ 	struct net_device *ndev = (struct net_device *)cookie;
+-	struct upper_list {
+-		struct list_head list;
+-		struct net_device *upper;
+-	};
+-	struct net_device *upper;
+-	struct list_head *iter;
+ 	struct upper_list *upper_iter;
+ 	struct upper_list *upper_temp;
+ 	LIST_HEAD(upper_list);
+ 
+ 	rcu_read_lock();
+-	netdev_for_each_all_upper_dev_rcu(ndev, upper, iter) {
+-		struct upper_list *entry = kmalloc(sizeof(*entry),
+-						   GFP_ATOMIC);
+-
+-		if (!entry) {
+-			pr_info("roce_gid_mgmt: couldn't allocate entry to delete ndev\n");
+-			continue;
+-		}
+-
+-		list_add_tail(&entry->list, &upper_list);
+-		dev_hold(upper);
+-		entry->upper = upper;
+-	}
++	netdev_walk_all_upper_dev_rcu(ndev, netdev_upper_walk, &upper_list);
+ 	rcu_read_unlock();
+ 
+ 	handle_netdev(ib_dev, port, ndev);
+diff --git a/drivers/infiniband/ulp/ipoib/ipoib_main.c b/drivers/infiniband/ulp/ipoib/ipoib_main.c
+index 17c5bc7..166d41d 100644
+--- a/drivers/infiniband/ulp/ipoib/ipoib_main.c
++++ b/drivers/infiniband/ulp/ipoib/ipoib_main.c
+@@ -319,6 +319,25 @@ static struct net_device *ipoib_get_master_net_dev(struct net_device *dev)
+ 	return dev;
+ }
+ 
++struct ipoib_walk_data {
++	const struct sockaddr *addr;
++	struct net_device *result;
++};
++
++static int ipoib_upper_walk(struct net_device *upper, void *_data)
++{
++	struct ipoib_walk_data *data = _data;
++	int ret = 0;
++
++	if (ipoib_is_dev_match_addr_rcu(data->addr, upper)) {
++		dev_hold(upper);
++		data->result = upper;
++		ret = 1;
++	}
++
++	return ret;
++}
++
+ /**
+  * Find a net_device matching the given address, which is an upper device of
+  * the given net_device.
+@@ -331,27 +350,21 @@ static struct net_device *ipoib_get_master_net_dev(struct net_device *dev)
+ static struct net_device *ipoib_get_net_dev_match_addr(
+ 		const struct sockaddr *addr, struct net_device *dev)
+ {
+-	struct net_device *upper,
+-			  *result = NULL;
+-	struct list_head *iter;
++	struct ipoib_walk_data data = {
++		.addr = addr,
++	};
+ 
+ 	rcu_read_lock();
+ 	if (ipoib_is_dev_match_addr_rcu(addr, dev)) {
+ 		dev_hold(dev);
+-		result = dev;
++		data.result = dev;
+ 		goto out;
+ 	}
++	netdev_walk_all_upper_dev_rcu(dev, ipoib_upper_walk, &data);
+ 
+-	netdev_for_each_all_upper_dev_rcu(dev, upper, iter) {
+-		if (ipoib_is_dev_match_addr_rcu(addr, upper)) {
+-			dev_hold(upper);
+-			result = upper;
+-			break;
+-		}
+-	}
+ out:
+ 	rcu_read_unlock();
+-	return result;
++	return data.result;
+ }
+ 
+ /* returns the number of IPoIB netdevs on top a given ipoib device matching a
+diff --git a/drivers/net/bonding/bond_alb.c b/drivers/net/bonding/bond_alb.c
+index 91d8a48..b49f1e9 100644
+--- a/drivers/net/bonding/bond_alb.c
++++ b/drivers/net/bonding/bond_alb.c
+@@ -954,13 +954,61 @@ static void alb_send_lp_vid(struct slave *slave, u8 mac_addr[],
+ 	dev_queue_xmit(skb);
+ }
+ 
++struct alb_walk_data {
++	struct bonding *bond;
++	struct slave *slave;
++	u8 *mac_addr;
++	bool strict_match;
++};
++
++static int alb_upper_dev_walk(struct net_device *upper, void *_data)
++{
++	struct alb_walk_data *data = _data;
++	bool strict_match = data->strict_match;
++	struct bonding *bond = data->bond;
++	struct slave *slave = data->slave;
++	u8 *mac_addr = data->mac_addr;
++	struct bond_vlan_tag *tags;
++
++	if (is_vlan_dev(upper) && vlan_get_encap_level(upper) == 0) {
++		if (strict_match &&
++		    ether_addr_equal_64bits(mac_addr,
++					    upper->dev_addr)) {
++			alb_send_lp_vid(slave, mac_addr,
++					vlan_dev_vlan_proto(upper),
++					vlan_dev_vlan_id(upper));
++		} else if (!strict_match) {
++			alb_send_lp_vid(slave, upper->dev_addr,
++					vlan_dev_vlan_proto(upper),
++					vlan_dev_vlan_id(upper));
++		}
++	}
++
++	/* If this is a macvlan device, then only send updates
++	 * when strict_match is turned off.
++	 */
++	if (netif_is_macvlan(upper) && !strict_match) {
++		tags = bond_verify_device_path(bond->dev, upper, 0);
++		if (IS_ERR_OR_NULL(tags))
++			BUG();
++		alb_send_lp_vid(slave, upper->dev_addr,
++				tags[0].vlan_proto, tags[0].vlan_id);
++		kfree(tags);
++	}
++
++	return 0;
++}
++
+ static void alb_send_learning_packets(struct slave *slave, u8 mac_addr[],
+ 				      bool strict_match)
+ {
+ 	struct bonding *bond = bond_get_bond_by_slave(slave);
+-	struct net_device *upper;
+-	struct list_head *iter;
+-	struct bond_vlan_tag *tags;
++	struct alb_walk_data data = {
++		.strict_match = strict_match,
++		.mac_addr = mac_addr,
++		.slave = slave,
++		.bond = bond,
++	};
+ 
+ 	/* send untagged */
+ 	alb_send_lp_vid(slave, mac_addr, 0, 0);
+@@ -969,32 +1017,7 @@ static void alb_send_learning_packets(struct slave *slave, u8 mac_addr[],
+ 	 * for that device.
+ 	 */
+ 	rcu_read_lock();
+-	netdev_for_each_all_upper_dev_rcu(bond->dev, upper, iter) {
+-		if (is_vlan_dev(upper) &&
+-		    bond->nest_level == vlan_get_encap_level(upper) - 1) {
+-			if (upper->addr_assign_type == NET_ADDR_STOLEN) {
+-				alb_send_lp_vid(slave, mac_addr,
+-						vlan_dev_vlan_proto(upper),
+-						vlan_dev_vlan_id(upper));
+-			} else {
+-				alb_send_lp_vid(slave, upper->dev_addr,
+-						vlan_dev_vlan_proto(upper),
+-						vlan_dev_vlan_id(upper));
+-			}
+-		}
+-
+-		/* If this is a macvlan device, then only send updates
+-		 * when strict_match is turned off.
+-		 */
+-		if (netif_is_macvlan(upper) && !strict_match) {
+-			tags = bond_verify_device_path(bond->dev, upper, 0);
+-			if (IS_ERR_OR_NULL(tags))
+-				BUG();
+-			alb_send_lp_vid(slave, upper->dev_addr,
+-					tags[0].vlan_proto, tags[0].vlan_id);
+-			kfree(tags);
+-		}
+-	}
++	netdev_walk_all_upper_dev_rcu(bond->dev, alb_upper_dev_walk, &data);
+ 	rcu_read_unlock();
+ }
+ 
+diff --git a/drivers/net/bonding/bond_main.c b/drivers/net/bonding/bond_main.c
+index 24a3433..2bd9371 100644
+--- a/drivers/net/bonding/bond_main.c
++++ b/drivers/net/bonding/bond_main.c
+@@ -2277,22 +2277,24 @@ static void bond_mii_monitor(struct work_struct *work)
+ 	}
+ }
+ 
++static int bond_upper_dev_walk(struct net_device *upper, void *data)
++{
++	__be32 ip = *((__be32 *)data);
++
++	return ip == bond_confirm_addr(upper, 0, ip);
++}
++
+ static bool bond_has_this_ip(struct bonding *bond, __be32 ip)
+ {
+-	struct net_device *upper;
+-	struct list_head *iter;
+ 	bool ret = false;
+ 
+ 	if (ip == bond_confirm_addr(bond->dev, 0, ip))
+ 		return true;
+ 
+ 	rcu_read_lock();
+-	netdev_for_each_all_upper_dev_rcu(bond->dev, upper, iter) {
+-		if (ip == bond_confirm_addr(upper, 0, ip)) {
+-			ret = true;
+-			break;
+-		}
+-	}
++	if (netdev_walk_all_upper_dev_rcu(bond->dev, bond_upper_dev_walk, &ip))
++		ret = true;
++
+ 	rcu_read_unlock();
+ 
+ 	return ret;
+diff --git a/drivers/net/ethernet/intel/ixgbe/ixgbe_main.c b/drivers/net/ethernet/intel/ixgbe/ixgbe_main.c
+index a5428b6..187c38e 100644
+--- a/drivers/net/ethernet/intel/ixgbe/ixgbe_main.c
++++ b/drivers/net/ethernet/intel/ixgbe/ixgbe_main.c
+@@ -5012,24 +5012,23 @@ static int ixgbe_fwd_ring_up(struct net_device *vdev,
+ 	return err;
+ }
+ 
+-static void ixgbe_configure_dfwd(struct ixgbe_adapter *adapter)
++static int ixgbe_upper_dev_walk(struct net_device *upper, void *data)
+ {
+-	struct net_device *upper;
+-	struct list_head *iter;
+-	int err;
++	if (netif_is_macvlan(upper)) {
++		struct macvlan_dev *dfwd = netdev_priv(upper);
++		struct ixgbe_fwd_adapter *vadapter = dfwd->fwd_priv;
++		
++		if (dfwd->fwd_priv)
++			ixgbe_fwd_ring_up(upper, vadapter);
++	}
+ 
+-	netdev_for_each_all_upper_dev_rcu(adapter->netdev, upper, iter) {
+-		if (netif_is_macvlan(upper)) {
+-			struct macvlan_dev *dfwd = netdev_priv(upper);
+-			struct ixgbe_fwd_adapter *vadapter = dfwd->fwd_priv;
++	return 0;
++}
+ 
+-			if (dfwd->fwd_priv) {
+-				err = ixgbe_fwd_ring_up(upper, vadapter);
+-				if (err)
+-					continue;
+-			}
+-		}
+-	}
++static void ixgbe_configure_dfwd(struct ixgbe_adapter *adapter)
++{
++	netdev_walk_all_upper_dev_rcu(adapter->netdev,
++				      ixgbe_upper_dev_walk, NULL);
+ }
+ 
+ static void ixgbe_configure(struct ixgbe_adapter *adapter)
+@@ -5448,12 +5447,25 @@ static void ixgbe_fdir_filter_exit(struct ixgbe_adapter *adapter)
+ 	spin_unlock(&adapter->fdir_perfect_lock);
+ }
+ 
++static int ixgbe_disable_macvlan(struct net_device *upper, void *data)
++{
++	if (netif_is_macvlan(upper)) {
++		struct macvlan_dev *vlan = netdev_priv(upper);
++
++		if (vlan->fwd_priv) {
++			netif_tx_stop_all_queues(upper);
++			netif_carrier_off(upper);
++			netif_tx_disable(upper);
++		}
++	}
++
++	return 0;
++}
++
+ void ixgbe_down(struct ixgbe_adapter *adapter)
+ {
+ 	struct net_device *netdev = adapter->netdev;
+ 	struct ixgbe_hw *hw = &adapter->hw;
+-	struct net_device *upper;
+-	struct list_head *iter;
+ 	int i;
+ 
+ 	/* signal that we are down to the interrupt handler */
+@@ -5477,17 +5489,8 @@ void ixgbe_down(struct ixgbe_adapter *adapter)
+ 	netif_tx_disable(netdev);
+ 
+ 	/* disable any upper devices */
+-	netdev_for_each_all_upper_dev_rcu(adapter->netdev, upper, iter) {
+-		if (netif_is_macvlan(upper)) {
+-			struct macvlan_dev *vlan = netdev_priv(upper);
+-
+-			if (vlan->fwd_priv) {
+-				netif_tx_stop_all_queues(upper);
+-				netif_carrier_off(upper);
+-				netif_tx_disable(upper);
+-			}
+-		}
+-	}
++	netdev_walk_all_upper_dev_rcu(adapter->netdev,
++				      ixgbe_disable_macvlan, NULL);
+ 
+ 	ixgbe_irq_disable(adapter);
+ 
+@@ -6727,6 +6730,18 @@ static void ixgbe_update_default_up(struct ixgbe_adapter *adapter)
+ #endif
+ }
+ 
++static int ixgbe_enable_macvlan(struct net_device *upper, void *data)
++{
++	if (netif_is_macvlan(upper)) {
++		struct macvlan_dev *vlan = netdev_priv(upper);
++
++		if (vlan->fwd_priv)
++			netif_tx_wake_all_queues(upper);
++	}
++
++	return 0;
++}
++
+ /**
+  * ixgbe_watchdog_link_is_up - update netif_carrier status and
+  *                             print link up message
+@@ -6736,8 +6751,6 @@ static void ixgbe_watchdog_link_is_up(struct ixgbe_adapter *adapter)
+ {
+ 	struct net_device *netdev = adapter->netdev;
+ 	struct ixgbe_hw *hw = &adapter->hw;
+-	struct net_device *upper;
+-	struct list_head *iter;
+ 	u32 link_speed = adapter->link_speed;
+ 	const char *speed_str;
+ 	bool flow_rx, flow_tx;
+@@ -6808,14 +6821,8 @@ static void ixgbe_watchdog_link_is_up(struct ixgbe_adapter *adapter)
+ 
+ 	/* enable any upper devices */
+ 	rtnl_lock();
+-	netdev_for_each_all_upper_dev_rcu(adapter->netdev, upper, iter) {
+-		if (netif_is_macvlan(upper)) {
+-			struct macvlan_dev *vlan = netdev_priv(upper);
+-
+-			if (vlan->fwd_priv)
+-				netif_tx_wake_all_queues(upper);
+-		}
+-	}
++	netdev_walk_all_upper_dev_rcu(adapter->netdev,
++				      ixgbe_enable_macvlan, NULL);
+ 	rtnl_unlock();
+ 
+ 	/* update the default user priority for VFs */
+@@ -8353,12 +8360,38 @@ static int ixgbe_configure_clsu32_del_hnode(struct ixgbe_adapter *adapter,
+ }
+ 
+ #ifdef CONFIG_NET_CLS_ACT
++struct upper_walk_data {
++	struct ixgbe_adapter *adapter;
++	u64 action;
++	int ifindex;
++	u8 queue;
++};
++
++static int get_macvlan_queue(struct net_device *upper, void *_data)
++{
++	if (netif_is_macvlan(upper)) {
++		struct macvlan_dev *dfwd = netdev_priv(upper);
++		struct ixgbe_fwd_adapter *vadapter = dfwd->fwd_priv;
++		struct upper_walk_data *data = _data;
++		struct ixgbe_adapter *adapter = data->adapter;
++		int ifindex = data->ifindex;
++
++		if (vadapter && vadapter->netdev->ifindex == ifindex) {
++			data->queue = adapter->rx_ring[vadapter->rx_base_queue]->reg_idx;
++			data->action = data->queue;
++			return 1;
++		}
++	}
++
++	return 0;
++}
++
+ static int handle_redirect_action(struct ixgbe_adapter *adapter, int ifindex,
+ 				  u8 *queue, u64 *action)
+ {
+ 	unsigned int num_vfs = adapter->num_vfs, vf;
++	struct upper_walk_data data;
+ 	struct net_device *upper;
+-	struct list_head *iter;
+ 
+ 	/* redirect to a SRIOV VF */
+ 	for (vf = 0; vf < num_vfs; ++vf) {
+@@ -8376,17 +8409,16 @@ static int handle_redirect_action(struct ixgbe_adapter *adapter, int ifindex,
+ 	}
+ 
+ 	/* redirect to a offloaded macvlan netdev */
+-	netdev_for_each_all_upper_dev_rcu(adapter->netdev, upper, iter) {
+-		if (netif_is_macvlan(upper)) {
+-			struct macvlan_dev *dfwd = netdev_priv(upper);
+-			struct ixgbe_fwd_adapter *vadapter = dfwd->fwd_priv;
+-
+-			if (vadapter && vadapter->netdev->ifindex == ifindex) {
+-				*queue = adapter->rx_ring[vadapter->rx_base_queue]->reg_idx;
+-				*action = *queue;
+-				return 0;
+-			}
+-		}
++	data.adapter = adapter;
++	data.ifindex = ifindex;
++	data.action = 0;
++	data.queue = 0;
++	if (netdev_walk_all_upper_dev_rcu(adapter->netdev,
++					  get_macvlan_queue, &data)) {
++		*action = data.action;
++		*queue = data.queue;
++
++		return 0;
+ 	}
+ 
+ 	return -EINVAL;
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/spectrum.c b/drivers/net/ethernet/mellanox/mlxsw/spectrum.c
+index cc847e0..11cc608 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/spectrum.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/spectrum.c
+@@ -3093,19 +3093,30 @@ static bool mlxsw_sp_port_dev_check(const struct net_device *dev)
+ 	return dev->netdev_ops == &mlxsw_sp_port_netdev_ops;
+ }
+ 
++static int mlxsw_lower_dev_walk(struct net_device *lower_dev, void *data)
++{
++	struct mlxsw_sp_port **port = data;
++	int ret = 0;
++
++	if (mlxsw_sp_port_dev_check(lower_dev)) {
++		*port = netdev_priv(lower_dev);
++		ret = 1;
++	}
++
++	return ret;
++}
++
+ static struct mlxsw_sp_port *mlxsw_sp_port_dev_lower_find(struct net_device *dev)
+ {
+-	struct net_device *lower_dev;
+-	struct list_head *iter;
++	struct mlxsw_sp_port *port;
+ 
+ 	if (mlxsw_sp_port_dev_check(dev))
+ 		return netdev_priv(dev);
+ 
+-	netdev_for_each_all_lower_dev(dev, lower_dev, iter) {
+-		if (mlxsw_sp_port_dev_check(lower_dev))
+-			return netdev_priv(lower_dev);
+-	}
+-	return NULL;
++	port = NULL;
++	netdev_walk_all_lower_dev(dev, mlxsw_lower_dev_walk, &port);
++	
++	return port;
+ }
+ 
+ static struct mlxsw_sp *mlxsw_sp_lower_get(struct net_device *dev)
+@@ -3118,17 +3129,15 @@ static struct mlxsw_sp *mlxsw_sp_lower_get(struct net_device *dev)
+ 
+ static struct mlxsw_sp_port *mlxsw_sp_port_dev_lower_find_rcu(struct net_device *dev)
+ {
+-	struct net_device *lower_dev;
+-	struct list_head *iter;
++	struct mlxsw_sp_port *port;
+ 
+ 	if (mlxsw_sp_port_dev_check(dev))
+ 		return netdev_priv(dev);
+ 
+-	netdev_for_each_all_lower_dev_rcu(dev, lower_dev, iter) {
+-		if (mlxsw_sp_port_dev_check(lower_dev))
+-			return netdev_priv(lower_dev);
+-	}
+-	return NULL;
++	port = NULL;
++	netdev_walk_all_lower_dev_rcu(dev, mlxsw_lower_dev_walk, &port);
++
++	return port;
+ }
+ 
+ struct mlxsw_sp_port *mlxsw_sp_port_lower_dev_hold(struct net_device *dev)
+diff --git a/drivers/net/ethernet/rocker/rocker_main.c b/drivers/net/ethernet/rocker/rocker_main.c
+index 24b7464..c6cccfb 100644
+--- a/drivers/net/ethernet/rocker/rocker_main.c
++++ b/drivers/net/ethernet/rocker/rocker_main.c
+@@ -2839,20 +2839,38 @@ static bool rocker_port_dev_check_under(const struct net_device *dev,
+ 	return true;
+ }
+ 
++struct rocker_walk_data {
++	struct rocker *rocker;
++	struct rocker_port *port;
++};
++
++static int rocker_lower_dev_walk(struct net_device *lower_dev, void *_data)
++{
++	struct rocker_walk_data *data = _data;
++	int ret = 0;
++
++	if (rocker_port_dev_check_under(lower_dev, data->rocker)) {
++		data->port = netdev_priv(lower_dev);
++		ret = 1;
++	}
++
++	return ret;
++}
++
+ struct rocker_port *rocker_port_dev_lower_find(struct net_device *dev,
+ 					       struct rocker *rocker)
+ {
+-	struct net_device *lower_dev;
+-	struct list_head *iter;
++	struct rocker_walk_data data;
+ 
+ 	if (rocker_port_dev_check_under(dev, rocker))
+ 		return netdev_priv(dev);
+ 
+-	netdev_for_each_all_lower_dev(dev, lower_dev, iter) {
+-		if (rocker_port_dev_check_under(lower_dev, rocker))
+-			return netdev_priv(lower_dev);
+-	}
+-	return NULL;
++	data.rocker = rocker;
++	data.port = NULL;
++	netdev_walk_all_lower_dev(dev, rocker_lower_dev_walk, &data);
++
++	return data.port;
++
+ }
+ 
+ static int rocker_netdevice_event(struct notifier_block *unused,
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index 2ecf0f3..feb5d4c 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -1460,7 +1460,6 @@ enum netdev_priv_flags {
+  *	@ptype_specific: Device-specific, protocol-specific packet handlers
+  *
+  *	@adj_list:	Directly linked devices, like slaves for bonding
+- *	@all_adj_list:	All linked devices, *including* neighbours
+  *	@features:	Currently active device features
+  *	@hw_features:	User-changeable features
+  *
+@@ -1678,11 +1677,6 @@ struct net_device {
+ 		struct list_head lower;
+ 	} adj_list;
+ 
+-	struct {
+-		struct list_head upper;
+-		struct list_head lower;
+-	} all_adj_list;
+-
+ 	netdev_features_t	features;
+ 	netdev_features_t	hw_features;
+ 	netdev_features_t	wanted_features;
+@@ -3907,15 +3901,16 @@ struct net_device *netdev_all_upper_get_next_dev_rcu(struct net_device *dev,
+ 	     updev; \
+ 	     updev = netdev_upper_get_next_dev_rcu(dev, &(iter)))
+ 
+-/* iterate through upper list, must be called under RCU read lock */
+-#define netdev_for_each_all_upper_dev_rcu(dev, updev, iter) \
+-	for (iter = &(dev)->all_adj_list.upper, \
+-	     updev = netdev_all_upper_get_next_dev_rcu(dev, &(iter)); \
+-	     updev; \
+-	     updev = netdev_all_upper_get_next_dev_rcu(dev, &(iter)))
+-
+ bool netdev_has_any_upper_dev(struct net_device *dev);
+ 
++int netdev_walk_all_upper_dev_rcu(struct net_device *dev,
++				  int (*fn)(struct net_device *upper_dev,
++					    void *data),
++				  void *data);
++
++bool netdev_has_upper_dev_all_rcu(struct net_device *dev,
++				  struct net_device *upper_dev);
++
+ void *netdev_lower_get_next_private(struct net_device *dev,
+ 				    struct list_head **iter);
+ void *netdev_lower_get_next_private_rcu(struct net_device *dev,
+@@ -3947,17 +3942,14 @@ struct net_device *netdev_all_lower_get_next(struct net_device *dev,
+ struct net_device *netdev_all_lower_get_next_rcu(struct net_device *dev,
+ 						 struct list_head **iter);
+ 
+-#define netdev_for_each_all_lower_dev(dev, ldev, iter) \
+-	for (iter = (dev)->all_adj_list.lower.next, \
+-	     ldev = netdev_all_lower_get_next(dev, &(iter)); \
+-	     ldev; \
+-	     ldev = netdev_all_lower_get_next(dev, &(iter)))
+-
+-#define netdev_for_each_all_lower_dev_rcu(dev, ldev, iter) \
+-	for (iter = &(dev)->all_adj_list.lower, \
+-	     ldev = netdev_all_lower_get_next_rcu(dev, &(iter)); \
+-	     ldev; \
+-	     ldev = netdev_all_lower_get_next_rcu(dev, &(iter)))
++int netdev_walk_all_lower_dev(struct net_device *dev,
++			      int (*fn)(struct net_device *lower_dev,
++					void *data),
++			      void *data);
++int netdev_walk_all_lower_dev_rcu(struct net_device *dev,
++				  int (*fn)(struct net_device *lower_dev,
++					    void *data),
++				  void *data);
+ 
+ void *netdev_adjacent_get_private(struct list_head *adj_list);
+ void *netdev_lower_get_first_private_rcu(struct net_device *dev);
+diff --git a/net/core/dev.c b/net/core/dev.c
+index b48a741..257d982 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -5368,6 +5368,13 @@ static struct netdev_adjacent *__netdev_find_adj(struct net_device *adj_dev,
+ 	return NULL;
+ }
+ 
++static int __netdev_has_upper_dev(struct net_device *upper_dev, void *data)
++{
++   struct net_device *dev = data;
++
++   return upper_dev == dev;
++}
++
+ /**
+  * netdev_has_upper_dev - Check if device is linked to an upper device
+  * @dev: device
+@@ -5382,10 +5389,30 @@ bool netdev_has_upper_dev(struct net_device *dev,
+ {
+ 	ASSERT_RTNL();
+ 
+-	return __netdev_find_adj(upper_dev, &dev->all_adj_list.upper);
++	return netdev_walk_all_upper_dev_rcu(dev, __netdev_has_upper_dev,
++			upper_dev);
+ }
+ EXPORT_SYMBOL(netdev_has_upper_dev);
+ 
++/**
++ * netdev_has_upper_dev_all - Check if device is linked to an upper device
++ * @dev: device
++ * @upper_dev: upper device to check
++ *
++ * Find out if a device is linked to specified upper device and return true
++ * in case it is. Note that this checks the entire upper device chain.
++ * The caller must hold rcu lock.
++ */
++
++bool netdev_has_upper_dev_all_rcu(struct net_device *dev,
++                 struct net_device *upper_dev)
++{
++   return !!netdev_walk_all_upper_dev_rcu(dev, __netdev_has_upper_dev,
++                          upper_dev);
++}
++EXPORT_SYMBOL(netdev_has_upper_dev_all_rcu);
++
++
+ /**
+  * netdev_has_any_upper_dev - Check if device is linked to some device
+  * @dev: device
+@@ -5397,7 +5424,7 @@ bool netdev_has_any_upper_dev(struct net_device *dev)
+ {
+ 	ASSERT_RTNL();
+ 
+-	return !list_empty(&dev->all_adj_list.upper);
++	return !list_empty(&dev->adj_list.upper);
+ }
+ EXPORT_SYMBOL(netdev_has_any_upper_dev);
+ 
+@@ -5425,6 +5452,20 @@ struct net_device *netdev_master_upper_dev_get(struct net_device *dev)
+ }
+ EXPORT_SYMBOL(netdev_master_upper_dev_get);
+ 
++/**
++ * netdev_has_any_lower_dev - Check if device is linked to some device
++ * @dev: device
++ *
++ * Find out if a device is linked to a lower device and return true in case
++ * it is. The caller must hold the RTNL lock.
++ */
++static bool netdev_has_any_lower_dev(struct net_device *dev)
++{
++	ASSERT_RTNL();
++
++	return !list_empty(&dev->adj_list.lower);
++}
++
+ void *netdev_adjacent_get_private(struct list_head *adj_list)
+ {
+ 	struct netdev_adjacent *adj;
+@@ -5461,16 +5502,8 @@ struct net_device *netdev_upper_get_next_dev_rcu(struct net_device *dev,
+ }
+ EXPORT_SYMBOL(netdev_upper_get_next_dev_rcu);
+ 
+-/**
+- * netdev_all_upper_get_next_dev_rcu - Get the next dev from upper list
+- * @dev: device
+- * @iter: list_head ** of the current position
+- *
+- * Gets the next device from the dev's upper list, starting from iter
+- * position. The caller must hold RCU read lock.
+- */
+-struct net_device *netdev_all_upper_get_next_dev_rcu(struct net_device *dev,
+-						     struct list_head **iter)
++static struct net_device *netdev_next_upper_dev_rcu(struct net_device *dev,
++						    struct list_head **iter)
+ {
+ 	struct netdev_adjacent *upper;
+ 
+@@ -5478,15 +5511,41 @@ struct net_device *netdev_all_upper_get_next_dev_rcu(struct net_device *dev,
+ 
+ 	upper = list_entry_rcu((*iter)->next, struct netdev_adjacent, list);
+ 
+-	if (&upper->list == &dev->all_adj_list.upper)
++	if (&upper->list == &dev->adj_list.upper)
+ 		return NULL;
+ 
+ 	*iter = &upper->list;
+ 
+ 	return upper->dev;
+ }
+-EXPORT_SYMBOL(netdev_all_upper_get_next_dev_rcu);
+ 
++int netdev_walk_all_upper_dev_rcu(struct net_device *dev,
++				  int (*fn)(struct net_device *dev,
++					    void *data),
++				  void *data)
++{
++	struct net_device *udev;
++	struct list_head *iter;
++	int ret;
++
++	for (iter = &dev->adj_list.upper,
++	     udev = netdev_next_upper_dev_rcu(dev, &iter);
++	     udev;
++	     udev = netdev_next_upper_dev_rcu(dev, &iter)) {
++		/* first is the upper device itself */
++		ret = fn(udev, data);
++		if (ret)
++			return ret;
++
++		/* then look at all of its upper devices */
++		ret = netdev_walk_all_upper_dev_rcu(udev, fn, data);
++		if (ret)
++			return ret;
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(netdev_walk_all_upper_dev_rcu);
+ /**
+  * netdev_lower_get_next_private - Get the next ->private from the
+  *				   lower neighbour list
+@@ -5568,55 +5627,91 @@ void *netdev_lower_get_next(struct net_device *dev, struct list_head **iter)
+ }
+ EXPORT_SYMBOL(netdev_lower_get_next);
+ 
+-/**
+- * netdev_all_lower_get_next - Get the next device from all lower neighbour list
+- * @dev: device
+- * @iter: list_head ** of the current position
+- *
+- * Gets the next netdev_adjacent from the dev's all lower neighbour
+- * list, starting from iter position. The caller must hold RTNL lock or
+- * its own locking that guarantees that the neighbour all lower
+- * list will remain unchanged.
+- */
+-struct net_device *netdev_all_lower_get_next(struct net_device *dev, struct list_head **iter)
++static struct net_device *netdev_next_lower_dev(struct net_device *dev,
++						struct list_head **iter)
+ {
+ 	struct netdev_adjacent *lower;
+ 
+ 	lower = list_entry(*iter, struct netdev_adjacent, list);
+ 
+-	if (&lower->list == &dev->all_adj_list.lower)
++	if (&lower->list == &dev->adj_list.lower)
+ 		return NULL;
+ 
+ 	*iter = lower->list.next;
+ 
+ 	return lower->dev;
+ }
+-EXPORT_SYMBOL(netdev_all_lower_get_next);
+ 
+-/**
+- * netdev_all_lower_get_next_rcu - Get the next device from all
+- *				   lower neighbour list, RCU variant
+- * @dev: device
+- * @iter: list_head ** of the current position
+- *
+- * Gets the next netdev_adjacent from the dev's all lower neighbour
+- * list, starting from iter position. The caller must hold RCU read lock.
+- */
+-struct net_device *netdev_all_lower_get_next_rcu(struct net_device *dev,
+-						 struct list_head **iter)
++int netdev_walk_all_lower_dev(struct net_device *dev,
++			      int (*fn)(struct net_device *dev,
++					void *data),
++			      void *data)
++{
++	struct net_device *ldev;
++	struct list_head *iter;
++	int ret;
++
++	for (iter = &dev->adj_list.lower,
++	     ldev = netdev_next_lower_dev(dev, &iter);
++	     ldev;
++	     ldev = netdev_next_lower_dev(dev, &iter)) {
++		/* first is the lower device itself */
++		ret = fn(ldev, data);
++		if (ret)
++			return ret;
++
++		/* then look at all of its lower devices */
++		ret = netdev_walk_all_lower_dev(ldev, fn, data);
++		if (ret)
++			return ret;
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(netdev_walk_all_lower_dev);
++
++static struct net_device *netdev_next_lower_dev_rcu(struct net_device *dev,
++                           struct list_head **iter)
+ {
+ 	struct netdev_adjacent *lower;
+ 
+ 	lower = list_entry_rcu((*iter)->next, struct netdev_adjacent, list);
+ 
+-	if (&lower->list == &dev->all_adj_list.lower)
++	if (&lower->list == &dev->adj_list.lower)
+ 		return NULL;
+ 
+ 	*iter = &lower->list;
+ 
+ 	return lower->dev;
+ }
+-EXPORT_SYMBOL(netdev_all_lower_get_next_rcu);
++
++int netdev_walk_all_lower_dev_rcu(struct net_device *dev,
++				  int (*fn)(struct net_device *dev,
++					    void *data),
++				  void *data)
++{
++	struct net_device *ldev;
++	struct list_head *iter;
++	int ret;
++
++	for (iter = &dev->adj_list.lower,
++	     ldev = netdev_next_lower_dev_rcu(dev, &iter);
++	     ldev;
++	     ldev = netdev_next_lower_dev_rcu(dev, &iter)) {
++		/* first is the lower device itself */
++		ret = fn(ldev, data);
++		if (ret)
++			return ret;
++
++		/* then look at all of its lower devices */
++		ret = netdev_walk_all_lower_dev_rcu(ldev, fn, data);
++		if (ret)
++			return ret;
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(netdev_walk_all_lower_dev_rcu);
+ 
+ /**
+  * netdev_lower_get_first_private_rcu - Get the first ->private from the
+@@ -5689,7 +5784,6 @@ static inline bool netdev_adjacent_is_neigh_list(struct net_device *dev,
+ 
+ static int __netdev_adjacent_dev_insert(struct net_device *dev,
+ 					struct net_device *adj_dev,
+-					u16 ref_nr,
+ 					struct list_head *dev_list,
+ 					void *private, bool master)
+ {
+@@ -5699,7 +5793,9 @@ static int __netdev_adjacent_dev_insert(struct net_device *dev,
+ 	adj = __netdev_find_adj(adj_dev, dev_list);
+ 
+ 	if (adj) {
+-		adj->ref_nr += ref_nr;
++		adj->ref_nr += 1;
++		pr_debug("Insert adjacency: dev %s adj_dev %s adj->ref_nr %d\n",
++			 dev->name, adj_dev->name, adj->ref_nr);
+ 		return 0;
+ 	}
+ 
+@@ -5709,12 +5805,12 @@ static int __netdev_adjacent_dev_insert(struct net_device *dev,
+ 
+ 	adj->dev = adj_dev;
+ 	adj->master = master;
+-	adj->ref_nr = ref_nr;
++	adj->ref_nr = 1;
+ 	adj->private = private;
+ 	dev_hold(adj_dev);
+ 
+-	pr_debug("dev_hold for %s, because of link added from %s to %s\n",
+-		 adj_dev->name, dev->name, adj_dev->name);
++	pr_debug("Insert adjacency: dev %s adj_dev %s adj->ref_nr %d; dev_hold on %s\n",
++		 dev->name, adj_dev->name, adj->ref_nr, adj_dev->name);
+ 
+ 	if (netdev_adjacent_is_neigh_list(dev, adj_dev, dev_list)) {
+ 		ret = netdev_adjacent_sysfs_add(dev, adj_dev, dev_list);
+@@ -5753,6 +5849,9 @@ static void __netdev_adjacent_dev_remove(struct net_device *dev,
+ {
+ 	struct netdev_adjacent *adj;
+ 
++	pr_debug("Remove adjacency: dev %s adj_dev %s ref_nr %d\n",
++		 dev->name, adj_dev->name, ref_nr);
++
+ 	adj = __netdev_find_adj(adj_dev, dev_list);
+ 
+ 	if (!adj) {
+@@ -5763,8 +5862,9 @@ static void __netdev_adjacent_dev_remove(struct net_device *dev,
+ 	}
+ 
+ 	if (adj->ref_nr > ref_nr) {
+-		pr_debug("%s to %s ref_nr-%d = %d\n", dev->name, adj_dev->name,
+-			 ref_nr, adj->ref_nr-ref_nr);
++		pr_debug("adjacency: %s to %s ref_nr - %d = %d\n",
++			dev->name, adj_dev->name, ref_nr,
++			adj->ref_nr - ref_nr);
+ 		adj->ref_nr -= ref_nr;
+ 		return;
+ 	}
+@@ -5776,7 +5876,7 @@ static void __netdev_adjacent_dev_remove(struct net_device *dev,
+ 		netdev_adjacent_sysfs_del(dev, adj_dev->name, dev_list);
+ 
+ 	list_del_rcu(&adj->list);
+-	pr_debug("dev_put for %s, because link removed from %s to %s\n",
++	pr_debug("adjacency: dev_put for %s, because link removed from %s to %s\n",
+ 		 adj_dev->name, dev->name, adj_dev->name);
+ 	dev_put(adj_dev);
+ 	kfree_rcu(adj, rcu);
+@@ -5784,82 +5884,50 @@ static void __netdev_adjacent_dev_remove(struct net_device *dev,
+ 
+ static int __netdev_adjacent_dev_link_lists(struct net_device *dev,
+ 					    struct net_device *upper_dev,
+-					    u16 ref_nr,
+ 					    struct list_head *up_list,
+ 					    struct list_head *down_list,
+ 					    void *private, bool master)
+ {
+ 	int ret;
+ 
+-	ret = __netdev_adjacent_dev_insert(dev, upper_dev, ref_nr, up_list,
++	ret = __netdev_adjacent_dev_insert(dev, upper_dev, up_list,
+ 					   private, master);
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = __netdev_adjacent_dev_insert(upper_dev, dev, ref_nr, down_list,
++	ret = __netdev_adjacent_dev_insert(upper_dev, dev, down_list,
+ 					   private, false);
+ 	if (ret) {
+-		__netdev_adjacent_dev_remove(dev, upper_dev, ref_nr, up_list);
++		__netdev_adjacent_dev_remove(dev, upper_dev, 1, up_list);
+ 		return ret;
+ 	}
+ 
+ 	return 0;
+ }
+ 
+-static int __netdev_adjacent_dev_link(struct net_device *dev,
+-				      struct net_device *upper_dev,
+-				      u16 ref_nr)
+-{
+-	return __netdev_adjacent_dev_link_lists(dev, upper_dev, ref_nr,
+-						&dev->all_adj_list.upper,
+-						&upper_dev->all_adj_list.lower,
+-						NULL, false);
+-}
+-
+ static void __netdev_adjacent_dev_unlink_lists(struct net_device *dev,
+-					       struct net_device *upper_dev,
+-					       u16 ref_nr,
+-					       struct list_head *up_list,
+-					       struct list_head *down_list)
+-{
+-	__netdev_adjacent_dev_remove(dev, upper_dev, ref_nr, up_list);
+-	__netdev_adjacent_dev_remove(upper_dev, dev, ref_nr, down_list);
+-}
+-
+-static void __netdev_adjacent_dev_unlink(struct net_device *dev,
+-					 struct net_device *upper_dev,
+-					 u16 ref_nr)
++                          struct net_device *upper_dev,
++                          u16 ref_nr,
++                          struct list_head *up_list,
++                          struct list_head *down_list)
+ {
+-	__netdev_adjacent_dev_unlink_lists(dev, upper_dev, ref_nr,
+-					   &dev->all_adj_list.upper,
+-					   &upper_dev->all_adj_list.lower);
++   __netdev_adjacent_dev_remove(dev, upper_dev, ref_nr, up_list);
++   __netdev_adjacent_dev_remove(upper_dev, dev, ref_nr, down_list);
+ }
+ 
+ static int __netdev_adjacent_dev_link_neighbour(struct net_device *dev,
+ 						struct net_device *upper_dev,
+ 						void *private, bool master)
+ {
+-	int ret = __netdev_adjacent_dev_link(dev, upper_dev, 1);
+-
+-	if (ret)
+-		return ret;
+-
+-	ret = __netdev_adjacent_dev_link_lists(dev, upper_dev, 1,
+-					       &dev->adj_list.upper,
+-					       &upper_dev->adj_list.lower,
+-					       private, master);
+-	if (ret) {
+-		__netdev_adjacent_dev_unlink(dev, upper_dev, 1);
+-		return ret;
+-	}
+-
+-	return 0;
++	return __netdev_adjacent_dev_link_lists(dev, upper_dev,
++						&dev->adj_list.upper,
++						&upper_dev->adj_list.lower,
++						private, master);
+ }
+ 
+ static void __netdev_adjacent_dev_unlink_neighbour(struct net_device *dev,
+ 						   struct net_device *upper_dev)
+ {
+-	__netdev_adjacent_dev_unlink(dev, upper_dev, 1);
+ 	__netdev_adjacent_dev_unlink_lists(dev, upper_dev, 1,
+ 					   &dev->adj_list.upper,
+ 					   &upper_dev->adj_list.lower);
+@@ -5870,7 +5938,6 @@ static int __netdev_upper_dev_link(struct net_device *dev,
+ 				   void *upper_priv, void *upper_info)
+ {
+ 	struct netdev_notifier_changeupper_info changeupper_info;
+-	struct netdev_adjacent *i, *j, *to_i, *to_j;
+ 	int ret = 0;
+ 
+ 	ASSERT_RTNL();
+@@ -5879,10 +5946,10 @@ static int __netdev_upper_dev_link(struct net_device *dev,
+ 		return -EBUSY;
+ 
+ 	/* To prevent loops, check if dev is not upper device to upper_dev. */
+-	if (__netdev_find_adj(dev, &upper_dev->all_adj_list.upper))
++	if (netdev_has_upper_dev(upper_dev, dev))
+ 		return -EBUSY;
+ 
+-	if (__netdev_find_adj(upper_dev, &dev->adj_list.upper))
++	if (netdev_has_upper_dev(dev, upper_dev))
+ 		return -EEXIST;
+ 
+ 	if (master && netdev_master_upper_dev_get(dev))
+@@ -5904,80 +5971,15 @@ static int __netdev_upper_dev_link(struct net_device *dev,
+ 	if (ret)
+ 		return ret;
+ 
+-	/* Now that we linked these devs, make all the upper_dev's
+-	 * all_adj_list.upper visible to every dev's all_adj_list.lower an
+-	 * versa, and don't forget the devices itself. All of these
+-	 * links are non-neighbours.
+-	 */
+-	list_for_each_entry(i, &dev->all_adj_list.lower, list) {
+-		list_for_each_entry(j, &upper_dev->all_adj_list.upper, list) {
+-			pr_debug("Interlinking %s with %s, non-neighbour\n",
+-				 i->dev->name, j->dev->name);
+-			ret = __netdev_adjacent_dev_link(i->dev, j->dev, i->ref_nr);
+-			if (ret)
+-				goto rollback_mesh;
+-		}
+-	}
+-
+-	/* add dev to every upper_dev's upper device */
+-	list_for_each_entry(i, &upper_dev->all_adj_list.upper, list) {
+-		pr_debug("linking %s's upper device %s with %s\n",
+-			 upper_dev->name, i->dev->name, dev->name);
+-		ret = __netdev_adjacent_dev_link(dev, i->dev, i->ref_nr);
+-		if (ret)
+-			goto rollback_upper_mesh;
+-	}
+-
+-	/* add upper_dev to every dev's lower device */
+-	list_for_each_entry(i, &dev->all_adj_list.lower, list) {
+-		pr_debug("linking %s's lower device %s with %s\n", dev->name,
+-			 i->dev->name, upper_dev->name);
+-		ret = __netdev_adjacent_dev_link(i->dev, upper_dev, i->ref_nr);
+-		if (ret)
+-			goto rollback_lower_mesh;
+-	}
+-
+ 	ret = call_netdevice_notifiers_info(NETDEV_CHANGEUPPER, dev,
+ 					    &changeupper_info.info);
+ 	ret = notifier_to_errno(ret);
+ 	if (ret)
+-		goto rollback_lower_mesh;
++		goto rollback;
+ 
+ 	return 0;
+ 
+-rollback_lower_mesh:
+-	to_i = i;
+-	list_for_each_entry(i, &dev->all_adj_list.lower, list) {
+-		if (i == to_i)
+-			break;
+-		__netdev_adjacent_dev_unlink(i->dev, upper_dev, i->ref_nr);
+-	}
+-
+-	i = NULL;
+-
+-rollback_upper_mesh:
+-	to_i = i;
+-	list_for_each_entry(i, &upper_dev->all_adj_list.upper, list) {
+-		if (i == to_i)
+-			break;
+-		__netdev_adjacent_dev_unlink(dev, i->dev, i->ref_nr);
+-	}
+-
+-	i = j = NULL;
+-
+-rollback_mesh:
+-	to_i = i;
+-	to_j = j;
+-	list_for_each_entry(i, &dev->all_adj_list.lower, list) {
+-		list_for_each_entry(j, &upper_dev->all_adj_list.upper, list) {
+-			if (i == to_i && j == to_j)
+-				break;
+-			__netdev_adjacent_dev_unlink(i->dev, j->dev, i->ref_nr);
+-		}
+-		if (i == to_i)
+-			break;
+-	}
+-
++rollback:
+ 	__netdev_adjacent_dev_unlink_neighbour(dev, upper_dev);
+ 
+ 	return ret;
+@@ -6034,7 +6036,6 @@ void netdev_upper_dev_unlink(struct net_device *dev,
+ 			     struct net_device *upper_dev)
+ {
+ 	struct netdev_notifier_changeupper_info changeupper_info;
+-	struct netdev_adjacent *i, *j;
+ 	ASSERT_RTNL();
+ 
+ 	changeupper_info.upper_dev = upper_dev;
+@@ -6046,23 +6047,6 @@ void netdev_upper_dev_unlink(struct net_device *dev,
+ 
+ 	__netdev_adjacent_dev_unlink_neighbour(dev, upper_dev);
+ 
+-	/* Here is the tricky part. We must remove all dev's lower
+-	 * devices from all upper_dev's upper devices and vice
+-	 * versa, to maintain the graph relationship.
+-	 */
+-	list_for_each_entry(i, &dev->all_adj_list.lower, list)
+-		list_for_each_entry(j, &upper_dev->all_adj_list.upper, list)
+-			__netdev_adjacent_dev_unlink(i->dev, j->dev, i->ref_nr);
+-
+-	/* remove also the devices itself from lower/upper device
+-	 * list
+-	 */
+-	list_for_each_entry(i, &dev->all_adj_list.lower, list)
+-		__netdev_adjacent_dev_unlink(i->dev, upper_dev, i->ref_nr);
+-
+-	list_for_each_entry(i, &upper_dev->all_adj_list.upper, list)
+-		__netdev_adjacent_dev_unlink(dev, i->dev, i->ref_nr);
+-
+ 	call_netdevice_notifiers_info(NETDEV_CHANGEUPPER, dev,
+ 				      &changeupper_info.info);
+ }
+@@ -6879,6 +6863,7 @@ static void rollback_registered_many(struct list_head *head)
+ 
+ 		/* Notifier chain MUST detach us all upper devices. */
+ 		WARN_ON(netdev_has_any_upper_dev(dev));
++		WARN_ON(netdev_has_any_lower_dev(dev));
+ 
+ 		/* Remove entries from kobject tree */
+ 		netdev_unregister_kobject(dev);
+@@ -7757,8 +7742,6 @@ struct net_device *alloc_netdev_mqs(int sizeof_priv, const char *name,
+ 	INIT_LIST_HEAD(&dev->link_watch_list);
+ 	INIT_LIST_HEAD(&dev->adj_list.upper);
+ 	INIT_LIST_HEAD(&dev->adj_list.lower);
+-	INIT_LIST_HEAD(&dev->all_adj_list.upper);
+-	INIT_LIST_HEAD(&dev->all_adj_list.lower);
+ 	INIT_LIST_HEAD(&dev->ptype_all);
+ 	INIT_LIST_HEAD(&dev->ptype_specific);
+ #ifdef CONFIG_NET_SCHED
+-- 
+2.18.0
+
