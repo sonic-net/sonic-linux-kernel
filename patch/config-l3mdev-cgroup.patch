@@ -19,3 +19,16 @@ index b7bcf15..a8d64a7 100644
  # CONFIG_NET_NCSI is not set
  CONFIG_RPS=y
  CONFIG_RFS_ACCEL=y
+diff --git a/debian/build/build_armhf_none_armmp/.config b/debian/build/build_armhf_none_armmp/.config
+index 32a2698..d50fff8 100644
+--- a/debian/build/build_armhf_none_armmp/.config
++++ b/debian/build/build_armhf_none_armmp/.config
+@@ -1544,7 +1544,7 @@ CONFIG_MPLS_IPTUNNEL=m
+ # CONFIG_HSR is not set
+ CONFIG_NET_SWITCHDEV=y
+ CONFIG_NET_L3_MASTER_DEV=y
+-# CONFIG_CGROUP_L3MDEV is not set
++CONFIG_CGROUP_L3MDEV=y
+ # CONFIG_NET_NCSI is not set
+ CONFIG_RPS=y
+ CONFIG_RFS_ACCEL=y

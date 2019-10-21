@@ -19,3 +19,18 @@ index 5bc6c67..0a94577 100644
  CONFIG_CB710_CORE=m
  # CONFIG_CB710_DEBUG is not set
  CONFIG_CB710_DEBUG_ASSUMPTIONS=y
+diff --git a/debian/build/build_armhf_none_armmp/.config b/debian/build/build_armhf_none_armmp/.config
+index 69288eb..6224070 100644
+--- a/debian/build/build_armhf_none_armmp/.config
++++ b/debian/build/build_armhf_none_armmp/.config
+@@ -2019,8 +2019,8 @@ CONFIG_EEPROM_LEGACY=m
+ CONFIG_EEPROM_MAX6875=m
+ CONFIG_EEPROM_93CX6=m
+ # CONFIG_EEPROM_93XX46 is not set
+-# CONFIG_EEPROM_SFF_8436 is not set
+-# CONFIG_EEPROM_OPTOE is not set
++CONFIG_EEPROM_SFF_8436=m
++CONFIG_EEPROM_OPTOE=m
+ CONFIG_CB710_CORE=m
+ # CONFIG_CB710_DEBUG is not set
+ CONFIG_CB710_DEBUG_ASSUMPTIONS=y
