@@ -83,6 +83,11 @@ linux-4.13-thermal-intel_pch_thermal-Fix-enable-check-on.patch
 0045-mlxsw-minimal-Add-validation-for-FW-version.patch
 0046-mlxsw-core-Extend-QSFP-EEPROM-supported-size-for-eth.patch
 0047-mfd-lpc-ich-extend-with-additional-chipsets-support.patch
+0048-mlxsw-core-Skip-thermal-zone-operations-initializati.patch
+0049-thermal-Fix-use-after-free-when-unregistering-therma.patch
+0050-mlxsw-core-Drop-creation-of-thermal-to-hwmon-sysfs-i.patch
+0051-mlxsw-core-Skip-thermal-zones-threshold-setting-duri.patch
+0052-platform-x86-mlx-platform-Add-more-detention-for-sys.patch
 linux-4.16-firmware-dmi-handle-missing-DMI-data-gracefully.patch
 mellanox-backport-introduce-psample-a-new-genetlink-channel.patch
 mellanox-backport-introduce-tc-sample-action.patch
