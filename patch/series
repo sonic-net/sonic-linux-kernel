@@ -90,7 +90,8 @@ mellanox-backport-introduce-psample-a-new-genetlink-channel.patch
 mellanox-backport-introduce-tc-sample-action.patch
 kernel-enable-psample-and-act_sample-drivers.patch
 0042-Marvell-a385-Micron-4G-flash-support.patch
-0001-armhf-mandatory-configs-for-boot.patch
+0042-armhf-additional-configs.patch
+0042-armhf-proc-dma-kconfig.patch
 0000-net-Fix-netdev-adjacency-tracking.patch
 0000-net-ipv6-ll-anycast-mcast-routes-on-dev.patch
 #

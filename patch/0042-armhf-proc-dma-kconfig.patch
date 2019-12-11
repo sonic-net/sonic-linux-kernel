@@ -1,0 +1,22 @@
+From b8d69b46ddc0f78d2965e426da48082202d030a3 Mon Nov 19 00:00:00 2001
+From: Antony Rheneus <arheneus@marvell.com>
+Date: Tue, 19 Nov 2019 15:45:07 +0530
+Subject: [PATCH] armhf proc dma Kconfig
+
+---
+ arch/arm/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm/Kconfig b/arch/arm/Kconfig
+index 32a2698..d50fff8 100644
+--- a/arch/arm/Kconfig
++++ b/arch/arm/Kconfig
+@@ -219,7 +219,7 @@
+ 	bool
+ 
+ config GENERIC_ISA_DMA
+-	bool
++	def_bool y
+ 
+ config FIQ
+ 	bool

@@ -1,0 +1,89 @@
+From a961464da6c88aee4d94af4038c748a1e8a1f412 Mon Sep 17 00:00:00 2001
+From: Antony Rheneus <arheneus@marvell.com>
+Date: Thu, 17 Oct 2019 18:57:48 +0530
+Subject: [PATCH] armhf mandatory configs for boot
+
+---
+ debian/build/build_armhf_none_armmp/.config | 53 ++++++++++++++++-------------
+ 1 file changed, 30 insertions(+), 23 deletions(-)
+
+diff --git a/debian/build/build_armhf_none_armmp/.config b/debian/build/build_armhf_none_armmp/.config
+index e997934..69288eb 100644
+--- a/debian/build/build_armhf_none_armmp/.config
++++ b/debian/build/build_armhf_none_armmp/.config
+@@ -1793,16 +1793,16 @@ CONFIG_PROC_EVENTS=y
+ CONFIG_MTD=y
+ # CONFIG_MTD_TESTS is not set
+ # CONFIG_MTD_REDBOOT_PARTS is not set
+-# CONFIG_MTD_CMDLINE_PARTS is not set
++CONFIG_MTD_CMDLINE_PARTS=y
+ # CONFIG_MTD_AFS_PARTS is not set
+-CONFIG_MTD_OF_PARTS=m
+-CONFIG_MTD_AR7_PARTS=m
++CONFIG_MTD_OF_PARTS=y
++CONFIG_MTD_AR7_PARTS=y
+ 
+ #
+ # User Modules And Translation Layers
+ #
+-CONFIG_MTD_BLKDEVS=m
+-CONFIG_MTD_BLOCK=m
++CONFIG_MTD_BLKDEVS=y
++CONFIG_MTD_BLOCK=y
+ CONFIG_MTD_BLOCK_RO=m
+ # CONFIG_FTL is not set
+ # CONFIG_NFTL is not set
+@@ -1817,8 +1817,10 @@ CONFIG_MTD_SWAP=m
+ #
+ # RAM/ROM/Flash chip drivers
+ #
+-# CONFIG_MTD_CFI is not set
++CONFIG_MTD_CFI=y
+ # CONFIG_MTD_JEDECPROBE is not set
++CONFIG_MTD_GEN_PROBE=y
++# CONFIG_MTD_CFI_ADV_OPTIONS is not set
+ CONFIG_MTD_MAP_BANK_WIDTH_1=y
+ CONFIG_MTD_MAP_BANK_WIDTH_2=y
+ CONFIG_MTD_MAP_BANK_WIDTH_4=y
+@@ -1829,6 +1831,10 @@ CONFIG_MTD_CFI_I1=y
+ CONFIG_MTD_CFI_I2=y
+ # CONFIG_MTD_CFI_I4 is not set
+ # CONFIG_MTD_CFI_I8 is not set
++CONFIG_MTD_CFI_INTELEXT=y
++CONFIG_MTD_CFI_AMDSTD=y
++CONFIG_MTD_CFI_STAA=y
++CONFIG_MTD_CFI_UTIL=y
+ CONFIG_MTD_RAM=m
+ # CONFIG_MTD_ROM is not set
+ # CONFIG_MTD_ABSENT is not set
+@@ -1850,8 +1856,8 @@ CONFIG_MTD_PLATRAM=m
+ CONFIG_MTD_DATAFLASH=m
+ # CONFIG_MTD_DATAFLASH_WRITE_VERIFY is not set
+ # CONFIG_MTD_DATAFLASH_OTP is not set
+-CONFIG_MTD_M25P80=m
+-CONFIG_MTD_SST25L=m
++CONFIG_MTD_M25P80=y
++CONFIG_MTD_SST25L=y
+ # CONFIG_MTD_SLRAM is not set
+ # CONFIG_MTD_PHRAM is not set
+ # CONFIG_MTD_MTDRAM is not set
+@@ -1878,7 +1884,7 @@ CONFIG_MTD_NAND_RICOH=m
+ # CONFIG_MTD_NAND_DISKONCHIP is not set
+ # CONFIG_MTD_NAND_DOCG4 is not set
+ CONFIG_MTD_NAND_CAFE=m
+-CONFIG_MTD_NAND_PXA3xx=m
++CONFIG_MTD_NAND_PXA3xx=y
+ CONFIG_MTD_NAND_NANDSIM=m
+ CONFIG_MTD_NAND_GPMI_NAND=m
+ # CONFIG_MTD_NAND_BRCMNAND is not set
+@@ -3824,7 +3830,7 @@ CONFIG_SENSORS_MAX1668=m
+ CONFIG_SENSORS_MAX6639=m
+ CONFIG_SENSORS_MAX6642=m
+ CONFIG_SENSORS_MAX6650=m
+-# CONFIG_SENSORS_MAX6620 is not set
++CONFIG_SENSORS_MAX6620=m
+ # CONFIG_SENSORS_MAX6697 is not set
+ # CONFIG_SENSORS_MAX31790 is not set
+ # CONFIG_SENSORS_MCP3021 is not set
+2.7.4
+
