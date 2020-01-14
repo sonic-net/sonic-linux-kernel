@@ -92,6 +92,7 @@ linux-4.16-firmware-dmi-handle-missing-DMI-data-gracefully.patch
 mellanox-backport-introduce-psample-a-new-genetlink-channel.patch
 mellanox-backport-introduce-tc-sample-action.patch
 kernel-enable-psample-and-act_sample-drivers.patch
+net-psample-fix-skb-over-panic.patch
 0000-net-Fix-netdev-adjacency-tracking.patch
 0000-net-ipv6-ll-anycast-mcast-routes-on-dev.patch
 0001-net-ipv6-Allow-shorthand-delete-of-all-nexthops-in-m.patch
