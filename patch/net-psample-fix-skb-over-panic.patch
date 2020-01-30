@@ -1,6 +1,7 @@
 From 7eb9d7675c08937cd11d32b0b40442d4d731c5ee Mon Sep 17 00:00:00 2001
+
 From: Nikolay Aleksandrov <nikolay@cumulusnetworks.com>
-Date: Wed, 27 Nov 2019 00:16:44 +0200
+
 Subject: [PATCH] net: psample: fix skb_over_panic
 
 We need to calculate the skb size correctly otherwise we risk triggering
@@ -74,14 +75,14 @@ Fixes: 6ae0a6286171 ("net: Introduce psample, a new genetlink channel for packet
 Signed-off-by: Nikolay Aleksandrov <nikolay@cumulusnetworks.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
 ---
- net/psample/psample.c | 2 +-
+ net/psample/psample.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/net/psample/psample.c b/net/psample/psample.c
-index a6ceb0533b5bb..6f2fbc6b9eb2e 100644
+index 64f95624f..13314dea4 100644
 --- a/net/psample/psample.c
 +++ b/net/psample/psample.c
-@@ -229,7 +229,7 @@ void psample_sample_packet(struct psample_group *group, struct sk_buff *skb,
+@@ -223,7 +223,7 @@ void psample_sample_packet(struct psample_group *group, struct sk_buff *skb,
  		data_len = PSAMPLE_MAX_PACKET_SIZE - meta_len - NLA_HDRLEN
  			    - NLA_ALIGNTO;
  

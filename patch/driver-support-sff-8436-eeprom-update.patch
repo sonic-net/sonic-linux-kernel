@@ -9,7 +9,7 @@ Support newer kernel and remove eeprom_class dependency
  2 files changed, 7 insertions(+), 22 deletions(-)
 
 diff --git a/drivers/misc/eeprom/sff_8436_eeprom.c b/drivers/misc/eeprom/sff_8436_eeprom.c
-index 0b6bf31..f5627bf 100644
+index 0b6bf312e..f5627bf85 100644
 --- a/drivers/misc/eeprom/sff_8436_eeprom.c
 +++ b/drivers/misc/eeprom/sff_8436_eeprom.c
 @@ -82,7 +82,6 @@
@@ -120,7 +120,7 @@ index 0b6bf31..f5627bf 100644
  };
  
 diff --git a/include/linux/i2c/sff-8436.h b/include/linux/i2c/sff-8436.h
-index cd46896..4df48ad 100644
+index cd4689651..4df48ad89 100644
 --- a/include/linux/i2c/sff-8436.h
 +++ b/include/linux/i2c/sff-8436.h
 @@ -3,7 +3,6 @@

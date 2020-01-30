@@ -11,10 +11,10 @@ From: Cumulus Networks <support@cumulusnetworks.com>
  create mode 100644 drivers/hwmon/max6620.c
 
 diff --git a/drivers/hwmon/Kconfig b/drivers/hwmon/Kconfig
-index 45cef3d..62d3be7 100644
+index c7adaca2a..d0b4b1b34 100644
 --- a/drivers/hwmon/Kconfig
 +++ b/drivers/hwmon/Kconfig
-@@ -875,6 +875,16 @@ config SENSORS_MAX6650
+@@ -905,6 +905,16 @@ config SENSORS_MAX6650
  	  This driver can also be built as a module.  If so, the module
  	  will be called max6650.
  
@@ -32,10 +32,10 @@ index 45cef3d..62d3be7 100644
  	tristate "Maxim MAX6697 and compatibles"
  	depends on I2C
 diff --git a/drivers/hwmon/Makefile b/drivers/hwmon/Makefile
-index aecf4ba..348bb1d 100644
+index 93f7f41ea..6eca4ea6d 100644
 --- a/drivers/hwmon/Makefile
 +++ b/drivers/hwmon/Makefile
-@@ -118,6 +118,7 @@ obj-$(CONFIG_SENSORS_MAX31722)	+= max31722.o
+@@ -124,6 +124,7 @@ obj-$(CONFIG_SENSORS_MAX6621)	+= max6621.o
  obj-$(CONFIG_SENSORS_MAX6639)	+= max6639.o
  obj-$(CONFIG_SENSORS_MAX6642)	+= max6642.o
  obj-$(CONFIG_SENSORS_MAX6650)	+= max6650.o
@@ -45,7 +45,7 @@ index aecf4ba..348bb1d 100644
  obj-$(CONFIG_SENSORS_MC13783_ADC)+= mc13783-adc.o
 diff --git a/drivers/hwmon/max6620.c b/drivers/hwmon/max6620.c
 new file mode 100644
-index 0000000..3c337c7
+index 000000000..3c337c7b0
 --- /dev/null
 +++ b/drivers/hwmon/max6620.c
 @@ -0,0 +1,702 @@

@@ -8,10 +8,10 @@ From: wadelnn <wadelnn@users.noreply.github.com>
  1 file changed, 6 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/i2c/muxes/i2c-mux-pca954x.c b/drivers/i2c/muxes/i2c-mux-pca954x.c
-index 9c4ac26..7dd92a2 100644
+index 24bd9275f..2906afaf5 100644
 --- a/drivers/i2c/muxes/i2c-mux-pca954x.c
 +++ b/drivers/i2c/muxes/i2c-mux-pca954x.c
-@@ -120,6 +120,11 @@ static const struct i2c_device_id pca954x_id[] = {
+@@ -196,6 +196,11 @@ static const struct i2c_device_id pca954x_id[] = {
  };
  MODULE_DEVICE_TABLE(i2c, pca954x_id);
  
@@ -23,7 +23,7 @@ index 9c4ac26..7dd92a2 100644
  #ifdef CONFIG_OF
  static const struct of_device_id pca954x_of_match[] = {
  	{ .compatible = "nxp,pca9540", .data = &chips[pca_9540] },
-@@ -273,7 +278,7 @@ static int pca954x_probe(struct i2c_client *client,
+@@ -437,7 +442,7 @@ static int pca954x_probe(struct i2c_client *client,
  			idle_disconnect_pd = pdata->modes[num].deselect_on_exit;
  		}
  		data->deselect |= (idle_disconnect_pd ||
@@ -31,4 +31,4 @@ index 9c4ac26..7dd92a2 100644
 +				   idle_disconnect_dt || force_deselect_on_exit) << num;
  
  		ret = i2c_mux_add_adapter(muxc, force, num, class);
- 
+ 		if (ret)

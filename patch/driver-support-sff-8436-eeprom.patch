@@ -13,12 +13,12 @@ From: Cumulus Networks <support@cumulusnetworks.com>
  create mode 100644 include/linux/i2c/sff-8436.h
 
 diff --git a/drivers/misc/eeprom/Kconfig b/drivers/misc/eeprom/Kconfig
-index c4e41c2..1df5e28 100644
+index d382b13c2..e3acc9b2a 100644
 --- a/drivers/misc/eeprom/Kconfig
 +++ b/drivers/misc/eeprom/Kconfig
-@@ -100,4 +100,16 @@ config EEPROM_DIGSY_MTC_CFG
- 
- 	  If unsure, say N.
+@@ -111,4 +111,16 @@ config EEPROM_IDT_89HPESX
+ 	  This driver can also be built as a module. If so, the module
+ 	  will be called idt_89hpesx.
  
 +config EEPROM_SFF_8436
 +	tristate "SFF-8436 QSFP EEPROMs support"
@@ -34,17 +34,17 @@ index c4e41c2..1df5e28 100644
 +
  endmenu
 diff --git a/drivers/misc/eeprom/Makefile b/drivers/misc/eeprom/Makefile
-index fc1e81d..db9097c 100644
+index 2aab60ef3..6a6d90ffe 100644
 --- a/drivers/misc/eeprom/Makefile
 +++ b/drivers/misc/eeprom/Makefile
-@@ -5,3 +5,4 @@ obj-$(CONFIG_EEPROM_MAX6875)	+= max6875.o
- obj-$(CONFIG_EEPROM_93CX6)	+= eeprom_93cx6.o
+@@ -7,3 +7,4 @@ obj-$(CONFIG_EEPROM_93CX6)	+= eeprom_93cx6.o
  obj-$(CONFIG_EEPROM_93XX46)	+= eeprom_93xx46.o
  obj-$(CONFIG_EEPROM_DIGSY_MTC_CFG) += digsy_mtc_eeprom.o
+ obj-$(CONFIG_EEPROM_IDT_89HPESX) += idt_89hpesx.o
 +obj-$(CONFIG_EEPROM_SFF_8436)	+= sff_8436_eeprom.o
 diff --git a/drivers/misc/eeprom/sff_8436_eeprom.c b/drivers/misc/eeprom/sff_8436_eeprom.c
 new file mode 100644
-index 0000000..0b6bf31
+index 000000000..0b6bf312e
 --- /dev/null
 +++ b/drivers/misc/eeprom/sff_8436_eeprom.c
 @@ -0,0 +1,995 @@
@@ -1045,7 +1045,7 @@ index 0000000..0b6bf31
 +MODULE_LICENSE("GPL");
 diff --git a/include/linux/i2c/sff-8436.h b/include/linux/i2c/sff-8436.h
 new file mode 100644
-index 0000000..cd46896
+index 000000000..cd4689651
 --- /dev/null
 +++ b/include/linux/i2c/sff-8436.h
 @@ -0,0 +1,33 @@

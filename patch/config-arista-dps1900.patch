@@ -8,14 +8,14 @@ From: gulv <gulv@microsoft.com>
  1 file changed, 1 insertion(+)
 
 diff --git a/debian/build/build_amd64_none_amd64/.config b/debian/build/build_amd64_none_amd64/.config
-index 29bcb1f..d59a9e0 100644
+index 9b25a9ed9..81d8f192a 100644
 --- a/debian/build/build_amd64_none_amd64/.config
 +++ b/debian/build/build_amd64_none_amd64/.config
-@@ -3956,6 +3956,7 @@ CONFIG_SENSORS_DNI_DPS460=m
- CONFIG_SENSORS_TPS53679=m
- CONFIG_SENSORS_UCD9000=m
- CONFIG_SENSORS_UCD9200=m
+@@ -4198,6 +4198,7 @@ CONFIG_SENSORS_DS620=m
+ CONFIG_SENSORS_DS1621=m
+ CONFIG_SENSORS_DELL_SMM=m
+ CONFIG_SENSORS_DNI_DPS460=m
 +CONFIG_SENSORS_DPS1900=m
- # CONFIG_SENSORS_ZL6100 is not set
- # CONFIG_SENSORS_SHT15 is not set
- CONFIG_SENSORS_SHT21=m
+ CONFIG_SENSORS_I5K_AMB=m
+ CONFIG_SENSORS_F71805F=m
+ CONFIG_SENSORS_F71882FG=m

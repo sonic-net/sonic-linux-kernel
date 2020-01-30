@@ -1,6 +1,7 @@
 From 556c452dcf5706a951ef490327b74bd27a411693 Mon Sep 17 00:00:00 2001
+
 From: Don Bollinger <don@thebollingers.org>
-Date: Fri, 9 Mar 2018 18:22:33 -0800
+
 Subject: [PATCH] drivers/misc/eeprom:  Improve EOF handling
 
    Change -ENXIO error to return zero, which user space sees as EOF
@@ -9,11 +10,11 @@ Subject: [PATCH] drivers/misc/eeprom:  Improve EOF handling
 
 Signed-off-by: Don Bollinger
 ---
- drivers/misc/eeprom/optoe.c | 52 +++++++++++++++++++++++++++++++--------------
+ drivers/misc/eeprom/optoe.c |   52 ++++++++++++++++++++++++++++++-------------
  1 file changed, 36 insertions(+), 16 deletions(-)
 
 diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
-index 7425bf6..b3064f0 100644
+index 7425bf60e..b3064f02b 100644
 --- a/drivers/misc/eeprom/optoe.c
 +++ b/drivers/misc/eeprom/optoe.c
 @@ -158,6 +158,7 @@ struct optoe_platform_data {
@@ -144,6 +145,3 @@ index 7425bf6..b3064f0 100644
  }
  
  static ssize_t optoe_bin_read(struct file *filp, struct kobject *kobj,
--- 
-2.11.0
-

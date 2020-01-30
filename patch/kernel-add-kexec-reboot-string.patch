@@ -8,10 +8,10 @@ Subject: [PATCH] Add kexec reboot string
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/kernel/kexec_core.c b/kernel/kexec_core.c
-index 5616755..ac8a106 100644
+index 23a83a4da..6c05e6516 100644
 --- a/kernel/kexec_core.c
 +++ b/kernel/kexec_core.c
-@@ -1531,7 +1531,7 @@ int kernel_kexec(void)
+@@ -1154,7 +1154,7 @@ int kernel_kexec(void)
  #endif
  	{
  		kexec_in_progress = true;

@@ -14,10 +14,10 @@ Signed-off-by: Samuel Angebault <staphylo@arista.com>
  1 file changed, 9 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/i2c/busses/i2c-piix4.c b/drivers/i2c/busses/i2c-piix4.c
-index e34d82e..563a63c 100644
+index 90946a8b9..2e1f55aee 100644
 --- a/drivers/i2c/busses/i2c-piix4.c
 +++ b/drivers/i2c/busses/i2c-piix4.c
-@@ -731,8 +731,16 @@ static int piix4_add_adapters_sb800(struct pci_dev *dev, unsigned short smba)
+@@ -869,8 +869,16 @@ static int piix4_add_adapters_sb800(struct pci_dev *dev, unsigned short smba,
  	struct i2c_piix4_adapdata *adapdata;
  	int port;
  	int retval;
@@ -32,6 +32,6 @@ index e34d82e..563a63c 100644
 +		adapters = 1;
 +
 +	for (port = 0; port < adapters; port++) {
- 		retval = piix4_add_adapter(dev, smba, true, port,
+ 		retval = piix4_add_adapter(dev, smba, true, port, notify_imc,
  					   piix4_main_port_names_sb800[port],
  					   &piix4_main_adapters[port]);

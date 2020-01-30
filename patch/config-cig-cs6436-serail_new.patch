@@ -1,10 +1,22 @@
---- a/debian/build/build_amd64_none_amd64/.config       2019-02-01 22:54:58.401770842 +0800
-+++ b/debian/build/build_amd64_none_amd64/.config       2019-02-01 23:00:57.297956961 +0800
-@@ -3477,7 +3477,7 @@ CONFIG_SERIAL_8250_RSA=y
- # CONFIG_SERIAL_8250_FSL is not set
+enale CONFIG_SERIAL_8250_LPSS
+
+From: Guohan <gulv@microsoft.com>
+
+
+---
+ debian/build/build_amd64_none_amd64/.config |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/debian/build/build_amd64_none_amd64/.config b/debian/build/build_amd64_none_amd64/.config
+index cba593aa3..978a6d49d 100644
+--- a/debian/build/build_amd64_none_amd64/.config
++++ b/debian/build/build_amd64_none_amd64/.config
+@@ -3770,7 +3770,7 @@ CONFIG_SERIAL_8250_SHARE_IRQ=y
+ CONFIG_SERIAL_8250_RSA=y
  CONFIG_SERIAL_8250_DW=y
  # CONFIG_SERIAL_8250_RT288X is not set
 -# CONFIG_SERIAL_8250_LPSS is not set
 +CONFIG_SERIAL_8250_LPSS=m
  CONFIG_SERIAL_8250_MID=y
  CONFIG_SERIAL_8250_MOXA=m
+ 

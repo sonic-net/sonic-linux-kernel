@@ -2,17 +2,17 @@
 SHELL = /bin/bash
 .SHELLFLAGS += -e
 
-KERNEL_ABI_MINOR_VERSION = 2
-KVERSION_SHORT ?= 4.9.0-11-$(KERNEL_ABI_MINOR_VERSION)
+KERNEL_ABI_MINOR_VERSION = 0
+KVERSION_SHORT ?= 4.19.0-6-$(KERNEL_ABI_MINOR_VERSION)
 KVERSION ?= $(KVERSION_SHORT)-amd64
-KERNEL_VERSION ?= 4.9.189
-KERNEL_SUBVERSION ?= 3+deb9u2
+KERNEL_VERSION ?= 4.19.67
+KERNEL_SUBVERSION ?= 2+deb10u2
 kernel_procure_method ?= build
 CONFIGURED_ARCH ?= amd64
 
 LINUX_HEADER_COMMON = linux-headers-$(KVERSION_SHORT)-common_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_all.deb
 LINUX_HEADER_AMD64 = linux-headers-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_$(CONFIGURED_ARCH).deb
-LINUX_IMAGE = linux-image-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_$(CONFIGURED_ARCH).deb
+LINUX_IMAGE = linux-image-$(KVERSION)-unsigned_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_$(CONFIGURED_ARCH).deb
 
 MAIN_TARGET = $(LINUX_HEADER_COMMON)
 DERIVED_TARGETS = $(LINUX_HEADER_AMD64) $(LINUX_IMAGE)
@@ -48,9 +48,9 @@ ORIG_FILE = linux_$(KERNEL_VERSION).orig.tar.xz
 DEBIAN_FILE = linux_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION).debian.tar.xz
 BUILD_DIR=linux-$(KERNEL_VERSION)
 
-DSC_FILE_URL = "http://security.debian.org/debian-security/pool/updates/main/l/linux/linux_4.9.189-3+deb9u2.dsc"
-DEBIAN_FILE_URL = "http://security.debian.org/debian-security/pool/updates/main/l/linux/linux_4.9.189-3+deb9u2.debian.tar.xz"
-ORIG_FILE_URL = "http://security.debian.org/debian-security/pool/updates/main/l/linux/linux_4.9.189.orig.tar.xz"
+DSC_FILE_URL = "http://security.debian.org/debian-security/pool/updates/main/l/linux/linux_4.19.67-2+deb10u2.dsc"
+DEBIAN_FILE_URL = "http://security.debian.org/debian-security/pool/updates/main/l/linux/linux_4.19.67-2+deb10u2.debian.tar.xz"
+ORIG_FILE_URL = "http://security.debian.org/debian-security/pool/updates/main/l/linux/linux_4.19.67.orig.tar.xz"
 
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Obtaining the Debian kernel source
@@ -74,13 +74,13 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	debian/bin/gencontrol.py
 
 	# generate linux build file for amd64_none_amd64
-	fakeroot make -f debian/rules.gen setup_armhf_none_armmp
-	fakeroot make -f debian/rules.gen setup_arm64_none
+	# fakeroot make -f debian/rules.gen setup_armhf_none_armmp
+	# fakeroot make -f debian/rules.gen setup_arm64_none
 	fakeroot make -f debian/rules.gen setup_amd64_none_amd64
 
 	# Applying patches and configuration changes
-	git add debian/build/build_armhf_none_armmp/.config -f
-	git add debian/build/build_arm64_none_arm64/.config -f
+	# git add debian/build/build_armhf_none_armmp/.config -f
+	# git add debian/build/build_arm64_none_arm64/.config -f
 	git add debian/build/build_amd64_none_amd64/.config -f
 	git add debian/config.defines.dump -f
 	git add debian/control -f

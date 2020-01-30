@@ -1,8 +1,20 @@
+Fix false alarm when writing convrate on max6658
+
+We found that the max6658 sometimes issues a false alarm when its
+convrate is changed, with the current hwmon driver. This workaround
+will fix it by stopping the conversion before setting the convrate.
+
+From: byu343 <byu343@github>
+
+---
+ drivers/hwmon/lm90.c |   52 ++++++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 48 insertions(+), 4 deletions(-)
+
 diff --git a/drivers/hwmon/lm90.c b/drivers/hwmon/lm90.c
-index 841f2428..d3e1cc2e 100644
+index c2f411c29..9d1a68d99 100644
 --- a/drivers/hwmon/lm90.c
 +++ b/drivers/hwmon/lm90.c
-@@ -486,6 +486,33 @@ static inline int lm90_select_remote_channel(struct i2c_client *client,
+@@ -580,6 +580,33 @@ static inline int lm90_select_remote_channel(struct i2c_client *client,
  	return 0;
  }
  
@@ -36,7 +48,7 @@ index 841f2428..d3e1cc2e 100644
  /*
   * Set conversion rate.
   * client->update_lock must be held when calling this function (unless we are
-@@ -506,7 +533,11 @@ static int lm90_set_convrate(struct i2c_client *client, struct lm90_data *data,
+@@ -600,7 +627,11 @@ static int lm90_set_convrate(struct i2c_client *client, struct lm90_data *data,
  		if (interval >= update_interval * 3 / 4)
  			break;
  
@@ -49,7 +61,7 @@ index 841f2428..d3e1cc2e 100644
  	data->update_interval = DIV_ROUND_CLOSEST(update_interval, 64);
  	return err;
  }
-@@ -1512,8 +1543,11 @@ static void lm90_restore_conf(void *_data)
+@@ -1606,8 +1637,11 @@ static void lm90_restore_conf(void *_data)
  	struct i2c_client *client = data->client;
  
  	/* Restore initial configuration */
@@ -63,7 +75,7 @@ index 841f2428..d3e1cc2e 100644
  	i2c_smbus_write_byte_data(client, LM90_REG_W_CONFIG1,
  				  data->config_orig);
  }
-@@ -1521,6 +1555,7 @@ static void lm90_restore_conf(void *_data)
+@@ -1615,6 +1649,7 @@ static void lm90_restore_conf(void *_data)
  static int lm90_init_client(struct i2c_client *client, struct lm90_data *data)
  {
  	int config, convrate;
@@ -71,7 +83,7 @@ index 841f2428..d3e1cc2e 100644
  
  	convrate = lm90_read_reg(client, LM90_REG_R_CONVRATE);
  	if (convrate < 0)
-@@ -1530,12 +1565,21 @@ static int lm90_init_client(struct i2c_client *client, struct lm90_data *data)
+@@ -1624,12 +1659,21 @@ static int lm90_init_client(struct i2c_client *client, struct lm90_data *data)
  	/*
  	 * Start the conversions.
  	 */

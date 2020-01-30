@@ -8,7 +8,7 @@ From: Shuotian Cheng <shuche@microsoft.com>
  1 file changed, 11 insertions(+), 14 deletions(-)
 
 diff --git a/drivers/hwmon/max6620.c b/drivers/hwmon/max6620.c
-index 76c1f7f..fb49195 100644
+index 76c1f7f54..fb4919520 100644
 --- a/drivers/hwmon/max6620.c
 +++ b/drivers/hwmon/max6620.c
 @@ -183,7 +183,7 @@ static struct i2c_driver max6620_driver = {

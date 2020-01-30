@@ -1,18 +1,18 @@
-Subject: [PATCH] Add 2 more parameter for tg3.c. 
+Subject: [PATCH] Add 2 more parameter for tg3.c.
 
-1. short_preamble: Enable mdio traffic to external PHYs(i.g. BCM54616). 
+1. short_preamble: Enable mdio traffic to external PHYs(i.g. BCM54616).
 2. bcm5718s_reset: Enable BCM5718S reset support.
 
 Signed-off-by: roy_lee <roy_lee@accton.com>
 ---
- drivers/net/ethernet/broadcom/tg3.c | 18 ++++++++++++++++++
+ drivers/net/ethernet/broadcom/tg3.c |   18 ++++++++++++++++++
  1 file changed, 18 insertions(+)
 
 diff --git a/drivers/net/ethernet/broadcom/tg3.c b/drivers/net/ethernet/broadcom/tg3.c
-index d658255..d31c395 100644
+index 8b543a27b..7bc30a48b 100644
 --- a/drivers/net/ethernet/broadcom/tg3.c
 +++ b/drivers/net/ethernet/broadcom/tg3.c
-@@ -234,6 +234,14 @@ static int tg3_debug = -1;	/* -1 == use TG3_DEF_MSG_ENABLE as value */
+@@ -242,6 +242,14 @@ static int tg3_debug = -1;	/* -1 == use TG3_DEF_MSG_ENABLE as value */
  module_param(tg3_debug, int, 0);
  MODULE_PARM_DESC(tg3_debug, "Tigon3 bitmapped debugging message enable value");
  
@@ -27,7 +27,7 @@ index d658255..d31c395 100644
  #define TG3_DRV_DATA_FLAG_10_100_ONLY	0x0001
  #define TG3_DRV_DATA_FLAG_5705_10_100	0x0002
  
-@@ -1502,6 +1510,11 @@ static void tg3_mdio_config_5785(struct tg3 *tp)
+@@ -1520,6 +1528,11 @@ static void tg3_mdio_config_5785(struct tg3 *tp)
  static void tg3_mdio_start(struct tg3 *tp)
  {
  	tp->mi_mode &= ~MAC_MI_MODE_AUTO_POLL;
@@ -39,7 +39,7 @@ index d658255..d31c395 100644
  	tw32_f(MAC_MI_MODE, tp->mi_mode);
  	udelay(80);
  
-@@ -2704,6 +2717,11 @@ static int tg3_phy_reset(struct tg3 *tp)
+@@ -2722,6 +2735,11 @@ static int tg3_phy_reset(struct tg3 *tp)
  		}
  	}
  
@@ -51,6 +51,3 @@ index d658255..d31c395 100644
  	if (tg3_flag(tp, 5717_PLUS) &&
  	    (tp->phy_flags & TG3_PHYFLG_MII_SERDES))
  		return 0;
--- 
-2.1.4
-

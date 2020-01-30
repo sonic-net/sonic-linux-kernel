@@ -1,12 +1,16 @@
 For Arista platforms, after calling kexec in fast-reboot, the MAC address
+
 of management interface is reset to 00:10:18:00:00:00. This patch can recover
 the MAC with the one previously saved by Arista Aboot.
+---
+ drivers/net/ethernet/broadcom/tg3.c |   37 +++++++++++++++++------------------
+ 1 file changed, 18 insertions(+), 19 deletions(-)
 
 diff --git a/drivers/net/ethernet/broadcom/tg3.c b/drivers/net/ethernet/broadcom/tg3.c
-index 3f3d205..13b513d 100644
+index 2e6a88094..d54ba3f75 100644
 --- a/drivers/net/ethernet/broadcom/tg3.c
 +++ b/drivers/net/ethernet/broadcom/tg3.c
-@@ -9340,6 +9340,15 @@ static int tg3_halt(struct tg3 *tp, int kind, bool silent)
+@@ -9367,6 +9367,15 @@ static int tg3_halt(struct tg3 *tp, int kind, bool silent)
  	return err;
  }
  
@@ -22,7 +26,7 @@ index 3f3d205..13b513d 100644
  static int tg3_set_mac_addr(struct net_device *dev, void *p)
  {
  	struct tg3 *tp = netdev_priv(dev);
-@@ -16974,28 +16983,18 @@ static int tg3_get_device_address(struct tg3 *tp)
+@@ -17080,28 +17089,18 @@ static int tg3_get_device_address(struct tg3 *tp)
  		dev->dev_addr[5] = (lo >>  0) & 0xff;
  
  		/* Some old bootcode may report a 0 MAC address in SRAM */
