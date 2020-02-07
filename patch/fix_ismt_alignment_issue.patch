@@ -7,7 +7,7 @@ index c97b48c..91c6524 100644
  	u8 head;				/* ring buffer head pointer */
  	struct completion cmp;			/* interrupt completion */
 -	u8 dma_buffer[I2C_SMBUS_BLOCK_MAX + 1];	/* temp R/W data buffer */
-+	u8 buffer[I2C_SMBUS_BLOCK_MAX + 1];	/* temp R/W data buffer */
++	u8 buffer[I2C_SMBUS_BLOCK_MAX + 16];	/* temp R/W data buffer */
  };
  
  /**
