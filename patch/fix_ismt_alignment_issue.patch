@@ -1,3 +1,24 @@
+From Commit ID: 5cd5f0bb0d9c32876b3d86b70fb45da10d028be7
+Subject: I2C ISMT  16-byte align the DMA buffer address
+
+Use only a portion of the data buffer for DMA transfers, which is always
+16-byte aligned. This makes the DMA buffer address 16-byte aligned and
+compensates for spurious hardware parity errors that may appear when the
+DMA buffer address is not 16-byte aligned.
+
+The data buffer is enlarged in order to accommodate any possible 16-byte
+alignment offset and changes the DMA code to only use a portion of the
+data buffer, which is 16-byte aligned.
+
+The symptom of the hardware issue is the same as the one addressed in
+v3.12-rc2-5-gbf41691 and manifests by transfers failing with EIO, with
+bit 9 being set in the ERRSTS register.
+
+Signed-off-by: Radu Rendec <radu.rendec@gmail.com>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: Wolfram Sang <wsa@the-dreams.de>
+---
+
 diff --git a/drivers/i2c/busses/i2c-ismt.c b/drivers/i2c/busses/i2c-ismt.c
 index c97b48c..91c6524 100644
 --- a/drivers/i2c/busses/i2c-ismt.c
