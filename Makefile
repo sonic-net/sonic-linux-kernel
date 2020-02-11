@@ -8,10 +8,11 @@ KVERSION ?= $(KVERSION_SHORT)-amd64
 KERNEL_VERSION ?= 4.9.168
 KERNEL_SUBVERSION ?= 1+deb9u5
 kernel_procure_method ?= build
+CONFIGURED_ARCH ?= amd64
 
 LINUX_HEADER_COMMON = linux-headers-$(KVERSION_SHORT)-common_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_all.deb
-LINUX_HEADER_AMD64 = linux-headers-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_amd64.deb
-LINUX_IMAGE = linux-image-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_amd64.deb
+LINUX_HEADER_AMD64 = linux-headers-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_$(CONFIGURED_ARCH).deb
+LINUX_IMAGE = linux-image-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_$(CONFIGURED_ARCH).deb
 
 MAIN_TARGET = $(LINUX_HEADER_COMMON)
 DERIVED_TARGETS = $(LINUX_HEADER_AMD64) $(LINUX_IMAGE)
@@ -73,9 +74,13 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	debian/bin/gencontrol.py
 
 	# generate linux build file for amd64_none_amd64
+	fakeroot make -f debian/rules.gen setup_armhf_none_armmp
+	fakeroot make -f debian/rules.gen setup_arm64_none
 	fakeroot make -f debian/rules.gen setup_amd64_none_amd64
 
 	# Applying patches and configuration changes
+	git add debian/build/build_armhf_none_armmp/.config -f
+	git add debian/build/build_arm64_none_arm64/.config -f
 	git add debian/build/build_amd64_none_amd64/.config -f
 	git add debian/config.defines.dump -f
 	git add debian/control -f
@@ -89,7 +94,11 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 
 	# Building a custom kernel from Debian kernel source
 	DO_DOCS=False fakeroot make -f debian/rules -j $(shell nproc) binary-indep
-	fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_amd64_none
+ifeq ($(CONFIGURED_ARCH), armhf)
+	fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none_armmp
+else
+	fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none
+endif
 	popd
 
 ifneq ($(DEST),)
