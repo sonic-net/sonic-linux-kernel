@@ -1,0 +1,41 @@
+From 5e248248ac5be0541cacb45b2b4d05df3741c2c6 Mon Sep 17 00:00:00 2001
+From: gilt <gilt@marvell.com>
+Date: Mon, 22 Jul 2019 13:44:06 +0300
+Subject: [PATCH 1/4] Micron 4G flash support
+
+Change-Id: Ib4dd7094920c124c213f6b3c81140845e5baa084
+---
+ drivers/mtd/nand/pxa3xx_nand.c | 17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/mtd/nand/pxa3xx_nand.c b/drivers/mtd/nand/pxa3xx_nand.c
+index 3b8911c..98e9a34 100644
+--- a/drivers/mtd/nand/pxa3xx_nand.c
++++ b/drivers/mtd/nand/pxa3xx_nand.c
+@@ -1638,7 +1638,22 @@ static int pxa_ecc_init(struct pxa3xx_nand_info *info,
+ 		ecc->size = info->chunk_size;
+ 		mtd_set_ooblayout(mtd, &pxa3xx_ooblayout_ops);
+ 		ecc->strength = 16;
+-	} else {
++	} 
++	  else if (strength == 8 && ecc_stepsize == 512 && page_size == 8192) {
++ 		info->ecc_bch = 1;
++		info->nfullchunks = 8;
++		info->ntotalchunks = 9;
++		info->chunk_size = 1024;
++		info->spare_size = 0;
++		info->last_chunk_size = 0;
++		info->last_spare_size = 160;
++ 		info->ecc_size = 32;
++ 		ecc->mode = NAND_ECC_HW;
++ 		ecc->size = info->chunk_size;
++		mtd_set_ooblayout(mtd, &pxa3xx_ooblayout_ops);
++ 		ecc->strength = 16;
++ 	}
++	else {
+ 		dev_err(&info->pdev->dev,
+ 			"ECC strength %d at page size %d is not supported\n",
+ 			strength, page_size);
+-- 
+2.6.3
+

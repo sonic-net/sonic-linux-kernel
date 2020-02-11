@@ -1,0 +1,82 @@
+From 3a09f684413faf1c4f7d21d7d79914b54e087cf6 Mon Sep 17 00:00:00 2001
+From: Antony Rheneus <arheneus@marvell.com>
+Date: Thu, 17 Oct 2019 10:48:29 +0530
+Subject: [PATCH] armhf default config for the sonic patches
+
+---
+ debian/build/build_armhf_none_armmp/.config | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/debian/build/build_armhf_none_armmp/.config b/debian/build/build_armhf_none_armmp/.config
+index 8f02d03..32a2698 100644
+--- a/debian/build/build_armhf_none_armmp/.config
++++ b/debian/build/build_armhf_none_armmp/.config
+@@ -1501,6 +1501,7 @@ CONFIG_NET_ACT_POLICE=m
+ CONFIG_NET_ACT_GACT=m
+ CONFIG_GACT_PROB=y
+ CONFIG_NET_ACT_MIRRED=m
++# CONFIG_NET_ACT_SAMPLE is not set
+ CONFIG_NET_ACT_IPT=m
+ CONFIG_NET_ACT_NAT=m
+ CONFIG_NET_ACT_PEDIT=m
+@@ -1543,6 +1544,7 @@ CONFIG_MPLS_IPTUNNEL=m
+ # CONFIG_HSR is not set
+ CONFIG_NET_SWITCHDEV=y
+ CONFIG_NET_L3_MASTER_DEV=y
++# CONFIG_CGROUP_L3MDEV is not set
+ # CONFIG_NET_NCSI is not set
+ CONFIG_RPS=y
+ CONFIG_RFS_ACCEL=y
+@@ -1716,6 +1718,7 @@ CONFIG_NFC_PN533=m
+ CONFIG_NFC_PN533_USB=m
+ # CONFIG_NFC_PN533_I2C is not set
+ # CONFIG_NFC_ST95HF is not set
++# CONFIG_PSAMPLE is not set
+ CONFIG_LWTUNNEL=y
+ CONFIG_DST_CACHE=y
+ CONFIG_NET_DEVLINK=m
+@@ -2010,6 +2013,8 @@ CONFIG_EEPROM_LEGACY=m
+ CONFIG_EEPROM_MAX6875=m
+ CONFIG_EEPROM_93CX6=m
+ # CONFIG_EEPROM_93XX46 is not set
++# CONFIG_EEPROM_SFF_8436 is not set
++# CONFIG_EEPROM_OPTOE is not set
+ CONFIG_CB710_CORE=m
+ # CONFIG_CB710_DEBUG is not set
+ CONFIG_CB710_DEBUG_ASSUMPTIONS=y
+@@ -3385,6 +3390,7 @@ CONFIG_I2C_MUX_PCA954x=m
+ # CONFIG_I2C_MUX_PINCTRL is not set
+ # CONFIG_I2C_MUX_REG is not set
+ # CONFIG_I2C_DEMUX_PINCTRL is not set
++# CONFIG_I2C_MUX_MLXCPLD is not set
+ CONFIG_I2C_HELPER_AUTO=y
+ CONFIG_I2C_ALGOBIT=y
+ CONFIG_I2C_ALGOPCA=m
+@@ -3818,6 +3824,7 @@ CONFIG_SENSORS_MAX1668=m
+ CONFIG_SENSORS_MAX6639=m
+ CONFIG_SENSORS_MAX6642=m
+ CONFIG_SENSORS_MAX6650=m
++# CONFIG_SENSORS_MAX6620 is not set
+ # CONFIG_SENSORS_MAX6697 is not set
+ # CONFIG_SENSORS_MAX31790 is not set
+ # CONFIG_SENSORS_MCP3021 is not set
+@@ -6031,6 +6038,8 @@ CONFIG_LEDS_TCA6507=m
+ #
+ # CONFIG_LEDS_BLINKM is not set
+ # CONFIG_LEDS_SYSCON is not set
++# CONFIG_LEDS_MLXREG is not set
++# CONFIG_LEDS_USER is not set
+ 
+ #
+ # LED Triggers
+@@ -6434,6 +6443,7 @@ CONFIG_SPEAKUP_SYNTH_DUMMY=m
+ CONFIG_CHROME_PLATFORMS=y
+ # CONFIG_CROS_EC_CHARDEV is not set
+ CONFIG_CROS_EC_PROTO=y
++# CONFIG_MELLANOX_PLATFORM is not set
+ CONFIG_CLKDEV_LOOKUP=y
+ CONFIG_HAVE_CLK_PREPARE=y
+ CONFIG_COMMON_CLK=y
+-- 
+2.7.4
+
