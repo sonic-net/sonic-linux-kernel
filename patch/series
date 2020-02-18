@@ -12,7 +12,8 @@
 0009-platform-mellonox-introduce-mlxreg-io-driver-and-add.patch
 0010-config-mellanox-configuration.patch
 0011-support-Broadcom-54616-Phy-for-Intel-igb-driver.patch
-0012-platform-mellanox-mlxreg-hotplug-driver-add-check-fo.patch
+0012-igb-setup-Broadcom-54616-PHY-when-no-EEPROM-present.patch
+0013-platform-mellanox-mlxreg-hotplug-driver-add-check-fo.patch
 driver-arista-net-tg3-dma-mask-4g-sb800.patch
 driver-arista-net-tg3-disallow-broadcom-default-mac.patch
 driver-arista-net-tg3-access-regs-indirectly.patch
