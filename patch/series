@@ -1,6 +1,7 @@
 # This series applies on GIT commit 18c5597832fcf6988111b05a9a1607ae148723c
 0001-armhf-default-config-for-the-sonic-patches.patch
 0001-arm64-default-config-for-sonic-patches.patch
+0001-Marvell-support-for-armada7020-on-LK4.9.189.patch
 0001-i2c-mlxcpld-add-master-driver-for-Mellanox-systems.patch
 0002-i2c-mux-mlxcpld-add-driver-for-Mellanox-systems.patch
 0003-platform-mellanox-Introduce-Mellanox-hardware-platfo.patch
@@ -102,6 +103,9 @@ kernel-enable-psample-and-act_sample-drivers.patch
 0042-Marvell-a385-Micron-4G-flash-support.patch
 0042-armhf-additional-configs.patch
 0042-armhf-proc-dma-kconfig.patch
+0042-ARM64-PCI-Allow-userspace-to-mmap-PCI-resources.patch
+0042-add-a7020-comexp-dts.patch
+0042-arm64-additional-configs.patch
 net-psample-fix-skb-over-panic.patch
 0000-net-Fix-netdev-adjacency-tracking.patch
 0000-net-ipv6-ll-anycast-mcast-routes-on-dev.patch
