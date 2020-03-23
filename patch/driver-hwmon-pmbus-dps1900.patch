@@ -49,7 +49,7 @@ index 000000000..b26c1952f
 +#include <linux/err.h>
 +#include <linux/i2c.h>
 +#include <linux/slab.h>
-+#include <linux/i2c/pmbus.h>
++#include <linux/pmbus.h>
 +#include "pmbus.h"
 +
 +static int dps1900_read_word_data(struct i2c_client *client, int page, int reg)

@@ -76,7 +76,7 @@ index 000000000..ad29134c4
 +#include <linux/err.h>
 +#include <linux/slab.h>
 +#include <linux/i2c.h>
-+#include <linux/i2c/pmbus.h>
++#include <linux/pmbus.h>
 +#include <linux/hwmon.h>
 +#include <linux/hwmon-sysfs.h>
 +#include "pmbus.h"
