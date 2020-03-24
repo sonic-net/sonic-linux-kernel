@@ -88,7 +88,6 @@ linux-4.13-thermal-intel_pch_thermal-Fix-enable-check-on.patch
 0048-mlxsw-core-Skip-thermal-zone-operations-initializati.patch
 0049-thermal-Fix-use-after-free-when-unregistering-therma.patch
 0050-mlxsw-core-Drop-creation-of-thermal-to-hwmon-sysfs-i.patch
-0050-mlxsw-core-thermal-Set-default-thermal-trips-at-init.patch
 0051-mlxsw-core-Skip-thermal-zones-threshold-setting-duri.patch
 0052-platform-x86-mlx-platform-Add-more-detention-for-sys.patch
 0053-firmware-dmi-Add-access-to-the-SKU-ID-string-backpor.patch
@@ -96,6 +95,8 @@ linux-4.13-thermal-intel_pch_thermal-Fix-enable-check-on.patch
 0055-platform-x86-mlx-platform-Add-support-for-next-gener.patch
 0056-mlxsw-core-Add-support-for-new-hardware-device-types.patch
 0057-mlxsw-minimal-Fix-validation-for-FW-minor-version.patch
+0058-mlxsw-core-Add-the-hottest-thermal-zone-detection.patch
+0059-mlxsw-core-thermal-Set-default-thermal-trips-at-init.patch
 linux-4.16-firmware-dmi-handle-missing-DMI-data-gracefully.patch
 mellanox-backport-introduce-psample-a-new-genetlink-channel.patch
 mellanox-backport-introduce-tc-sample-action.patch
