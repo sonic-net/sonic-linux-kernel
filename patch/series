@@ -95,6 +95,11 @@ linux-4.13-thermal-intel_pch_thermal-Fix-enable-check-on.patch
 0055-platform-x86-mlx-platform-Add-support-for-next-gener.patch
 0056-mlxsw-core-Add-support-for-new-hardware-device-types.patch
 0057-mlxsw-minimal-Fix-validation-for-FW-minor-version.patch
+0058-hwmon-pmbus-core-Add-support-for-vid-mode-detecti.patch
+0059-i2c-busses-i2c-mlxcpld-Increase-transaction-pooli.patch
+0060-platform-mellanox-mlxreg-hotplug-Use-capability-r.patch
+0061-platform-mellanox-mlxreg-io-Add-support-for-compl.patch
+0062-Add-config-for-sensor-xdpe122-and-modify-mlx_wdt-.patch
 linux-4.16-firmware-dmi-handle-missing-DMI-data-gracefully.patch
 mellanox-backport-introduce-psample-a-new-genetlink-channel.patch
 mellanox-backport-introduce-tc-sample-action.patch

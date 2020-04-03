@@ -1,0 +1,89 @@
+From 90ddafe594f825e72fcdf4294f60e73ba7a689f9 Mon Sep 17 00:00:00 2001
+From: Stephen Sun <stephens@mellanox.com>
+Date: Wed, 25 Mar 2020 15:07:34 +0000
+Subject: [PATCH] Add config for sensor xdpe122 and modify mlx_wdt to m
+Add the following options to kernel config file:
+CONFIG_SENSORS_XDPE122=m Modify the following
+options to kernel config file:
+CONFIG_MLX_WDT=y => CONFIG_MLX_WDT=m
+
+Signed-off-by: Stephen Sun <stephens@mellanox.com>
+---
+ debian/build/build_amd64_none_amd64/.config | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/debian/build/build_amd64_none_amd64/.config b/debian/build/build_amd64_none_amd64/.config
+index 6c4c6443..6ae593b6 100644
+--- a/debian/build/build_amd64_none_amd64/.config
++++ b/debian/build/build_amd64_none_amd64/.config
+@@ -707,7 +707,6 @@ CONFIG_ACPI_EXTLOG=y
+ # CONFIG_PMIC_OPREGION is not set
+ # CONFIG_ACPI_CONFIGFS is not set
+ CONFIG_SFI=y
+-CONFIG_SENSORS_MLXREG_FAN=m
+ 
+ #
+ # CPU Frequency scaling
+@@ -1453,6 +1452,7 @@ CONFIG_NET_ACT_POLICE=m
+ CONFIG_NET_ACT_GACT=m
+ CONFIG_GACT_PROB=y
+ CONFIG_NET_ACT_MIRRED=m
++CONFIG_NET_ACT_SAMPLE=m
+ CONFIG_NET_ACT_IPT=m
+ CONFIG_NET_ACT_NAT=m
+ CONFIG_NET_ACT_PEDIT=m
+@@ -1761,6 +1761,7 @@ CONFIG_NFC_PN533_USB=m
+ # CONFIG_NFC_PN533_I2C is not set
+ # CONFIG_NFC_MICROREAD_MEI is not set
+ # CONFIG_NFC_ST95HF is not set
++CONFIG_PSAMPLE=m
+ CONFIG_LWTUNNEL=y
+ CONFIG_DST_CACHE=y
+ CONFIG_NET_DEVLINK=m
+@@ -3925,6 +3926,7 @@ CONFIG_SENSORS_MAX6620=m
+ CONFIG_SENSORS_MAX6697=m
+ CONFIG_SENSORS_MAX31790=m
+ # CONFIG_SENSORS_MCP3021 is not set
++CONFIG_SENSORS_MLXREG_FAN=m
+ CONFIG_SENSORS_MENF21BMC_HWMON=m
+ CONFIG_SENSORS_ADCXX=m
+ CONFIG_SENSORS_LM63=m
+@@ -3966,8 +3968,9 @@ CONFIG_SENSORS_DNI_DPS460=m
+ CONFIG_SENSORS_TPS53679=m
+ CONFIG_SENSORS_UCD9000=m
+ CONFIG_SENSORS_UCD9200=m
+-CONFIG_SENSORS_DPS1900=m
++CONFIG_SENSORS_XDPE122=m
+ # CONFIG_SENSORS_ZL6100 is not set
++CONFIG_SENSORS_DPS1900=m
+ # CONFIG_SENSORS_SHT15 is not set
+ CONFIG_SENSORS_SHT21=m
+ # CONFIG_SENSORS_SHT3x is not set
+@@ -4057,6 +4060,7 @@ CONFIG_MENF21BMC_WATCHDOG=m
+ # CONFIG_WDAT_WDT is not set
+ # CONFIG_XILINX_WATCHDOG is not set
+ # CONFIG_ZIIRAVE_WATCHDOG is not set
++CONFIG_MLX_WDT=m
+ # CONFIG_CADENCE_WATCHDOG is not set
+ # CONFIG_DW_WATCHDOG is not set
+ # CONFIG_MAX63XX_WATCHDOG is not set
+@@ -4097,7 +4101,6 @@ CONFIG_SBC_EPX_C3_WATCHDOG=m
+ # CONFIG_NI903X_WDT is not set
+ # CONFIG_MEN_A21_WDT is not set
+ CONFIG_XEN_WDT=m
+-CONFIG_MLX_WDT=y
+ 
+ #
+ # PCI-based Watchdog Cards
+@@ -6139,7 +6142,7 @@ CONFIG_INTEL_MIC_X100_DMA=m
+ # CONFIG_QCOM_HIDMA is not set
+ CONFIG_DW_DMAC_CORE=m
+ CONFIG_DW_DMAC=m
+-# CONFIG_DW_DMAC_PCI is not set
++CONFIG_DW_DMAC_PCI=m
+ CONFIG_HSU_DMA=y
+ 
+ #
+-- 
+2.11.0
+
