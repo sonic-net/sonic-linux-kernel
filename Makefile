@@ -54,6 +54,7 @@ ORIG_FILE_URL = "http://security.debian.org/debian-security/pool/updates/main/l/
 
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Obtaining the Debian kernel source
+	set -e
 	rm -rf $(BUILD_DIR)
 	wget -O $(DSC_FILE) $(DSC_FILE_URL)
 	wget -O $(ORIG_FILE) $(ORIG_FILE_URL)
