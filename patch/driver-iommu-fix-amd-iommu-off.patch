@@ -1,0 +1,32 @@
+From 3ddbe913e55516d3e2165d43d4d5570761769878 Mon Sep 17 00:00:00 2001
+From: Kevin Mitchell <kevmitch@arista.com>
+Date: Wed, 12 Jun 2019 14:52:03 -0700
+Subject: [PATCH] iommu/amd: Make iommu_disable safer
+
+Make it safe to call iommu_disable during early init error conditions
+before mmio_base is set, but after the struct amd_iommu has been added
+to the amd_iommu_list. For example, this happens if firmware fails to
+fill in mmio_phys in the ACPI table leading to a NULL pointer
+dereference in iommu_feature_disable.
+
+Fixes: 2c0ae1720c09c ('iommu/amd: Convert iommu initialization to state machine')
+Signed-off-by: Kevin Mitchell <kevmitch@arista.com>
+Signed-off-by: Joerg Roedel <jroedel@suse.de>
+---
+ drivers/iommu/amd_iommu_init.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/iommu/amd_iommu_init.c b/drivers/iommu/amd_iommu_init.c
+index f977df90d2a491..df144dc6d8aca2 100644
+--- a/drivers/iommu/amd_iommu_init.c
++++ b/drivers/iommu/amd_iommu_init.c
+@@ -418,6 +418,9 @@ static void iommu_enable(struct amd_iommu *iommu)
+ 
+ static void iommu_disable(struct amd_iommu *iommu)
+ {
++	if (!iommu->mmio_base)
++		return;
++
+ 	/* Disable command buffer */
+ 	iommu_feature_disable(iommu, CONTROL_CMDBUF_EN);
+ 
