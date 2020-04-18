@@ -19,6 +19,7 @@ driver-hwmon-max6620.patch
 driver-hwmon-max6620-fix-rpm-calc.patch
 driver-hwmon-max6620-update.patch
 driver-hwmon-max6658-fix-write-convrate.patch
+driver-hwmon-max6658-bypass-regulator-error.patch
 driver-hwmon-pmbus-dni_dps460.patch
 driver-hwmon-pmbus-dni_dps460-update-pmbus-core.patch
 driver-hwmon-pmbus-dps1900.patch

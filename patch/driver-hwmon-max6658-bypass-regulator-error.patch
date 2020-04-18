@@ -1,0 +1,34 @@
+diff --git a/drivers/hwmon/lm90.c b/drivers/hwmon/lm90.c
+index 9d1a68d99..55c8913a4 100644
+--- a/drivers/hwmon/lm90.c
++++ b/drivers/hwmon/lm90.c
+@@ -1793,19 +1793,19 @@ static int lm90_probe(struct i2c_client *client,
+ 	int err;
+ 
+ 	regulator = devm_regulator_get(dev, "vcc");
+-	if (IS_ERR(regulator))
+-		return PTR_ERR(regulator);
++	if (!IS_ERR(regulator)){
++		err = regulator_enable(regulator);
++		if (err < 0) {
++			dev_err(dev, "Failed to enable regulator: %d\n", err);
++			return err;
++		}
+ 
+-	err = regulator_enable(regulator);
+-	if (err < 0) {
+-		dev_err(dev, "Failed to enable regulator: %d\n", err);
+-		return err;
++		err = devm_add_action_or_reset(dev, lm90_regulator_disable,
++					       regulator);
++		if (err)
++			return err;
+ 	}
+ 
+-	err = devm_add_action_or_reset(dev, lm90_regulator_disable, regulator);
+-	if (err)
+-		return err;
+-
+ 	data = devm_kzalloc(dev, sizeof(struct lm90_data), GFP_KERNEL);
+ 	if (!data)
+ 		return -ENOMEM;
