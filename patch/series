@@ -73,3 +73,8 @@ net-fix-skb-csum-update-in-inet_proto_csum_replace16.patch
 0004-mlxsw-core-Add-the-hottest-thermal-zone-detection.patch
 0005-hwmon-pmbus-core-Add-support-for-vid-mode-detection-.patch
 0006-platform-mellanox-mlxreg-hotplug-Use-capability-r.patch
+0007-mlxsw-core-thermal-Set-default-thermal-trips-at-init.patch
+0008-mlxsw-qsfp_sysfs-Remove-obsolete-code-for-QSFP-EEPRO.patch
+0009-platform-mellanox-mlxreg-io-Add-support-for-compl.patch
+0010-platform-mellanox-mlxreg-hotplug-Add-environmental-d.patch
+
