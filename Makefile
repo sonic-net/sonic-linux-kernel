@@ -58,6 +58,12 @@ INCR_BUILD = YES
 endif
 endif
 
+ifneq ($(wildcard $(BUILD_DIR)),)
+ifeq ($(kernel_procure_method), incremental)
+INCR_BUILD = YES
+endif
+endif
+
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Obtaining the Debian kernel source
 ifeq ($(INCR_BUILD),)
