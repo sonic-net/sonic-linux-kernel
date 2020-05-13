@@ -79,3 +79,17 @@ net-fix-skb-csum-update-in-inet_proto_csum_replace16.patch
 0009-platform-mellanox-mlxreg-io-Add-support-for-compl.patch
 0010-platform-mellanox-mlxreg-hotplug-Add-environmental-d.patch
 
+# CENTEC patches for tsingma SoC
+0001-Centec-arm64-default-config-for-SONiC.patch
+0001-Support-Centec-TsingMa-SOC-CpuMac.patch
+0002-Support-Centec-TsingMa-SOC-GPIO.patch
+0003-Support-Centec-TsingMa-SOC-I2C.patch
+0004-Support-Centec-TsingMa-SOC-DDR.patch
+0005-Support-Centec-TsingMa-SOC-MTD.patch
+0006-Support-Centec-TsingMa-SOC-PinCtrl.patch
+0007-Support-Centec-TsingMa-SOC-Platform.patch
+0008-Support-Centec-TsingMa-SOC-PWM.patch
+0009-Support-Centec-TsingMa-SOC-QSPI.patch
+0010-Support-Centec-TsingMa-SOC-RTC.patch
+0011-Support-Centec-TsingMa-SOC-USB-Host.patch
+0012-Support-Centec-TsingMa-SOC-Watchdog.patch
