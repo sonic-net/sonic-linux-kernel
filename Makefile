@@ -52,6 +52,16 @@ DSC_FILE_URL = "http://security.debian.org/debian-security/pool/updates/main/l/l
 DEBIAN_FILE_URL = "http://security.debian.org/debian-security/pool/updates/main/l/linux/linux_4.19.67-2+deb10u2.debian.tar.xz"
 ORIG_FILE_URL = "http://security.debian.org/debian-security/pool/updates/main/l/linux/linux_4.19.67.orig.tar.xz"
 
+define dpkg-architecture-armhf
+        $(shell dpkg-architecture -aarmhf) CROSS_COMPILE=arm-linux-gnueabihf-
+endef
+define dpkg-architecture-arm64
+        $(shell dpkg-architecture -aarm64) CROSS_COMPILE=aarch64-linux-gnu-
+endef
+define dpkg-architecture-amd64
+        $(shell dpkg-architecture -aamd64) CROSS_COMPILE=
+endef
+
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Obtaining the Debian kernel source
 	rm -rf $(BUILD_DIR)
@@ -74,13 +84,13 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	debian/bin/gencontrol.py
 
 	# generate linux build file for amd64_none_amd64
-	# fakeroot make -f debian/rules.gen setup_armhf_none_armmp
-	# fakeroot make -f debian/rules.gen setup_arm64_none
-	fakeroot make -f debian/rules.gen setup_amd64_none_amd64
+	$(call dpkg-architecture-armhf) fakeroot make -f debian/rules.gen setup_armhf_none_armmp
+	$(call dpkg-architecture-arm64) fakeroot make -f debian/rules.gen setup_arm64_none
+	$(call dpkg-architecture-amd64) fakeroot make -f debian/rules.gen setup_amd64_none_amd64
 
 	# Applying patches and configuration changes
-	# git add debian/build/build_armhf_none_armmp/.config -f
-	# git add debian/build/build_arm64_none_arm64/.config -f
+	git add debian/build/build_armhf_none_armmp/.config -f
+	git add debian/build/build_arm64_none_arm64/.config -f
 	git add debian/build/build_amd64_none_amd64/.config -f
 	git add debian/config.defines.dump -f
 	git add debian/control -f
@@ -93,11 +103,17 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	stg import -s ../patch/series
 
 	# Building a custom kernel from Debian kernel source
-	DO_DOCS=False fakeroot make -f debian/rules -j $(shell nproc) binary-indep
 ifeq ($(CONFIGURED_ARCH), armhf)
-	fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none_armmp
+	$(call dpkg-architecture-armhf) DO_DOCS=False fakeroot make -f debian/rules -j $(shell nproc) binary-indep
+	$(call dpkg-architecture-armhf) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none_armmp
 else
-	fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none
+ifeq ($(CONFIGURED_ARCH), arm64)
+	$(call dpkg-architecture-arm64) DO_DOCS=False fakeroot make -f debian/rules -j $(shell nproc) binary-indep
+	$(call dpkg-architecture-arm64) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none
+else
+	$(call dpkg-architecture-amd64) DO_DOCS=False fakeroot make -f debian/rules -j $(shell nproc) binary-indep
+	$(call dpkg-architecture-amd64) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none
+endif
 endif
 	popd
 
