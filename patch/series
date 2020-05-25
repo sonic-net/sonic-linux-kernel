@@ -78,4 +78,5 @@ net-fix-skb-csum-update-in-inet_proto_csum_replace16.patch
 0008-mlxsw-qsfp_sysfs-Remove-obsolete-code-for-QSFP-EEPRO.patch
 0009-platform-mellanox-mlxreg-io-Add-support-for-compl.patch
 0010-platform-mellanox-mlxreg-hotplug-Add-environmental-d.patch
+0011-mlxsw-core-thermal-Separate-temperature-trend-read-c.patch
 
