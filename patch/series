@@ -39,14 +39,6 @@ config-mitac-ly1200.patch
 config-optoe.patch
 config-inventec-d7032.patch
 config-cig-cs6436-serail_new.patch
-# (mellanox)
-# 0058-mlxsw-core-thermal-Set-default-thermal-trips-at-init.patch
-# 0059-mlxsw-core-Add-the-hottest-thermal-zone-detection.patch
-# 0060-hwmon-pmbus-core-Add-support-for-vid-mode-detecti.patch
-# 0061-i2c-busses-i2c-mlxcpld-Increase-transaction-pooli.patch
-# 0062-platform-mellanox-mlxreg-hotplug-Use-capability-r.patch
-# 0063-platform-mellanox-mlxreg-io-Add-support-for-compl.patch
-# 0064-Add-config-for-sensor-xdpe122-and-modify-mlx_wdt-.patch
 # (Marvel)
 # 0042-Marvell-a385-Micron-4G-flash-support.patch
 # 0042-armhf-additional-configs.patch
@@ -79,4 +71,6 @@ net-fix-skb-csum-update-in-inet_proto_csum_replace16.patch
 0009-platform-mellanox-mlxreg-io-Add-support-for-compl.patch
 0010-platform-mellanox-mlxreg-hotplug-Add-environmental-d.patch
 0011-mlxsw-core-thermal-Separate-temperature-trend-read-c.patch
+0012-Add-support-for-new-transceivers-types-QSFP-DD-and-Q.patch
+0013-watchdog-mlx-wdt-support-new-watchdog-type-with-long.patch
 
