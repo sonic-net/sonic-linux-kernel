@@ -42,10 +42,10 @@ read
 
 Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
 ---
- drivers/firmware/dmi-id.c       | 1 +
+ drivers/firmware/dmi-id.c       | 2 ++
  drivers/firmware/dmi_scan.c     | 1 +
  include/linux/mod_devicetable.h | 1 +
- 3 files changed, 3 insertions(+)
+ 3 files changed, 4 insertions(+)
 
 diff --git a/drivers/firmware/dmi-id.c b/drivers/firmware/dmi-id.c
 index dc269cb288c2..5c864ebe1127 100644
@@ -59,6 +59,14 @@ index dc269cb288c2..5c864ebe1127 100644
  DEFINE_DMI_ATTR_WITH_SHOW(product_family,	0400, DMI_PRODUCT_FAMILY);
  DEFINE_DMI_ATTR_WITH_SHOW(board_vendor,		0444, DMI_BOARD_VENDOR);
  DEFINE_DMI_ATTR_WITH_SHOW(board_name,		0444, DMI_BOARD_NAME);
+@@ -192,6 +193,7 @@ static void __init dmi_id_init_attr_table(void)
+ 	ADD_DMI_ATTR(product_version,   DMI_PRODUCT_VERSION);
+ 	ADD_DMI_ATTR(product_serial,    DMI_PRODUCT_SERIAL);
+ 	ADD_DMI_ATTR(product_uuid,      DMI_PRODUCT_UUID);
++	ADD_DMI_ATTR(product_sku,       DMI_PRODUCT_SKU);
+ 	ADD_DMI_ATTR(product_family,      DMI_PRODUCT_FAMILY);
+ 	ADD_DMI_ATTR(board_vendor,      DMI_BOARD_VENDOR);
+ 	ADD_DMI_ATTR(board_name,        DMI_BOARD_NAME);
 diff --git a/drivers/firmware/dmi_scan.c b/drivers/firmware/dmi_scan.c
 index 150b923ef86d..d2a85a2e5b08 100644
 --- a/drivers/firmware/dmi_scan.c

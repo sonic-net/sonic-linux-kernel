@@ -102,7 +102,9 @@ linux-4.13-thermal-intel_pch_thermal-Fix-enable-check-on.patch
 0064-Add-config-for-sensor-xdpe122-and-modify-mlx_wdt-.patch
 0065-mlxsw-qsfp_sysfs-Remove-obsolete-code-for-QSFP-EEPRO.patch
 0066-platform-mellanox-mlxreg-hotplug-Add-environmental-d.patch
-0067-mlxsw-core-thermal-Separate-temperature-trend-read-c.patch
+0067-Add-support-for-new-transceivers-types-QSFP-DD-and-Q.patch
+0068-mlxsw-core-thermal-Separate-temperature-trend-read-c.patch
+0069-watchdog-mlx-wdt-support-new-watchdog-type-with-long.patch
 linux-4.16-firmware-dmi-handle-missing-DMI-data-gracefully.patch
 mellanox-backport-introduce-psample-a-new-genetlink-channel.patch
 mellanox-backport-introduce-tc-sample-action.patch
