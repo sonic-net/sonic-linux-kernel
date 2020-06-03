@@ -1,0 +1,4 @@
+# Unset X86_PAT and STRICT_DEVMEM according to Broadcom's requirement
+CONFIG_STRICT_DEVMEM
+CONFIG_X86_PAT
+CONFIG_MLXSW_PCI

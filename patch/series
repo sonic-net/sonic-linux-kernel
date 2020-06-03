@@ -30,15 +30,6 @@ driver-support-optoe-EOF_fix.patch
 driver-support-optoe-chunk-offset-fix.patch
 driver-support-optoe-QSFP_DD.patch
 driver-net-tg3-add-param-short-preamble-and-reset.patch
-config-dell-s6000.patch
-config-dell-z9100.patch
-config-ingrasys-s9100.patch
-config-arista-dps1900.patch
-config-arista-7060-cx32s.patch
-config-mitac-ly1200.patch
-config-optoe.patch
-config-inventec-d7032.patch
-config-cig-cs6436-serail_new.patch
 # (Marvel)
 # 0042-Marvell-a385-Micron-4G-flash-support.patch
 # 0042-armhf-additional-configs.patch
@@ -61,7 +52,6 @@ net-fix-skb-csum-update-in-inet_proto_csum_replace16.patch
 #
 # Mellanox patches for 4.19
 0001-v4.19-6-Mellanox-platform-Backport-patches-for-new-M.patch
-0002-config-mellanox-configuration.patch
 0003-mlxsw-minimal-Fix-validation-for-FW-minor-version.patch
 0004-mlxsw-core-Add-the-hottest-thermal-zone-detection.patch
 0005-hwmon-pmbus-core-Add-support-for-vid-mode-detection-.patch
