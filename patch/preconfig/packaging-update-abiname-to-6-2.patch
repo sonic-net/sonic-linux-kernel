@@ -1,0 +1,20 @@
+Update debian abiname to 6-2
+
+From: Olivier Singla <olivier.singla@broadcom.com>
+
+
+---
+ debian/config/defines |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/debian/config/defines b/debian/config/defines
+index 9c85fab..3563e79 100644
+--- a/debian/config/defines
++++ b/debian/config/defines
+@@ -1,5 +1,5 @@
+ [abi]
+-abiname: 6
++abiname: 6-2
+ ignore-changes:
+  __cpuhp_*
+  bpf_analyzer
