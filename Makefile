@@ -58,12 +58,6 @@ INCR_BUILD = YES
 endif
 endif
 
-ifneq ($(wildcard $(BUILD_DIR)),)
-ifeq ($(kernel_procure_method), incremental)
-INCR_BUILD = YES
-endif
-endif
-
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Obtaining the Debian kernel source
 ifeq ($(INCR_BUILD),)
@@ -93,13 +87,13 @@ else
 	debian/bin/gencontrol.py
 
 	# generate linux build file for amd64_none_amd64
-	# fakeroot make -f debian/rules.gen setup_armhf_none_armmp
-	# fakeroot make -f debian/rules.gen setup_arm64_none
-	fakeroot make -f debian/rules.gen setup_amd64_none_amd64
+	fakeroot make -f debian/rules.gen DEB_HOST_ARCH=armhf setup_armhf_none_armmp
+	fakeroot make -f debian/rules.gen DEB_HOST_ARCH=arm64 setup_arm64_none_arm64
+	fakeroot make -f debian/rules.gen DEB_HOST_ARCH=amd64 setup_amd64_none_amd64
 
 	# Applying patches and configuration changes
-	# git add debian/build/build_armhf_none_armmp/.config -f
-	# git add debian/build/build_arm64_none_arm64/.config -f
+	git add debian/build/build_armhf_none_armmp/.config -f
+	git add debian/build/build_arm64_none_arm64/.config -f
 	git add debian/build/build_amd64_none_amd64/.config -f
 	git add debian/config.defines.dump -f
 	git add debian/control -f
@@ -110,14 +104,19 @@ else
 	# Learning new git repo head (above commit) by calling stg repair.
 	stg repair
 	stg import -s ../patch/series
+
+	# Optionally add/remove kernel options
+	if [ -f ../manage-config ]; then
+		../manage-config amd64
+	fi
 endif
 
 	# Building a custom kernel from Debian kernel source
-	DO_DOCS=False fakeroot make -f debian/rules -j $(shell nproc) binary-indep
+	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) DEB_BUILD_PROFILES=nodoc fakeroot make -f debian/rules -j $(shell nproc) binary-indep
 ifeq ($(CONFIGURED_ARCH), armhf)
-	fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none_armmp
+	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none_armmp
 else
-	fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none
+	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none_$(CONFIGURED_ARCH)
 endif
 	popd
 
