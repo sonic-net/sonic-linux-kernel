@@ -36,7 +36,7 @@ driver-net-tg3-add-param-short-preamble-and-reset.patch
 # 0042-armhf-proc-dma-kconfig.patch
 net-psample-fix-skb-over-panic.patch
 net-backport-ipv6-missing-route.patch
-# Support-for-fullcone-nat.patch
+Support-for-fullcone-nat.patch
 driver-ixgbe-external-phy.patch
 net-fix-skb-csum-update-in-inet_proto_csum_replace16.patch
 #
