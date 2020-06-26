@@ -1,6 +1,7 @@
 From 94c3405f5b95f3f699ad8167630b4fbf9a788dce Mon Sep 17 00:00:00 2001
+
 From: Vadim Pasternak <vadimp@mellanox.com>
-Date: Tue, 4 Feb 2020 23:30:59 +0200
+
 Subject: [PATCH 1/2] v4.19-6: Mellanox platform: Backport patches for new
  Mellanox systems
 
@@ -40,39 +41,38 @@ It contains backport patches from v5.* kernels:
 Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
 Signed-off-by: Stephen Sun <stephens@mellanox.com>
 ---
- drivers/hwmon/mlxreg-fan.c                         |   90 +-
- drivers/hwmon/pmbus/tps53679.c                     |   10 +-
- drivers/i2c/busses/i2c-mlxcpld.c                   |    2 +-
- drivers/leds/leds-mlxreg.c                         |   23 +-
- drivers/net/ethernet/mellanox/mlxsw/Kconfig        |    9 +
- drivers/net/ethernet/mellanox/mlxsw/Makefile       |    3 +-
- drivers/net/ethernet/mellanox/mlxsw/core.c         |   82 +-
+ drivers/hwmon/mlxreg-fan.c                         |   90 +
+ drivers/i2c/busses/i2c-mlxcpld.c                   |    2 
+ drivers/leds/leds-mlxreg.c                         |   23 
+ drivers/net/ethernet/mellanox/mlxsw/Kconfig        |    9 
+ drivers/net/ethernet/mellanox/mlxsw/Makefile       |    3 
+ drivers/net/ethernet/mellanox/mlxsw/core.c         |   82 +
  drivers/net/ethernet/mellanox/mlxsw/core.h         |   36 +
  drivers/net/ethernet/mellanox/mlxsw/core_env.c     |  256 ++++
- drivers/net/ethernet/mellanox/mlxsw/core_env.h     |   17 +
- drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c   |  361 +++++-
- drivers/net/ethernet/mellanox/mlxsw/core_thermal.c |  696 +++++++++-
- drivers/net/ethernet/mellanox/mlxsw/i2c.c          |  212 +++-
- drivers/net/ethernet/mellanox/mlxsw/minimal.c      |  328 ++++-
- drivers/net/ethernet/mellanox/mlxsw/pci.c          |   49 +-
+ drivers/net/ethernet/mellanox/mlxsw/core_env.h     |   17 
+ drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c   |  361 ++++++
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c |  696 +++++++++++
+ drivers/net/ethernet/mellanox/mlxsw/i2c.c          |  212 +++
+ drivers/net/ethernet/mellanox/mlxsw/minimal.c      |  328 +++++
+ drivers/net/ethernet/mellanox/mlxsw/pci.c          |   49 -
  drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c   |  454 +++++++
- drivers/net/ethernet/mellanox/mlxsw/reg.h          | 1243 +++++++++++++++++-
- drivers/net/ethernet/mellanox/mlxsw/resources.h    |    6 +
- drivers/platform/mellanox/mlxreg-hotplug.c         |   42 +-
- drivers/platform/x86/mlx-platform.c                | 1332 +++++++++++++++++---
- drivers/watchdog/Kconfig                           |   16 +
- drivers/watchdog/Makefile                          |    1 +
+ drivers/net/ethernet/mellanox/mlxsw/reg.h          | 1221 ++++++++++++++++++++
+ drivers/net/ethernet/mellanox/mlxsw/resources.h    |    6 
+ drivers/platform/mellanox/mlxreg-hotplug.c         |   42 +
+ drivers/platform/x86/mlx-platform.c                | 1215 ++++++++++++++++++--
+ drivers/watchdog/Kconfig                           |   16 
+ drivers/watchdog/Makefile                          |    1 
  drivers/watchdog/mlx_wdt.c                         |  289 +++++
- include/linux/platform_data/mlxreg.h               |   27 +-
- include/uapi/linux/ethtool.h                       |    3 +
- 25 files changed, 5247 insertions(+), 340 deletions(-)
+ include/linux/platform_data/mlxreg.h               |   27 
+ include/uapi/linux/ethtool.h                       |    3 
+ 24 files changed, 5105 insertions(+), 333 deletions(-)
  create mode 100644 drivers/net/ethernet/mellanox/mlxsw/core_env.c
  create mode 100644 drivers/net/ethernet/mellanox/mlxsw/core_env.h
  create mode 100644 drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
  create mode 100644 drivers/watchdog/mlx_wdt.c
 
 diff --git a/drivers/hwmon/mlxreg-fan.c b/drivers/hwmon/mlxreg-fan.c
-index d8fa4be..7028a4f 100644
+index d8fa4bea4..7028a4f49 100644
 --- a/drivers/hwmon/mlxreg-fan.c
 +++ b/drivers/hwmon/mlxreg-fan.c
 @@ -27,7 +27,9 @@
@@ -95,7 +95,7 @@ index d8fa4be..7028a4f 100644
  #define MLXREG_FAN_PWM_DUTY2STATE(duty)	(DIV_ROUND_CLOSEST((duty) *	\
  					 MLXREG_FAN_MAX_STATE,		\
  					 MLXREG_FAN_MAX_DUTY))
-@@ -360,15 +362,57 @@ static int mlxreg_fan_set_cur_state(struct thermal_cooling_device *cdev,
+@@ -360,15 +362,57 @@ static const struct thermal_cooling_device_ops mlxreg_fan_cooling_ops = {
  	.set_cur_state	= mlxreg_fan_set_cur_state,
  };
  
@@ -248,29 +248,8 @@ index d8fa4be..7028a4f 100644
  			return PTR_ERR(fan->cdev);
  		}
  	}
-diff --git a/drivers/hwmon/pmbus/tps53679.c b/drivers/hwmon/pmbus/tps53679.c
-index 85b515c..45eacc5 100644
---- a/drivers/hwmon/pmbus/tps53679.c
-+++ b/drivers/hwmon/pmbus/tps53679.c
-@@ -80,7 +80,15 @@ static int tps53679_identify(struct i2c_client *client,
- static int tps53679_probe(struct i2c_client *client,
- 			  const struct i2c_device_id *id)
- {
--	return pmbus_do_probe(client, id, &tps53679_info);
-+	struct pmbus_driver_info *info;
-+
-+	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
-+	if (!info)
-+		return -ENOMEM;
-+
-+	memcpy(info, &tps53679_info, sizeof(*info));
-+
-+	return pmbus_do_probe(client, id, info);
- }
- 
- static const struct i2c_device_id tps53679_id[] = {
 diff --git a/drivers/i2c/busses/i2c-mlxcpld.c b/drivers/i2c/busses/i2c-mlxcpld.c
-index 2fd717d..6da4b58 100644
+index 2fd717d8d..6da4b58ee 100644
 --- a/drivers/i2c/busses/i2c-mlxcpld.c
 +++ b/drivers/i2c/busses/i2c-mlxcpld.c
 @@ -51,7 +51,7 @@
@@ -283,7 +262,7 @@ index 2fd717d..6da4b58 100644
  /* LPC I2C registers */
  #define MLXCPLD_LPCI2C_CPBLTY_REG	0x0
 diff --git a/drivers/leds/leds-mlxreg.c b/drivers/leds/leds-mlxreg.c
-index 1ee48cb..0c14a74 100644
+index 1ee48cb21..0c14a7406 100644
 --- a/drivers/leds/leds-mlxreg.c
 +++ b/drivers/leds/leds-mlxreg.c
 @@ -22,6 +22,7 @@
@@ -338,7 +317,7 @@ index 1ee48cb..0c14a74 100644
  						mlxreg_led_brightness_set;
  		led_cdev->brightness_get = mlxreg_led_brightness_get;
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/Kconfig b/drivers/net/ethernet/mellanox/mlxsw/Kconfig
-index 8a291eb..51e485b 100644
+index 8a291eb36..51e485b8c 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/Kconfig
 +++ b/drivers/net/ethernet/mellanox/mlxsw/Kconfig
 @@ -28,6 +28,15 @@ config MLXSW_CORE_THERMAL
@@ -358,7 +337,7 @@ index 8a291eb..51e485b 100644
  	tristate "PCI bus implementation for Mellanox Technologies Switch ASICs"
  	depends on PCI && HAS_IOMEM && MLXSW_CORE
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/Makefile b/drivers/net/ethernet/mellanox/mlxsw/Makefile
-index 68fa44a..da75f61 100644
+index 68fa44a41..da75f6155 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/Makefile
 +++ b/drivers/net/ethernet/mellanox/mlxsw/Makefile
 @@ -1,9 +1,10 @@
@@ -374,7 +353,7 @@ index 68fa44a..da75f61 100644
  mlxsw_pci-objs			:= pci.o
  obj-$(CONFIG_MLXSW_I2C)		+= mlxsw_i2c.o
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core.c b/drivers/net/ethernet/mellanox/mlxsw/core.c
-index 2e6df58..c38c1c5 100644
+index 2e6df5804..c38c1c565 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/core.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core.c
 @@ -78,6 +78,7 @@ struct mlxsw_core {
@@ -398,7 +377,7 @@ index 2e6df58..c38c1c5 100644
  struct mlxsw_rx_listener_item {
  	struct list_head list;
  	struct mlxsw_rx_listener rxl;
-@@ -971,9 +978,9 @@ static int mlxsw_devlink_core_bus_device_reload(struct devlink *devlink,
+@@ -971,9 +978,9 @@ static const struct devlink_ops mlxsw_devlink_ops = {
  };
  
  int mlxsw_core_bus_device_register(const struct mlxsw_bus_info *mlxsw_bus_info,
@@ -525,10 +504,10 @@ index 2e6df58..c38c1c5 100644
  {
  	int err;
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core.h b/drivers/net/ethernet/mellanox/mlxsw/core.h
-index c4e4971..3fb3a75 100644
+index c4e497176..3fb3a757a 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/core.h
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core.h
-@@ -28,6 +28,8 @@
+@@ -28,6 +28,8 @@ unsigned int mlxsw_core_max_ports(const struct mlxsw_core *mlxsw_core);
  
  void *mlxsw_core_driver_priv(struct mlxsw_core *mlxsw_core);
  
@@ -599,7 +578,7 @@ index c4e4971..3fb3a75 100644
  #endif
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_env.c b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
 new file mode 100644
-index 0000000..03eae1e
+index 000000000..03eae1ed2
 --- /dev/null
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
 @@ -0,0 +1,256 @@
@@ -861,7 +840,7 @@ index 0000000..03eae1e
 +EXPORT_SYMBOL(mlxsw_env_get_module_eeprom);
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_env.h b/drivers/net/ethernet/mellanox/mlxsw/core_env.h
 new file mode 100644
-index 0000000..064d0e7
+index 000000000..064d0e770
 --- /dev/null
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core_env.h
 @@ -0,0 +1,17 @@
@@ -883,7 +862,7 @@ index 0000000..064d0e7
 +
 +#endif
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
-index e04e816..3fe878d 100644
+index e04e8162a..3fe878d7c 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
 @@ -7,8 +7,10 @@
@@ -1394,7 +1373,7 @@ index e04e816..3fe878d 100644
  err_temp_init:
  	kfree(mlxsw_hwmon);
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
-index 6d29dc4..b753729 100644
+index 6d29dc428..b75372998 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
 @@ -9,17 +9,48 @@
@@ -1489,7 +1468,7 @@ index 6d29dc4..b753729 100644
  		.min_state	= MLXSW_THERMAL_MAX_STATE,
  		.max_state	= MLXSW_THERMAL_MAX_STATE,
  	}
-@@ -63,13 +91,32 @@ struct mlxsw_thermal_trip {
+@@ -63,13 +91,32 @@ static const struct mlxsw_thermal_trip default_thermal_trips[] = {
  /* Make sure all trips are writable */
  #define MLXSW_THERMAL_TRIP_MASK	(BIT(MLXSW_THERMAL_NUM_TRIPS) - 1)
  
@@ -1662,7 +1641,7 @@ index 6d29dc4..b753729 100644
  static struct thermal_zone_device_ops mlxsw_thermal_ops = {
  	.bind = mlxsw_thermal_bind,
  	.unbind = mlxsw_thermal_unbind,
-@@ -243,6 +376,242 @@ static int mlxsw_thermal_set_trip_temp(struct thermal_zone_device *tzdev,
+@@ -243,6 +376,242 @@ static struct thermal_zone_device_ops mlxsw_thermal_ops = {
  	.get_trip_type	= mlxsw_thermal_get_trip_type,
  	.get_trip_temp	= mlxsw_thermal_get_trip_temp,
  	.set_trip_temp	= mlxsw_thermal_set_trip_temp,
@@ -1958,7 +1937,7 @@ index 6d29dc4..b753729 100644
  	mlxsw_reg_mfsc_pack(mfsc_pl, idx, mlxsw_state_to_duty(state));
  	err = mlxsw_reg_write(thermal->core, MLXSW_REG(mfsc), mfsc_pl);
  	if (err) {
-@@ -306,6 +714,218 @@ static int mlxsw_thermal_set_cur_state(struct thermal_cooling_device *cdev,
+@@ -306,6 +714,218 @@ static const struct thermal_cooling_device_ops mlxsw_cooling_ops = {
  	.set_cur_state	= mlxsw_thermal_set_cur_state,
  };
  
@@ -2259,7 +2238,7 @@ index 6d29dc4..b753729 100644
  		thermal_zone_device_unregister(thermal->tzdev);
  		thermal->tzdev = NULL;
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/i2c.c b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
-index 798bd5a..e04d521 100644
+index 798bd5aca..e04d521d9 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/i2c.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
 @@ -14,14 +14,17 @@
@@ -2395,7 +2374,7 @@ index 798bd5a..e04d521 100644
  /* Routine obtains mail box offsets from ASIC register space. */
  static int mlxsw_i2c_get_mbox(struct i2c_client *client,
  			      struct mlxsw_i2c *mlxsw_i2c)
-@@ -248,20 +316,26 @@ static int mlxsw_i2c_get_mbox(struct i2c_client *client,
+@@ -248,20 +316,26 @@ mlxsw_i2c_write(struct device *dev, size_t in_mbox_size, u8 *in_mbox, int num,
  	struct i2c_client *client = to_i2c_client(dev);
  	struct mlxsw_i2c *mlxsw_i2c = i2c_get_clientdata(client);
  	unsigned long timeout = msecs_to_jiffies(MLXSW_I2C_TIMEOUT_MSECS);
@@ -2427,7 +2406,7 @@ index 798bd5a..e04d521 100644
  
  		j = 0;
  		end = jiffies + timeout;
-@@ -275,9 +349,10 @@ static int mlxsw_i2c_get_mbox(struct i2c_client *client,
+@@ -275,9 +349,10 @@ mlxsw_i2c_write(struct device *dev, size_t in_mbox_size, u8 *in_mbox, int num,
  			 (j++ < MLXSW_I2C_RETRY));
  
  		if (err != 1) {
@@ -2440,7 +2419,7 @@ index 798bd5a..e04d521 100644
  		}
  
  		off += chunk_size;
-@@ -288,30 +363,33 @@ static int mlxsw_i2c_get_mbox(struct i2c_client *client,
+@@ -288,30 +363,33 @@ mlxsw_i2c_write(struct device *dev, size_t in_mbox_size, u8 *in_mbox, int num,
  	err = mlxsw_i2c_write_cmd(client, mlxsw_i2c, 0);
  	if (err) {
  		dev_err(&client->dev, "Could not start transaction");
@@ -2480,7 +2459,7 @@ index 798bd5a..e04d521 100644
  {
  	struct i2c_client *client = to_i2c_client(dev);
  	struct mlxsw_i2c *mlxsw_i2c = i2c_get_clientdata(client);
-@@ -326,31 +404,47 @@ static int mlxsw_i2c_get_mbox(struct i2c_client *client,
+@@ -326,31 +404,47 @@ mlxsw_i2c_cmd(struct device *dev, size_t in_mbox_size, u8 *in_mbox,
  
  	WARN_ON(in_mbox_size % sizeof(u32) || out_mbox_size % sizeof(u32));
  
@@ -2593,7 +2572,7 @@ index 798bd5a..e04d521 100644
  }
  
  static void mlxsw_i2c_fini(void *bus_priv)
-@@ -442,6 +557,7 @@ static void mlxsw_i2c_fini(void *bus_priv)
+@@ -442,6 +557,7 @@ static const struct mlxsw_bus mlxsw_i2c_bus = {
  static int mlxsw_i2c_probe(struct i2c_client *client,
  			   const struct i2c_device_id *id)
  {
@@ -2645,7 +2624,7 @@ index 798bd5a..e04d521 100644
  
  errout:
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/minimal.c b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
-index 5a6c445..504db12 100644
+index 5a6c4457f..504db124e 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/minimal.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
 @@ -1,66 +1,354 @@
@@ -3024,10 +3003,10 @@ index 5a6c445..504db12 100644
 -MODULE_DEVICE_TABLE(i2c, mlxsw_minimal_i2c_id);
 +MODULE_DEVICE_TABLE(i2c, mlxsw_m_i2c_id);
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/pci.c b/drivers/net/ethernet/mellanox/mlxsw/pci.c
-index a903e97..b40455f 100644
+index a903e9779..b40455f82 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/pci.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/pci.c
-@@ -1039,42 +1039,6 @@ static void mlxsw_pci_aqs_fini(struct mlxsw_pci *mlxsw_pci)
+@@ -1039,42 +1039,6 @@ mlxsw_pci_config_profile_swid_config(struct mlxsw_pci *mlxsw_pci,
  	mlxsw_cmd_mbox_config_profile_swid_config_mask_set(mbox, index, mask);
  }
  
@@ -3109,7 +3088,7 @@ index a903e97..b40455f 100644
  	}
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
 new file mode 100644
-index 0000000..49563a7
+index 000000000..49563a703
 --- /dev/null
 +++ b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
 @@ -0,0 +1,454 @@
@@ -3568,7 +3547,7 @@ index 0000000..49563a7
 +MODULE_AUTHOR("Vadim Pasternak <vadimp@mellanox.com>");
 +MODULE_DESCRIPTION("Mellanox switch QSFP sysfs driver");
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/reg.h b/drivers/net/ethernet/mellanox/mlxsw/reg.h
-index aee58b3..7ca9814 100644
+index c9895876a..7ca981464 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/reg.h
 +++ b/drivers/net/ethernet/mellanox/mlxsw/reg.h
 @@ -295,6 +295,7 @@ enum mlxsw_reg_sfd_rec_type {
@@ -3579,7 +3558,7 @@ index aee58b3..7ca9814 100644
  };
  
  /* reg_sfd_rec_type
-@@ -525,6 +526,61 @@ static inline void mlxsw_reg_sfd_uc_lag_unpack(char *payload, int rec_index,
+@@ -525,6 +526,61 @@ mlxsw_reg_sfd_mc_pack(char *payload, int rec_index,
  	mlxsw_reg_sfd_mc_mid_set(payload, rec_index, mid);
  }
  
@@ -3739,7 +3718,7 @@ index aee58b3..7ca9814 100644
   * Access: RW
   */
  MLXSW_ITEM32(reg, sfdf, flush_type, 0x04, 28, 4);
-@@ -1315,12 +1441,19 @@ enum mlxsw_reg_slcr_type {
+@@ -1315,12 +1441,19 @@ MLXSW_ITEM32(reg, slcr, type, 0x00, 0, 4);
   */
  MLXSW_ITEM32(reg, slcr, lag_hash, 0x04, 0, 20);
  
@@ -3760,7 +3739,7 @@ index aee58b3..7ca9814 100644
  }
  
  /* SLCOR - Switch LAG Collector Register
-@@ -2066,6 +2199,14 @@ static inline void mlxsw_reg_pacl_pack(char *payload, u16 acl_id,
+@@ -2066,6 +2199,14 @@ MLXSW_ITEM32(reg, pagt, size, 0x00, 0, 8);
   */
  MLXSW_ITEM32(reg, pagt, acl_group_id, 0x08, 0, 16);
  
@@ -3834,7 +3813,7 @@ index aee58b3..7ca9814 100644
  /* PTCE-V2 - Policy-Engine TCAM Entry Register Version 2
   * -----------------------------------------------------
   * This register is used for accessing rules within a TCAM region.
-@@ -2573,7 +2752,7 @@ static inline void mlxsw_reg_perpt_erp_vector_pack(char *payload,
+@@ -2573,7 +2752,7 @@ mlxsw_reg_perpt_pack(char *payload, u8 erpt_bank, u8 erpt_index,
  	mlxsw_reg_perpt_erpt_bank_set(payload, erpt_bank);
  	mlxsw_reg_perpt_erpt_index_set(payload, erpt_index);
  	mlxsw_reg_perpt_key_size_set(payload, key_size);
@@ -3947,50 +3926,7 @@ index aee58b3..7ca9814 100644
  /* IEDR - Infrastructure Entry Delete Register
   * ----------------------------------------------------
   * This register is used for deleting entries from the entry tables.
-@@ -3215,7 +3464,7 @@ static inline void mlxsw_reg_qtct_pack(char *payload, u8 local_port,
-  * Configures the ETS elements.
-  */
- #define MLXSW_REG_QEEC_ID 0x400D
--#define MLXSW_REG_QEEC_LEN 0x1C
-+#define MLXSW_REG_QEEC_LEN 0x20
- 
- MLXSW_REG_DEFINE(qeec, MLXSW_REG_QEEC_ID, MLXSW_REG_QEEC_LEN);
- 
-@@ -3257,6 +3506,15 @@ enum mlxsw_reg_qeec_hr {
-  */
- MLXSW_ITEM32(reg, qeec, next_element_index, 0x08, 0, 8);
- 
-+/* reg_qeec_mise
-+ * Min shaper configuration enable. Enables configuration of the min
-+ * shaper on this ETS element
-+ * 0 - Disable
-+ * 1 - Enable
-+ * Access: RW
-+ */
-+MLXSW_ITEM32(reg, qeec, mise, 0x0C, 31, 1);
-+
- enum {
- 	MLXSW_REG_QEEC_BYTES_MODE,
- 	MLXSW_REG_QEEC_PACKETS_MODE,
-@@ -3273,6 +3531,17 @@ enum {
-  */
- MLXSW_ITEM32(reg, qeec, pb, 0x0C, 28, 1);
- 
-+/* The smallest permitted min shaper rate. */
-+#define MLXSW_REG_QEEC_MIS_MIN	200000		/* Kbps */
-+
-+/* reg_qeec_min_shaper_rate
-+ * Min shaper information rate.
-+ * For CPU port, can only be configured for port hierarchy.
-+ * When in bytes mode, value is specified in units of 1000bps.
-+ * Access: RW
-+ */
-+MLXSW_ITEM32(reg, qeec, min_shaper_rate, 0x0C, 0, 28);
-+
- /* reg_qeec_mase
-  * Max shaper configuration enable. Enables configuration of the max
-  * shaper on this ETS element.
-@@ -4142,8 +4411,11 @@ static inline void mlxsw_reg_pfcc_pack(char *payload, u8 local_port)
+@@ -4162,8 +4411,11 @@ MLXSW_ITEM32(reg, ppcnt, pnat, 0x00, 14, 2);
  
  enum mlxsw_reg_ppcnt_grp {
  	MLXSW_REG_PPCNT_IEEE_8023_CNT = 0x0,
@@ -4002,7 +3938,7 @@ index aee58b3..7ca9814 100644
  	MLXSW_REG_PPCNT_PRIO_CNT = 0x10,
  	MLXSW_REG_PPCNT_TC_CNT = 0x11,
  	MLXSW_REG_PPCNT_TC_CONG_TC = 0x13,
-@@ -4158,6 +4430,7 @@ enum mlxsw_reg_ppcnt_grp {
+@@ -4178,6 +4430,7 @@ enum mlxsw_reg_ppcnt_grp {
   * 0x2: RFC 2819 Counters
   * 0x3: RFC 3635 Counters
   * 0x5: Ethernet Extended Counters
@@ -4010,7 +3946,7 @@ index aee58b3..7ca9814 100644
   * 0x8: Link Level Retransmission Counters
   * 0x10: Per Priority Counters
   * 0x11: Per Traffic Class Counters
-@@ -4301,8 +4574,46 @@ enum mlxsw_reg_ppcnt_grp {
+@@ -4321,8 +4574,46 @@ MLXSW_ITEM64(reg, ppcnt, a_pause_mac_ctrl_frames_received,
  MLXSW_ITEM64(reg, ppcnt, a_pause_mac_ctrl_frames_transmitted,
  	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x90, 0, 64);
  
@@ -4057,7 +3993,7 @@ index aee58b3..7ca9814 100644
  /* reg_ppcnt_ether_stats_pkts64octets
   * Access: RO
   */
-@@ -4363,6 +4674,32 @@ enum mlxsw_reg_ppcnt_grp {
+@@ -4383,6 +4674,32 @@ MLXSW_ITEM64(reg, ppcnt, ether_stats_pkts4096to8191octets,
  MLXSW_ITEM64(reg, ppcnt, ether_stats_pkts8192to10239octets,
  	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0xA0, 0, 64);
  
@@ -4090,7 +4026,7 @@ index aee58b3..7ca9814 100644
  /* Ethernet Extended Counter Group Counters */
  
  /* reg_ppcnt_ecn_marked
-@@ -4371,6 +4708,80 @@ enum mlxsw_reg_ppcnt_grp {
+@@ -4391,6 +4708,80 @@ MLXSW_ITEM64(reg, ppcnt, ether_stats_pkts8192to10239octets,
  MLXSW_ITEM64(reg, ppcnt, ecn_marked,
  	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x08, 0, 64);
  
@@ -4171,7 +4107,7 @@ index aee58b3..7ca9814 100644
  /* Ethernet Per Priority Group Counters */
  
  /* reg_ppcnt_rx_octets
-@@ -4773,6 +5184,7 @@ enum mlxsw_reg_htgt_trap_group {
+@@ -4793,6 +5184,7 @@ enum mlxsw_reg_htgt_trap_group {
  	MLXSW_REG_HTGT_TRAP_GROUP_SP_EVENT,
  	MLXSW_REG_HTGT_TRAP_GROUP_SP_IPV6_MLD,
  	MLXSW_REG_HTGT_TRAP_GROUP_SP_IPV6_ND,
@@ -4179,7 +4115,7 @@ index aee58b3..7ca9814 100644
  };
  
  /* reg_htgt_trap_group
-@@ -5263,6 +5675,8 @@ enum mlxsw_reg_ritr_loopback_protocol {
+@@ -5283,6 +5675,8 @@ enum mlxsw_reg_ritr_loopback_protocol {
  	MLXSW_REG_RITR_LOOPBACK_PROTOCOL_IPIP_IPV4,
  	/* IPinIP IPv6 underlay Unicast */
  	MLXSW_REG_RITR_LOOPBACK_PROTOCOL_IPIP_IPV6,
@@ -4188,7 +4124,7 @@ index aee58b3..7ca9814 100644
  };
  
  /* reg_ritr_loopback_protocol
-@@ -5303,6 +5717,13 @@ enum mlxsw_reg_ritr_loopback_ipip_options {
+@@ -5323,6 +5717,13 @@ MLXSW_ITEM32(reg, ritr, loopback_ipip_options, 0x10, 20, 4);
   */
  MLXSW_ITEM32(reg, ritr, loopback_ipip_uvr, 0x10, 0, 16);
  
@@ -4202,7 +4138,7 @@ index aee58b3..7ca9814 100644
  /* reg_ritr_loopback_ipip_usip*
   * Encapsulation Underlay source IP.
   * Access: RW
-@@ -5418,11 +5839,12 @@ static inline void mlxsw_reg_ritr_mac_pack(char *payload, const char *mac)
+@@ -5438,11 +5839,12 @@ static inline void
  mlxsw_reg_ritr_loopback_ipip_common_pack(char *payload,
  			    enum mlxsw_reg_ritr_loopback_ipip_type ipip_type,
  			    enum mlxsw_reg_ritr_loopback_ipip_options options,
@@ -4216,7 +4152,7 @@ index aee58b3..7ca9814 100644
  	mlxsw_reg_ritr_loopback_ipip_gre_key_set(payload, gre_key);
  }
  
-@@ -5430,12 +5852,12 @@ static inline void mlxsw_reg_ritr_mac_pack(char *payload, const char *mac)
+@@ -5450,12 +5852,12 @@ static inline void
  mlxsw_reg_ritr_loopback_ipip4_pack(char *payload,
  			    enum mlxsw_reg_ritr_loopback_ipip_type ipip_type,
  			    enum mlxsw_reg_ritr_loopback_ipip_options options,
@@ -4231,7 +4167,7 @@ index aee58b3..7ca9814 100644
  	mlxsw_reg_ritr_loopback_ipip_usip4_set(payload, usip);
  }
  
-@@ -6797,6 +7219,13 @@ enum mlxsw_reg_rtdp_type {
+@@ -6817,6 +7219,13 @@ MLXSW_ITEM32(reg, rtdp, type, 0x00, 28, 4);
   */
  MLXSW_ITEM32(reg, rtdp, tunnel_index, 0x00, 0, 24);
  
@@ -4245,7 +4181,7 @@ index aee58b3..7ca9814 100644
  /* IPinIP */
  
  /* reg_rtdp_ipip_irif
-@@ -7446,6 +7875,35 @@ static inline void mlxsw_reg_mfsl_unpack(char *payload, u8 tacho,
+@@ -7466,6 +7875,35 @@ static inline void mlxsw_reg_mfsl_unpack(char *payload, u8 tacho,
  		*p_tach_max = mlxsw_reg_mfsl_tach_max_get(payload);
  }
  
@@ -4281,7 +4217,7 @@ index aee58b3..7ca9814 100644
  /* MTCAP - Management Temperature Capabilities
   * -------------------------------------------
   * This register exposes the capabilities of the device and
-@@ -7474,16 +7932,21 @@ static inline void mlxsw_reg_mfsl_unpack(char *payload, u8 tacho,
+@@ -7494,16 +7932,21 @@ MLXSW_ITEM32(reg, mtcap, sensor_count, 0x00, 0, 7);
  
  MLXSW_REG_DEFINE(mtmp, MLXSW_REG_MTMP_ID, MLXSW_REG_MTMP_LEN);
  
@@ -4305,7 +4241,7 @@ index aee58b3..7ca9814 100644
  
  /* reg_mtmp_temperature
   * Temperature reading from the sensor. Reading is in 0.125 Celsius
-@@ -7542,7 +8005,7 @@ static inline void mlxsw_reg_mfsl_unpack(char *payload, u8 tacho,
+@@ -7562,7 +8005,7 @@ MLXSW_ITEM32(reg, mtmp, temperature_threshold_lo, 0x10, 0, 16);
   */
  MLXSW_ITEM_BUF(reg, mtmp, sensor_name, 0x18, MLXSW_REG_MTMP_SENSOR_NAME_SIZE);
  
@@ -4314,7 +4250,7 @@ index aee58b3..7ca9814 100644
  				       bool max_temp_enable,
  				       bool max_temp_reset)
  {
-@@ -7554,11 +8017,10 @@ static inline void mlxsw_reg_mtmp_pack(char *payload, u8 sensor_index,
+@@ -7574,11 +8017,10 @@ static inline void mlxsw_reg_mtmp_pack(char *payload, u8 sensor_index,
  						    MLXSW_REG_MTMP_THRESH_HI);
  }
  
@@ -4329,7 +4265,7 @@ index aee58b3..7ca9814 100644
  
  	if (p_temp) {
  		temp = mlxsw_reg_mtmp_temperature_get(payload);
-@@ -7572,6 +8034,80 @@ static inline void mlxsw_reg_mtmp_unpack(char *payload, unsigned int *p_temp,
+@@ -7592,6 +8034,80 @@ static inline void mlxsw_reg_mtmp_unpack(char *payload, unsigned int *p_temp,
  		mlxsw_reg_mtmp_sensor_name_memcpy_from(payload, sensor_name);
  }
  
@@ -4410,7 +4346,7 @@ index aee58b3..7ca9814 100644
  /* MCIA - Management Cable Info Access
   * -----------------------------------
   * MCIA register is used to access the SFP+ and QSFP connector's EPROM.
-@@ -7626,13 +8162,48 @@ static inline void mlxsw_reg_mtmp_unpack(char *payload, unsigned int *p_temp,
+@@ -7646,13 +8162,48 @@ MLXSW_ITEM32(reg, mcia, device_address, 0x04, 0, 16);
   */
  MLXSW_ITEM32(reg, mcia, size, 0x08, 0, 16);
  
@@ -4461,7 +4397,7 @@ index aee58b3..7ca9814 100644
  
  static inline void mlxsw_reg_mcia_pack(char *payload, u8 module, u8 lock,
  				       u8 page_number, u16 device_addr,
-@@ -7968,6 +8539,43 @@ static inline void mlxsw_reg_mlcr_pack(char *payload, u8 local_port,
+@@ -7988,6 +8539,43 @@ static inline void mlxsw_reg_mlcr_pack(char *payload, u8 local_port,
  					   MLXSW_REG_MLCR_DURATION_MAX : 0);
  }
  
@@ -4505,7 +4441,7 @@ index aee58b3..7ca9814 100644
  /* MCQI - Management Component Query Information
   * ---------------------------------------------
   * This register allows querying information about firmware components.
-@@ -8279,6 +8887,567 @@ static inline void mlxsw_reg_mgpc_pack(char *payload, u32 counter_index,
+@@ -8299,6 +8887,567 @@ static inline void mlxsw_reg_mgpc_pack(char *payload, u32 counter_index,
  	mlxsw_reg_mgpc_opcode_set(payload, opcode);
  }
  
@@ -5073,7 +5009,7 @@ index aee58b3..7ca9814 100644
  /* TIGCR - Tunneling IPinIP General Configuration Register
   * -------------------------------------------------------
   * The TIGCR register is used for setting up the IPinIP Tunnel configuration.
-@@ -8336,8 +9505,15 @@ enum mlxsw_reg_sbxx_dir {
+@@ -8356,8 +9505,15 @@ MLXSW_ITEM32(reg, sbpr, dir, 0x00, 24, 2);
   */
  MLXSW_ITEM32(reg, sbpr, pool, 0x00, 0, 4);
  
@@ -5089,7 +5025,7 @@ index aee58b3..7ca9814 100644
   * Access: RW
   */
  MLXSW_ITEM32(reg, sbpr, size, 0x04, 0, 24);
-@@ -8355,13 +9531,15 @@ enum mlxsw_reg_sbpr_mode {
+@@ -8375,13 +9531,15 @@ MLXSW_ITEM32(reg, sbpr, mode, 0x08, 0, 4);
  
  static inline void mlxsw_reg_sbpr_pack(char *payload, u8 pool,
  				       enum mlxsw_reg_sbxx_dir dir,
@@ -5106,7 +5042,7 @@ index aee58b3..7ca9814 100644
  }
  
  /* SBCM - Shared Buffer Class Management Register
-@@ -8409,6 +9587,12 @@ static inline void mlxsw_reg_sbpr_pack(char *payload, u8 pool,
+@@ -8429,6 +9587,12 @@ MLXSW_ITEM32(reg, sbcm, min_buff, 0x18, 0, 24);
  #define MLXSW_REG_SBXX_DYN_MAX_BUFF_MIN 1
  #define MLXSW_REG_SBXX_DYN_MAX_BUFF_MAX 14
  
@@ -5119,7 +5055,7 @@ index aee58b3..7ca9814 100644
  /* reg_sbcm_max_buff
   * When the pool associated to the port-pg/tclass is configured to
   * static, Maximum buffer size for the limiter configured in cells.
-@@ -8418,6 +9602,7 @@ static inline void mlxsw_reg_sbpr_pack(char *payload, u8 pool,
+@@ -8438,6 +9602,7 @@ MLXSW_ITEM32(reg, sbcm, min_buff, 0x18, 0, 24);
   * 0: 0
   * i: (1/128)*2^(i-1), for i=1..14
   * 0xFF: Infinity
@@ -5127,7 +5063,7 @@ index aee58b3..7ca9814 100644
   * Access: RW
   */
  MLXSW_ITEM32(reg, sbcm, max_buff, 0x1C, 0, 24);
-@@ -8430,7 +9615,8 @@ static inline void mlxsw_reg_sbpr_pack(char *payload, u8 pool,
+@@ -8450,7 +9615,8 @@ MLXSW_ITEM32(reg, sbcm, pool, 0x24, 0, 4);
  
  static inline void mlxsw_reg_sbcm_pack(char *payload, u8 local_port, u8 pg_buff,
  				       enum mlxsw_reg_sbxx_dir dir,
@@ -5137,7 +5073,7 @@ index aee58b3..7ca9814 100644
  {
  	MLXSW_REG_ZERO(sbcm, payload);
  	mlxsw_reg_sbcm_local_port_set(payload, local_port);
-@@ -8438,6 +9624,7 @@ static inline void mlxsw_reg_sbcm_pack(char *payload, u8 local_port, u8 pg_buff,
+@@ -8458,6 +9624,7 @@ static inline void mlxsw_reg_sbcm_pack(char *payload, u8 local_port, u8 pg_buff,
  	mlxsw_reg_sbcm_dir_set(payload, dir);
  	mlxsw_reg_sbcm_min_buff_set(payload, min_buff);
  	mlxsw_reg_sbcm_max_buff_set(payload, max_buff);
@@ -5145,7 +5081,7 @@ index aee58b3..7ca9814 100644
  	mlxsw_reg_sbcm_pool_set(payload, pool);
  }
  
-@@ -8748,8 +9935,10 @@ static inline void mlxsw_reg_sbib_pack(char *payload, u8 local_port,
+@@ -8768,8 +9935,10 @@ static const struct mlxsw_reg_info *mlxsw_reg_infos[] = {
  	MLXSW_REG(ppbs),
  	MLXSW_REG(prcr),
  	MLXSW_REG(pefa),
@@ -5156,7 +5092,7 @@ index aee58b3..7ca9814 100644
  	MLXSW_REG(perar),
  	MLXSW_REG(ptce3),
  	MLXSW_REG(percr),
-@@ -8798,18 +9987,30 @@ static inline void mlxsw_reg_sbib_pack(char *payload, u8 local_port,
+@@ -8818,18 +9987,30 @@ static const struct mlxsw_reg_info *mlxsw_reg_infos[] = {
  	MLXSW_REG(mfsc),
  	MLXSW_REG(mfsm),
  	MLXSW_REG(mfsl),
@@ -5188,7 +5124,7 @@ index aee58b3..7ca9814 100644
  	MLXSW_REG(sbpr),
  	MLXSW_REG(sbcm),
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/resources.h b/drivers/net/ethernet/mellanox/mlxsw/resources.h
-index 79a31de..b8b3a01 100644
+index 79a31de7c..b8b3a01c2 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/resources.h
 +++ b/drivers/net/ethernet/mellanox/mlxsw/resources.h
 @@ -41,11 +41,14 @@ enum mlxsw_res_id {
@@ -5206,7 +5142,7 @@ index 79a31de..b8b3a01 100644
  
  	/* Internal resources.
  	 * Determined by the SW, not queried from the HW.
-@@ -91,11 +94,14 @@ enum mlxsw_res_id {
+@@ -91,11 +94,14 @@ static u16 mlxsw_res_ids[] = {
  	[MLXSW_RES_ID_ACL_ERPT_ENTRIES_4KB] = 0x2951,
  	[MLXSW_RES_ID_ACL_ERPT_ENTRIES_8KB] = 0x2952,
  	[MLXSW_RES_ID_ACL_ERPT_ENTRIES_12KB] = 0x2953,
@@ -5222,7 +5158,7 @@ index 79a31de..b8b3a01 100644
  
  struct mlxsw_res {
 diff --git a/drivers/platform/mellanox/mlxreg-hotplug.c b/drivers/platform/mellanox/mlxreg-hotplug.c
-index d52c821..77be37a 100644
+index d52c821b8..77be37a1f 100644
 --- a/drivers/platform/mellanox/mlxreg-hotplug.c
 +++ b/drivers/platform/mellanox/mlxreg-hotplug.c
 @@ -496,18 +496,53 @@ static int mlxreg_hotplug_set_irq(struct mlxreg_hotplug_priv_data *priv)
@@ -5294,7 +5230,7 @@ index d52c821..77be37a 100644
  
  	priv->regmap = pdata->regmap;
 diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
-index 742a0c2..c27548f 100644
+index 69e28c12d..f5d70d67f 100644
 --- a/drivers/platform/x86/mlx-platform.c
 +++ b/drivers/platform/x86/mlx-platform.c
 @@ -1,34 +1,9 @@
@@ -5501,7 +5437,7 @@ index 742a0c2..c27548f 100644
  };
  
  /* Regions for LPC I2C controller and LPC base register space */
-@@ -173,6 +213,30 @@ struct mlxplat_priv {
+@@ -173,6 +213,30 @@ static const struct resource mlxplat_lpc_resources[] = {
  			       IORESOURCE_IO),
  };
  
@@ -5532,7 +5468,7 @@ index 742a0c2..c27548f 100644
  /* Platform default channels */
  static const int mlxplat_default_channels[][MLXPLAT_CPLD_GRP_CHNL_NUM] = {
  	{
-@@ -191,7 +255,33 @@ struct mlxplat_priv {
+@@ -191,7 +255,33 @@ static const int mlxplat_default_channels[][MLXPLAT_CPLD_GRP_CHNL_NUM] = {
  static const int mlxplat_msn21xx_channels[] = { 1, 2, 3, 4, 5, 6, 7, 8 };
  
  /* Platform mux data */
@@ -5567,7 +5503,7 @@ index 742a0c2..c27548f 100644
  	{
  		.parent = 1,
  		.base_nr = MLXPLAT_CPLD_CH1,
-@@ -204,6 +294,14 @@ struct mlxplat_priv {
+@@ -204,6 +294,14 @@ static struct i2c_mux_reg_platform_data mlxplat_mux_data[] = {
  		.parent = 1,
  		.base_nr = MLXPLAT_CPLD_CH2,
  		.write_only = 1,
@@ -5582,7 +5518,7 @@ index 742a0c2..c27548f 100644
  		.reg = (void __iomem *)MLXPLAT_CPLD_LPC_REG2,
  		.reg_size = 1,
  		.idle_in_use = 1,
-@@ -254,6 +352,22 @@ struct mlxplat_priv {
+@@ -254,6 +352,22 @@ static struct i2c_board_info mlxplat_mlxcpld_fan[] = {
  	},
  };
  
@@ -5605,7 +5541,7 @@ index 742a0c2..c27548f 100644
  /* Platform hotplug default data */
  static struct mlxreg_core_data mlxplat_mlxcpld_default_psu_items_data[] = {
  	{
-@@ -368,6 +482,45 @@ struct mlxplat_priv {
+@@ -368,6 +482,45 @@ static struct mlxreg_core_item mlxplat_mlxcpld_default_items[] = {
  	},
  };
  
@@ -5668,16 +5604,7 @@ index 742a0c2..c27548f 100644
  static struct mlxreg_core_data mlxplat_mlxcpld_msn21xx_pwr_items_data[] = {
  	{
  		.label = "pwr1",
-@@ -575,7 +738,7 @@ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_msn274x_data = {
- 
- static
- struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_msn201x_data = {
--	.items = mlxplat_mlxcpld_msn21xx_items,
-+	.items = mlxplat_mlxcpld_msn201x_items,
- 	.counter = ARRAY_SIZE(mlxplat_mlxcpld_msn201x_items),
- 	.cell = MLXPLAT_CPLD_LPC_REG_AGGR_OFFSET,
- 	.mask = MLXPLAT_CPLD_AGGR_MASK_DEF,
-@@ -606,36 +769,48 @@ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_msn201x_data = {
+@@ -606,36 +769,48 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_ng_fan_items_data[] = {
  		.label = "fan1",
  		.reg = MLXPLAT_CPLD_LPC_REG_FAN_OFFSET,
  		.mask = BIT(0),
@@ -5845,7 +5772,7 @@ index 742a0c2..c27548f 100644
  	.cell_low = MLXPLAT_CPLD_LPC_REG_AGGRLO_OFFSET,
  	.mask_low = MLXPLAT_CPLD_LOW_AGGR_MASK_LOW,
  };
-@@ -838,61 +1123,90 @@ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_default_ng_data = {
+@@ -838,61 +1123,90 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_ng_led_data[] = {
  		.label = "fan1:green",
  		.reg = MLXPLAT_CPLD_LPC_REG_LED2_OFFSET,
  		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
@@ -5936,7 +5863,7 @@ index 742a0c2..c27548f 100644
  	},
  };
  
-@@ -901,61 +1215,135 @@ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_default_ng_data = {
+@@ -901,64 +1215,138 @@ static struct mlxreg_core_platform_data mlxplat_default_ng_led_data = {
  		.counter = ARRAY_SIZE(mlxplat_mlxcpld_default_ng_led_data),
  };
  
@@ -6024,8 +5951,9 @@ index 742a0c2..c27548f 100644
 +		.label = "fan3:green",
 +		.reg = MLXPLAT_CPLD_LPC_REG_LED3_OFFSET,
 +		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
-+	},
-+	{
+ 	},
+ 	{
+-		.label = "reset_asic_thermal",
 +		.label = "fan3:red",
 +		.reg = MLXPLAT_CPLD_LPC_REG_LED3_OFFSET,
 +		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
@@ -6107,36 +6035,39 @@ index 742a0c2..c27548f 100644
 +		.reg = MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET,
 +		.mask = GENMASK(7, 0) & ~BIT(6),
 +		.mode = 0444,
- 	},
- 	{
- 		.label = "reset_asic_thermal",
-@@ -1064,6 +1452,12 @@ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_default_ng_data = {
++	},
++	{
++		.label = "reset_asic_thermal",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET,
+ 		.mask = GENMASK(7, 0) & ~BIT(7),
+ 		.mode = 0444,
+@@ -1063,6 +1451,12 @@ static struct mlxreg_core_data mlxplat_mlxcpld_msn21xx_regs_io_data[] = {
+ 		.mask = GENMASK(7, 0) & ~BIT(6),
  		.mode = 0444,
  	},
- 	{
++	{
 +		.label = "reset_sff_wd",
 +		.reg = MLXPLAT_CPLD_LPC_REG_RST_CAUSE1_OFFSET,
 +		.mask = GENMASK(7, 0) & ~BIT(6),
 +		.mode = 0444,
 +	},
-+	{
+ 	{
  		.label = "psu1_on",
  		.reg = MLXPLAT_CPLD_LPC_REG_GP1_OFFSET,
- 		.mask = GENMASK(7, 0) & ~BIT(0),
-@@ -1088,6 +1482,12 @@ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_default_ng_data = {
+@@ -1087,6 +1481,12 @@ static struct mlxreg_core_data mlxplat_mlxcpld_msn21xx_regs_io_data[] = {
+ 		.mask = GENMASK(7, 0) & ~BIT(3),
  		.mode = 0200,
  	},
- 	{
++	{
 +		.label = "select_iio",
 +		.reg = MLXPLAT_CPLD_LPC_REG_GP2_OFFSET,
 +		.mask = GENMASK(7, 0) & ~BIT(6),
 +		.mode = 0644,
 +	},
-+	{
+ 	{
  		.label = "asic_health",
  		.reg = MLXPLAT_CPLD_LPC_REG_ASIC_HEALTH_OFFSET,
- 		.mask = MLXPLAT_CPLD_ASIC_MASK,
-@@ -1101,6 +1501,221 @@ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_default_ng_data = {
+@@ -1101,6 +1501,221 @@ static struct mlxreg_core_platform_data mlxplat_msn21xx_regs_io_data = {
  		.counter = ARRAY_SIZE(mlxplat_mlxcpld_msn21xx_regs_io_data),
  };
  
@@ -6358,7 +6289,7 @@ index 742a0c2..c27548f 100644
  /* Platform FAN default */
  static struct mlxreg_core_data mlxplat_mlxcpld_default_fan_data[] = {
  	{
-@@ -1111,61 +1726,89 @@ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_default_ng_data = {
+@@ -1111,61 +1726,89 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_fan_data[] = {
  		.label = "tacho1",
  		.reg = MLXPLAT_CPLD_LPC_REG_TACHO1_OFFSET,
  		.mask = GENMASK(7, 0),
@@ -6448,7 +6379,7 @@ index 742a0c2..c27548f 100644
  	},
  };
  
-@@ -1174,6 +1817,148 @@ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_default_ng_data = {
+@@ -1174,6 +1817,148 @@ static struct mlxreg_core_platform_data mlxplat_default_fan_data = {
  		.counter = ARRAY_SIZE(mlxplat_mlxcpld_default_fan_data),
  };
  
@@ -6747,7 +6678,7 @@ index 742a0c2..c27548f 100644
  		return true;
  	}
  	return false;
-@@ -1305,6 +2153,25 @@ static bool mlxplat_mlxcpld_volatile_reg(struct device *dev, unsigned int reg)
+@@ -1305,6 +2153,25 @@ static const struct reg_default mlxplat_mlxcpld_regmap_default[] = {
  	{ MLXPLAT_CPLD_LPC_REG_WP1_OFFSET, 0x00 },
  	{ MLXPLAT_CPLD_LPC_REG_WP2_OFFSET, 0x00 },
  	{ MLXPLAT_CPLD_LPC_REG_PWM_CONTROL_OFFSET, 0x00 },
@@ -6773,7 +6704,7 @@ index 742a0c2..c27548f 100644
  };
  
  struct mlxplat_mlxcpld_regmap_context {
-@@ -1345,21 +2212,70 @@ struct mlxplat_mlxcpld_regmap_context {
+@@ -1345,21 +2212,70 @@ static const struct regmap_config mlxplat_mlxcpld_regmap_config = {
  	.reg_write = mlxplat_mlxcpld_reg_write,
  };
  
@@ -6911,152 +6842,7 @@ index 742a0c2..c27548f 100644
  		mlxplat_mux_data[i].values = mlxplat_msn21xx_channels;
  		mlxplat_mux_data[i].n_values =
  				ARRAY_SIZE(mlxplat_msn21xx_channels);
-@@ -1421,17 +2349,21 @@ static int __init mlxplat_dmi_msn201x_matched(const struct dmi_system_id *dmi)
- 	mlxplat_hotplug = &mlxplat_mlxcpld_msn201x_data;
- 	mlxplat_hotplug->deferred_nr =
- 		mlxplat_default_channels[i - 1][MLXPLAT_CPLD_GRP_CHNL_NUM - 1];
--	mlxplat_led = &mlxplat_default_ng_led_data;
-+	mlxplat_led = &mlxplat_msn21xx_led_data;
- 	mlxplat_regs_io = &mlxplat_msn21xx_regs_io_data;
-+	mlxplat_wd_data[0] = &mlxplat_mlxcpld_wd_set_type1[0];
- 
- 	return 1;
--};
-+}
- 
- static int __init mlxplat_dmi_qmb7xx_matched(const struct dmi_system_id *dmi)
- {
- 	int i;
- 
--	for (i = 0; i < ARRAY_SIZE(mlxplat_mux_data); i++) {
-+	mlxplat_max_adap_num = MLXPLAT_CPLD_MAX_PHYS_ADAPTER_NUM;
-+	mlxplat_mux_num = ARRAY_SIZE(mlxplat_default_mux_data);
-+	mlxplat_mux_data = mlxplat_default_mux_data;
-+	for (i = 0; i < mlxplat_mux_num; i++) {
- 		mlxplat_mux_data[i].values = mlxplat_msn21xx_channels;
- 		mlxplat_mux_data[i].n_values =
- 				ARRAY_SIZE(mlxplat_msn21xx_channels);
-@@ -1439,14 +2371,117 @@ static int __init mlxplat_dmi_qmb7xx_matched(const struct dmi_system_id *dmi)
- 	mlxplat_hotplug = &mlxplat_mlxcpld_default_ng_data;
- 	mlxplat_hotplug->deferred_nr =
- 		mlxplat_msn21xx_channels[MLXPLAT_CPLD_GRP_CHNL_NUM - 1];
--	mlxplat_led = &mlxplat_msn21xx_led_data;
-+	mlxplat_led = &mlxplat_default_ng_led_data;
-+	mlxplat_regs_io = &mlxplat_default_ng_regs_io_data;
- 	mlxplat_fan = &mlxplat_default_fan_data;
-+	for (i = 0; i < ARRAY_SIZE(mlxplat_mlxcpld_wd_set_type2); i++)
-+		mlxplat_wd_data[i] = &mlxplat_mlxcpld_wd_set_type2[i];
-+	mlxplat_i2c = &mlxplat_mlxcpld_i2c_ng_data;
-+	mlxplat_regmap_config = &mlxplat_mlxcpld_regmap_config_ng;
- 
- 	return 1;
--};
-+}
-+
-+static int __init mlxplat_dmi_comex_matched(const struct dmi_system_id *dmi)
-+{
-+	int i;
-+
-+	mlxplat_max_adap_num = MLXPLAT_CPLD_MAX_PHYS_EXT_ADAPTER_NUM;
-+	mlxplat_mux_num = ARRAY_SIZE(mlxplat_extended_mux_data);
-+	mlxplat_mux_data = mlxplat_extended_mux_data;
-+	for (i = 0; i < mlxplat_mux_num; i++) {
-+		mlxplat_mux_data[i].values = mlxplat_msn21xx_channels;
-+		mlxplat_mux_data[i].n_values =
-+				ARRAY_SIZE(mlxplat_msn21xx_channels);
-+	}
-+	mlxplat_hotplug = &mlxplat_mlxcpld_comex_data;
-+	mlxplat_hotplug->deferred_nr = MLXPLAT_CPLD_MAX_PHYS_EXT_ADAPTER_NUM;
-+	mlxplat_led = &mlxplat_comex_100G_led_data;
-+	mlxplat_regs_io = &mlxplat_default_ng_regs_io_data;
-+	mlxplat_fan = &mlxplat_default_fan_data;
-+	for (i = 0; i < ARRAY_SIZE(mlxplat_mlxcpld_wd_set_type2); i++)
-+		mlxplat_wd_data[i] = &mlxplat_mlxcpld_wd_set_type2[i];
-+	mlxplat_regmap_config = &mlxplat_mlxcpld_regmap_config_comex;
-+
-+	return 1;
-+}
-+
-+static int __init mlxplat_dmi_ng400_matched(const struct dmi_system_id *dmi)
-+{
-+	int i;
-+
-+	mlxplat_max_adap_num = MLXPLAT_CPLD_MAX_PHYS_ADAPTER_NUM;
-+	mlxplat_mux_num = ARRAY_SIZE(mlxplat_default_mux_data);
-+	mlxplat_mux_data = mlxplat_default_mux_data;
-+	for (i = 0; i < mlxplat_mux_num; i++) {
-+		mlxplat_mux_data[i].values = mlxplat_msn21xx_channels;
-+		mlxplat_mux_data[i].n_values =
-+				ARRAY_SIZE(mlxplat_msn21xx_channels);
-+	}
-+	mlxplat_hotplug = &mlxplat_mlxcpld_ext_data;
-+	mlxplat_hotplug->deferred_nr =
-+		mlxplat_msn21xx_channels[MLXPLAT_CPLD_GRP_CHNL_NUM - 1];
-+	mlxplat_led = &mlxplat_default_ng_led_data;
-+	mlxplat_regs_io = &mlxplat_default_ng_regs_io_data;
-+	mlxplat_fan = &mlxplat_default_fan_data;
-+	for (i = 0; i < ARRAY_SIZE(mlxplat_mlxcpld_wd_set_type2); i++)
-+		mlxplat_wd_data[i] = &mlxplat_mlxcpld_wd_set_type2[i];
-+	mlxplat_i2c = &mlxplat_mlxcpld_i2c_ng_data;
-+	mlxplat_regmap_config = &mlxplat_mlxcpld_regmap_config_ng400;
-+
-+	return 1;
-+}
- 
- static const struct dmi_system_id mlxplat_dmi_table[] __initconst = {
- 	{
-+		.callback = mlxplat_dmi_default_matched,
-+		.matches = {
-+			DMI_MATCH(DMI_BOARD_NAME, "VMOD0001"),
-+		},
-+	},
-+	{
-+		.callback = mlxplat_dmi_msn21xx_matched,
-+		.matches = {
-+			DMI_MATCH(DMI_BOARD_NAME, "VMOD0002"),
-+		},
-+	},
-+	{
-+		.callback = mlxplat_dmi_msn274x_matched,
-+		.matches = {
-+			DMI_MATCH(DMI_BOARD_NAME, "VMOD0003"),
-+		},
-+	},
-+	{
-+		.callback = mlxplat_dmi_msn201x_matched,
-+		.matches = {
-+			DMI_MATCH(DMI_BOARD_NAME, "VMOD0004"),
-+		},
-+	},
-+	{
-+		.callback = mlxplat_dmi_qmb7xx_matched,
-+		.matches = {
-+			DMI_MATCH(DMI_BOARD_NAME, "VMOD0005"),
-+		},
-+	},
-+	{
-+		.callback = mlxplat_dmi_qmb7xx_matched,
-+		.matches = {
-+			DMI_MATCH(DMI_BOARD_NAME, "VMOD0007"),
-+		},
-+	},
-+	{
-+		.callback = mlxplat_dmi_comex_matched,
-+		.matches = {
-+			DMI_MATCH(DMI_BOARD_NAME, "VMOD0009"),
-+		},
-+	},
-+	{
-+		.callback = mlxplat_dmi_ng400_matched,
-+		.matches = {
-+			DMI_MATCH(DMI_BOARD_NAME, "VMOD0010"),
-+		},
-+	},
-+	{
- 		.callback = mlxplat_dmi_msn274x_matched,
- 		.matches = {
- 			DMI_MATCH(DMI_BOARD_VENDOR, "Mellanox Technologies"),
-@@ -1499,51 +2534,28 @@ static int __init mlxplat_dmi_qmb7xx_matched(const struct dmi_system_id *dmi)
+@@ -1499,51 +2427,28 @@ static const struct dmi_system_id mlxplat_dmi_table[] __initconst = {
  		.callback = mlxplat_dmi_qmb7xx_matched,
  		.matches = {
  			DMI_MATCH(DMI_BOARD_VENDOR, "Mellanox Technologies"),
@@ -7113,7 +6899,7 @@ index 742a0c2..c27548f 100644
  		},
  	},
  	{ }
-@@ -1559,7 +2571,7 @@ static int mlxplat_mlxcpld_verify_bus_topology(int *nr)
+@@ -1559,7 +2464,7 @@ static int mlxplat_mlxcpld_verify_bus_topology(int *nr)
  	/* Scan adapters from expected id to verify it is free. */
  	*nr = MLXPLAT_CPLD_PHYS_ADAPTER_DEF_NR;
  	for (i = MLXPLAT_CPLD_PHYS_ADAPTER_DEF_NR; i <
@@ -7122,7 +6908,7 @@ index 742a0c2..c27548f 100644
  		search_adap = i2c_get_adapter(i);
  		if (search_adap) {
  			i2c_put_adapter(search_adap);
-@@ -1573,12 +2585,12 @@ static int mlxplat_mlxcpld_verify_bus_topology(int *nr)
+@@ -1573,12 +2478,12 @@ static int mlxplat_mlxcpld_verify_bus_topology(int *nr)
  	}
  
  	/* Return with error if free id for adapter is not found. */
@@ -7137,7 +6923,7 @@ index 742a0c2..c27548f 100644
  		shift = *nr - mlxplat_mux_data[i].parent;
  		mlxplat_mux_data[i].parent = *nr;
  		mlxplat_mux_data[i].base_nr += shift;
-@@ -1612,19 +2624,42 @@ static int __init mlxplat_init(void)
+@@ -1612,19 +2517,42 @@ static int __init mlxplat_init(void)
  	}
  	platform_set_drvdata(mlxplat_dev, priv);
  
@@ -7184,7 +6970,7 @@ index 742a0c2..c27548f 100644
  		priv->pdev_mux[i] = platform_device_register_resndata(
  						&priv->pdev_i2c->dev,
  						"i2c-mux-reg", i, NULL,
-@@ -1636,21 +2671,8 @@ static int __init mlxplat_init(void)
+@@ -1636,21 +2564,8 @@ static int __init mlxplat_init(void)
  		}
  	}
  
@@ -7208,7 +6994,7 @@ index 742a0c2..c27548f 100644
  	priv->pdev_hotplug = platform_device_register_resndata(
  				&mlxplat_dev->dev, "mlxreg-hotplug",
  				PLATFORM_DEVID_NONE,
-@@ -1663,16 +2685,16 @@ static int __init mlxplat_init(void)
+@@ -1663,16 +2578,16 @@ static int __init mlxplat_init(void)
  	}
  
  	/* Set default registers. */
@@ -7230,7 +7016,7 @@ index 742a0c2..c27548f 100644
  	priv->pdev_led = platform_device_register_resndata(
  				&mlxplat_dev->dev, "leds-mlxreg",
  				PLATFORM_DEVID_NONE, NULL, 0,
-@@ -1684,7 +2706,7 @@ static int __init mlxplat_init(void)
+@@ -1684,7 +2599,7 @@ static int __init mlxplat_init(void)
  
  	/* Add registers io access driver. */
  	if (mlxplat_regs_io) {
@@ -7239,7 +7025,7 @@ index 742a0c2..c27548f 100644
  		priv->pdev_io_regs = platform_device_register_resndata(
  					&mlxplat_dev->dev, "mlxreg-io",
  					PLATFORM_DEVID_NONE, NULL, 0,
-@@ -1698,7 +2720,7 @@ static int __init mlxplat_init(void)
+@@ -1698,7 +2613,7 @@ static int __init mlxplat_init(void)
  
  	/* Add FAN driver. */
  	if (mlxplat_fan) {
@@ -7248,7 +7034,7 @@ index 742a0c2..c27548f 100644
  		priv->pdev_fan = platform_device_register_resndata(
  					&mlxplat_dev->dev, "mlxreg-fan",
  					PLATFORM_DEVID_NONE, NULL, 0,
-@@ -1710,15 +2732,33 @@ static int __init mlxplat_init(void)
+@@ -1710,15 +2625,33 @@ static int __init mlxplat_init(void)
  		}
  	}
  
@@ -7286,7 +7072,7 @@ index 742a0c2..c27548f 100644
  	if (mlxplat_fan)
  		platform_device_unregister(priv->pdev_fan);
  fail_platform_io_regs_register:
-@@ -1744,6 +2784,8 @@ static void __exit mlxplat_exit(void)
+@@ -1744,6 +2677,8 @@ static void __exit mlxplat_exit(void)
  	struct mlxplat_priv *priv = platform_get_drvdata(mlxplat_dev);
  	int i;
  
@@ -7295,7 +7081,7 @@ index 742a0c2..c27548f 100644
  	if (priv->pdev_fan)
  		platform_device_unregister(priv->pdev_fan);
  	if (priv->pdev_io_regs)
-@@ -1751,7 +2793,7 @@ static void __exit mlxplat_exit(void)
+@@ -1751,7 +2686,7 @@ static void __exit mlxplat_exit(void)
  	platform_device_unregister(priv->pdev_led);
  	platform_device_unregister(priv->pdev_hotplug);
  
@@ -7305,7 +7091,7 @@ index 742a0c2..c27548f 100644
  
  	platform_device_unregister(priv->pdev_i2c);
 diff --git a/drivers/watchdog/Kconfig b/drivers/watchdog/Kconfig
-index b165c46..5763dfc 100644
+index 709d4de11..da31a4bce 100644
 --- a/drivers/watchdog/Kconfig
 +++ b/drivers/watchdog/Kconfig
 @@ -241,6 +241,22 @@ config RAVE_SP_WATCHDOG
@@ -7332,7 +7118,7 @@ index b165c46..5763dfc 100644
  
  # ARM Architecture
 diff --git a/drivers/watchdog/Makefile b/drivers/watchdog/Makefile
-index bf92e7b..42709be 100644
+index bf92e7bf9..42709beb5 100644
 --- a/drivers/watchdog/Makefile
 +++ b/drivers/watchdog/Makefile
 @@ -139,6 +139,7 @@ obj-$(CONFIG_INTEL_MID_WATCHDOG) += intel-mid_wdt.o
@@ -7345,7 +7131,7 @@ index bf92e7b..42709be 100644
  obj-$(CONFIG_M54xx_WATCHDOG) += m54xx_wdt.o
 diff --git a/drivers/watchdog/mlx_wdt.c b/drivers/watchdog/mlx_wdt.c
 new file mode 100644
-index 0000000..74b0622
+index 000000000..74b0622a1
 --- /dev/null
 +++ b/drivers/watchdog/mlx_wdt.c
 @@ -0,0 +1,289 @@
@@ -7639,7 +7425,7 @@ index 0000000..74b0622
 +MODULE_LICENSE("GPL");
 +MODULE_ALIAS("platform:mlx-wdt");
 diff --git a/include/linux/platform_data/mlxreg.h b/include/linux/platform_data/mlxreg.h
-index 19f5cb6..b8da8ae 100644
+index 19f5cb618..b8da8aef2 100644
 --- a/include/linux/platform_data/mlxreg.h
 +++ b/include/linux/platform_data/mlxreg.h
 @@ -35,6 +35,19 @@
@@ -7718,7 +7504,7 @@ index 19f5cb6..b8da8ae 100644
  
  /**
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index dc69391..08bb155 100644
+index dc69391d2..08bb15540 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
 @@ -1691,6 +1691,9 @@ static inline int ethtool_validate_duplex(__u8 duplex)
@@ -7731,6 +7517,3 @@ index dc69391..08bb155 100644
  /* Reset flags */
  /* The reset() operation must clear the flags for the components which
   * were actually reset.  On successful return, the flags indicate the
--- 
-1.9.1
-

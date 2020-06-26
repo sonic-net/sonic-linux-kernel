@@ -1,0 +1,34 @@
+Update debian abiname to 9-2
+
+From: Olivier Singla <olivier.singla@broadcom.com>
+
+
+---
+ debian/config/defines |    2 +-
+ debian/control.md5sum |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/debian/config/defines b/debian/config/defines
+index 5b8562d43..9366229f0 100644
+--- a/debian/config/defines
++++ b/debian/config/defines
+@@ -1,5 +1,5 @@
+ [abi]
+-abiname: 9
++abiname: 9-2
+ ignore-changes:
+  __cpuhp_*
+  bpf_analyzer
+diff --git a/debian/control.md5sum b/debian/control.md5sum
+index 085323e31..8f484283d 100644
+--- a/debian/control.md5sum
++++ b/debian/control.md5sum
+@@ -25,7 +25,7 @@ afb508873a44a1f196c2a525fec4b415  debian/templates/image.prerm.in
+ 51797b6c275eb14e99009e78553904cc  debian/templates/perf.lintian-overrides.in
+ 814dda166c7e3ef02e6e259e805ac66a  debian/templates/tests-control.image.in
+ befa899554918fd2a5264e5dca3c4eef  debian/templates/tests-control.main.in
+-334fdefa84d0804cb0ec672010528eeb  debian/config/defines
++7726b7cfcdd85592ccc92496068faca0  debian/config/defines
+ da871dd4234a8d1ed82d76fa536fa411  debian/config/alpha/defines
+ 6a030dc96bbeb2340082dc7c5c67a640  debian/config/amd64/defines
+ 3f9e6c98b1abe4a32b12add5d1ada119  debian/config/arm64/defines

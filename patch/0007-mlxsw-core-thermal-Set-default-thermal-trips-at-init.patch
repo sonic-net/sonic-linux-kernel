@@ -1,6 +1,7 @@
 From d1bfc3dfb848ea1b402e2299b1e3b974aad9be60 Mon Sep 17 00:00:00 2001
+
 From: Vadim Pasternak <vadimp@mellanox.com>
-Date: Tue, 31 Mar 2020 22:50:02 +0300
+
 Subject: [backport 1/2] mlxsw: core: thermal: Set default thermal trips at
  initialization
 
@@ -11,11 +12,11 @@ thermal algorithm.
 
 Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
 ---
- drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 12 ++++++++----
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c |   12 ++++++++----
  1 file changed, 8 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
-index b75372998..fc0264f2f 100644
+index e4343bf11..77578f5bb 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
 @@ -20,6 +20,10 @@
@@ -29,7 +30,7 @@ index b75372998..fc0264f2f 100644
  #define MLXSW_THERMAL_HYSTERESIS_TEMP	5000	/* 5C */
  #define MLXSW_THERMAL_MODULE_TEMP_SHIFT	(MLXSW_THERMAL_HYSTERESIS_TEMP * 2)
  #define MLXSW_THERMAL_ZONE_MAX_NAME	16
-@@ -153,10 +157,10 @@ static int mlxsw_get_cooling_device_idx(struct mlxsw_thermal *thermal,
+@@ -154,10 +158,10 @@ static int mlxsw_get_cooling_device_idx(struct mlxsw_thermal *thermal,
  static void
  mlxsw_thermal_module_trips_reset(struct mlxsw_thermal_module *tz)
  {
@@ -44,6 +45,3 @@ index b75372998..fc0264f2f 100644
  }
  
  static int
--- 
-2.20.1
-

@@ -1,6 +1,7 @@
 From 5766c21f1bb28b43048f188195e8bae90163049c Mon Sep 17 00:00:00 2001
+
 From: Vadim Pasternak <vadimp@mellanox.com>
-Date: Thu, 12 Mar 2020 17:17:25 +0200
+
 Subject: [PATCH] hwmon: (pmbus/core) Add support for vid mode detection per
  page bases
 
@@ -26,15 +27,15 @@ AMD mode 6.25mV - 0x10.
 Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
 Signed-off-by: Stephen Sun <stephens@mellanox.com>
 ---
- drivers/hwmon/pmbus/Kconfig                 |   9 ++
- drivers/hwmon/pmbus/Makefile                |   1 +
- drivers/hwmon/pmbus/max20751.c              |   2 +-
- drivers/hwmon/pmbus/pmbus.c                 |   5 +-
- drivers/hwmon/pmbus/pmbus.h                 |   4 +-
- drivers/hwmon/pmbus/pmbus_core.c            |  10 +-
- drivers/hwmon/pmbus/tps53679.c              |  44 ++---
- drivers/hwmon/pmbus/xdpe12284.c             | 171 ++++++++++++++++++++
- 8 files changed, 222 insertions(+), 29 deletions(-)
+ drivers/hwmon/pmbus/Kconfig      |    9 ++
+ drivers/hwmon/pmbus/Makefile     |    1 
+ drivers/hwmon/pmbus/max20751.c   |    2 
+ drivers/hwmon/pmbus/pmbus.c      |    5 +
+ drivers/hwmon/pmbus/pmbus.h      |    4 -
+ drivers/hwmon/pmbus/pmbus_core.c |   10 ++
+ drivers/hwmon/pmbus/tps53679.c   |   44 +++++-----
+ drivers/hwmon/pmbus/xdpe12284.c  |  171 ++++++++++++++++++++++++++++++++++++++
+ 8 files changed, 219 insertions(+), 27 deletions(-)
  create mode 100644 drivers/hwmon/pmbus/xdpe12284.c
 
 diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
@@ -44,7 +45,7 @@ index 505ca2be0..eda871222 100644
 @@ -196,6 +196,15 @@ config SENSORS_UCD9200
  	  This driver can also be built as a module. If so, the module will
  	  be called ucd9200.
-
+ 
 +config SENSORS_XDPE122
 +	tristate "Infineon XDPE122 family"
 +	help
@@ -87,11 +88,11 @@ index 7688dab32..4db0400b7 100644
 +++ b/drivers/hwmon/pmbus/pmbus.c
 @@ -123,7 +123,7 @@ static int pmbus_identify(struct i2c_client *client,
  	}
-
+ 
  	if (pmbus_check_byte_register(client, 0, PMBUS_VOUT_MODE)) {
 -		int vout_mode;
 +		int vout_mode, i;
-
+ 
  		vout_mode = pmbus_read_byte_data(client, 0, PMBUS_VOUT_MODE);
  		if (vout_mode >= 0 && vout_mode != 0xff) {
 @@ -132,7 +132,8 @@ static int pmbus_identify(struct i2c_client *client,
@@ -110,11 +111,11 @@ index 1d24397d3..5481ff9f8 100644
 +++ b/drivers/hwmon/pmbus/pmbus.h
 @@ -375,12 +375,12 @@ enum pmbus_sensor_classes {
  #define PMBUS_PAGE_VIRTUAL	BIT(31)
-
+ 
  enum pmbus_data_format { linear = 0, direct, vid };
 -enum vrm_version { vr11 = 0, vr12, vr13 };
 +enum vrm_version { vr11 = 0, vr12, vr13, imvp9, amd625mv };
-
+ 
  struct pmbus_driver_info {
  	int pages;		/* Total number of pages */
  	enum pmbus_data_format format[PSC_NUM_CLASSES];
@@ -130,7 +131,7 @@ index cd24b375d..1d7f950e6 100644
 @@ -709,7 +709,7 @@ static long pmbus_reg2data_vid(struct pmbus_data *data,
  	long val = sensor->data;
  	long rv = 0;
-
+ 
 -	switch (data->info->vrm_version) {
 +	switch (data->info->vrm_version[sensor->page]) {
  	case vr11:
@@ -152,7 +153,7 @@ index cd24b375d..1d7f950e6 100644
  	return rv;
  }
 diff --git a/drivers/hwmon/pmbus/tps53679.c b/drivers/hwmon/pmbus/tps53679.c
-index 45eacc504..28d3de029 100644
+index 2bc352c53..0a301018d 100644
 --- a/drivers/hwmon/pmbus/tps53679.c
 +++ b/drivers/hwmon/pmbus/tps53679.c
 @@ -33,27 +33,29 @@ static int tps53679_identify(struct i2c_client *client,
@@ -204,7 +205,7 @@ index 45eacc504..28d3de029 100644
 +			return -EINVAL;
 +		}
  	}
-
+ 
  	return 0;
 diff --git a/drivers/hwmon/pmbus/xdpe12284.c b/drivers/hwmon/pmbus/xdpe12284.c
 new file mode 100644
@@ -383,6 +384,3 @@ index 000000000..660556b89
 +MODULE_AUTHOR("Vadim Pasternak <vadimp@mellanox.com>");
 +MODULE_DESCRIPTION("PMBus driver for Infineon XDPE122 family");
 +MODULE_LICENSE("GPL");
---
-2.20.1
-

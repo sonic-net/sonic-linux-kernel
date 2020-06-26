@@ -1,6 +1,7 @@
 From 835fc5247dc6c3991fcc1bfbbb5cfa05db613cbc Mon Sep 17 00:00:00 2001
+
 From: Vadim Pasternak <vadimp@mellanox.com>
-Date: Wed, 7 Aug 2019 09:59:48 +0000
+
 Subject: [PATCH 5.3 backport 3/3] mlxsw: core: Add the hottest thermal zone
  detection
 
@@ -36,11 +37,11 @@ All the thermal zones initially are to be configured with mode
 
 Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
 ---
- drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 55 ++++++++++++++++++++++
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c |   55 ++++++++++++++++++++
  1 file changed, 55 insertions(+)
 
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
-index 17a340aa9f75..8f5850445cab 100644
+index b75372998..e4343bf11 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
 @@ -23,6 +23,7 @@
@@ -51,7 +52,7 @@ index 17a340aa9f75..8f5850445cab 100644
  #define MLXSW_THERMAL_MAX_STATE	10
  #define MLXSW_THERMAL_MAX_DUTY	255
  /* Minimum and maximum fan allowed speed in percent: from 20% to 100%. Values
-@@ -200,6 +201,34 @@ mlxsw_thermal_module_trips_update(struct device *dev, struct mlxsw_core *core,
+@@ -201,6 +202,34 @@ mlxsw_thermal_module_trips_update(struct device *dev, struct mlxsw_core *core,
  	return 0;
  }
  
@@ -86,7 +87,7 @@ index 17a340aa9f75..8f5850445cab 100644
  static int mlxsw_thermal_bind(struct thermal_zone_device *tzdev,
  			      struct thermal_cooling_device *cdev)
  {
-@@ -295,6 +324,9 @@ static int mlxsw_thermal_get_temp(struct thermal_zone_device *tzdev,
+@@ -302,6 +331,9 @@ static int mlxsw_thermal_get_temp(struct thermal_zone_device *tzdev,
  		return err;
  	}
  	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL);
@@ -96,7 +97,7 @@ index 17a340aa9f75..8f5850445cab 100644
  
  	*p_temp = temp;
  	return 0;
-@@ -356,6 +388,22 @@ static int mlxsw_thermal_set_trip_hyst(struct thermal_zone_device *tzdev,
+@@ -363,6 +395,22 @@ static int mlxsw_thermal_set_trip_hyst(struct thermal_zone_device *tzdev,
  	return 0;
  }
  
@@ -119,7 +120,7 @@ index 17a340aa9f75..8f5850445cab 100644
  struct thermal_zone_params mlxsw_thermal_params = {
  	.no_hwmon = true,
  };
-@@ -367,6 +415,7 @@ static struct thermal_zone_device_ops mlxsw_thermal_ops = {
+@@ -378,6 +426,7 @@ static struct thermal_zone_device_ops mlxsw_thermal_ops = {
  	.set_trip_temp	= mlxsw_thermal_set_trip_temp,
  	.get_trip_hyst	= mlxsw_thermal_get_trip_hyst,
  	.set_trip_hyst	= mlxsw_thermal_set_trip_hyst,
@@ -127,7 +128,7 @@ index 17a340aa9f75..8f5850445cab 100644
  };
  
  static int mlxsw_thermal_module_bind(struct thermal_zone_device *tzdev,
-@@ -478,6 +527,8 @@ static int mlxsw_thermal_module_temp_get(struct thermal_zone_device *tzdev,
+@@ -495,6 +544,8 @@ static int mlxsw_thermal_module_temp_get(struct thermal_zone_device *tzdev,
  
  	/* Update trip points. */
  	err = mlxsw_thermal_module_trips_update(dev, thermal->core, tz);
@@ -136,7 +137,7 @@ index 17a340aa9f75..8f5850445cab 100644
  
  	return 0;
  }
-@@ -553,6 +604,7 @@ static struct thermal_zone_device_ops mlxsw_thermal_module_ops = {
+@@ -570,6 +621,7 @@ static struct thermal_zone_device_ops mlxsw_thermal_module_ops = {
  	.set_trip_temp	= mlxsw_thermal_module_trip_temp_set,
  	.get_trip_hyst	= mlxsw_thermal_module_trip_hyst_get,
  	.set_trip_hyst	= mlxsw_thermal_module_trip_hyst_set,
@@ -144,7 +145,7 @@ index 17a340aa9f75..8f5850445cab 100644
  };
  
  static int mlxsw_thermal_gearbox_temp_get(struct thermal_zone_device *tzdev,
-@@ -573,6 +625,8 @@ static int mlxsw_thermal_gearbox_temp_get(struct thermal_zone_device *tzdev,
+@@ -596,6 +648,8 @@ static int mlxsw_thermal_gearbox_temp_get(struct thermal_zone_device *tzdev,
  		return err;
  
  	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL);
@@ -153,7 +154,7 @@ index 17a340aa9f75..8f5850445cab 100644
  
  	*p_temp = temp;
  	return 0;
-@@ -589,6 +643,7 @@ static struct thermal_zone_device_ops mlxsw_thermal_gearbox_ops = {
+@@ -612,6 +666,7 @@ static struct thermal_zone_device_ops mlxsw_thermal_gearbox_ops = {
  	.set_trip_temp	= mlxsw_thermal_module_trip_temp_set,
  	.get_trip_hyst	= mlxsw_thermal_module_trip_hyst_get,
  	.set_trip_hyst	= mlxsw_thermal_module_trip_hyst_set,
@@ -161,6 +162,3 @@ index 17a340aa9f75..8f5850445cab 100644
  };
  
  static int mlxsw_thermal_get_max_state(struct thermal_cooling_device *cdev,
--- 
-2.11.0
-

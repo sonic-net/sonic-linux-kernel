@@ -1,6 +1,7 @@
 From 148312b80f5285b25140a72cf3d4671e3486dcd2 Mon Sep 17 00:00:00 2001
+
 From: Vadim Pasternak <vadimp@mellanox.com>
-Date: Tue, 31 Mar 2020 23:01:41 +0300
+
 Subject: [backport 2/2] mlxsw: qsfp_sysfs: Remove obsolete code for QSFP
  EEPROM reading
 
@@ -11,8 +12,8 @@ Make de-init order symmetrical with init.
     .
 Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
 ---
- drivers/net/ethernet/mellanox/mlxsw/core.c    |   4 +-
- .../net/ethernet/mellanox/mlxsw/qsfp_sysfs.c  | 299 +-----------------
+ drivers/net/ethernet/mellanox/mlxsw/core.c       |    4 
+ drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c |  299 +---------------------
  2 files changed, 13 insertions(+), 290 deletions(-)
 
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core.c b/drivers/net/ethernet/mellanox/mlxsw/core.c
@@ -406,6 +407,3 @@ index 49563a703..931dbd58e 100644
  }
  
  MODULE_LICENSE("Dual BSD/GPL");
--- 
-2.20.1
-

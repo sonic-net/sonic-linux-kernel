@@ -1,6 +1,7 @@
 From cbe97c15b2688abef8745977e85e13dbf1bfc3e8 Mon Sep 17 00:00:00 2001
+
 From: Michael Shych <michaelsh@mellanox.com>
-Date: Sun, 24 May 2020 13:15:07 +0300
+
 Subject: [new watchdog type 1/1] watchdog: mlx-wdt: support new watchdog type
  with longer timeout period platform_data/mlxreg: support new watchdog type
  with longer timeout period platform/x86: mlx-platform: support new watchdog
@@ -14,13 +15,13 @@ It is differentiated by WD capability bit.
 
 Signed-off-by: Michael Shych <michaelsh@mellanox.com>
 ---
- drivers/platform/x86/mlx-platform.c  | 106 +++++++++++++++++++++++++++++++++++
- drivers/watchdog/mlx_wdt.c           |  86 ++++++++++++++++++++++------
- include/linux/platform_data/mlxreg.h |   5 +-
+ drivers/platform/x86/mlx-platform.c  |  106 ++++++++++++++++++++++++++++++++++
+ drivers/watchdog/mlx_wdt.c           |   86 ++++++++++++++++++++++------
+ include/linux/platform_data/mlxreg.h |    5 +-
  3 files changed, 179 insertions(+), 18 deletions(-)
 
 diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
-index 034736cec..208f4a476 100644
+index 7fac80615..97f60b045 100644
 --- a/drivers/platform/x86/mlx-platform.c
 +++ b/drivers/platform/x86/mlx-platform.c
 @@ -186,7 +186,9 @@
@@ -129,7 +130,7 @@ index 034736cec..208f4a476 100644
  	case MLXPLAT_CPLD_LPC_REG_WD3_ACT_OFFSET:
  	case MLXPLAT_CPLD_LPC_REG_PWM1_OFFSET:
  	case MLXPLAT_CPLD_LPC_REG_PWM_CONTROL_OFFSET:
-@@ -2729,6 +2811,27 @@ static int mlxplat_mlxcpld_verify_bus_topology(int *nr)
+@@ -2622,6 +2704,27 @@ static int mlxplat_mlxcpld_verify_bus_topology(int *nr)
  	return 0;
  }
  
@@ -157,7 +158,7 @@ index 034736cec..208f4a476 100644
  static int __init mlxplat_init(void)
  {
  	struct mlxplat_priv *priv;
-@@ -2861,6 +2964,9 @@ static int __init mlxplat_init(void)
+@@ -2754,6 +2857,9 @@ static int __init mlxplat_init(void)
  	}
  
  	/* Add WD drivers. */
@@ -369,6 +370,3 @@ index a2adc3ad4..03d768d73 100644
  	bool attached;
  	u8 regnum;
  };
--- 
-2.11.0
-

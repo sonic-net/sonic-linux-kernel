@@ -1,6 +1,7 @@
 From f0b3ddaafa62a2d36ce88bf369dfaf8b8efb7c6b Mon Sep 17 00:00:00 2001
+
 From: Vadim Pasternak <vadimp@mellanox.com>
-Date: Wed, 1 Apr 2020 02:20:21 +0300
+
 Subject: [backport] platform/mellanox: mlxreg-io: Add support for complex
  attributes
 
@@ -13,10 +14,10 @@ or FPGA versioning, power consuming info, etcetera.
 
 Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
 ---
- drivers/platform/mellanox/mlxreg-hotplug.c |  31 ++---
- drivers/platform/mellanox/mlxreg-io.c      |  54 +++++++--
- drivers/platform/x86/mlx-platform.c        | 128 +++++++++++++++++++++
- include/linux/platform_data/mlxreg.h       |   2 +
+ drivers/platform/mellanox/mlxreg-hotplug.c |   31 ++++---
+ drivers/platform/mellanox/mlxreg-io.c      |   54 +++++++++---
+ drivers/platform/x86/mlx-platform.c        |  128 ++++++++++++++++++++++++++++
+ include/linux/platform_data/mlxreg.h       |    2 
  4 files changed, 189 insertions(+), 26 deletions(-)
 
 diff --git a/drivers/platform/mellanox/mlxreg-hotplug.c b/drivers/platform/mellanox/mlxreg-hotplug.c
@@ -183,7 +184,7 @@ index acfaf64ff..cc7b78301 100644
  	err = mlxreg_io_attr_init(priv);
  	if (err) {
 diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
-index c27548fd3..034736cec 100644
+index f5d70d67f..7fac80615 100644
 --- a/drivers/platform/x86/mlx-platform.c
 +++ b/drivers/platform/x86/mlx-platform.c
 @@ -26,6 +26,10 @@
@@ -397,6 +398,3 @@ index b8da8aef2..a2adc3ad4 100644
  };
  
  /**
--- 
-2.20.1
-

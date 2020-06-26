@@ -1,6 +1,7 @@
 From abc748c3e12290443c4ec95aed11b59bf4c948f3 Mon Sep 17 00:00:00 2001
+
 From: Vadim Pasternak <vadimp@mellanox.com>
-Date: Thu, 7 May 2020 15:05:12 +0300
+
 Subject: [backport] Add support for new transceivers types: QSFP-DD and QSFP+
  with Common Management Interface Specification (CMIS).
 
@@ -13,8 +14,8 @@ The QSFP-DD supports both optical and copper interfaces.
 
 Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
 ---
- drivers/net/ethernet/mellanox/mlxsw/core_env.c | 71 +++++++++++++++++++-------
- drivers/net/ethernet/mellanox/mlxsw/reg.h      |  2 +
+ drivers/net/ethernet/mellanox/mlxsw/core_env.c |   71 ++++++++++++++++++------
+ drivers/net/ethernet/mellanox/mlxsw/reg.h      |    2 +
  2 files changed, 54 insertions(+), 19 deletions(-)
 
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_env.c b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
@@ -218,6 +219,3 @@ index 7ca981464..a5952a03f 100644
  	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_SIZE,
  };
  
--- 
-2.11.0
-
