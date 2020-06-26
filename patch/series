@@ -30,6 +30,7 @@ driver-support-optoe-EOF_fix.patch
 driver-support-optoe-chunk-offset-fix.patch
 driver-support-optoe-QSFP_DD.patch
 driver-net-tg3-add-param-short-preamble-and-reset.patch
+e1000-Do-not-perform-reset-in-reset_task-if-we-are-a.patch
 # (Marvel)
 # 0042-Marvell-a385-Micron-4G-flash-support.patch
 # 0042-armhf-additional-configs.patch
