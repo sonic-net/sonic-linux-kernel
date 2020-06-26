@@ -50,22 +50,22 @@ Signed-off-by: Stephen Sun <stephens@mellanox.com>
  drivers/net/ethernet/mellanox/mlxsw/core.h         |   36 +
  drivers/net/ethernet/mellanox/mlxsw/core_env.c     |  256 ++++
  drivers/net/ethernet/mellanox/mlxsw/core_env.h     |   17 
- drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c   |  361 ++++++
- drivers/net/ethernet/mellanox/mlxsw/core_thermal.c |  696 +++++++++++
+ drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c   |  361 +++++
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c |  696 ++++++++++-
  drivers/net/ethernet/mellanox/mlxsw/i2c.c          |  212 +++
  drivers/net/ethernet/mellanox/mlxsw/minimal.c      |  328 +++++
  drivers/net/ethernet/mellanox/mlxsw/pci.c          |   49 -
  drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c   |  454 +++++++
- drivers/net/ethernet/mellanox/mlxsw/reg.h          | 1221 ++++++++++++++++++++
+ drivers/net/ethernet/mellanox/mlxsw/reg.h          | 1221 ++++++++++++++++++
  drivers/net/ethernet/mellanox/mlxsw/resources.h    |    6 
  drivers/platform/mellanox/mlxreg-hotplug.c         |   42 +
- drivers/platform/x86/mlx-platform.c                | 1215 ++++++++++++++++++--
+ drivers/platform/x86/mlx-platform.c                | 1324 ++++++++++++++++++--
  drivers/watchdog/Kconfig                           |   16 
  drivers/watchdog/Makefile                          |    1 
- drivers/watchdog/mlx_wdt.c                         |  289 +++++
+ drivers/watchdog/mlx_wdt.c                         |  289 ++++
  include/linux/platform_data/mlxreg.h               |   27 
  include/uapi/linux/ethtool.h                       |    3 
- 24 files changed, 5105 insertions(+), 333 deletions(-)
+ 24 files changed, 5212 insertions(+), 335 deletions(-)
  create mode 100644 drivers/net/ethernet/mellanox/mlxsw/core_env.c
  create mode 100644 drivers/net/ethernet/mellanox/mlxsw/core_env.h
  create mode 100644 drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
@@ -5230,7 +5230,7 @@ index d52c821b8..77be37a1f 100644
  
  	priv->regmap = pdata->regmap;
 diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
-index 69e28c12d..f5d70d67f 100644
+index 69e28c12d..b19700f48 100644
 --- a/drivers/platform/x86/mlx-platform.c
 +++ b/drivers/platform/x86/mlx-platform.c
 @@ -1,34 +1,9 @@
@@ -6842,7 +6842,136 @@ index 69e28c12d..f5d70d67f 100644
  		mlxplat_mux_data[i].values = mlxplat_msn21xx_channels;
  		mlxplat_mux_data[i].n_values =
  				ARRAY_SIZE(mlxplat_msn21xx_channels);
-@@ -1499,51 +2427,28 @@ static const struct dmi_system_id mlxplat_dmi_table[] __initconst = {
+@@ -1430,8 +2358,10 @@ static int __init mlxplat_dmi_msn201x_matched(const struct dmi_system_id *dmi)
+ static int __init mlxplat_dmi_qmb7xx_matched(const struct dmi_system_id *dmi)
+ {
+ 	int i;
+-
+-	for (i = 0; i < ARRAY_SIZE(mlxplat_mux_data); i++) {
++	mlxplat_max_adap_num = MLXPLAT_CPLD_MAX_PHYS_ADAPTER_NUM;
++	mlxplat_mux_num = ARRAY_SIZE(mlxplat_default_mux_data);
++	mlxplat_mux_data = mlxplat_default_mux_data;
++	for (i = 0; i < mlxplat_mux_num; i++) {
+ 		mlxplat_mux_data[i].values = mlxplat_msn21xx_channels;
+ 		mlxplat_mux_data[i].n_values =
+ 				ARRAY_SIZE(mlxplat_msn21xx_channels);
+@@ -1440,12 +2370,115 @@ static int __init mlxplat_dmi_qmb7xx_matched(const struct dmi_system_id *dmi)
+ 	mlxplat_hotplug->deferred_nr =
+ 		mlxplat_msn21xx_channels[MLXPLAT_CPLD_GRP_CHNL_NUM - 1];
+ 	mlxplat_led = &mlxplat_default_ng_led_data;
++	mlxplat_regs_io = &mlxplat_default_ng_regs_io_data;
+ 	mlxplat_fan = &mlxplat_default_fan_data;
++	for (i = 0; i < ARRAY_SIZE(mlxplat_mlxcpld_wd_set_type2); i++)
++		mlxplat_wd_data[i] = &mlxplat_mlxcpld_wd_set_type2[i];
++	mlxplat_i2c = &mlxplat_mlxcpld_i2c_ng_data;
++	mlxplat_regmap_config = &mlxplat_mlxcpld_regmap_config_ng;
+ 
+ 	return 1;
+ };
+ 
++static int __init mlxplat_dmi_comex_matched(const struct dmi_system_id *dmi)
++{
++	int i;
++
++	mlxplat_max_adap_num = MLXPLAT_CPLD_MAX_PHYS_EXT_ADAPTER_NUM;
++	mlxplat_mux_num = ARRAY_SIZE(mlxplat_extended_mux_data);
++	mlxplat_mux_data = mlxplat_extended_mux_data;
++	for (i = 0; i < mlxplat_mux_num; i++) {
++		mlxplat_mux_data[i].values = mlxplat_msn21xx_channels;
++		mlxplat_mux_data[i].n_values =
++				ARRAY_SIZE(mlxplat_msn21xx_channels);
++	}
++	mlxplat_hotplug = &mlxplat_mlxcpld_comex_data;
++	mlxplat_hotplug->deferred_nr = MLXPLAT_CPLD_MAX_PHYS_EXT_ADAPTER_NUM;
++	mlxplat_led = &mlxplat_comex_100G_led_data;
++	mlxplat_regs_io = &mlxplat_default_ng_regs_io_data;
++	mlxplat_fan = &mlxplat_default_fan_data;
++	for (i = 0; i < ARRAY_SIZE(mlxplat_mlxcpld_wd_set_type2); i++)
++		mlxplat_wd_data[i] = &mlxplat_mlxcpld_wd_set_type2[i];
++	mlxplat_regmap_config = &mlxplat_mlxcpld_regmap_config_comex;
++
++	return 1;
++}
++
++static int __init mlxplat_dmi_ng400_matched(const struct dmi_system_id *dmi)
++{
++	int i;
++
++	mlxplat_max_adap_num = MLXPLAT_CPLD_MAX_PHYS_ADAPTER_NUM;
++	mlxplat_mux_num = ARRAY_SIZE(mlxplat_default_mux_data);
++	mlxplat_mux_data = mlxplat_default_mux_data;
++	for (i = 0; i < mlxplat_mux_num; i++) {
++		mlxplat_mux_data[i].values = mlxplat_msn21xx_channels;
++		mlxplat_mux_data[i].n_values =
++				ARRAY_SIZE(mlxplat_msn21xx_channels);
++	}
++	mlxplat_hotplug = &mlxplat_mlxcpld_ext_data;
++	mlxplat_hotplug->deferred_nr =
++		mlxplat_msn21xx_channels[MLXPLAT_CPLD_GRP_CHNL_NUM - 1];
++	mlxplat_led = &mlxplat_default_ng_led_data;
++	mlxplat_regs_io = &mlxplat_default_ng_regs_io_data;
++	mlxplat_fan = &mlxplat_default_fan_data;
++	for (i = 0; i < ARRAY_SIZE(mlxplat_mlxcpld_wd_set_type2); i++)
++		mlxplat_wd_data[i] = &mlxplat_mlxcpld_wd_set_type2[i];
++	mlxplat_i2c = &mlxplat_mlxcpld_i2c_ng_data;
++	mlxplat_regmap_config = &mlxplat_mlxcpld_regmap_config_ng400;
++
++	return 1;
++}
++
+ static const struct dmi_system_id mlxplat_dmi_table[] __initconst = {
++	{
++		.callback = mlxplat_dmi_default_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0001"),
++		},
++	},
++	{
++		.callback = mlxplat_dmi_msn21xx_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0002"),
++		},
++	},
++	{
++		.callback = mlxplat_dmi_msn274x_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0003"),
++		},
++	},
++	{
++		.callback = mlxplat_dmi_msn201x_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0004"),
++		},
++	},
++	{
++		.callback = mlxplat_dmi_qmb7xx_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0005"),
++		},
++	},
++	{
++		.callback = mlxplat_dmi_qmb7xx_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0007"),
++		},
++	},
++	{
++		.callback = mlxplat_dmi_comex_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0009"),
++		},
++	},
++	{
++		.callback = mlxplat_dmi_ng400_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0010"),
++		},
++	},
+ 	{
+ 		.callback = mlxplat_dmi_msn274x_matched,
+ 		.matches = {
+@@ -1499,51 +2532,28 @@ static const struct dmi_system_id mlxplat_dmi_table[] __initconst = {
  		.callback = mlxplat_dmi_qmb7xx_matched,
  		.matches = {
  			DMI_MATCH(DMI_BOARD_VENDOR, "Mellanox Technologies"),
@@ -6899,7 +7028,7 @@ index 69e28c12d..f5d70d67f 100644
  		},
  	},
  	{ }
-@@ -1559,7 +2464,7 @@ static int mlxplat_mlxcpld_verify_bus_topology(int *nr)
+@@ -1559,7 +2569,7 @@ static int mlxplat_mlxcpld_verify_bus_topology(int *nr)
  	/* Scan adapters from expected id to verify it is free. */
  	*nr = MLXPLAT_CPLD_PHYS_ADAPTER_DEF_NR;
  	for (i = MLXPLAT_CPLD_PHYS_ADAPTER_DEF_NR; i <
@@ -6908,7 +7037,7 @@ index 69e28c12d..f5d70d67f 100644
  		search_adap = i2c_get_adapter(i);
  		if (search_adap) {
  			i2c_put_adapter(search_adap);
-@@ -1573,12 +2478,12 @@ static int mlxplat_mlxcpld_verify_bus_topology(int *nr)
+@@ -1573,12 +2583,12 @@ static int mlxplat_mlxcpld_verify_bus_topology(int *nr)
  	}
  
  	/* Return with error if free id for adapter is not found. */
@@ -6923,7 +7052,7 @@ index 69e28c12d..f5d70d67f 100644
  		shift = *nr - mlxplat_mux_data[i].parent;
  		mlxplat_mux_data[i].parent = *nr;
  		mlxplat_mux_data[i].base_nr += shift;
-@@ -1612,19 +2517,42 @@ static int __init mlxplat_init(void)
+@@ -1612,19 +2622,42 @@ static int __init mlxplat_init(void)
  	}
  	platform_set_drvdata(mlxplat_dev, priv);
  
@@ -6970,7 +7099,7 @@ index 69e28c12d..f5d70d67f 100644
  		priv->pdev_mux[i] = platform_device_register_resndata(
  						&priv->pdev_i2c->dev,
  						"i2c-mux-reg", i, NULL,
-@@ -1636,21 +2564,8 @@ static int __init mlxplat_init(void)
+@@ -1636,21 +2669,8 @@ static int __init mlxplat_init(void)
  		}
  	}
  
@@ -6994,7 +7123,7 @@ index 69e28c12d..f5d70d67f 100644
  	priv->pdev_hotplug = platform_device_register_resndata(
  				&mlxplat_dev->dev, "mlxreg-hotplug",
  				PLATFORM_DEVID_NONE,
-@@ -1663,16 +2578,16 @@ static int __init mlxplat_init(void)
+@@ -1663,16 +2683,16 @@ static int __init mlxplat_init(void)
  	}
  
  	/* Set default registers. */
@@ -7016,7 +7145,7 @@ index 69e28c12d..f5d70d67f 100644
  	priv->pdev_led = platform_device_register_resndata(
  				&mlxplat_dev->dev, "leds-mlxreg",
  				PLATFORM_DEVID_NONE, NULL, 0,
-@@ -1684,7 +2599,7 @@ static int __init mlxplat_init(void)
+@@ -1684,7 +2704,7 @@ static int __init mlxplat_init(void)
  
  	/* Add registers io access driver. */
  	if (mlxplat_regs_io) {
@@ -7025,7 +7154,7 @@ index 69e28c12d..f5d70d67f 100644
  		priv->pdev_io_regs = platform_device_register_resndata(
  					&mlxplat_dev->dev, "mlxreg-io",
  					PLATFORM_DEVID_NONE, NULL, 0,
-@@ -1698,7 +2613,7 @@ static int __init mlxplat_init(void)
+@@ -1698,7 +2718,7 @@ static int __init mlxplat_init(void)
  
  	/* Add FAN driver. */
  	if (mlxplat_fan) {
@@ -7034,7 +7163,7 @@ index 69e28c12d..f5d70d67f 100644
  		priv->pdev_fan = platform_device_register_resndata(
  					&mlxplat_dev->dev, "mlxreg-fan",
  					PLATFORM_DEVID_NONE, NULL, 0,
-@@ -1710,15 +2625,33 @@ static int __init mlxplat_init(void)
+@@ -1710,15 +2730,33 @@ static int __init mlxplat_init(void)
  		}
  	}
  
@@ -7072,7 +7201,7 @@ index 69e28c12d..f5d70d67f 100644
  	if (mlxplat_fan)
  		platform_device_unregister(priv->pdev_fan);
  fail_platform_io_regs_register:
-@@ -1744,6 +2677,8 @@ static void __exit mlxplat_exit(void)
+@@ -1744,6 +2782,8 @@ static void __exit mlxplat_exit(void)
  	struct mlxplat_priv *priv = platform_get_drvdata(mlxplat_dev);
  	int i;
  
@@ -7081,7 +7210,7 @@ index 69e28c12d..f5d70d67f 100644
  	if (priv->pdev_fan)
  		platform_device_unregister(priv->pdev_fan);
  	if (priv->pdev_io_regs)
-@@ -1751,7 +2686,7 @@ static void __exit mlxplat_exit(void)
+@@ -1751,7 +2791,7 @@ static void __exit mlxplat_exit(void)
  	platform_device_unregister(priv->pdev_led);
  	platform_device_unregister(priv->pdev_hotplug);
  
