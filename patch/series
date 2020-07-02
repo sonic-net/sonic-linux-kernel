@@ -48,7 +48,7 @@ driver-ixgbe-external-phy.patch
 # Tbridge-per-port-multicast-broadcast-flood-flags.patch
 #
 # Mellanox patches for 4.19
-0001-v4.19-6-Mellanox-platform-Backport-patches-for-new-M.patch
+0001-Mellanox-platform-Backport-patches-for-new-Mellanox-.patch
 0003-mlxsw-minimal-Fix-validation-for-FW-minor-version.patch
 0004-mlxsw-core-Add-the-hottest-thermal-zone-detection.patch
 0005-hwmon-pmbus-core-Add-support-for-vid-mode-detection-.patch

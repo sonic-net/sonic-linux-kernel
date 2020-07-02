@@ -1,9 +1,8 @@
-From 5766c21f1bb28b43048f188195e8bae90163049c Mon Sep 17 00:00:00 2001
-
+From 7b4746d925e3173141005f414a239224bd765488 Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@mellanox.com>
-
-Subject: [PATCH] hwmon: (pmbus/core) Add support for vid mode detection per
- page bases
+Date: Mon, 29 Jun 2020 19:05:59 +0300
+Subject: [backport 04/12] hwmon: (pmbus/core) Add support for vid mode
+ detection per page bases
 
 Add support for VID protocol detection per page bases, instead of
 detecting it based on PMBU_VOUT readout from page 0.
@@ -23,26 +22,23 @@ VR12.0 mode, 5-mV DAC - 0x01;
 VR12.5 mode, 10-mV DAC - 0x02;
 IMVP9 mode, 5-mV DAC - 0x03;
 AMD mode 6.25mV - 0x10.
-
-Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
-Signed-off-by: Stephen Sun <stephens@mellanox.com>
 ---
- drivers/hwmon/pmbus/Kconfig      |    9 ++
- drivers/hwmon/pmbus/Makefile     |    1 
- drivers/hwmon/pmbus/max20751.c   |    2 
- drivers/hwmon/pmbus/pmbus.c      |    5 +
- drivers/hwmon/pmbus/pmbus.h      |    4 -
- drivers/hwmon/pmbus/pmbus_core.c |   10 ++
- drivers/hwmon/pmbus/tps53679.c   |   44 +++++-----
- drivers/hwmon/pmbus/xdpe12284.c  |  171 ++++++++++++++++++++++++++++++++++++++
+ drivers/hwmon/pmbus/Kconfig      |   9 +++
+ drivers/hwmon/pmbus/Makefile     |   1 +
+ drivers/hwmon/pmbus/max20751.c   |   2 +-
+ drivers/hwmon/pmbus/pmbus.c      |   5 +-
+ drivers/hwmon/pmbus/pmbus.h      |   4 +-
+ drivers/hwmon/pmbus/pmbus_core.c |  10 ++-
+ drivers/hwmon/pmbus/tps53679.c   |  44 +++++-----
+ drivers/hwmon/pmbus/xdpe12284.c  | 171 +++++++++++++++++++++++++++++++++++++++
  8 files changed, 219 insertions(+), 27 deletions(-)
  create mode 100644 drivers/hwmon/pmbus/xdpe12284.c
 
 diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
-index 505ca2be0..eda871222 100644
+index a82018a..14c0572 100644
 --- a/drivers/hwmon/pmbus/Kconfig
 +++ b/drivers/hwmon/pmbus/Kconfig
-@@ -196,6 +196,15 @@ config SENSORS_UCD9200
+@@ -186,6 +186,15 @@ config SENSORS_UCD9200
  	  This driver can also be built as a module. If so, the module will
  	  be called ucd9200.
  
@@ -59,18 +55,17 @@ index 505ca2be0..eda871222 100644
  	tristate "Intersil ZL6100 and compatibles"
  	default n
 diff --git a/drivers/hwmon/pmbus/Makefile b/drivers/hwmon/pmbus/Makefile
-index c76820a4d..edc7c315c 100644
+index ea0e395..8c8edb5 100644
 --- a/drivers/hwmon/pmbus/Makefile
 +++ b/drivers/hwmon/pmbus/Makefile
-@@ -21,5 +21,6 @@ obj-$(CONFIG_SENSORS_TPS40422)	+= tps40422.o
+@@ -20,4 +20,5 @@ obj-$(CONFIG_SENSORS_TPS40422)	+= tps40422.o
  obj-$(CONFIG_SENSORS_TPS53679)	+= tps53679.o
  obj-$(CONFIG_SENSORS_UCD9000)	+= ucd9000.o
  obj-$(CONFIG_SENSORS_UCD9200)	+= ucd9200.o
 +obj-$(CONFIG_SENSORS_XDPE122)	+= xdpe12284.o
  obj-$(CONFIG_SENSORS_ZL6100)	+= zl6100.o
- obj-$(CONFIG_SENSORS_DPS1900)	+= dps1900.o
 diff --git a/drivers/hwmon/pmbus/max20751.c b/drivers/hwmon/pmbus/max20751.c
-index ab74aeae8..394c662c8 100644
+index ab74aea..394c662 100644
 --- a/drivers/hwmon/pmbus/max20751.c
 +++ b/drivers/hwmon/pmbus/max20751.c
 @@ -25,7 +25,7 @@ static struct pmbus_driver_info max20751_info = {
@@ -83,7 +78,7 @@ index ab74aeae8..394c662c8 100644
  	.format[PSC_CURRENT_OUT] = linear,
  	.format[PSC_POWER] = linear,
 diff --git a/drivers/hwmon/pmbus/pmbus.c b/drivers/hwmon/pmbus/pmbus.c
-index 7688dab32..4db0400b7 100644
+index 7688dab..4db0400 100644
 --- a/drivers/hwmon/pmbus/pmbus.c
 +++ b/drivers/hwmon/pmbus/pmbus.c
 @@ -123,7 +123,7 @@ static int pmbus_identify(struct i2c_client *client,
@@ -106,7 +101,7 @@ index 7688dab32..4db0400b7 100644
  			case 2:
  				info->format[PSC_VOLTAGE_OUT] = direct;
 diff --git a/drivers/hwmon/pmbus/pmbus.h b/drivers/hwmon/pmbus/pmbus.h
-index 1d24397d3..5481ff9f8 100644
+index 1d24397..5481ff9 100644
 --- a/drivers/hwmon/pmbus/pmbus.h
 +++ b/drivers/hwmon/pmbus/pmbus.h
 @@ -375,12 +375,12 @@ enum pmbus_sensor_classes {
@@ -125,7 +120,7 @@ index 1d24397d3..5481ff9f8 100644
  	 * Support one set of coefficients for each sensor type
  	 * Used for chips providing data in direct mode.
 diff --git a/drivers/hwmon/pmbus/pmbus_core.c b/drivers/hwmon/pmbus/pmbus_core.c
-index cd24b375d..1d7f950e6 100644
+index cd24b37..1d7f950 100644
 --- a/drivers/hwmon/pmbus/pmbus_core.c
 +++ b/drivers/hwmon/pmbus/pmbus_core.c
 @@ -709,7 +709,7 @@ static long pmbus_reg2data_vid(struct pmbus_data *data,
@@ -153,7 +148,7 @@ index cd24b375d..1d7f950e6 100644
  	return rv;
  }
 diff --git a/drivers/hwmon/pmbus/tps53679.c b/drivers/hwmon/pmbus/tps53679.c
-index 2bc352c53..0a301018d 100644
+index 2bc352c..0a30101 100644
 --- a/drivers/hwmon/pmbus/tps53679.c
 +++ b/drivers/hwmon/pmbus/tps53679.c
 @@ -33,27 +33,29 @@ static int tps53679_identify(struct i2c_client *client,
@@ -209,7 +204,7 @@ index 2bc352c53..0a301018d 100644
  	return 0;
 diff --git a/drivers/hwmon/pmbus/xdpe12284.c b/drivers/hwmon/pmbus/xdpe12284.c
 new file mode 100644
-index 000000000..660556b89
+index 0000000..660556b
 --- /dev/null
 +++ b/drivers/hwmon/pmbus/xdpe12284.c
 @@ -0,0 +1,171 @@
@@ -384,3 +379,6 @@ index 000000000..660556b89
 +MODULE_AUTHOR("Vadim Pasternak <vadimp@mellanox.com>");
 +MODULE_DESCRIPTION("PMBus driver for Infineon XDPE122 family");
 +MODULE_LICENSE("GPL");
+-- 
+2.11.0
+
