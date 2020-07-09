@@ -1,0 +1,31 @@
+use kstrtol_from_user to convert user data
+
+From: Guohan Lu <lguohan@gmail.com>
+
+
+---
+ drivers/hwmon/pmbus/dni_dps460.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/hwmon/pmbus/dni_dps460.c b/drivers/hwmon/pmbus/dni_dps460.c
+index 9d684ea5c..893864652 100644
+--- a/drivers/hwmon/pmbus/dni_dps460.c
++++ b/drivers/hwmon/pmbus/dni_dps460.c
+@@ -118,7 +118,7 @@ static ssize_t set_target(struct device *dev, struct device_attribute *devattr,
+ 	unsigned long val;
+ 	unsigned long rpm;
+
+-	err = kstrtol(buf, 10, &rpm);
++	err = kstrtol_from_user(buf, count, 10, &rpm);
+ 	if (err)
+ 		return err;
+
+@@ -150,7 +150,7 @@ static ssize_t set_pec(struct device *dev, struct device_attribute *dummy,
+ 	long val;
+ 	int err;
+
+-	err = kstrtol(buf, 10, &val);
++	err = kstrtol_from_user(buf, count, 10, &val);
+ 	if (err < 0)
+ 		return err;
+
