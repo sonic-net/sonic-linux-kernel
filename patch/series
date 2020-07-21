@@ -117,6 +117,7 @@ net-backport-ipv6-missing-route.patch
 Support-for-fullcone-nat.patch
 driver-ixgbe-external-phy.patch
 fix_ismt_alignment_issue.patch
+net-psample-module-unload.patch
 #
 # This series applies on GIT commit 1451b36b2b0d62178e42f648d8a18131af18f7d8
 # Tkernel-sched-core-fix-cgroup-fork-race.patch
