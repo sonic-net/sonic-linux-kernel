@@ -1,3 +1,15 @@
+From f4f17bf3fa004085e89c94607488c57cacd1103d Mon Sep 17 00:00:00 2001
+From: PADMANABHAN NARAYANAN <PADMANABHAN_N@DELL.COM>
+Date: Tue, 21 Jul 2020 22:25:00 -0700
+Subject: [PATCH 2/2] Issue #153 patch psample to safely unload the module
+
+Remove the __ro_after_init macro to enable safe unloading in case of 4.9 kernel.
+Patch not necessary for 4.19.
+
+---
+ net/psample/psample.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
 diff --git a/net/psample/psample.c b/net/psample/psample.c
 index 1c014bc..c0438ea 100644
 --- a/net/psample/psample.c
@@ -20,3 +32,6 @@ index 1c014bc..c0438ea 100644
  	.name		= PSAMPLE_GENL_NAME,
  	.version	= PSAMPLE_GENL_VERSION,
  	.maxattr	= PSAMPLE_ATTR_MAX,
+-- 
+2.11.0
+
