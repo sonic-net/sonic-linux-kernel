@@ -61,4 +61,4 @@ driver-ixgbe-external-phy.patch
 0011-mlxsw-core-thermal-Separate-temperature-trend-read-c.patch
 0012-Add-support-for-new-transceivers-types-QSFP-DD-and-Q.patch
 0013-watchdog-mlx-wdt-support-new-watchdog-type-with-long.patch
-
+0014-mlxsw-i2c-Allow-flexible-setting-of-I2C-transactions.patch
