@@ -1,7 +1,8 @@
 [common]
 
 [amd64]
-# Enable MAX6697 for arista 7060 cx32s
+# For Arista
+CONFIG_I2C_MUX_PCA9541=m
 CONFIG_SENSORS_MAX6697=m
 CONFIG_SENSORS_DPS1900=m
 # For cig-cs6436
