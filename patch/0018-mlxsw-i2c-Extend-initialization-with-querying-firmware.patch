@@ -1,0 +1,47 @@
+From 4b70b08c3bd12b6819bf438b9ac5c646167f8803 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Wed, 29 May 2019 11:47:15 +0300
+Subject: [PATCH backport v4.19 5/8] mlxsw: i2c: Extend initialization with
+ querying firmware info
+
+Extend initialization flow with query request for firmware info in
+order to obtain firmware version info.
+This info is to be provided to minimal driver to support ethtool
+get_drvinfo() interface.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+Acked-by: Jiri Pirko <jiri@mellanox.com>
+Signed-off-by: Ido Schimmel <idosch@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ drivers/net/ethernet/mellanox/mlxsw/i2c.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/i2c.c b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+index d46a655e3001..472352977527 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/i2c.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+@@ -509,8 +509,20 @@ mlxsw_i2c_init(void *bus_priv, struct mlxsw_core *mlxsw_core,
+ 	if (!mbox)
+ 		return -ENOMEM;
+ 
++	err = mlxsw_cmd_query_fw(mlxsw_core, mbox);
++	if (err)
++		goto mbox_put;
++
++	mlxsw_i2c->bus_info.fw_rev.major =
++		mlxsw_cmd_mbox_query_fw_fw_rev_major_get(mbox);
++	mlxsw_i2c->bus_info.fw_rev.minor =
++		mlxsw_cmd_mbox_query_fw_fw_rev_minor_get(mbox);
++	mlxsw_i2c->bus_info.fw_rev.subminor =
++		mlxsw_cmd_mbox_query_fw_fw_rev_subminor_get(mbox);
++
+ 	err = mlxsw_core_resources_query(mlxsw_core, mbox, res);
+ 
++mbox_put:
+ 	mlxsw_cmd_mbox_free(mbox);
+ 	return err;
+ }
+-- 
+2.11.0
+

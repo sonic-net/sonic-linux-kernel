@@ -61,4 +61,12 @@ driver-ixgbe-external-phy.patch
 0011-mlxsw-core-thermal-Separate-temperature-trend-read-c.patch
 0012-Add-support-for-new-transceivers-types-QSFP-DD-and-Q.patch
 0013-watchdog-mlx-wdt-support-new-watchdog-type-with-long.patch
+0014-mlxsw-i2c-Fix-comment-misspelling.patch
+0015-mlxsw-i2c-Modify-input-parameter-name-in-initializat.patch
+0016-mlxsw-i2c-Extend-input-parameters-list-of-command-AP.patch
+0017-mlxsw-i2c-Extend-initialization-by-querying-resource.patch
+0018-mlxsw-i2c-Extend-initialization-with-querying-firmware.patch
+0019-mlxsw-i2c-Allow-flexible-setting-of-I2C-transactions.patch
+0020-mlxsw-core-Set-different-thermal-polling-time-based.patch
+0021-mlxsw-i2c-Add-device-info-log.patch
 
