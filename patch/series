@@ -68,5 +68,4 @@ driver-ixgbe-external-phy.patch
 0018-mlxsw-i2c-Extend-initialization-with-querying-firmware.patch
 0019-mlxsw-i2c-Allow-flexible-setting-of-I2C-transactions.patch
 0020-mlxsw-core-Set-different-thermal-polling-time-based.patch
-0021-mlxsw-i2c-Add-device-info-log.patch
 
