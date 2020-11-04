@@ -1,0 +1,31 @@
+From 248bae1d862533e1e1b6a1a0ba32f8b73bbfe57e Mon Sep 17 00:00:00 2001
+From: Daniel Mack <daniel@zonque.org>
+Date: Thu, 11 Jul 2019 14:45:03 +0200
+Subject: [PATCH 6/6] device-tree: bindinds: add NXP PCT2075 as compatible
+ device to LM75
+
+The PCT2075 is compatible to other chips that are already handled by
+the LM75 driver.
+
+Signed-off-by: Daniel Mack <daniel@zonque.org>
+Link: https://lore.kernel.org/r/20190711124504.7580-1-daniel@zonque.org
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
+---
+ Documentation/devicetree/bindings/hwmon/lm75.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Documentation/devicetree/bindings/hwmon/lm75.txt b/Documentation/devicetree/bindings/hwmon/lm75.txt
+index 586b5ed70be7..273616702c51 100644
+--- a/Documentation/devicetree/bindings/hwmon/lm75.txt
++++ b/Documentation/devicetree/bindings/hwmon/lm75.txt
+@@ -15,6 +15,7 @@ Required properties:
+ 		"maxim,max31725",
+ 		"maxim,max31726",
+ 		"maxim,mcp980x",
++		"nxp,pct2075",
+ 		"st,stds75",
+ 		"st,stlm75",
+ 		"microchip,tcn75",
+-- 
+2.17.1
+
