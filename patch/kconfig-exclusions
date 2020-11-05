@@ -1,10 +1,10 @@
 [common]
-# Unset X86_PAT and STRICT_DEVMEM according to Broadcom's requirement
+# Unset STRICT_DEVMEM according to Broadcom's requirement
 # Unset DEVMEN also for CENTEC arm64 arch
 CONFIG_STRICT_DEVMEM
 
 [amd64]
-# Unset X86_PAT and STRICT_DEVMEM according to Broadcom's requirement
+# Unset X86_PAT according to Broadcom's requirement
 CONFIG_X86_PAT
 CONFIG_MLXSW_PCI
 
