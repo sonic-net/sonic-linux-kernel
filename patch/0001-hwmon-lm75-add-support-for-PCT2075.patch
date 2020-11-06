@@ -1,0 +1,115 @@
+From 90b3a0b833131831bf259e3506aaf9f29317aae9 Mon Sep 17 00:00:00 2001
+From: Daniel Mack <daniel@zonque.org>
+Date: Thu, 11 Jul 2019 14:45:04 +0200
+Subject: [PATCH 1/6] hwmon: (lm75) add support for PCT2075
+
+The NXP PCT2075 is largely compatible with other chips already supported
+by the LM75 driver. It uses an 11-bit resolution and defaults to 100 ms
+sampling period. The datasheet is here:
+
+  https://www.nxp.com/docs/en/data-sheet/PCT2075.pdf
+
+Signed-off-by: Daniel Mack <daniel@zonque.org>
+Link: https://lore.kernel.org/r/20190711124504.7580-2-daniel@zonque.org
+[groeck: Documentation update]
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
+---
+ Documentation/hwmon/lm75 | 35 +++++++++++++++++++++++++----------
+ drivers/hwmon/lm75.c     | 10 ++++++++++
+ 2 files changed, 35 insertions(+), 10 deletions(-)
+
+diff --git a/Documentation/hwmon/lm75 b/Documentation/hwmon/lm75
+index ac95edfcd907..ef7c2afa604e 100644
+--- a/Documentation/hwmon/lm75
++++ b/Documentation/hwmon/lm75
+@@ -46,20 +46,35 @@ Supported chips:
+     Prefixes: 'tmp100', 'tmp101', 'tmp105', 'tmp112', 'tmp175', 'tmp75', 'tmp75c', 'tmp275'
+     Addresses scanned: none
+     Datasheet: Publicly available at the Texas Instruments website
+-               http://www.ti.com/product/tmp100
+-               http://www.ti.com/product/tmp101
+-               http://www.ti.com/product/tmp105
+-               http://www.ti.com/product/tmp112
+-               http://www.ti.com/product/tmp75
+-               http://www.ti.com/product/tmp75c
+-               http://www.ti.com/product/tmp175
+-               http://www.ti.com/product/tmp275
+-  * NXP LM75B
+-    Prefix: 'lm75b'
++
++	       http://www.ti.com/product/tmp100
++
++	       http://www.ti.com/product/tmp101
++
++	       http://www.ti.com/product/tmp105
++
++	       http://www.ti.com/product/tmp112
++
++	       http://www.ti.com/product/tmp75
++
++	       http://www.ti.com/product/tmp75b
++
++	       http://www.ti.com/product/tmp75c
++
++	       http://www.ti.com/product/tmp175
++
++	       http://www.ti.com/product/tmp275
++
++  * NXP LM75B, PCT2075
++
++    Prefix: 'lm75b', 'pct2075'
++
+     Addresses scanned: none
+     Datasheet: Publicly available at the NXP website
+                http://www.nxp.com/documents/data_sheet/LM75B.pdf
+ 
++               http://www.nxp.com/docs/en/data-sheet/PCT2075.pdf
++
+ Author: Frodo Looijaard <frodol@dds.nl>
+ 
+ Description
+diff --git a/drivers/hwmon/lm75.c b/drivers/hwmon/lm75.c
+index 7f28912c9abc..9a04af3d7449 100644
+--- a/drivers/hwmon/lm75.c
++++ b/drivers/hwmon/lm75.c
+@@ -48,6 +48,7 @@ enum lm75_type {		/* keep sorted in alphabetical order */
+ 	max6625,
+ 	max6626,
+ 	mcp980x,
++	pct2075,
+ 	stds75,
+ 	tcn75,
+ 	tmp100,
+@@ -343,6 +344,10 @@ lm75_probe(struct i2c_client *client, const struct i2c_device_id *id)
+ 		data->resolution = 9;
+ 		data->sample_time = MSEC_PER_SEC / 8;
+ 		break;
++	case pct2075:
++		data->resolution = 11;
++		data->sample_time = MSEC_PER_SEC / 10;
++		break;
+ 	case mcp980x:
+ 		data->resolution_limits = 9;
+ 		/* fall through */
+@@ -416,6 +421,7 @@ static const struct i2c_device_id lm75_ids[] = {
+ 	{ "max6625", max6625, },
+ 	{ "max6626", max6626, },
+ 	{ "mcp980x", mcp980x, },
++	{ "pct2075", pct2075, },
+ 	{ "stds75", stds75, },
+ 	{ "tcn75", tcn75, },
+ 	{ "tmp100", tmp100, },
+@@ -475,6 +481,10 @@ static const struct of_device_id lm75_of_match[] = {
+ 		.compatible = "maxim,mcp980x",
+ 		.data = (void *)mcp980x
+ 	},
++	{
++		.compatible = "nxp,pct2075",
++		.data = (void *)pct2075
++	},
+ 	{
+ 		.compatible = "st,stds75",
+ 		.data = (void *)stds75
+-- 
+2.17.1
+

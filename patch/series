@@ -1,5 +1,5 @@
 # This series applies on GIT commit 18c5597832fcf6988111b05a9a1607ae148723c
-# (marvel)
+# (Marvell)
 # 0001-armhf-default-config-for-the-sonic-patches.patch
 # 0001-arm64-default-config-for-sonic-patches.patch
 
@@ -7,6 +7,7 @@ driver-arista-net-tg3-dma-mask-4g-sb800.patch
 driver-arista-net-tg3-disallow-broadcom-default-mac.patch
 driver-arista-net-tg3-access-regs-indirectly.patch
 driver-arista-disable-smbus-mux-for-hudson2.patch
+driver-arista-pci-reassign-pref-mem.patch
 driver-support-sff-8436-eeprom.patch
 driver-support-sff-8436-eeprom-update.patch
 driver-sff-8436-use-nvmem-framework.patch
@@ -31,7 +32,12 @@ driver-support-optoe-chunk-offset-fix.patch
 driver-support-optoe-QSFP_DD.patch
 driver-net-tg3-add-param-short-preamble-and-reset.patch
 e1000-Do-not-perform-reset-in-reset_task-if-we-are-a.patch
-# (Marvel)
+0001-hwmon-lm75-add-support-for-PCT2075.patch
+0004-dt-bindings-hwmon-Add-missing-documentation-for-lm75.patch
+0005-dt-bindings-hwmon-Add-tmp75b-to-lm75.txt.patch
+0006-device-tree-bindinds-add-NXP-PCT2075-as-compatible-d.patch
+#
+# (Marvell)
 # 0042-Marvell-a385-Micron-4G-flash-support.patch
 # 0042-armhf-additional-configs.patch
 # 0042-armhf-proc-dma-kconfig.patch
@@ -61,5 +67,12 @@ driver-ixgbe-external-phy.patch
 0011-mlxsw-core-thermal-Separate-temperature-trend-read-c.patch
 0012-Add-support-for-new-transceivers-types-QSFP-DD-and-Q.patch
 0013-watchdog-mlx-wdt-support-new-watchdog-type-with-long.patch
+0014-mlxsw-i2c-Fix-comment-misspelling.patch
+0015-mlxsw-i2c-Modify-input-parameter-name-in-initializat.patch
+0016-mlxsw-i2c-Extend-input-parameters-list-of-command-AP.patch
+0017-mlxsw-i2c-Extend-initialization-by-querying-resource.patch
+0018-mlxsw-i2c-Extend-initialization-with-querying-firmware.patch
+0019-mlxsw-i2c-Allow-flexible-setting-of-I2C-transactions.patch
+0020-mlxsw-core-Set-different-thermal-polling-time-based.patch
 0021-mlxsw-core-thermal-Enable-thermal-zones-by-default.patch
 0022-platform-x86-mlx-platform-Remove-PSU-EEPROM-configur.patch

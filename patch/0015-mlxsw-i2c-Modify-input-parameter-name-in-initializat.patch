@@ -1,0 +1,33 @@
+From 1d4de996de20444fdb4b2c1ab63bf7fa981dc997 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Sun, 3 Mar 2019 09:12:14 +0000
+Subject: [PATCH backport v4.19 2/8] mlxsw: i2c: Modify input parameter name in
+ initialization API
+
+Change input parameter name "resource" to "res" in mlxsw_i2c_init() in
+order to align it with mlxsw_pci_init().
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+Acked-by: Jiri Pirko <jiri@mellanox.com>
+Signed-off-by: Ido Schimmel <idosch@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ drivers/net/ethernet/mellanox/mlxsw/i2c.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/i2c.c b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+index cdeee35b829b..0a53c3bff388 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/i2c.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+@@ -414,7 +414,7 @@ static int mlxsw_i2c_skb_transmit(void *bus_priv, struct sk_buff *skb,
+ static int
+ mlxsw_i2c_init(void *bus_priv, struct mlxsw_core *mlxsw_core,
+ 	       const struct mlxsw_config_profile *profile,
+-	       struct mlxsw_res *resources)
++	       struct mlxsw_res *res)
+ {
+ 	struct mlxsw_i2c *mlxsw_i2c = bus_priv;
+ 
+-- 
+2.11.0
+
