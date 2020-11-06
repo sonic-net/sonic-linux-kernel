@@ -11,5 +11,3 @@ CONFIG_MLXSW_PCI
 [arm64]
 
 [armhf]
-
-
