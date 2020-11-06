@@ -1,6 +1,5 @@
 [common]
-# Unset STRICT_DEVMEM according to Broadcom's requirement
-# Unset DEVMEN also for CENTEC arm64 arch
+# Unset STRICT_DEVMEM according to Broadcom's requirement and for CENTEC arm64 arch
 CONFIG_STRICT_DEVMEM
 
 [amd64]
