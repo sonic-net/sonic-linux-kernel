@@ -58,5 +58,4 @@ CONFIG_MAX1363=m
 [arm64]
 
 [armhf]
-
-
+CONFIG_KERNEL_GZIP=y
