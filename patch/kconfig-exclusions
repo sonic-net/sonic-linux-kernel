@@ -10,3 +10,4 @@ CONFIG_MLXSW_PCI
 [arm64]
 
 [armhf]
+CONFIG_KERNEL_XZ
