@@ -12,4 +12,4 @@ CONFIG_MLXSW_PCI
 [armhf]
 
 [marvell-armhf]
-
+CONFIG_KERNEL_XZ

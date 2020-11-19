@@ -60,4 +60,4 @@ CONFIG_MAX1363=m
 [armhf]
 
 [marvell-armhf]
-
+CONFIG_KERNEL_GZIP=y
