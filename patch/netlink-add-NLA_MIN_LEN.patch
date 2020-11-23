@@ -1,0 +1,39 @@
+From 6f455f5f4e9c28aefaefbe18ce7304b499645d75 Mon Sep 17 00:00:00 2001
+
+From: Johannes Berg <johannes.berg@intel.com>
+
+Subject: [PATCH] netlink: add NLA_MIN_LEN
+
+Rather than using NLA_UNSPEC for this type of thing, use NLA_MIN_LEN
+so we can make NLA_UNSPEC be NLA_REJECT under certain conditions for
+future attributes.
+
+While at it, also use NLA_EXACT_LEN for the struct example.
+
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ include/net/netlink.h |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/include/net/netlink.h b/include/net/netlink.h
+index 39e1d875d..46c65b7cb 100644
+--- a/include/net/netlink.h
++++ b/include/net/netlink.h
+@@ -180,6 +180,7 @@ enum {
+ 	NLA_S32,
+ 	NLA_S64,
+ 	NLA_BITFIELD32,
++	NLA_MIN_LEN,
+ 	__NLA_TYPE_MAX,
+ };
+ 
+@@ -215,7 +216,7 @@ enum {
+  * static const struct nla_policy my_policy[ATTR_MAX+1] = {
+  * 	[ATTR_FOO] = { .type = NLA_U16 },
+  *	[ATTR_BAR] = { .type = NLA_STRING, .len = BARSIZ },
+- *	[ATTR_BAZ] = { .len = sizeof(struct mystruct) },
++ *	[ATTR_BAZ] = { .type = NLA_EXACT_LEN, .len = sizeof(struct mystruct) },
+  *	[ATTR_GOO] = { .type = NLA_BITFIELD32, .validation_data = &myvalidflags },
+  * };
+  */

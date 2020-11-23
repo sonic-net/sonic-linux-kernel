@@ -37,6 +37,7 @@ e1000-Do-not-perform-reset-in-reset_task-if-we-are-a.patch
 0005-dt-bindings-hwmon-Add-tmp75b-to-lm75.txt.patch
 0006-device-tree-bindinds-add-NXP-PCT2075-as-compatible-d.patch
 macsec-Support-XPN-frame-handling-IEEE-802.1AEbw.patch
+netlink-add-NLA_MIN_LEN.patch
 macsec-Netlink-support-of-XPN-cipher-suites-IEEE-802.patch
 #
 # (Marvell)
