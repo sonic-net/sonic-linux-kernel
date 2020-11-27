@@ -10,6 +10,8 @@ CONFIG_MLXSW_PCI
 [arm64]
 
 [armhf]
+
+[marvell-armhf]
 CONFIG_KERNEL_XZ
 CONFIG_NO_HZ_IDLE
 CONFIG_SLUB

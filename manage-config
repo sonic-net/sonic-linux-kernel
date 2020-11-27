@@ -25,8 +25,12 @@
 
 # Configuration file to change
 ARCH=amd64
-if [ $# = 1 ]; then
+PLATFORM=
+if [ $# -ge 1 ]; then
     ARCH=$1
+fi
+if [ $# -ge 2 ]; then
+    PLATFORM=$2
 fi
 case "$ARCH" in
     amd64)
@@ -61,7 +65,7 @@ if [ -e ${exclusion_file} -o -e ${inclusion_file} ]; then
 
     # Process any exclusions in the kernel
     if [ -f ${exclusion_file} ]; then
-        exclusion_opts=$(get_section_opts ${exclusion_file} "common" ${ARCH})
+        exclusion_opts=$(get_section_opts ${exclusion_file} "common" ${ARCH} ${PLATFORM})
         while read -r opt; do
             if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
                 scripts/config --file ${CONFIG_FILE} -d $opt
@@ -71,7 +75,7 @@ if [ -e ${exclusion_file} -o -e ${inclusion_file} ]; then
 
     # Process any inclusions in the kernel
     if [ -f ${inclusion_file} ]; then
-        inclusion_opts=$(get_section_opts ${inclusion_file} "common" ${ARCH})
+        inclusion_opts=$(get_section_opts ${inclusion_file} "common" ${ARCH} ${PLATFORM})
         while read -r opt; do
             if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
                 echo $opt >> ${CONFIG_FILE}
