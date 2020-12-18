@@ -108,7 +108,9 @@ if [ -e ${exclusion_file} -o -e ${inclusion_file} ]; then
             if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
                 n=${opt%=*}
                 v="${opt#*=}"
-                v=$(sed -e 's/^"//' -e 's/"$//' <<< "$v")
+                # Following two lines are used to remove double quotes between the string value
+                v="${v%\"}"
+                v="${v#\"}"
                 s=$(scripts/config --file ${CONFIG_FILE} -k --state $n)
                 if [ ! "$s" = "$v" ]; then
                     ret=2
