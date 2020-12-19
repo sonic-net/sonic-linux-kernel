@@ -7,22 +7,23 @@ trigger:
   branches:
     include:
       - "*"
-timeoutInMinutes: 180
+jobs:
+- job:
+  timeoutInMinutes: 180
+  pool:
+    vmImage: 'ubuntu-latest'
 
-pool:
-  vmImage: 'ubuntu-latest'
+  container:
+    image: sonicdev-microsoft.azurecr.io:443/sonic-slave-buster:latest
 
-container:
-  image: sonicdev-microsoft.azurecr.io:443/sonic-slave-buster:latest
-
-steps:
-- script: |
-    git config --global user.email "lguohan@build.com"
-    git config --global user.name "Guohan Lu"
-    export kernel_procure_method=build
-    cat /proc/cpuinfo
-    make
-  displayName: "Compile sonic kernel"
-- publish: $(System.DefaultWorkingDirectory)/
-  artifact: sonic-linux-kernel
-  displayName: "Archive sonic kernel debian packages"
+  steps:
+  - script: |
+      git config --global user.email "lguohan@build.com"
+      git config --global user.name "Guohan Lu"
+      export kernel_procure_method=build
+      cat /proc/cpuinfo
+      make
+    displayName: "Compile sonic kernel"
+  - publish: $(System.DefaultWorkingDirectory)/
+    artifact: sonic-linux-kernel
+    displayName: "Archive sonic kernel debian packages"
