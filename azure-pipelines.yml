@@ -18,6 +18,9 @@ jobs:
 
   steps:
   - script: |
+      cat /proc/cpuinfo
+
+  - script: |
       git config --global user.email "lguohan@build.com"
       git config --global user.name "Guohan Lu"
       export kernel_procure_method=build
