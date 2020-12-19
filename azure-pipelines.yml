@@ -4,12 +4,21 @@
 # https://docs.microsoft.com/azure/devops/pipelines/apps/c-cpp/gcc
 
 trigger:
-- main
+  branches:
+    include:
+      - "*"
 
 pool:
   vmImage: 'ubuntu-latest'
 
+container:
+  image: sonicdev-microsoft.azurecr.io:443/sonic-slave-buster:latest
+
 steps:
 - script: |
+    export kernel_procure_method=build
     make
-  displayName: 'make'
+  displayName: "Compile sonic kernel"
+- publish: $(System.DefaultWorkingDirectory)/
+  artifact: sonic-linux-kernel
+  displayName: "Archive sonic kernel debian packages"
