@@ -16,6 +16,8 @@ container:
 
 steps:
 - script: |
+    git config --global user.email "lguohan@build.com"
+    git config --global user.name "Guohan Lu"
     export kernel_procure_method=build
     make
   displayName: "Compile sonic kernel"
