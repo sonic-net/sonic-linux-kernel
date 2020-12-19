@@ -36,6 +36,7 @@ e1000-Do-not-perform-reset-in-reset_task-if-we-are-a.patch
 macsec-Support-XPN-frame-handling-IEEE-802.1AEbw.patch
 netlink-add-NLA_MIN_LEN.patch
 macsec-Netlink-support-of-XPN-cipher-suites-IEEE-802.patch
+kernel-ipv6-ra-metric-sysctl.patch
 Support-for-fullcone-nat.patch
 driver-ixgbe-external-phy.patch
 #
