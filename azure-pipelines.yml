@@ -7,6 +7,7 @@ trigger:
   branches:
     include:
       - "*"
+timeoutInMinutes: 180
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -19,6 +20,7 @@ steps:
     git config --global user.email "lguohan@build.com"
     git config --global user.name "Guohan Lu"
     export kernel_procure_method=build
+    cat /proc/cpuinfo
     make
   displayName: "Compile sonic kernel"
 - publish: $(System.DefaultWorkingDirectory)/
