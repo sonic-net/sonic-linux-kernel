@@ -10,16 +10,12 @@ trigger:
 jobs:
 - job:
   timeoutInMinutes: 180
-  pool:
-    vmImage: 'ubuntu-latest'
+  pool: sonic
 
   container:
     image: sonicdev-microsoft.azurecr.io:443/sonic-slave-buster:latest
 
   steps:
-  - script: |
-      cat /proc/cpuinfo
-
   - script: |
       git config --global user.email "lguohan@build.com"
       git config --global user.name "Guohan Lu"
