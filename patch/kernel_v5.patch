@@ -1,0 +1,189 @@
+diff --git a/Documentation/networking/ip-sysctl.txt b/Documentation/networking/ip-sysctl.txt
+index 5b896a9..c80379e 100644
+--- a/Documentation/networking/ip-sysctl.txt
++++ b/Documentation/networking/ip-sysctl.txt
+@@ -1421,6 +1421,12 @@ accept_ra_defrtr - BOOLEAN
+ 	Functional default: enabled if accept_ra is enabled.
+ 			    disabled if accept_ra is disabled.
+
++accept_ra_defrtr_metric - INTEGER
++    Metric for default router learned in Router Advertisement.
++
++    Functional default: 0 if accept_ra_defrtr is enabled.
++                        -1 if accept_ra_defrtr is disabled.
++
+ accept_ra_from_local - BOOLEAN
+ 	Accept RA with source-address that is found on local machine
+         if the RA is otherwise proper and able to be accepted.
+diff --git a/include/linux/ipv6.h b/include/linux/ipv6.h
+index b9dfca5..6c9afff 100644
+--- a/include/linux/ipv6.h
++++ b/include/linux/ipv6.h
+@@ -30,6 +30,7 @@ struct ipv6_devconf {
+ 	__s32		max_desync_factor;
+ 	__s32		max_addresses;
+ 	__s32		accept_ra_defrtr;
++	__s32		accept_ra_defrtr_metric;
+ 	__s32		accept_ra_min_hop_limit;
+ 	__s32		accept_ra_pinfo;
+ 	__s32		ignore_routes_with_linkdown;
+diff --git a/include/net/ip6_route.h b/include/net/ip6_route.h
+index 2c43993..2660688 100644
+--- a/include/net/ip6_route.h
++++ b/include/net/ip6_route.h
+@@ -134,7 +134,8 @@ struct rt6_info *ip6_dst_alloc(struct net *net, struct net_device *dev,
+ struct rt6_info *rt6_get_dflt_router(const struct in6_addr *addr,
+ 				     struct net_device *dev);
+ struct rt6_info *rt6_add_dflt_router(const struct in6_addr *gwaddr,
+-				     struct net_device *dev, unsigned int pref);
++				     struct net_device *dev, unsigned int pref,
++				     unsigned int defrtr_usr_metric);
+
+ void rt6_purge_dflt_routers(struct net *net);
+
+diff --git a/include/uapi/linux/ipv6.h b/include/uapi/linux/ipv6.h
+index 8c27723..3de856e 100644
+--- a/include/uapi/linux/ipv6.h
++++ b/include/uapi/linux/ipv6.h
+@@ -178,6 +178,7 @@ enum {
+ 	DEVCONF_DROP_UNSOLICITED_NA,
+ 	DEVCONF_KEEP_ADDR_ON_DOWN,
+ 	DEVCONF_RTR_SOLICIT_MAX_INTERVAL,
++ 	DEVCONF_ACCEPT_RA_DEFRTR_METRIC,
+ 	DEVCONF_MAX
+ };
+
+diff --git a/include/uapi/linux/sysctl.h b/include/uapi/linux/sysctl.h
+index d2b1215..74df055 100644
+--- a/include/uapi/linux/sysctl.h
++++ b/include/uapi/linux/sysctl.h
+@@ -568,6 +568,7 @@ enum {
+ 	NET_IPV6_PROXY_NDP=23,
+ 	NET_IPV6_ACCEPT_SOURCE_ROUTE=25,
+ 	NET_IPV6_ACCEPT_RA_FROM_LOCAL=26,
++ 	NET_IPV6_ACCEPT_RA_DEFRTR_METRIC=27,
+ 	__NET_IPV6_MAX
+ };
+
+diff --git a/kernel/sysctl_binary.c b/kernel/sysctl_binary.c
+index 6eb99c1..4809a21 100644
+--- a/kernel/sysctl_binary.c
++++ b/kernel/sysctl_binary.c
+@@ -524,6 +524,7 @@ static const struct bin_table bin_net_ipv6_conf_var_table[] = {
+ 	{ CTL_INT,	NET_IPV6_PROXY_NDP,			"proxy_ndp" },
+ 	{ CTL_INT,	NET_IPV6_ACCEPT_SOURCE_ROUTE,		"accept_source_route" },
+ 	{ CTL_INT,	NET_IPV6_ACCEPT_RA_FROM_LOCAL,		"accept_ra_from_local" },
++ 	{ CTL_INT,  NET_IPV6_ACCEPT_RA_DEFRTR_METRIC,   "accept_ra_defrtr_metric" },
+ 	{}
+ };
+
+diff --git a/net/ipv6/addrconf.c b/net/ipv6/addrconf.c
+index 4ce7f91..9bf9299 100644
+--- a/net/ipv6/addrconf.c
++++ b/net/ipv6/addrconf.c
+@@ -216,6 +216,7 @@ static struct ipv6_devconf ipv6_devconf __read_mostly = {
+ 	.max_desync_factor	= MAX_DESYNC_FACTOR,
+ 	.max_addresses		= IPV6_MAX_ADDRESSES,
+ 	.accept_ra_defrtr	= 1,
++	.accept_ra_defrtr_metric = 0,
+ 	.accept_ra_from_local	= 0,
+ 	.accept_ra_min_hop_limit= 1,
+ 	.accept_ra_pinfo	= 1,
+@@ -262,6 +263,7 @@ static struct ipv6_devconf ipv6_devconf_dflt __read_mostly = {
+ 	.max_desync_factor	= MAX_DESYNC_FACTOR,
+ 	.max_addresses		= IPV6_MAX_ADDRESSES,
+ 	.accept_ra_defrtr	= 1,
++	.accept_ra_defrtr_metric = 0,
+ 	.accept_ra_from_local	= 0,
+ 	.accept_ra_min_hop_limit= 1,
+ 	.accept_ra_pinfo	= 1,
+@@ -4983,6 +4985,7 @@ static inline void ipv6_store_devconf(struct ipv6_devconf *cnf,
+ 	array[DEVCONF_DROP_UNICAST_IN_L2_MULTICAST] = cnf->drop_unicast_in_l2_multicast;
+ 	array[DEVCONF_DROP_UNSOLICITED_NA] = cnf->drop_unsolicited_na;
+ 	array[DEVCONF_KEEP_ADDR_ON_DOWN] = cnf->keep_addr_on_down;
++	array[DEVCONF_ACCEPT_RA_DEFRTR_METRIC] = cnf->accept_ra_defrtr_metric;
+ }
+
+ static inline size_t inet6_ifla6_size(void)
+@@ -5902,6 +5905,13 @@ static const struct ctl_table addrconf_sysctl[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec,
+ 	},
++	{
++		.procname	= "accept_ra_defrtr_metric",
++		.data		= &ipv6_devconf.accept_ra_defrtr_metric,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++	},
+ 	{
+ 		.procname	= "accept_ra_min_hop_limit",
+ 		.data		= &ipv6_devconf.accept_ra_min_hop_limit,
+diff --git a/net/ipv6/ndisc.c b/net/ipv6/ndisc.c
+index 505d048..5d736ec 100644
+--- a/net/ipv6/ndisc.c
++++ b/net/ipv6/ndisc.c
+@@ -1126,6 +1126,7 @@ static void ndisc_router_discovery(struct sk_buff *skb)
+ 	unsigned int pref = 0;
+ 	__u32 old_if_flags;
+ 	bool send_ifinfo_notify = false;
++ 	unsigned int defrtr_usr_metric = 0;
+
+ 	__u8 *opt = (__u8 *)(ra_msg + 1);
+
+@@ -1248,17 +1249,22 @@ static void ndisc_router_discovery(struct sk_buff *skb)
+ 			return;
+ 		}
+ 	}
+-	if (rt && lifetime == 0) {
++	defrtr_usr_metric = in6_dev->cnf.accept_ra_defrtr_metric;
++	if (defrtr_usr_metric == 0)
++		defrtr_usr_metric = IP6_RT_PRIO_USER;
++	/* delete the route if lifetime is 0 or if metric needs change. */
++	if (rt && ((lifetime == 0) || (rt->rt6i_metric != defrtr_usr_metric))) {
+ 		ip6_del_rt(rt);
+ 		rt = NULL;
+ 	}
+
+-	ND_PRINTK(3, info, "RA: rt: %p  lifetime: %d, for dev: %s\n",
+-		  rt, lifetime, skb->dev->name);
++	ND_PRINTK(3, info, "RA: rt: %p  lifetime: %d, metric: %d, for dev: %s\n",
++		  rt, lifetime, defrtr_usr_metric, skb->dev->name);
+ 	if (!rt && lifetime) {
+ 		ND_PRINTK(3, info, "RA: adding default router\n");
+
+-		rt = rt6_add_dflt_router(&ipv6_hdr(skb)->saddr, skb->dev, pref);
++		rt = rt6_add_dflt_router(&ipv6_hdr(skb)->saddr, skb->dev,
++			pref, defrtr_usr_metric);
+ 		if (!rt) {
+ 			ND_PRINTK(0, err,
+ 				  "RA: %s failed to add default route\n",
+diff --git a/net/ipv6/route.c b/net/ipv6/route.c
+index 27c93ba..a296a39 100644
+--- a/net/ipv6/route.c
++++ b/net/ipv6/route.c
+@@ -2440,11 +2440,11 @@ struct rt6_info *rt6_get_dflt_router(const struct in6_addr *addr, struct net_dev
+
+ struct rt6_info *rt6_add_dflt_router(const struct in6_addr *gwaddr,
+ 				     struct net_device *dev,
+-				     unsigned int pref)
++				     unsigned int pref,
++				     unsigned int defrtr_usr_metric)
+ {
+ 	struct fib6_config cfg = {
+ 		.fc_table	= l3mdev_fib_table(dev) ? : RT6_TABLE_DFLT,
+-		.fc_metric	= IP6_RT_PRIO_USER,
++		.fc_metric	= defrtr_usr_metric ? defrtr_usr_metric : IP6_RT_PRIO_USER,
+ 		.fc_ifindex	= dev->ifindex,
+ 		.fc_flags	= RTF_GATEWAY | RTF_ADDRCONF | RTF_DEFAULT |
+ 				  RTF_UP | RTF_EXPIRES | RTF_PREF(pref),
+@@ -2453,6 +2453,9 @@ struct rt6_info *rt6_add_dflt_router(const struct in6_addr *gwaddr,
+ 		.fc_nlinfo.nl_net = dev_net(dev),
+ 	};
+
++ 	ND_PRINTK(3, info, "RA: metric: %d for dev: %s\n",
++  	 	cfg.fc_metric, dev->name);
++
+ 	cfg.fc_gateway = *gwaddr;
+
+ 	if (!ip6_route_add(&cfg)) {
