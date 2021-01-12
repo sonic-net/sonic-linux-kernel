@@ -1,0 +1,42 @@
+From f79a25e99568d19ed2cd39de4650ced66de4ab5d Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Thu, 31 Dec 2020 19:27:02 +0200
+Subject: [PATCH mlxsw/net-next 1/1] mlxsw: core: Increase critical threshold
+ for ASIC thermal zone
+
+Increase critical threshold for ASIC thermal zone from 110C to 140C
+according to the system hardware requirements. All the supported ASICs
+(SX, Spectrum1, Spectune2, Spectrum3) could be still operational with
+ASIC temperature below 140C.
+
+According to the system requirements software thermal protection is the
+second level of protection, while the first level of protection should
+be performed by firmware. So firmware could decide to perform system
+thermal shutdown in case the temperature is below 140C. So firmware can
+decide to perform system thermal shutdown in case the temperature is
+below 140C. In case firmware did not perform it and ASIC temperature
+reached 140C, the second level of thermal protection will be performed
+by software.
+
+Fixes: 41e760841d26 ("mlxsw: core: Replace thermal temperature trips with defines")
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 141e3655e211..d575aa469517 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -19,7 +19,7 @@
+ #define MLXSW_THERMAL_ASIC_TEMP_NORM	75000	/* 75C */
+ #define MLXSW_THERMAL_ASIC_TEMP_HIGH	85000	/* 85C */
+ #define MLXSW_THERMAL_ASIC_TEMP_HOT	105000	/* 105C */
+-#define MLXSW_THERMAL_ASIC_TEMP_CRIT	110000	/* 110C */
++#define MLXSW_THERMAL_ASIC_TEMP_CRIT	140000	/* 140C */
+ #define MLXSW_THERMAL_MODULE_TEMP_NORM	60000	/* 60C */
+ #define MLXSW_THERMAL_MODULE_TEMP_HIGH	70000	/* 70C */
+ #define MLXSW_THERMAL_MODULE_TEMP_HOT	80000	/* 80C */
+-- 
+2.11.0
+

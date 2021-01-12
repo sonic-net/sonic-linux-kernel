@@ -70,6 +70,7 @@ driver-ixgbe-external-phy.patch
 0019-mlxsw-i2c-Allow-flexible-setting-of-I2C-transactions.patch
 0020-mlxsw-core-Set-different-thermal-polling-time-based.patch
 0021-platform-x86-mlx-platform-Remove-PSU-EEPROM-configur.patch
+0022-mlxsw-core-Increase-critical-threshold-for-ASIC-ther.patch
 ############################################################
 #
 # Internal patches will be added below (placeholder)
