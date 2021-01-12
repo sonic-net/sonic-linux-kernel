@@ -1,0 +1,54 @@
+From 8845c46138eca323a3fe9cd1332190f092f35888 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Thu, 7 Jan 2021 12:56:21 +0200
+Subject: [PATCH mlxsw/backport 2/2] mlxsw: core: Add validation of transceiver
+ temperature thresholds
+
+Validate thresholds to avoid a single failure due to some transceiver
+unreliability. Ignore the last readouts in case warning temperature is
+above alarm temperature, since it can cause unexpected thermal
+shutdown. Stay with the previous values and refresh threshold within
+the next iteration.
+
+This is the rare scenario, but somehow once it has been observed at a
+customer site.
+
+Fixes: 6a79507cfe94 ("mlxsw: core: Extend thermal module with per QSFP module thermal zones")
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 54d0e8b8d..477c3ed53 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -183,6 +183,12 @@ mlxsw_thermal_module_trips_update(struct device *dev, struct mlxsw_core *core,
+ 	if (err)
+ 		return err;
+ 
++	if (crit_temp > emerg_temp) {
++		dev_warn(dev, "%s : Critical threshold %d is above emergency threshold %d\n",
++			 tz->tzdev->type, crit_temp, emerg_temp);
++		return 0;
++	}
++
+ 	/* According to the system thermal requirements, the thermal zones are
+ 	 * defined with four trip points. The critical and emergency
+ 	 * temperature thresholds, provided by QSFP module are set as "active"
+@@ -197,11 +203,8 @@ mlxsw_thermal_module_trips_update(struct device *dev, struct mlxsw_core *core,
+ 		tz->trips[MLXSW_THERMAL_TEMP_TRIP_NORM].temp = crit_temp;
+ 	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HIGH].temp = crit_temp;
+ 	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HOT].temp = emerg_temp;
+-	if (emerg_temp > crit_temp)
+-		tz->trips[MLXSW_THERMAL_TEMP_TRIP_CRIT].temp = emerg_temp +
++	tz->trips[MLXSW_THERMAL_TEMP_TRIP_CRIT].temp = emerg_temp +
+ 					MLXSW_THERMAL_MODULE_TEMP_SHIFT;
+-	else
+-		tz->trips[MLXSW_THERMAL_TEMP_TRIP_CRIT].temp = emerg_temp;
+ 
+ 	return 0;
+ }
+-- 
+2.11.0
+
