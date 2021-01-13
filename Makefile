@@ -3,10 +3,11 @@ SHELL = /bin/bash
 .SHELLFLAGS += -e
 
 KERNEL_ABI_MINOR_VERSION = 2
-KVERSION_SHORT ?= 4.9.0-11-$(KERNEL_ABI_MINOR_VERSION)
+KVERSION_SHORT ?= 4.9.0-14-$(KERNEL_ABI_MINOR_VERSION)
 KVERSION ?= $(KVERSION_SHORT)-amd64
-KERNEL_VERSION ?= 4.9.189
-KERNEL_SUBVERSION ?= 3+deb9u2
+KERNEL_VERSION ?= 4.9.246
+KERNEL_SUBVERSION ?= 2
+KVERSION ?= $(KVERSION_SHORT)-amd64
 kernel_procure_method ?= build
 
 LINUX_HEADER_COMMON = linux-headers-$(KVERSION_SHORT)-common_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_all.deb
@@ -47,9 +48,10 @@ ORIG_FILE = linux_$(KERNEL_VERSION).orig.tar.xz
 DEBIAN_FILE = linux_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION).debian.tar.xz
 BUILD_DIR=linux-$(KERNEL_VERSION)
 
-DSC_FILE_URL = "http://security.debian.org/debian-security/pool/updates/main/l/linux/linux_4.9.189-3+deb9u2.dsc"
-DEBIAN_FILE_URL = "http://security.debian.org/debian-security/pool/updates/main/l/linux/linux_4.9.189-3+deb9u2.debian.tar.xz"
-ORIG_FILE_URL = "http://security.debian.org/debian-security/pool/updates/main/l/linux/linux_4.9.189.orig.tar.xz"
+BASE_URL = "https://sonicstorage.blob.core.windows.net/debian-security/pool/updates/main/l/linux"
+DSC_FILE_URL = $(BASE_URL)/$(DSC_FILE)
+DEBIAN_FILE_URL = $(BASE_URL)/$(DEBIAN_FILE)
+ORIG_FILE_URL = $(BASE_URL)/$(ORIG_FILE)
 
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Obtaining the Debian kernel source

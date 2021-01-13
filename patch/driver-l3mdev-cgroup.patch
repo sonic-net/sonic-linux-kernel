@@ -1,4 +1,5 @@
 Add cgroup to assoicate tasks with L3 networking domains. AF_INET{6}
+
 sockets opened by tasks associated with an l3mdev cgroup are bound to
 the associated master device when the socket is created. This allows a
 user to run a command (and its children) within an L3 networking context.
@@ -87,7 +88,7 @@ index 0000000..7d2bef1
 +#endif /* CONFIG_CGROUP_L3MDEV */
 +#endif /* _L3MDEV_CGROUP_H */
 diff --git a/net/core/sock.c b/net/core/sock.c
-index 1c4c434..ebb25ca 100644
+index d468ffb..4d60e7f 100644
 --- a/net/core/sock.c
 +++ b/net/core/sock.c
 @@ -131,6 +131,7 @@
@@ -98,10 +99,10 @@ index 1c4c434..ebb25ca 100644
  #include <linux/sock_diag.h>
  
  #include <linux/filter.h>
-@@ -1402,6 +1403,7 @@ struct sock *sk_alloc(struct net *net, int family, gfp_t priority,
- 		cgroup_sk_alloc(&sk->sk_cgrp_data);
+@@ -1404,6 +1405,7 @@ struct sock *sk_alloc(struct net *net, int family, gfp_t priority,
  		sock_update_classid(&sk->sk_cgrp_data);
  		sock_update_netprioidx(&sk->sk_cgrp_data);
+ 		sk_tx_queue_clear(sk);
 +		sock_update_l3mdev(sk);
  	}
  

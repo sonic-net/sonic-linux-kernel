@@ -13,8 +13,8 @@ index cfc4409..fae58f7 100644
 +++ b/debian/config/defines
 @@ -1,5 +1,5 @@
  [abi]
--abiname: 11
-+abiname: 11-2
+-abiname: 14
++abiname: 14-2
  ignore-changes:
   __cpuhp_*
   bpf_analyzer

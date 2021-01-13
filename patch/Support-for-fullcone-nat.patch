@@ -1,28 +1,28 @@
 From 67cc2bd46c7ad1431ddd1819cdfad6ecc08a7593 Mon Sep 17 00:00:00 2001
-From: Kiran Kella <kiran.kella@broadcom.com>
-Date: Fri, 6 Sep 2019 20:54:19 -0700
-Subject: [PATCH] Support for fullcone nat
 
+From: Kiran Kella <kiran.kella@broadcom.com>
+
+Subject: [PATCH] Support for fullcone nat
 ---
- include/net/netfilter/nf_conntrack.h     |   4 +
- include/net/netfilter/nf_nat.h           |   6 +
- include/net/netfilter/nf_nat_l4proto.h   |  12 +-
- include/uapi/linux/netfilter/nf_nat.h    |   1 +
- net/ipv4/netfilter/nf_nat_proto_gre.c    |   8 +-
- net/ipv4/netfilter/nf_nat_proto_icmp.c   |   6 +-
- net/ipv6/netfilter/nf_nat_proto_icmpv6.c |   5 +-
- net/netfilter/nf_nat_core.c              | 175 ++++++++++++++++++++---
- net/netfilter/nf_nat_proto_common.c      |  23 ++-
- net/netfilter/nf_nat_proto_dccp.c        |   6 +-
- net/netfilter/nf_nat_proto_sctp.c        |   6 +-
- net/netfilter/nf_nat_proto_tcp.c         |   6 +-
- net/netfilter/nf_nat_proto_udp.c         |   6 +-
- net/netfilter/nf_nat_proto_udplite.c     |   6 +-
- net/netfilter/nf_nat_proto_unknown.c     |   4 +-
+ include/net/netfilter/nf_conntrack.h     |    4 +
+ include/net/netfilter/nf_nat.h           |    6 +
+ include/net/netfilter/nf_nat_l4proto.h   |   12 +-
+ include/uapi/linux/netfilter/nf_nat.h    |    1 
+ net/ipv4/netfilter/nf_nat_proto_gre.c    |    8 +
+ net/ipv4/netfilter/nf_nat_proto_icmp.c   |    6 +
+ net/ipv6/netfilter/nf_nat_proto_icmpv6.c |    5 +
+ net/netfilter/nf_nat_core.c              |  175 +++++++++++++++++++++++++++---
+ net/netfilter/nf_nat_proto_common.c      |   23 +++-
+ net/netfilter/nf_nat_proto_dccp.c        |    6 +
+ net/netfilter/nf_nat_proto_sctp.c        |    6 +
+ net/netfilter/nf_nat_proto_tcp.c         |    6 +
+ net/netfilter/nf_nat_proto_udp.c         |    6 +
+ net/netfilter/nf_nat_proto_udplite.c     |    6 +
+ net/netfilter/nf_nat_proto_unknown.c     |    4 -
  15 files changed, 220 insertions(+), 54 deletions(-)
 
 diff --git a/include/net/netfilter/nf_conntrack.h b/include/net/netfilter/nf_conntrack.h
-index 9ae819e..91796e9 100644
+index 7befec5..3ab5651 100644
 --- a/include/net/netfilter/nf_conntrack.h
 +++ b/include/net/netfilter/nf_conntrack.h
 @@ -102,6 +102,10 @@ struct nf_conn {
@@ -30,11 +30,11 @@ index 9ae819e..91796e9 100644
  	struct hlist_node	nat_bysource;
  #endif
 +
-+        /* To optionally ensure 3-tuple uniqueness on the translated source */
-+        struct hlist_node       nat_by_manip_src;
++	/* To optionally ensure 3-tuple uniqueness on the translated source */
++	struct hlist_node   nat_by_manip_src;
 +
  	/* all members below initialized via memset */
- 	u8 __nfct_init_offset[0];
+ 	struct { } __nfct_init_offset;
  
 diff --git a/include/net/netfilter/nf_nat.h b/include/net/netfilter/nf_nat.h
 index 02515f7..8d4d180 100644
@@ -688,6 +688,3 @@ index 6e494d5..4ad71c8 100644
  }
  
  static bool
--- 
-2.18.0
-
