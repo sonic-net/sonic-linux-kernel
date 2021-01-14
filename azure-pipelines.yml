@@ -1,0 +1,28 @@
+# C/C++ with GCC
+# Build your C/C++ project with GCC using make.
+# Add steps that publish test results, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/apps/c-cpp/gcc
+
+trigger:
+  branches:
+    include:
+      - "*"
+jobs:
+- job:
+  timeoutInMinutes: 240
+  pool: sonicbld
+
+  container:
+    image: sonicdev-microsoft.azurecr.io:443/sonic-slave-stretch:latest
+
+  steps:
+  - script: |
+      git config --global user.email "lguohan@build.com"
+      git config --global user.name "Guohan Lu"
+      export kernel_procure_method=build
+      cat /proc/cpuinfo
+      make
+    displayName: "Compile sonic kernel"
+  - publish: $(System.DefaultWorkingDirectory)/
+    artifact: sonic-linux-kernel.201811
+    displayName: "Archive sonic kernel debian packages"
