@@ -7,10 +7,28 @@ trigger:
   branches:
     include:
       - "*"
+
+pr:
+- master
+- 202012
+- 201911
+- 201811
+
+name: $[ variables['branchName'] ]
+
+# Using conditions to set the variable value.
+# I guess if both conditions return true the last will be used.
+variables:
+  ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads/') }}:
+    branchName: $[ replace(variables['Build.SourceBranch'], 'refs/heads/', '') ]
+  ${{ if startsWith(variables['Build.SourceBranch'], 'refs/pull/') }}:
+    branchName: $[ replace(variables['System.PullRequest.SourceBranch'], 'refs/heads/', '') ]
+
 jobs:
 - job:
-  timeoutInMinutes: 180
-  pool: sonic
+  condition: eq(variables['branchName'], 'master')
+  timeoutInMinutes: 240
+  pool: sonicbld
 
   container:
     image: sonicdev-microsoft.azurecr.io:443/sonic-slave-buster:latest
@@ -25,4 +43,45 @@ jobs:
     displayName: "Compile sonic kernel"
   - publish: $(System.DefaultWorkingDirectory)/
     artifact: sonic-linux-kernel
+    displayName: "Archive sonic kernel debian packages"
+
+- job:
+  condition: in(variables['branchName'], '202012')
+  timeoutInMinutes: 240
+  pool: sonicbld
+
+  container:
+    image: sonicdev-microsoft.azurecr.io:443/sonic-slave-buster:latest
+
+  steps:
+  - script: |
+      git config --global user.email "lguohan@build.com"
+      git config --global user.name "Guohan Lu"
+      export kernel_procure_method=build
+      cat /proc/cpuinfo
+      make
+    displayName: "Compile sonic kernel"
+  - publish: $(System.DefaultWorkingDirectory)/
+    artifact: sonic-linux-kernel.$(branchName)
+    displayName: "Archive sonic kernel debian packages"
+
+
+- job:
+  condition: in(variables['branchName'], '201811', '201911')
+  timeoutInMinutes: 240
+  pool: sonicbld
+
+  container:
+    image: sonicdev-microsoft.azurecr.io:443/sonic-slave-stretch:latest
+
+  steps:
+  - script: |
+      git config --global user.email "lguohan@build.com"
+      git config --global user.name "Guohan Lu"
+      export kernel_procure_method=build
+      cat /proc/cpuinfo
+      make
+    displayName: "Compile sonic kernel"
+  - publish: $(System.DefaultWorkingDirectory)/
+    artifact: sonic-linux-kernel.$(branchName)
     displayName: "Archive sonic kernel debian packages"
