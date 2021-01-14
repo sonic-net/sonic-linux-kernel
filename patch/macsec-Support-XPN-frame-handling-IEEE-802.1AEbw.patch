@@ -23,11 +23,11 @@ frame can be 0 when XPN cipher suite is used, so fixed the function
 Signed-off-by: Era Mayflower <mayflowerera@gmail.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
 ---
- drivers/net/macsec.c |  157 ++++++++++++++++++++++++++++++++++++++++----------
- 1 file changed, 125 insertions(+), 32 deletions(-)
+ drivers/net/macsec.c |  156 ++++++++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 125 insertions(+), 31 deletions(-)
 
 diff --git a/drivers/net/macsec.c b/drivers/net/macsec.c
-index df7d6de7c..a41a6cd78 100644
+index 4c5b67a2d..bc3aa124e 100644
 --- a/drivers/net/macsec.c
 +++ b/drivers/net/macsec.c
 @@ -21,10 +21,38 @@
@@ -323,16 +323,15 @@ index df7d6de7c..a41a6cd78 100644
  
  	sg_init_table(sg, ret);
  	ret = skb_to_sgvec(skb, sg, 0, skb->len);
-@@ -1086,7 +1176,7 @@ static rx_handler_result_t macsec_handle_frame(struct sk_buff **pskb)
- 	struct macsec_rxh_data *rxd;
- 	struct macsec_dev *macsec;
+@@ -1088,6 +1178,7 @@ static rx_handler_result_t macsec_handle_frame(struct sk_buff **pskb)
+ 	unsigned int len;
  	sci_t sci;
--	u32 pn;
+ 	u32 pn;
 +	u32 hdr_pn;
  	bool cbit;
  	struct pcpu_rx_sc_stats *rxsc_stats;
  	struct pcpu_secy_stats *secy_stats;
-@@ -1160,7 +1250,7 @@ static rx_handler_result_t macsec_handle_frame(struct sk_buff **pskb)
+@@ -1161,7 +1252,7 @@ static rx_handler_result_t macsec_handle_frame(struct sk_buff **pskb)
  	secy_stats = this_cpu_ptr(macsec->stats);
  	rxsc_stats = this_cpu_ptr(rx_sc->stats);
  
@@ -341,7 +340,7 @@ index df7d6de7c..a41a6cd78 100644
  		u64_stats_update_begin(&secy_stats->syncp);
  		secy_stats->stats.InPktsBadTag++;
  		u64_stats_update_end(&secy_stats->syncp);
-@@ -1192,13 +1282,16 @@ static rx_handler_result_t macsec_handle_frame(struct sk_buff **pskb)
+@@ -1193,13 +1284,16 @@ static rx_handler_result_t macsec_handle_frame(struct sk_buff **pskb)
  	}
  
  	/* First, PN check to avoid decrypting obviously wrong packets */
@@ -361,7 +360,7 @@ index df7d6de7c..a41a6cd78 100644
  		spin_unlock(&rx_sa->lock);
  
  		if (late) {
-@@ -1227,7 +1320,7 @@ static rx_handler_result_t macsec_handle_frame(struct sk_buff **pskb)
+@@ -1228,7 +1322,7 @@ static rx_handler_result_t macsec_handle_frame(struct sk_buff **pskb)
  		return RX_HANDLER_CONSUMED;
  	}
  
@@ -370,7 +369,7 @@ index df7d6de7c..a41a6cd78 100644
  		goto drop;
  
  deliver:
-@@ -1720,7 +1813,7 @@ static int macsec_add_rxsa(struct sk_buff *skb, struct genl_info *info)
+@@ -1723,7 +1817,7 @@ static int macsec_add_rxsa(struct sk_buff *skb, struct genl_info *info)
  
  	if (tb_sa[MACSEC_SA_ATTR_PN]) {
  		spin_lock_bh(&rx_sa->lock);
@@ -379,7 +378,7 @@ index df7d6de7c..a41a6cd78 100644
  		spin_unlock_bh(&rx_sa->lock);
  	}
  
-@@ -1876,7 +1969,7 @@ static int macsec_add_txsa(struct sk_buff *skb, struct genl_info *info)
+@@ -1879,7 +1973,7 @@ static int macsec_add_txsa(struct sk_buff *skb, struct genl_info *info)
  	nla_memcpy(tx_sa->key.id, tb_sa[MACSEC_SA_ATTR_KEYID], MACSEC_KEYID_LEN);
  
  	spin_lock_bh(&tx_sa->lock);
@@ -388,7 +387,7 @@ index df7d6de7c..a41a6cd78 100644
  	spin_unlock_bh(&tx_sa->lock);
  
  	if (tb_sa[MACSEC_SA_ATTR_ACTIVE])
-@@ -2060,7 +2153,7 @@ static int macsec_upd_txsa(struct sk_buff *skb, struct genl_info *info)
+@@ -2063,7 +2157,7 @@ static int macsec_upd_txsa(struct sk_buff *skb, struct genl_info *info)
  
  	if (tb_sa[MACSEC_SA_ATTR_PN]) {
  		spin_lock_bh(&tx_sa->lock);
@@ -397,7 +396,7 @@ index df7d6de7c..a41a6cd78 100644
  		spin_unlock_bh(&tx_sa->lock);
  	}
  
-@@ -2108,7 +2201,7 @@ static int macsec_upd_rxsa(struct sk_buff *skb, struct genl_info *info)
+@@ -2111,7 +2205,7 @@ static int macsec_upd_rxsa(struct sk_buff *skb, struct genl_info *info)
  
  	if (tb_sa[MACSEC_SA_ATTR_PN]) {
  		spin_lock_bh(&rx_sa->lock);
@@ -406,7 +405,7 @@ index df7d6de7c..a41a6cd78 100644
  		spin_unlock_bh(&rx_sa->lock);
  	}
  
-@@ -2470,7 +2563,7 @@ static int dump_secy(struct macsec_secy *secy, struct net_device *dev,
+@@ -2473,7 +2567,7 @@ static int dump_secy(struct macsec_secy *secy, struct net_device *dev,
  		}
  
  		if (nla_put_u8(skb, MACSEC_SA_ATTR_AN, i) ||
@@ -415,7 +414,7 @@ index df7d6de7c..a41a6cd78 100644
  		    nla_put(skb, MACSEC_SA_ATTR_KEYID, MACSEC_KEYID_LEN, tx_sa->key.id) ||
  		    nla_put_u8(skb, MACSEC_SA_ATTR_ACTIVE, tx_sa->active)) {
  			nla_nest_cancel(skb, txsa_nest);
-@@ -2572,7 +2665,7 @@ static int dump_secy(struct macsec_secy *secy, struct net_device *dev,
+@@ -2575,7 +2669,7 @@ static int dump_secy(struct macsec_secy *secy, struct net_device *dev,
  			nla_nest_end(skb, attr);
  
  			if (nla_put_u8(skb, MACSEC_SA_ATTR_AN, i) ||
