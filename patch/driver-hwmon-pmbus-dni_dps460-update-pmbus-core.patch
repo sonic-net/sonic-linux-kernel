@@ -1,19 +1,31 @@
-Update pmbus_data data structure to meet kernel implementation
-
-From: Shuotian Cheng <shuche@microsoft.com>
+From 9cfc597034ffe58527ea5ce1799dfcbad770ea30 Mon Sep 17 00:00:00 2001
+From: Arun Saravanan Balachandran <Arun_Saravanan_Balac@dell.com>
+Date: Mon, 18 Jan 2021 09:00:44 +0000
+Subject: [PATCH] Update pmbus_data data structure to meet kernel
+ implementation
 
 The pmbus_data data structure is pasted in the driver.
 Cumulus patch is for kernel 3.2.x.
-Update this data structure to meet current kernel (3.16.x) implementation.
+Update this data structure to meet current kernel (4.19.x) implementation.
+
+Signed-off-by: Arun Saravanan Balachandran <Arun_Saravanan_Balac@dell.com>
 ---
- drivers/hwmon/pmbus/dni_dps460.c |   42 +++++++++++++++-----------------------
- 1 file changed, 17 insertions(+), 25 deletions(-)
+ drivers/hwmon/pmbus/dni_dps460.c | 48 ++++++++++++++++++----------------------
+ 1 file changed, 22 insertions(+), 26 deletions(-)
 
 diff --git a/drivers/hwmon/pmbus/dni_dps460.c b/drivers/hwmon/pmbus/dni_dps460.c
-index ad29134c4..7332480d4 100644
+index 2c67410..d314c1f 100644
 --- a/drivers/hwmon/pmbus/dni_dps460.c
 +++ b/drivers/hwmon/pmbus/dni_dps460.c
-@@ -39,41 +39,32 @@ enum chips { dni_dps460 };
+@@ -19,6 +19,7 @@
+  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+  */
+ 
++#include <linux/debugfs.h>
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+ #include <linux/init.h>
+@@ -39,41 +40,33 @@ enum chips { dni_dps460 };
  #define FAN_VALUE_MAX 0x64
  
  /* Needed to access the mutex. Copied from pmbus_core.c */
@@ -44,6 +56,7 @@ index ad29134c4..7332480d4 100644
 -	struct attribute **attributes;
  	struct attribute_group group;
 +	const struct attribute_group *groups[2];
++	struct dentry *debugfs;         /* debugfs device directory */
  
 -	/*
 -	 * Sensors cover both sensor and limit registers.
@@ -68,15 +81,19 @@ index ad29134c4..7332480d4 100644
  
  	struct mutex update_lock;
  	bool valid;
-@@ -84,6 +75,7 @@ struct pmbus_data {
+@@ -83,7 +76,10 @@ struct pmbus_data {
+ 	 * A single status register covers multiple attributes,
  	 * so we keep them all together.
  	 */
- 	u8 status[PB_NUM_STATUS_REG];
-+	u8 status_register;
+-	u8 status[PB_NUM_STATUS_REG];
++	u16 status[PB_NUM_STATUS_REG];
++
++	bool has_status_word;           /* device uses STATUS_WORD register */
++	int (*read_status)(struct i2c_client *client, int page);
  
  	u8 currpage;
  };
-@@ -123,14 +115,14 @@ static ssize_t set_target(struct device *dev, struct device_attribute *devattr,
+@@ -123,14 +119,14 @@ static ssize_t set_target(struct device *dev, struct device_attribute *devattr,
  	struct i2c_client *client = to_i2c_client(dev);
  	struct pmbus_data *data = i2c_get_clientdata(client);
  	int err;
@@ -94,3 +111,6 @@ index ad29134c4..7332480d4 100644
  
  	mutex_lock(&data->update_lock);
  
+-- 
+2.7.4
+
