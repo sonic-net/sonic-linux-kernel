@@ -1,23 +1,23 @@
-From 8c964a3e17bb41eef69c81d45864d72cbc1185f4 Mon Sep 17 00:00:00 2001
-From: Vadim Pasternak <vadimp@mellanox.com>
-Date: Fri, 17 May 2019 09:22:21 +0000
-Subject: [PATCH backport 5.2] mlxsw: minimal: Provide optimization for I2C bus
- access
+From 920b62649b51ed12360629de4a4cbe99fdaf2a38 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Sun, 17 Jan 2021 13:50:34 +0200
+Subject: [PATCH backport 4.9 4/7] mlxsw: minimal: Provide optimization for I2C
+ bus access
 
 Use register MTMP instead of MTBR.
 Use maximum buffer size allowed by I2C adapter.
 
 Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
 ---
- drivers/i2c/busses/i2c-mlxcpld.c                   |  2 +-
- drivers/net/ethernet/mellanox/mlxsw/core.c         |  6 ++
- drivers/net/ethernet/mellanox/mlxsw/core.h         |  2 +
- drivers/net/ethernet/mellanox/mlxsw/core_env.c     | 29 ++-----
- drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c   | 98 +++++++++-------------
- drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 60 +++++++------
- drivers/net/ethernet/mellanox/mlxsw/i2c.c          | 56 +++++++++----
- drivers/net/ethernet/mellanox/mlxsw/minimal.c      | 18 ++++
- drivers/net/ethernet/mellanox/mlxsw/reg.h          |  7 +-
+ drivers/i2c/busses/i2c-mlxcpld.c              |  2 +-
+ drivers/net/ethernet/mellanox/mlxsw/core.c    |  6 ++
+ drivers/net/ethernet/mellanox/mlxsw/core.h    |  2 +
+ .../net/ethernet/mellanox/mlxsw/core_env.c    | 29 ++----
+ .../net/ethernet/mellanox/mlxsw/core_hwmon.c  | 98 ++++++++-----------
+ .../ethernet/mellanox/mlxsw/core_thermal.c    | 60 ++++++------
+ drivers/net/ethernet/mellanox/mlxsw/i2c.c     | 56 +++++++----
+ drivers/net/ethernet/mellanox/mlxsw/minimal.c | 18 ++++
+ drivers/net/ethernet/mellanox/mlxsw/reg.h     |  7 +-
  9 files changed, 144 insertions(+), 134 deletions(-)
 
 diff --git a/drivers/i2c/busses/i2c-mlxcpld.c b/drivers/i2c/busses/i2c-mlxcpld.c
@@ -41,7 +41,7 @@ index 745ed43a22d6..2fd717d8dd30 100644
  
  	err = i2c_add_numbered_adapter(&priv->adap);
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core.c b/drivers/net/ethernet/mellanox/mlxsw/core.c
-index e420451942e2..9a74ae8beb43 100644
+index 66585818b8c9..f7c4f9f300b8 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/core.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core.c
 @@ -122,6 +122,12 @@ void *mlxsw_core_driver_priv(struct mlxsw_core *mlxsw_core)
@@ -58,11 +58,11 @@ index e420451942e2..9a74ae8beb43 100644
  	struct list_head list;
  	struct mlxsw_rx_listener rxl;
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core.h b/drivers/net/ethernet/mellanox/mlxsw/core.h
-index 76e8fd76ef36..1e1bcfd8d032 100644
+index 7266d44432e1..23058ecd1b17 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/core.h
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core.h
-@@ -28,6 +28,8 @@ unsigned int mlxsw_core_max_ports(const struct mlxsw_core *mlxsw_core);
- 
+@@ -29,6 +29,8 @@ void mlxsw_core_max_ports_set(struct mlxsw_core *mlxsw_core,
+ 			      unsigned int max_ports);
  void *mlxsw_core_driver_priv(struct mlxsw_core *mlxsw_core);
  
 +bool mlxsw_core_res_query_enabled(const struct mlxsw_core *mlxsw_core);
@@ -309,7 +309,7 @@ index 976f81a2bbba..a414a09efb5d 100644
  				     index, index);
  		mlxsw_hwmon_attr_add(mlxsw_hwmon,
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
-index 5f970798ab6a..e9451e447bf0 100644
+index a41424bbe97a..499c82cea1cb 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
 @@ -452,36 +452,27 @@ static int mlxsw_thermal_module_temp_get(struct thermal_zone_device *tzdev,
@@ -664,5 +664,5 @@ index f16d27e115d2..eb58940d2e9c 100644
  /* reg_mtbr_num_rec
   * Request: Number of records to read
 -- 
-2.11.0
+2.20.1
 

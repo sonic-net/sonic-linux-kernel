@@ -66,47 +66,47 @@ linux-4.13-thermal-intel_pch_thermal-Fix-enable-check-on.patch
 0028-watchdog-mlx-wdt-introduce-watchdog-driver-for-Mella.patch
 0029-mlxsw-qsfp_sysfs-Support-port-numbers-initialization.patch
 0030-update-kernel-config.patch
-# 0031-mlxsw-Align-code-with-kernel-v-5.0.patch
+0031-mlxsw-Align-code-with-kernel-v-5.0.patch
 0032-sonic-update-kernel-config-mlsxw-pci.patch
 0033-hwmon-pmbus-Fix-driver-info-initialization-in-probe-.patch
 0034-mlxsw-thermal-disable-highest-zone-calculation.patch
 0035-platform-x86-mlx-platform-Add-CPLD4-register.patch
 0036-watchdog-mlx-wdt-kernel-upstream-and-wd-type2-change.patch
-# 0037-mlxsw-Align-code-with-kernel-v-5.1.patch
-# 0038-mlxsw-core-Add-check-for-split-port-during-thermal-z.patch
-# 0039-mlxsw-core-Prevent-reading-unsupported-slave-address.patch
-# 0040-mlxsw-core-add-support-for-Gear-Box-temperatures-in-.patch
-# 0041-mlxsw-minimal-Provide-optimization-for-I2C-bus-acces.patch
-# 0042-mlxsw-core-Skip-port-split-entries-in-hwmon-subsyste.patch
-# 0043-mellanox-platform-Backporting-Melanox-drivers-from-v.patch
-# 0044-mlxsw-minimal-Provide-optimization-for-module-number.patch
-# 0045-mlxsw-minimal-Add-validation-for-FW-version.patch
-# 0046-mlxsw-core-Extend-QSFP-EEPROM-supported-size-for-eth.patch
+0037-mlxsw-Align-code-with-kernel-v-5.1.patch
+0038-mlxsw-core-Add-check-for-split-port-during-thermal-z.patch
+0039-mlxsw-core-Prevent-reading-unsupported-slave-address.patch
+0040-mlxsw-core-add-support-for-Gear-Box-temperatures-in-.patch
+0041-mlxsw-minimal-Provide-optimization-for-I2C-bus-acces.patch
+0042-mlxsw-core-Skip-port-split-entries-in-hwmon-subsyste.patch
+0043-mellanox-platform-Backporting-Melanox-drivers-from-v.patch
+0044-mlxsw-minimal-Provide-optimization-for-module-number.patch
+0045-mlxsw-minimal-Add-validation-for-FW-version.patch
+0046-mlxsw-core-Extend-QSFP-EEPROM-supported-size-for-eth.patch
 0047-mfd-lpc-ich-extend-with-additional-chipsets-support.patch
-# 0048-mlxsw-core-Skip-thermal-zone-operations-initializati.patch
+0048-mlxsw-core-Skip-thermal-zone-operations-initializati.patch
 0049-thermal-Fix-use-after-free-when-unregistering-therma.patch
-# 0050-mlxsw-core-Drop-creation-of-thermal-to-hwmon-sysfs-i.patch
-# 0051-mlxsw-core-Skip-thermal-zones-threshold-setting-duri.patch
-# 0052-platform-x86-mlx-platform-Add-more-detention-for-sys.patch
-# 0053-firmware-dmi-Add-access-to-the-SKU-ID-string-backpor.patch
-# 0054-platform-x86-mlx-platform-Modify-setting-for-new-sys.patch
-# 0055-platform-x86-mlx-platform-Add-support-for-next-gener.patch
-# 0056-mlxsw-core-Add-support-for-new-hardware-device-types.patch
-# 0057-mlxsw-minimal-Fix-validation-for-FW-minor-version.patch
-# 0058-mlxsw-core-thermal-Set-default-thermal-trips-at-init.patch
-# 0059-mlxsw-core-Add-the-hottest-thermal-zone-detection.patch
-# 0060-hwmon-pmbus-core-Add-support-for-vid-mode-detecti.patch
-# 0061-i2c-busses-i2c-mlxcpld-Increase-transaction-pooli.patch
-# 0062-platform-mellanox-mlxreg-hotplug-Use-capability-r.patch
-# 0063-platform-mellanox-mlxreg-io-Add-support-for-compl.patch
-# 0064-Add-config-for-sensor-xdpe122-and-modify-mlx_wdt-.patch
-# 0065-mlxsw-qsfp_sysfs-Remove-obsolete-code-for-QSFP-EEPRO.patch
-# 0066-platform-mellanox-mlxreg-hotplug-Add-environmental-d.patch
-# 0067-Add-support-for-new-transceivers-types-QSFP-DD-and-Q.patch
-# 0068-mlxsw-core-thermal-Separate-temperature-trend-read-c.patch
-# 0069-watchdog-mlx-wdt-support-new-watchdog-type-with-long.patch
-# 0070-mlxsw-core-Increase-critical-threshold-for-ASIC-ther.patch
-# 0071-mlxsw-core-Add-validation-of-transceiver-temperature.patch
+0050-mlxsw-core-Drop-creation-of-thermal-to-hwmon-sysfs-i.patch
+0051-mlxsw-core-Skip-thermal-zones-threshold-setting-duri.patch
+0052-platform-x86-mlx-platform-Add-more-detention-for-sys.patch
+0053-firmware-dmi-Add-access-to-the-SKU-ID-string-backpor.patch
+0054-platform-x86-mlx-platform-Modify-setting-for-new-sys.patch
+0055-platform-x86-mlx-platform-Add-support-for-next-gener.patch
+0056-mlxsw-core-Add-support-for-new-hardware-device-types.patch
+0057-mlxsw-minimal-Fix-validation-for-FW-minor-version.patch
+0058-mlxsw-core-thermal-Set-default-thermal-trips-at-init.patch
+0059-mlxsw-core-Add-the-hottest-thermal-zone-detection.patch
+0060-hwmon-pmbus-core-Add-support-for-vid-mode-detecti.patch
+0061-i2c-busses-i2c-mlxcpld-Increase-transaction-pooli.patch
+0062-platform-mellanox-mlxreg-hotplug-Use-capability-r.patch
+0063-platform-mellanox-mlxreg-io-Add-support-for-compl.patch
+0064-Add-config-for-sensor-xdpe122-and-modify-mlx_wdt-.patch
+0065-mlxsw-qsfp_sysfs-Remove-obsolete-code-for-QSFP-EEPRO.patch
+0066-platform-mellanox-mlxreg-hotplug-Add-environmental-d.patch
+0067-Add-support-for-new-transceivers-types-QSFP-DD-and-Q.patch
+0068-mlxsw-core-thermal-Separate-temperature-trend-read-c.patch
+0069-watchdog-mlx-wdt-support-new-watchdog-type-with-long.patch
+0070-mlxsw-core-Increase-critical-threshold-for-ASIC-ther.patch
+0071-mlxsw-core-Add-validation-of-transceiver-temperature.patch
 linux-4.16-firmware-dmi-handle-missing-DMI-data-gracefully.patch
 mellanox-backport-introduce-psample-a-new-genetlink-channel.patch
 mellanox-backport-introduce-tc-sample-action.patch
