@@ -82,7 +82,7 @@ index 07148b497..67b5ef45b 100644
  };
  
 diff --git a/net/ipv6/addrconf.c b/net/ipv6/addrconf.c
-index 627cd24b7..2c8be7d60 100644
+index 627cd24b7..fdddc5616 100644
 --- a/net/ipv6/addrconf.c
 +++ b/net/ipv6/addrconf.c
 @@ -209,6 +209,7 @@ static struct ipv6_devconf ipv6_devconf __read_mostly = {
@@ -119,7 +119,7 @@ index 627cd24b7..2c8be7d60 100644
 +		.maxlen		= sizeof(u32),
 +		.mode		= 0644,
 +		.proc_handler	= proc_douintvec_minmax,
-+		.extra1		= SYSCTL_ONE,
++		.extra1		= (void *)&one,
 +	},
  	{
  		.procname	= "accept_ra_min_hop_limit",
