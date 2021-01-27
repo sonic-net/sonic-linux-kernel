@@ -1,6 +1,7 @@
 From 3e212b8886a21fad8df621992b00b6bd1f5a7f16 Mon Sep 17 00:00:00 2001
+
 From: Don Bollinger <don@thebollingers.org>
-Date: Sat, 3 Aug 2019 12:06:05 -0700
+
 Subject: [PATCH] drivers/misc/eeprom: Support QSFP-DD (CMIS) type
  devices
 
@@ -10,11 +11,11 @@ Subject: [PATCH] drivers/misc/eeprom: Support QSFP-DD (CMIS) type
 
 Signed-off-by: Don Bollinger <don@thebollingers.org>
 ---
- drivers/misc/eeprom/optoe.c | 61 +++++++++++++++++++++++++++++++++++++----
+ drivers/misc/eeprom/optoe.c |   61 +++++++++++++++++++++++++++++++++++++++----
  1 file changed, 56 insertions(+), 5 deletions(-)
 
 diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
-index c22b92a..16287fd 100644
+index c22b92a29..16287fdc5 100644
 --- a/drivers/misc/eeprom/optoe.c
 +++ b/drivers/misc/eeprom/optoe.c
 @@ -97,6 +97,13 @@
@@ -144,6 +145,3 @@ index c22b92a..16287fd 100644
  		err = -EINVAL;
  		goto exit;
  	}
--- 
-2.16.2
-

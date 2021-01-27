@@ -1,0 +1,130 @@
+#!/bin/bash
+
+#
+# SPDX-License-Identifier:     GPL-2.0
+#
+# Add / Remove options in kernel configuration,
+# and Verify the kernel configuration afterwards.
+#
+# To remove options from the kernel, add the options into the flat text file
+# patch/kconfig-exclusions
+#
+# Example:
+#   CONFIG_SOUND
+#   CONFIG_ISDN
+#
+# To add options into the kernel, add the options into the flat text file
+# patch/kconfig-inclusions
+#
+# Example:
+#   CONFIG_AD5064=y
+#
+# If the option is required on all architectures, add it to the common section;
+# if the option is only relevant to a specific architecture, add it to the
+# section of the corresponding architecture.
+
+# Configuration file to change
+ARCH=amd64
+PLATFORM=
+if [ $# -ge 1 ]; then
+    ARCH=$1
+fi
+if [ $# -ge 2 ]; then
+    PLATFORM=$2
+fi
+case "$ARCH" in
+    amd64)
+        CONFIG_FILE_LOC=debian/build/build_amd64_none_amd64
+        ;;
+    arm64)
+        CONFIG_FILE_LOC=debian/build/build_arm64_none_arm64
+        ;;
+    armhf)
+        CONFIG_FILE_LOC=debian/build/build_armhf_none_armmp
+        ;;
+    *)
+        CONFIG_FILE_LOC=debian/build/build_amd64_none_amd64
+        ;;
+esac
+CONFIG_FILE=${CONFIG_FILE_LOC}/.config
+
+function get_section_opts(){
+    file=$1
+    for((i=2;i<=$#;i++));do
+        eval section=\$$i
+        opts+=$(sed -n '/^\['${section}'\]/, /^\[.*\]/p' ${file} | grep -Ev '\[.*\]|^$|[#;]')
+        opts+=$'\n'
+    done
+    echo "$opts"
+}
+
+ret=0
+exclusion_file="../patch/kconfig-exclusions"
+inclusion_file="../patch/kconfig-inclusions"
+if [ -e ${exclusion_file} -o -e ${inclusion_file} ]; then
+
+    # Process any exclusions in the kernel
+    if [ -f ${exclusion_file} ]; then
+        exclusion_opts=$(get_section_opts ${exclusion_file} "common" ${ARCH} ${PLATFORM})
+        while read -r opt; do
+            if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
+                scripts/config --file ${CONFIG_FILE} -d $opt
+            fi
+        done <<< ${exclusion_opts};
+    fi
+
+    # Process any inclusions in the kernel
+    if [ -f ${inclusion_file} ]; then
+        inclusion_opts=$(get_section_opts ${inclusion_file} "common" ${ARCH} ${PLATFORM})
+        while read -r opt; do
+            if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
+                echo $opt >> ${CONFIG_FILE}
+            fi
+        done <<< ${inclusion_opts};
+    fi
+
+    # Update the .config file to be sure it's consistent
+    make -C ${CONFIG_FILE_LOC} olddefconfig
+
+    # Verify that the kernel options we want to remove are not in the updated configuration
+    if [ -f ${exclusion_file} ]; then
+        echo
+        echo "Checking removed kernel options..."
+        while read -r opt; do
+            if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
+                s=$(scripts/config --file ${CONFIG_FILE} -k --state $opt)
+                if [ ! "$s" = "undef" -a ! "$s" = "n" ]; then
+                    ret=1
+                    echo "Option $opt should not be set, but is set to [$s]"
+                fi
+            fi
+        done <<< ${exclusion_opts};
+        if [ $ret = 0 ]; then
+            echo "No error"
+        fi
+    fi
+
+    # Verify that the kernel options we want to add are now in the updated configuration
+    if [ -f ${inclusion_file} ]; then
+        echo
+        echo "Checking added kernel options..."
+        while read -r opt; do
+            if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
+                n=${opt%=*}
+                v="${opt#*=}"
+                s=$(scripts/config --file ${CONFIG_FILE} -k --state $n)
+                if [ ! "$s" = "$v" ]; then
+                    ret=2
+                    echo "Option $n should be set to [$v] instead of [$s]"
+                fi
+            fi
+        done <<< ${inclusion_opts};
+        if [ ! $ret = 2 ]; then
+            echo "No error"
+        fi
+    fi
+
+    echo
+fi
+
+exit $ret

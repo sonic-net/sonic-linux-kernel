@@ -10,7 +10,7 @@ memory_accessor in the setup() callback with nvmem API calls.
  2 files changed, 3 insertions(+), 32 deletions(-)
 
 diff --git a/drivers/misc/eeprom/sff_8436_eeprom.c b/drivers/misc/eeprom/sff_8436_eeprom.c
-index 28609bb..e959f63 100644
+index 9e6a7bf43..4688597eb 100644
 --- a/drivers/misc/eeprom/sff_8436_eeprom.c
 +++ b/drivers/misc/eeprom/sff_8436_eeprom.c
 @@ -99,7 +99,6 @@
@@ -80,7 +80,7 @@ index 28609bb..e959f63 100644
  	return 0;
  
 diff --git a/include/linux/i2c/sff-8436.h b/include/linux/i2c/sff-8436.h
-index 4df48ad..3e50567 100644
+index 4df48ad89..3e505676f 100644
 --- a/include/linux/i2c/sff-8436.h
 +++ b/include/linux/i2c/sff-8436.h
 @@ -2,7 +2,7 @@

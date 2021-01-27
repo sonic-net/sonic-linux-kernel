@@ -1,0 +1,20 @@
+Update debian abiname to 9-2
+
+From: Guohan Lu <gulv@microsoft.com>
+
+
+---
+ debian/config/defines |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/debian/config/defines b/debian/config/defines
+index cfc4409..fae58f7 100644
+--- a/debian/config/defines
++++ b/debian/config/defines
+@@ -1,5 +1,5 @@
+ [abi]
+-abiname: 11
++abiname: 11-2
+ ignore-changes:
+  __cpuhp_*
+  bpf_analyzer

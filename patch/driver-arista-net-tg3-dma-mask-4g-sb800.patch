@@ -1,11 +1,16 @@
 Force DMA accesses to be done in the 4G range due to a SB800 limitation
-This issue is seen on Arista DCS-7050QX-32 SKUs
 
-Index: linux-4.9/drivers/net/ethernet/broadcom/tg3.c
-===================================================================
---- linux-4.9.orig/drivers/net/ethernet/broadcom/tg3.c
-+++ linux-4.9/drivers/net/ethernet/broadcom/tg3.c
-@@ -16264,6 +16264,16 @@ static int tg3_get_invariants(struct tg3
+This issue is seen on Arista DCS-7050QX-32 SKUs
+---
+ drivers/net/ethernet/broadcom/tg3.c |   17 ++++++++++++++---
+ drivers/net/ethernet/broadcom/tg3.h |    1 +
+ 2 files changed, 15 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/ethernet/broadcom/tg3.c b/drivers/net/ethernet/broadcom/tg3.c
+index 1af4e1607..2e6a88094 100644
+--- a/drivers/net/ethernet/broadcom/tg3.c
++++ b/drivers/net/ethernet/broadcom/tg3.c
+@@ -16365,6 +16365,16 @@ static int tg3_get_invariants(struct tg3 *tp, const struct pci_device_id *ent)
  		} while (bridge);
  	}
  
@@ -22,7 +27,7 @@ Index: linux-4.9/drivers/net/ethernet/broadcom/tg3.c
  	if (tg3_asic_rev(tp) == ASIC_REV_5704 ||
  	    tg3_asic_rev(tp) == ASIC_REV_5714)
  		tp->pdev_peer = tg3_find_peer(tp);
-@@ -16816,8 +16826,9 @@ static int tg3_get_invariants(struct tg3 *tp, const struct pci_device_id *ent)
+@@ -16892,8 +16902,9 @@ static int tg3_get_invariants(struct tg3 *tp, const struct pci_device_id *ent)
  
  	if (tg3_asic_rev(tp) == ASIC_REV_5705 &&
  	    (grc_misc_cfg == GRC_MISC_CFG_BOARD_ID_5788 ||
@@ -34,7 +39,7 @@ Index: linux-4.9/drivers/net/ethernet/broadcom/tg3.c
  
  	if (!tg3_flag(tp, IS_5788) &&
  	    tg3_asic_rev(tp) != ASIC_REV_5700)
-@@ -17730,7 +17741,7 @@ static int tg3_init_one(struct pci_dev *pdev,
+@@ -17804,7 +17815,7 @@ static int tg3_init_one(struct pci_dev *pdev,
  	 * On 64-bit systems without IOMMU, use 64-bit dma_mask and
  	 * do DMA address check in tg3_start_xmit().
  	 */
@@ -44,10 +49,10 @@ Index: linux-4.9/drivers/net/ethernet/broadcom/tg3.c
  	else if (tg3_flag(tp, 40BIT_DMA_BUG)) {
  		persist_dma_mask = dma_mask = DMA_BIT_MASK(40);
 diff --git a/drivers/net/ethernet/broadcom/tg3.h b/drivers/net/ethernet/broadcom/tg3.h
-index 3b5e98e..b61cbb1 100644
+index a772a33b6..09eda72ab 100644
 --- a/drivers/net/ethernet/broadcom/tg3.h
 +++ b/drivers/net/ethernet/broadcom/tg3.h
-@@ -3102,6 +3102,7 @@ enum TG3_FLAGS {
+@@ -3120,6 +3120,7 @@ enum TG3_FLAGS {
  	TG3_FLAG_ROBOSWITCH,
  	TG3_FLAG_ONE_DMA_AT_ONCE,
  	TG3_FLAG_RGMII_MODE,

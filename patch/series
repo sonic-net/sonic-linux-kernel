@@ -1,31 +1,25 @@
 # This series applies on GIT commit 18c5597832fcf6988111b05a9a1607ae148723c
-0001-i2c-mlxcpld-add-master-driver-for-Mellanox-systems.patch
-0002-i2c-mux-mlxcpld-add-driver-for-Mellanox-systems.patch
-0003-platform-mellanox-Introduce-Mellanox-hardware-platfo.patch
-0004-platform-x86-Introduce-support-for-Mellanox-hotplug-.patch
-0005-leds-add-driver-for-support-Mellanox-regmap-LEDs-for.patch
-0006-Mellanox-switch-drivers-changes.patch
-0007-hwmon-pmbus-Add-support-for-Intel-VID-protocol-VR13.patch
-0008-hwmon-pmbus-Add-support-for-Texas-Instruments-tps536.patch
-0009-platform-mellonox-introduce-mlxreg-io-driver-and-add.patch
-0010-config-mellanox-configuration.patch
-0011-support-Broadcom-54616-Phy-for-Intel-igb-driver.patch
-0012-platform-mellanox-mlxreg-hotplug-driver-add-check-fo.patch
+
 driver-arista-net-tg3-dma-mask-4g-sb800.patch
 driver-arista-net-tg3-disallow-broadcom-default-mac.patch
 driver-arista-net-tg3-access-regs-indirectly.patch
 driver-arista-disable-smbus-mux-for-hudson2.patch
+driver-arista-pci-reassign-pref-mem.patch
 driver-support-sff-8436-eeprom.patch
 driver-support-sff-8436-eeprom-update.patch
 driver-sff-8436-use-nvmem-framework.patch
 driver-sff-8436-use-nvmem_device_read.patch
 driver-support-sff-8436-read-write-fix.patch
 driver-i2c-bus-intel-ismt-add-delay-param.patch
+driver-i2c-ocores-5-1.patch
+driver-i2c-mux-pca954x-remove-support-for-unused-platform-d.patch
+driver-i2c-mux-pca954x-allow-management-of-device-idle-stat.patch
 driver-pca954x-i2c-mux-force-deselect-on-exit-flag.patch
 kernel-add-kexec-reboot-string.patch
 driver-hwmon-max6620.patch
 driver-hwmon-max6620-fix-rpm-calc.patch
 driver-hwmon-max6620-update.patch
+driver-hwmon-max6658-fix-write-convrate.patch
 driver-hwmon-pmbus-dni_dps460.patch
 driver-hwmon-pmbus-dni_dps460-update-pmbus-core.patch
 driver-hwmon-pmbus-dps1900.patch
@@ -34,23 +28,16 @@ driver-support-optoe.patch
 driver-support-optoe-EOF_fix.patch
 driver-support-optoe-chunk-offset-fix.patch
 driver-support-optoe-QSFP_DD.patch
-bridge-add-per-port-broadcast-flood-flag.patch
-config-dell-s6000.patch
-config-dell-z9100.patch
-config-ingrasys-s9100.patch
-config-arista-dps1900.patch
-config-arista-7060-cx32s.patch
-config-mitac-ly1200.patch
-config-optoe.patch
-config-inventec-d7032.patch
-0014-mlxsw-qsfp_sysfs-Support-CPLD-version-reading-based-.patch
-0015-platform-x86-mlx-platform-Add-support-for-new-msn201.patch
-0016-platform-mellanox-mlxreg-hotplug-add-extra-run-cycle.patch
-0017-platform-mellanox-add-new-OEM-system-types-to-mlx-pl.patch
-0018-platform-x86-mlx-platform-fix-module-aliases.patch
-0019-platform-x86-mlx-platform-Add-bus-detection-and-diff.patch
-0020-i2c-busses-Add-capabilities-to-i2c-mlxcpld.patch
-linux-4.13-thermal-intel_pch_thermal-Fix-enable-check-on.patch
+driver-net-tg3-add-param-short-preamble-and-reset.patch
+0001-hwmon-lm75-add-support-for-PCT2075.patch
+0004-dt-bindings-hwmon-Add-missing-documentation-for-lm75.patch
+0005-dt-bindings-hwmon-Add-tmp75b-to-lm75.txt.patch
+0006-device-tree-bindinds-add-NXP-PCT2075-as-compatible-d.patch
+macsec-Support-XPN-frame-handling-IEEE-802.1AEbw.patch
+netlink-add-NLA_MIN_LEN.patch
+macsec-Netlink-support-of-XPN-cipher-suites-IEEE-802.patch
+Support-for-fullcone-nat.patch
+driver-ixgbe-external-phy.patch
 #
 # This series applies on GIT commit 1451b36b2b0d62178e42f648d8a18131af18f7d8
 # Tkernel-sched-core-fix-cgroup-fork-race.patch
@@ -61,3 +48,33 @@ linux-4.13-thermal-intel_pch_thermal-Fix-enable-check-on.patch
 # Tdriver-hwmon-pmbus-ucd9200-mlnx.patch
 # Trtnetlink-catch-EOPNOTSUPP-errors.patch
 # Tbridge-per-port-multicast-broadcast-flood-flags.patch
+#
+# Mellanox patches for 4.19
+0001-Mellanox-platform-Backport-patches-for-new-Mellanox-.patch
+0003-mlxsw-minimal-Fix-validation-for-FW-minor-version.patch
+0004-mlxsw-core-Add-the-hottest-thermal-zone-detection.patch
+0005-hwmon-pmbus-core-Add-support-for-vid-mode-detection-.patch
+0006-platform-mellanox-mlxreg-hotplug-Use-capability-r.patch
+0007-mlxsw-core-thermal-Set-default-thermal-trips-at-init.patch
+0008-mlxsw-qsfp_sysfs-Remove-obsolete-code-for-QSFP-EEPRO.patch
+0009-platform-mellanox-mlxreg-io-Add-support-for-compl.patch
+0010-platform-mellanox-mlxreg-hotplug-Add-environmental-d.patch
+0011-mlxsw-core-thermal-Separate-temperature-trend-read-c.patch
+0012-Add-support-for-new-transceivers-types-QSFP-DD-and-Q.patch
+0013-watchdog-mlx-wdt-support-new-watchdog-type-with-long.patch
+0014-mlxsw-i2c-Fix-comment-misspelling.patch
+0015-mlxsw-i2c-Modify-input-parameter-name-in-initializat.patch
+0016-mlxsw-i2c-Extend-input-parameters-list-of-command-AP.patch
+0017-mlxsw-i2c-Extend-initialization-by-querying-resource.patch
+0018-mlxsw-i2c-Extend-initialization-with-querying-firmware.patch
+0019-mlxsw-i2c-Allow-flexible-setting-of-I2C-transactions.patch
+0020-mlxsw-core-Set-different-thermal-polling-time-based.patch
+0021-platform-x86-mlx-platform-Remove-PSU-EEPROM-configur.patch
+0022-mlxsw-core-Increase-critical-threshold-for-ASIC-ther.patch
+0023-mlxsw-core-Add-validation-of-transceiver-temperature.patch
+############################################################
+#
+# Internal patches will be added below (placeholder)
+# Do not add any public patch below this marker
+#
+############################################################

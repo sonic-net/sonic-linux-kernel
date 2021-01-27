@@ -10,7 +10,7 @@ more accuracy.
  1 file changed, 46 insertions(+), 59 deletions(-)
 
 diff --git a/drivers/hwmon/max6620.c b/drivers/hwmon/max6620.c
-index 3c337c7..76c1f7f 100644
+index 3c337c7b0..76c1f7f54 100644
 --- a/drivers/hwmon/max6620.c
 +++ b/drivers/hwmon/max6620.c
 @@ -46,6 +46,8 @@

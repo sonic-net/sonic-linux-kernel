@@ -18,10 +18,10 @@ Signed-off-by: Don Bollinger <don@thebollingers.org>
  create mode 100644 drivers/misc/eeprom/optoe.c
 
 diff --git a/drivers/misc/eeprom/Kconfig b/drivers/misc/eeprom/Kconfig
-index 9582d48..2d5ab6e 100644
+index 05bcf1e1f..9f444adae 100644
 --- a/drivers/misc/eeprom/Kconfig
 +++ b/drivers/misc/eeprom/Kconfig
-@@ -113,4 +113,22 @@ config EEPROM_SFF_8436
+@@ -124,4 +124,22 @@ config EEPROM_SFF_8436
  	  This driver can also be built as a module.  If so, the module
  	  will be called sff_8436.
  
@@ -45,17 +45,17 @@ index 9582d48..2d5ab6e 100644
 +
  endmenu
 diff --git a/drivers/misc/eeprom/Makefile b/drivers/misc/eeprom/Makefile
-index db9097c..afcf73c 100644
+index 6a6d90ffe..80afa837e 100644
 --- a/drivers/misc/eeprom/Makefile
 +++ b/drivers/misc/eeprom/Makefile
-@@ -6,3 +6,4 @@ obj-$(CONFIG_EEPROM_93CX6)	+= eeprom_93cx6.o
- obj-$(CONFIG_EEPROM_93XX46)	+= eeprom_93xx46.o
+@@ -8,3 +8,4 @@ obj-$(CONFIG_EEPROM_93XX46)	+= eeprom_93xx46.o
  obj-$(CONFIG_EEPROM_DIGSY_MTC_CFG) += digsy_mtc_eeprom.o
+ obj-$(CONFIG_EEPROM_IDT_89HPESX) += idt_89hpesx.o
  obj-$(CONFIG_EEPROM_SFF_8436)	+= sff_8436_eeprom.o
-+obj-$(CONFIG_EEPROM_OPTOE) += optoe.o
++obj-$(CONFIG_EEPROM_OPTOE)	+= optoe.o
 diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
 new file mode 100644
-index 0000000..7425bf6
+index 000000000..7425bf60e
 --- /dev/null
 +++ b/drivers/misc/eeprom/optoe.c
 @@ -0,0 +1,1126 @@

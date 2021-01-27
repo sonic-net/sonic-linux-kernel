@@ -1,8 +1,19 @@
+dps1900 module to support Delta DPS1900 devices.
+
+From: deni64k <deni64k@github>
+
+---
+ drivers/hwmon/pmbus/Kconfig   |   10 ++++++
+ drivers/hwmon/pmbus/Makefile  |    1 +
+ drivers/hwmon/pmbus/dps1900.c |   70 +++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 81 insertions(+)
+ create mode 100644 drivers/hwmon/pmbus/dps1900.c
+
 diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
-index 510f055..f8ca77e 100644
+index 720945848..505ca2be0 100644
 --- a/drivers/hwmon/pmbus/Kconfig
 +++ b/drivers/hwmon/pmbus/Kconfig
-@@ -131,4 +131,14 @@ config SENSORS_ZL6100
+@@ -208,4 +208,14 @@ config SENSORS_ZL6100
  	  This driver can also be built as a module. If so, the module will
  	  be called zl6100.
  
@@ -18,17 +29,17 @@ index 510f055..f8ca77e 100644
 +
  endif # PMBUS
 diff --git a/drivers/hwmon/pmbus/Makefile b/drivers/hwmon/pmbus/Makefile
-index be70828..8276d89 100644
+index c67f5a290..c76820a4d 100644
 --- a/drivers/hwmon/pmbus/Makefile
 +++ b/drivers/hwmon/pmbus/Makefile
-@@ -14,3 +14,4 @@ obj-$(CONFIG_SENSORS_MAX8688)	+= max8688.o
+@@ -22,3 +22,4 @@ obj-$(CONFIG_SENSORS_TPS53679)	+= tps53679.o
  obj-$(CONFIG_SENSORS_UCD9000)	+= ucd9000.o
  obj-$(CONFIG_SENSORS_UCD9200)	+= ucd9200.o
  obj-$(CONFIG_SENSORS_ZL6100)	+= zl6100.o
 +obj-$(CONFIG_SENSORS_DPS1900)	+= dps1900.o
 diff --git a/drivers/hwmon/pmbus/dps1900.c b/drivers/hwmon/pmbus/dps1900.c
 new file mode 100644
-index 0000000..8f90c04
+index 000000000..b26c1952f
 --- /dev/null
 +++ b/drivers/hwmon/pmbus/dps1900.c
 @@ -0,0 +1,70 @@
@@ -38,7 +49,7 @@ index 0000000..8f90c04
 +#include <linux/err.h>
 +#include <linux/i2c.h>
 +#include <linux/slab.h>
-+#include <linux/i2c/pmbus.h>
++#include <linux/pmbus.h>
 +#include "pmbus.h"
 +
 +static int dps1900_read_word_data(struct i2c_client *client, int page, int reg)

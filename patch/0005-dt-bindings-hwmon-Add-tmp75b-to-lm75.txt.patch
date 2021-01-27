@@ -1,0 +1,29 @@
+From de27b34d7fc91ed109c78ed89442f42427ac0c5c Mon Sep 17 00:00:00 2001
+From: Iker Perez del Palomar Sustatxa <iker.perez@codethink.co.uk>
+Date: Fri, 3 May 2019 17:15:01 +0100
+Subject: [PATCH 5/6] dt-bindings: hwmon: Add tmp75b to lm75.txt
+
+Update the LM75's devicetree definition to allow Texas Instruments
+TMP75B be probed.
+
+Signed-off-by: Iker Perez del Palomar Sustatxa <iker.perez@codethink.co.uk>
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
+---
+ Documentation/devicetree/bindings/hwmon/lm75.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Documentation/devicetree/bindings/hwmon/lm75.txt b/Documentation/devicetree/bindings/hwmon/lm75.txt
+index 12d8cf7cf592..586b5ed70be7 100644
+--- a/Documentation/devicetree/bindings/hwmon/lm75.txt
++++ b/Documentation/devicetree/bindings/hwmon/lm75.txt
+@@ -25,6 +25,7 @@ Required properties:
+ 		"ti,tmp175",
+ 		"ti,tmp275",
+ 		"ti,tmp75",
++		"ti,tmp75b",
+ 		"ti,tmp75c",
+ 
+ - reg: I2C bus address of the device
+-- 
+2.17.1
+

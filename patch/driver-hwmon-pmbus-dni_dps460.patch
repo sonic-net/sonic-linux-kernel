@@ -11,10 +11,10 @@ From: Cumulus Networks <support@cumulusnetworks.com>
  create mode 100644 drivers/hwmon/pmbus/dni_dps460.c
 
 diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
-index 61938ea..8c39a51 100644
+index a82018aaf..720945848 100644
 --- a/drivers/hwmon/pmbus/Kconfig
 +++ b/drivers/hwmon/pmbus/Kconfig
-@@ -105,6 +105,16 @@ config SENSORS_MAX34440
+@@ -135,6 +135,16 @@ config SENSORS_MAX34440
  	  This driver can also be built as a module. If so, the module will
  	  be called max34440.
  
@@ -32,12 +32,12 @@ index 61938ea..8c39a51 100644
  	tristate "Maxim MAX8688"
  	default n
 diff --git a/drivers/hwmon/pmbus/Makefile b/drivers/hwmon/pmbus/Makefile
-index b912fec..0624729 100644
+index ea0e39518..c67f5a290 100644
 --- a/drivers/hwmon/pmbus/Makefile
 +++ b/drivers/hwmon/pmbus/Makefile
-@@ -11,6 +11,7 @@ obj-$(CONFIG_SENSORS_LTC3815)	+= ltc3815.o
- obj-$(CONFIG_SENSORS_MAX16064)	+= max16064.o
+@@ -15,6 +15,7 @@ obj-$(CONFIG_SENSORS_MAX16064)	+= max16064.o
  obj-$(CONFIG_SENSORS_MAX20751)	+= max20751.o
+ obj-$(CONFIG_SENSORS_MAX31785)	+= max31785.o
  obj-$(CONFIG_SENSORS_MAX34440)	+= max34440.o
 +obj-$(CONFIG_SENSORS_DNI_DPS460) += dni_dps460.o
  obj-$(CONFIG_SENSORS_MAX8688)	+= max8688.o
@@ -45,7 +45,7 @@ index b912fec..0624729 100644
  obj-$(CONFIG_SENSORS_TPS53679)	+= tps53679.o
 diff --git a/drivers/hwmon/pmbus/dni_dps460.c b/drivers/hwmon/pmbus/dni_dps460.c
 new file mode 100644
-index 0000000..ad29134
+index 000000000..ad29134c4
 --- /dev/null
 +++ b/drivers/hwmon/pmbus/dni_dps460.c
 @@ -0,0 +1,253 @@
@@ -76,7 +76,7 @@ index 0000000..ad29134
 +#include <linux/err.h>
 +#include <linux/slab.h>
 +#include <linux/i2c.h>
-+#include <linux/i2c/pmbus.h>
++#include <linux/pmbus.h>
 +#include <linux/hwmon.h>
 +#include <linux/hwmon-sysfs.h>
 +#include "pmbus.h"

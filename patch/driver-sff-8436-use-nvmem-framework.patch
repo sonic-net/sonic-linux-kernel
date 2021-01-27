@@ -10,10 +10,10 @@ that the 'eeprom' file in sys is provided by the framework.
  2 files changed, 41 insertions(+), 35 deletions(-)
 
 diff --git a/drivers/misc/eeprom/Kconfig b/drivers/misc/eeprom/Kconfig
-index 1df5e28..9582d48 100644
+index e3acc9b2a..05bcf1e1f 100644
 --- a/drivers/misc/eeprom/Kconfig
 +++ b/drivers/misc/eeprom/Kconfig
-@@ -103,6 +103,7 @@ config EEPROM_DIGSY_MTC_CFG
+@@ -114,6 +114,7 @@ config EEPROM_IDT_89HPESX
  config EEPROM_SFF_8436
  	tristate "SFF-8436 QSFP EEPROMs support"
  	depends on I2C && SYSFS
@@ -22,7 +22,7 @@ index 1df5e28..9582d48 100644
  	  If you say yes here you get read-only support for the  EEPROM of
  	  the QSFPs which are implemented as per SFF-8436.
 diff --git a/drivers/misc/eeprom/sff_8436_eeprom.c b/drivers/misc/eeprom/sff_8436_eeprom.c
-index f5627bf..9e6a7bf 100644
+index f5627bf85..9e6a7bf43 100644
 --- a/drivers/misc/eeprom/sff_8436_eeprom.c
 +++ b/drivers/misc/eeprom/sff_8436_eeprom.c
 @@ -74,7 +74,6 @@
