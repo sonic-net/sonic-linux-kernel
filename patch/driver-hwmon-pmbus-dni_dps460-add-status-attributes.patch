@@ -1,0 +1,183 @@
+From fb650c80f0a4963dbb5df0b2526804a0a7160ef4 Mon Sep 17 00:00:00 2001
+From: Arun Saravanan Balachandran <Arun_Saravanan_Balac@dell.com>
+Date: Thu, 28 Jan 2021 10:10:35 +0000
+Subject: [PATCH] Add attributes to retrieve PMBus status command codes
+
+Signed-off-by: Arun Saravanan Balachandran <Arun_Saravanan_Balac@dell.com>
+---
+ drivers/hwmon/pmbus/dni_dps460.c | 152 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 152 insertions(+)
+
+diff --git a/drivers/hwmon/pmbus/dni_dps460.c b/drivers/hwmon/pmbus/dni_dps460.c
+index 7332480..9ad9de0 100644
+--- a/drivers/hwmon/pmbus/dni_dps460.c
++++ b/drivers/hwmon/pmbus/dni_dps460.c
+@@ -162,13 +162,165 @@ static ssize_t set_pec(struct device *dev, struct device_attribute *dummy,
+ 	return count;
+ }
+ 
++static ssize_t show_capability(struct device *dev, struct device_attribute *devattr,
++			  char *buf) {
++
++	struct i2c_client *client = to_i2c_client(dev);
++	struct pmbus_data *data = i2c_get_clientdata(client);
++	int val;
++
++	mutex_lock(&data->update_lock);
++	val = pmbus_read_byte_data(client, 0, PMBUS_CAPABILITY);
++	pmbus_clear_faults(client);
++	mutex_unlock(&data->update_lock);
++	if (val < 0) {
++		return val;
++	}
++	return sprintf(buf, "0x%x\n", val);
++}
++
++static ssize_t show_status_word(struct device *dev, struct device_attribute *devattr,
++			  char *buf) {
++
++	struct i2c_client *client = to_i2c_client(dev);
++	struct pmbus_data *data = i2c_get_clientdata(client);
++	int val;
++
++	mutex_lock(&data->update_lock);
++	val = pmbus_read_word_data(client, 0, PMBUS_STATUS_WORD);
++	pmbus_clear_faults(client);
++	mutex_unlock(&data->update_lock);
++	if (val < 0) {
++		return val;
++	}
++	return sprintf(buf, "0x%x\n", val);
++}
++
++static ssize_t show_status_vout(struct device *dev, struct device_attribute *devattr,
++			  char *buf) {
++
++	struct i2c_client *client = to_i2c_client(dev);
++	struct pmbus_data *data = i2c_get_clientdata(client);
++	int val;
++
++	mutex_lock(&data->update_lock);
++	val = pmbus_read_byte_data(client, 0, PMBUS_STATUS_VOUT);
++	pmbus_clear_faults(client);
++	mutex_unlock(&data->update_lock);
++	if (val < 0) {
++		return val;
++	}
++	return sprintf(buf, "0x%x\n", val);
++}
++
++static ssize_t show_status_iout(struct device *dev, struct device_attribute *devattr,
++			  char *buf) {
++
++	struct i2c_client *client = to_i2c_client(dev);
++	struct pmbus_data *data = i2c_get_clientdata(client);
++	int val;
++
++	mutex_lock(&data->update_lock);
++	val = pmbus_read_byte_data(client, 0, PMBUS_STATUS_IOUT);
++	pmbus_clear_faults(client);
++	mutex_unlock(&data->update_lock);
++	if (val < 0) {
++		return val;
++	}
++	return sprintf(buf, "0x%x\n", val);
++}
++
++static ssize_t show_status_input(struct device *dev, struct device_attribute *devattr,
++			  char *buf) {
++
++	struct i2c_client *client = to_i2c_client(dev);
++	struct pmbus_data *data = i2c_get_clientdata(client);
++	int val;
++
++	mutex_lock(&data->update_lock);
++	val = pmbus_read_byte_data(client, 0, PMBUS_STATUS_INPUT);
++	pmbus_clear_faults(client);
++	mutex_unlock(&data->update_lock);
++	if (val < 0) {
++		return val;
++	}
++	return sprintf(buf, "0x%x\n", val);
++}
++
++static ssize_t show_status_temp(struct device *dev, struct device_attribute *devattr,
++			  char *buf) {
++
++	struct i2c_client *client = to_i2c_client(dev);
++	struct pmbus_data *data = i2c_get_clientdata(client);
++	int val;
++
++	mutex_lock(&data->update_lock);
++	val = pmbus_read_byte_data(client, 0, PMBUS_STATUS_TEMPERATURE);
++	pmbus_clear_faults(client);
++	mutex_unlock(&data->update_lock);
++	if (val < 0) {
++		return val;
++	}
++	return sprintf(buf, "0x%x\n", val);
++}
++
++static ssize_t show_status_cml(struct device *dev, struct device_attribute *devattr,
++			  char *buf) {
++
++	struct i2c_client *client = to_i2c_client(dev);
++	struct pmbus_data *data = i2c_get_clientdata(client);
++	int val;
++
++	mutex_lock(&data->update_lock);
++	val = pmbus_read_byte_data(client, 0, PMBUS_STATUS_CML);
++	pmbus_clear_faults(client);
++	mutex_unlock(&data->update_lock);
++	if (val < 0) {
++		return val;
++	}
++	return sprintf(buf, "0x%x\n", val);
++}
++
++static ssize_t show_status_fans(struct device *dev, struct device_attribute *devattr,
++			  char *buf) {
++
++	struct i2c_client *client = to_i2c_client(dev);
++	struct pmbus_data *data = i2c_get_clientdata(client);
++	int val;
++
++	mutex_lock(&data->update_lock);
++	val = pmbus_read_byte_data(client, 0, PMBUS_STATUS_FAN_12);
++	pmbus_clear_faults(client);
++	mutex_unlock(&data->update_lock);
++	if (val < 0) {
++		return val;
++	}
++	return sprintf(buf, "0x%x\n", val);
++}
++
+ static SENSOR_DEVICE_ATTR(pec, S_IWUSR | S_IRUGO, show_pec, set_pec, 0);
+ static SENSOR_DEVICE_ATTR(fan1_target, S_IWUSR | S_IRUGO, get_target,
+ 			  set_target, 0);
++static SENSOR_DEVICE_ATTR(capability, S_IRUGO, show_capability, NULL, 0);
++static SENSOR_DEVICE_ATTR(status_word, S_IRUGO, show_status_word, NULL, 0);
++static SENSOR_DEVICE_ATTR(status_vout, S_IRUGO, show_status_vout, NULL, 0);
++static SENSOR_DEVICE_ATTR(status_iout, S_IRUGO, show_status_iout, NULL, 0);
++static SENSOR_DEVICE_ATTR(status_input, S_IRUGO, show_status_input, NULL, 0);
++static SENSOR_DEVICE_ATTR(status_temp, S_IRUGO, show_status_temp, NULL, 0);
++static SENSOR_DEVICE_ATTR(status_cml, S_IRUGO, show_status_cml, NULL, 0);
++static SENSOR_DEVICE_ATTR(status_fans_12, S_IRUGO, show_status_fans, NULL, 0);
+ 
+ static struct attribute *dni_dps460_attrs[] = {
+ 	&sensor_dev_attr_fan1_target.dev_attr.attr,
+ 	&sensor_dev_attr_pec.dev_attr.attr,
++	&sensor_dev_attr_capability.dev_attr.attr,
++	&sensor_dev_attr_status_word.dev_attr.attr,
++	&sensor_dev_attr_status_vout.dev_attr.attr,
++	&sensor_dev_attr_status_iout.dev_attr.attr,
++	&sensor_dev_attr_status_input.dev_attr.attr,
++	&sensor_dev_attr_status_temp.dev_attr.attr,
++	&sensor_dev_attr_status_cml.dev_attr.attr,
++	&sensor_dev_attr_status_fans_12.dev_attr.attr,
+ 	NULL
+ };
+ static struct attribute_group dni_dps460_attr_grp = {
+-- 
+2.7.4
+
