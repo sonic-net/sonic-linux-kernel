@@ -22,6 +22,7 @@ stages:
     parameters:
       arch: armhf
       timeout: 1440
+      pool: sonicbld_8c
       sonic_slave: sonic-slave-buster.armhf
       artifact_name: sonic-linux-kernel.armhf
 
@@ -29,5 +30,6 @@ stages:
     parameters:
       arch: arm64
       timeout: 1440
+      pool: sonicbld_8c
       sonic_slave: sonic-slave-buster-arm64
       artifact_name: sonic-linux-kernel.arm64
