@@ -23,7 +23,7 @@ stages:
       arch: armhf
       timeout: 1440
       pool: sonicbld_8c
-      sonic_slave: sonic-slave-buster.armhf
+      sonic_slave: sonic-slave-buster-armhf
       artifact_name: sonic-linux-kernel.armhf
 
   - template: .azure-pipelines/build-template.yml
