@@ -23,13 +23,8 @@ parameters:
 - name: artifact_name
   type: string
 
-- name: run
-  type: boolean
-  default: true
-
 jobs:
 - job:
-  condition: eq(${{ parameters.run }}, true)
   pool: ${{ parameters.pool }}
   displayName: ${{ parameters.arch }}
   timeoutInMinutes: ${{ parameters.timeout }}
