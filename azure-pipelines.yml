@@ -8,6 +8,10 @@ trigger:
     include:
       - "*"
 
+variables:
+ - name: isPullRequest
+   value: $[eq(variables['Build.Reason'], 'PullRequest')]
+
 stages:
 - stage: Build
 
@@ -17,6 +21,7 @@ stages:
       arch: amd64
       sonic_slave: sonic-slave-buster
       artifact_name: sonic-linux-kernel
+      run: true
 
   - template: .azure-pipelines/build-template.yml
     parameters:
@@ -25,6 +30,7 @@ stages:
       pool: sonicbld_8c
       sonic_slave: sonic-slave-buster-armhf
       artifact_name: sonic-linux-kernel.armhf
+      run: $[not($(isPullRequest))]
 
   - template: .azure-pipelines/build-template.yml
     parameters:
@@ -33,3 +39,4 @@ stages:
       pool: sonicbld_8c
       sonic_slave: sonic-slave-buster-arm64
       artifact_name: sonic-linux-kernel.arm64
+      run: $[not($(isPullRequest))]
