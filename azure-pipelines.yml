@@ -7,22 +7,30 @@ trigger:
   branches:
     include:
       - "*"
-jobs:
-- job:
-  timeoutInMinutes: 240
-  pool: sonicbld
 
-  container:
-    image: sonicdev-microsoft.azurecr.io:443/sonic-slave-buster:latest
+stages:
+- stage: Build
 
-  steps:
-  - script: |
-      git config --global user.email "lguohan@build.com"
-      git config --global user.name "Guohan Lu"
-      export kernel_procure_method=build
-      cat /proc/cpuinfo
-      make
-    displayName: "Compile sonic kernel"
-  - publish: $(System.DefaultWorkingDirectory)/
-    artifact: sonic-linux-kernel
-    displayName: "Archive sonic kernel debian packages"
+  jobs:
+  - template: .azure-pipelines/build-template.yml
+    parameters:
+      arch: amd64
+      sonic_slave: sonic-slave-buster
+      artifact_name: sonic-linux-kernel
+
+  - ${{ if ne(variables['Build.Reason'], 'PullRequest') }}:
+    - template: .azure-pipelines/build-template.yml
+      parameters:
+        arch: armhf
+        timeout: 1440
+        pool: sonicbld_8c
+        sonic_slave: sonic-slave-buster-armhf
+        artifact_name: sonic-linux-kernel.armhf
+
+    - template: .azure-pipelines/build-template.yml
+      parameters:
+        arch: arm64
+        timeout: 1440
+        pool: sonicbld_8c
+        sonic_slave: sonic-slave-buster-arm64
+        artifact_name: sonic-linux-kernel.arm64
