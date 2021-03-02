@@ -1,6 +1,11 @@
 [common]
 # Unset STRICT_DEVMEM according to Broadcom's requirement and for CENTEC arm64 arch
 CONFIG_STRICT_DEVMEM
+# Unset classid and priority network cgroups due to conflict between cgroups v1 and v2
+CONFIG_CGROUP_NET_CLASSID
+CONFIG_NET_CLS_CGROUP
+CONFIG_NETFILTER_XT_MATCH_CGROUP
+CONFIG_CGROUP_NET_PRIO
 
 [amd64]
 # Unset X86_PAT according to Broadcom's requirement
