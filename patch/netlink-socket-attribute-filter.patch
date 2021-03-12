@@ -1,0 +1,70 @@
+diff --git a/include/uapi/linux/bpf.h b/include/uapi/linux/bpf.h
+index d143e27..64e86c2 100644
+--- a/include/uapi/linux/bpf.h
++++ b/include/uapi/linux/bpf.h
+@@ -2228,7 +2228,9 @@ union bpf_attr {
+ 	FN(get_current_cgroup_id),	\
+ 	FN(get_local_storage),		\
+ 	FN(sk_select_reuseport),	\
+-	FN(skb_ancestor_cgroup_id),
++	FN(skb_ancestor_cgroup_id), \
++	FN(skb_get_nlattr),         \
++	FN(skb_get_nlattr_nest),
+ 
+ /* integer value in 'imm' field of BPF_CALL instruction selects which helper
+  * function eBPF program intends to call
+diff --git a/net/core/filter.c b/net/core/filter.c
+index 40b3af0..98e3995 100644
+--- a/net/core/filter.c
++++ b/net/core/filter.c
+@@ -2477,6 +2477,24 @@ static const struct bpf_func_proto bpf_set_hash_invalid_proto = {
+ 	.arg1_type	= ARG_PTR_TO_CTX,
+ };
+ 
++static const struct bpf_func_proto bpf_skb_get_nlattr_proto = {
++	.func       = bpf_skb_get_nlattr,
++	.gpl_only   = false,
++	.ret_type   = RET_INTEGER,
++	.arg1_type  = ARG_PTR_TO_CTX,
++	.arg2_type  = ARG_ANYTHING,
++	.arg3_type  = ARG_ANYTHING,
++};
++
++static const struct bpf_func_proto skb_get_nlattr_nest_proto = {
++	.func       = bpf_skb_get_nlattr_nest,
++	.gpl_only   = false,
++	.ret_type   = RET_INTEGER,
++	.arg1_type  = ARG_PTR_TO_CTX,
++	.arg2_type  = ARG_ANYTHING,
++	.arg3_type  = ARG_ANYTHING,
++};
++
+ BPF_CALL_2(bpf_set_hash, struct sk_buff *, skb, u32, hash)
+ {
+ 	/* Set user specified hash as L4(+), so that it gets returned
+@@ -4976,6 +4994,10 @@ tc_cls_act_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
+ 		return &bpf_set_hash_proto;
+ 	case BPF_FUNC_perf_event_output:
+ 		return &bpf_skb_event_output_proto;
++	case BPF_FUNC_skb_get_nlattr:
++		return &bpf_skb_get_nlattr_proto;
++	case BPF_FUNC_skb_get_nlattr_nest:
++		return &skb_get_nlattr_nest_proto;
+ 	case BPF_FUNC_get_smp_processor_id:
+ 		return &bpf_get_smp_processor_id_proto;
+ 	case BPF_FUNC_skb_under_cgroup:
+diff --git a/tools/include/uapi/linux/bpf.h b/tools/include/uapi/linux/bpf.h
+index bf4cd92..b35b72d 100644
+--- a/tools/include/uapi/linux/bpf.h
++++ b/tools/include/uapi/linux/bpf.h
+@@ -2226,7 +2226,9 @@ union bpf_attr {
+ 	FN(get_current_cgroup_id),	\
+ 	FN(get_local_storage),		\
+ 	FN(sk_select_reuseport),	\
+-	FN(skb_ancestor_cgroup_id),
++	FN(skb_ancestor_cgroup_id), \
++	FN(skb_get_nlattr),         \
++	FN(skb_get_nlattr_nest),
+ 
+ /* integer value in 'imm' field of BPF_CALL instruction selects which helper
+  * function eBPF program intends to call
