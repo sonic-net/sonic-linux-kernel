@@ -76,6 +76,7 @@ driver-ixgbe-external-phy.patch
 0024-mlxsw-core-Fix-memory-leak-on-module-removal.patch
 0025-platform-x86-mlx-platform-Remove-PSU-EEPROM-configur.patch
 0026-platform-x86-mlx-platform-Remove-PSU-EEPROM-configur.patch
+0027-mlxsw-core-Remove-critical-trip-point-from-thermal-z.patch
 ############################################################
 #
 # Internal patches will be added below (placeholder)

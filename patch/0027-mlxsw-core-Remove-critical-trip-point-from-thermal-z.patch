@@ -1,0 +1,105 @@
+From 97a18fe05a59a76513ea4e11560760d0450e6f6c Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Sun, 10 Jan 2021 19:27:52 +0200
+Subject: [PATCH net-next 1/1] mlxsw: core: Remove critical trip point from
+ thermal zones
+
+Disable software thermal protection by removing critical trip points
+for the all thermal zones.
+
+According to the system requirements software should never perform
+system thermal protection, since all the systems implement two levels
+of thermal protection: the first one is performed by firmware, the
+second, in case firmware was not able to perform protection, by
+hardware, while the temperature threshold for hardware protection is
+higher than for firmware.
+
+In both cases, when critical temperature is reached, system will be
+shutdown.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 19 ++-----------------
+ 1 file changed, 2 insertions(+), 17 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 477c3ed53..9afac8a04 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -19,11 +19,9 @@
+ #define MLXSW_THERMAL_ASIC_TEMP_NORM	75000	/* 75C */
+ #define MLXSW_THERMAL_ASIC_TEMP_HIGH	85000	/* 85C */
+ #define MLXSW_THERMAL_ASIC_TEMP_HOT	105000	/* 105C */
+-#define MLXSW_THERMAL_ASIC_TEMP_CRIT	140000	/* 140C */
+ #define MLXSW_THERMAL_MODULE_TEMP_NORM	60000	/* 60C */
+ #define MLXSW_THERMAL_MODULE_TEMP_HIGH	70000	/* 70C */
+ #define MLXSW_THERMAL_MODULE_TEMP_HOT	80000	/* 80C */
+-#define MLXSW_THERMAL_MODULE_TEMP_CRIT	90000	/* 90C */
+ #define MLXSW_THERMAL_HYSTERESIS_TEMP	5000	/* 5C */
+ #define MLXSW_THERMAL_MODULE_TEMP_SHIFT	(MLXSW_THERMAL_HYSTERESIS_TEMP * 2)
+ #define MLXSW_THERMAL_ZONE_MAX_NAME	16
+@@ -49,7 +47,6 @@ enum mlxsw_thermal_trips {
+ 	MLXSW_THERMAL_TEMP_TRIP_NORM,
+ 	MLXSW_THERMAL_TEMP_TRIP_HIGH,
+ 	MLXSW_THERMAL_TEMP_TRIP_HOT,
+-	MLXSW_THERMAL_TEMP_TRIP_CRIT,
+ };
+ 
+ struct mlxsw_thermal_trip {
+@@ -79,16 +76,9 @@ static const struct mlxsw_thermal_trip default_thermal_trips[] = {
+ 	{	/* Warning */
+ 		.type		= THERMAL_TRIP_HOT,
+ 		.temp		= MLXSW_THERMAL_ASIC_TEMP_HOT,
+-		.hyst		= MLXSW_THERMAL_HYSTERESIS_TEMP,
+ 		.min_state	= MLXSW_THERMAL_MAX_STATE,
+ 		.max_state	= MLXSW_THERMAL_MAX_STATE,
+ 	},
+-	{	/* Critical - soft poweroff */
+-		.type		= THERMAL_TRIP_CRITICAL,
+-		.temp		= MLXSW_THERMAL_ASIC_TEMP_CRIT,
+-		.min_state	= MLXSW_THERMAL_MAX_STATE,
+-		.max_state	= MLXSW_THERMAL_MAX_STATE,
+-	}
+ };
+ 
+ #define MLXSW_THERMAL_NUM_TRIPS	ARRAY_SIZE(default_thermal_trips)
+@@ -161,7 +151,6 @@ mlxsw_thermal_module_trips_reset(struct mlxsw_thermal_module *tz)
+ 	tz->trips[MLXSW_THERMAL_TEMP_TRIP_NORM].temp = MLXSW_THERMAL_MODULE_TEMP_NORM;
+ 	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HIGH].temp = MLXSW_THERMAL_MODULE_TEMP_HIGH;
+ 	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HOT].temp = MLXSW_THERMAL_MODULE_TEMP_HOT;
+-	tz->trips[MLXSW_THERMAL_TEMP_TRIP_CRIT].temp = MLXSW_THERMAL_MODULE_TEMP_CRIT;
+ }
+ 
+ static int
+@@ -203,8 +192,6 @@ mlxsw_thermal_module_trips_update(struct device *dev, struct mlxsw_core *core,
+ 		tz->trips[MLXSW_THERMAL_TEMP_TRIP_NORM].temp = crit_temp;
+ 	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HIGH].temp = crit_temp;
+ 	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HOT].temp = emerg_temp;
+-	tz->trips[MLXSW_THERMAL_TEMP_TRIP_CRIT].temp = emerg_temp +
+-					MLXSW_THERMAL_MODULE_TEMP_SHIFT;
+ 
+ 	return 0;
+ }
+@@ -376,8 +363,7 @@ static int mlxsw_thermal_set_trip_temp(struct thermal_zone_device *tzdev,
+ {
+ 	struct mlxsw_thermal *thermal = tzdev->devdata;
+ 
+-	if (trip < 0 || trip >= MLXSW_THERMAL_NUM_TRIPS ||
+-	    temp > MLXSW_THERMAL_ASIC_TEMP_CRIT)
++	if (trip < 0 || trip >= MLXSW_THERMAL_NUM_TRIPS)
+ 		return -EINVAL;
+ 
+ 	thermal->trips[trip].temp = temp;
+@@ -588,8 +574,7 @@ mlxsw_thermal_module_trip_temp_set(struct thermal_zone_device *tzdev,
+ {
+ 	struct mlxsw_thermal_module *tz = tzdev->devdata;
+ 
+-	if (trip < 0 || trip >= MLXSW_THERMAL_NUM_TRIPS ||
+-	    temp > tz->trips[MLXSW_THERMAL_TEMP_TRIP_CRIT].temp)
++	if (trip < 0 || trip >= MLXSW_THERMAL_NUM_TRIPS)
+ 		return -EINVAL;
+ 
+ 	tz->trips[trip].temp = temp;
+-- 
+2.11.0
+
