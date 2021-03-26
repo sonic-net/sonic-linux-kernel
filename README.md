@@ -11,7 +11,7 @@ This repository contains the scripts and patches to build the kernel for SONiC. 
 - New kernel modules which are common to all platforms.
 - Platform specific kernel modules which are impossible or very difficult to be built out of kernel tree.
 
-Platform specific kernel modules are expected to develop out-of-tree kernel modules, provide them in debian packages to be embeded into SONiC ONE image and installed on their platforms.
+Platform specific kernel modules are expected to develop out-of-tree kernel modules, provide them in debian packages to be embedded into SONiC ONE image and installed on their platforms.
 
 For all patches, please ensure you have run the patch with `checkpatch.pl` and pass it.
 
@@ -44,4 +44,4 @@ If the files patch/kconfig-exclusions and patch/kconfig-inclusions exist, they w
 
 Also, the final kernel configuration will be checked to verify that:
 - all options asked to be excluded are effectively not present in the kernel,
-- and all options asked to be included are effectively present in the kernel, using the exact type (module or buit-in) or string or number.
+- and all options asked to be included are effectively present in the kernel, using the exact type (module or built-in) or string or number.
