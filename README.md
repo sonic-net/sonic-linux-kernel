@@ -8,9 +8,9 @@ This repository contains the scripts and patches to build the kernel for SONiC. 
 - Existing kernel modules need to be enabled
 - Existing kernel modules need to be patched and those patches are available in upstream
 - New kernel modules which are common to all platforms
-- Platform specific kernel modules which are impossible or very difficul to be built out of kernel tree
+- Platform specific kernel modules which are impossible or very difficult to be built out of kernel tree
 
-Platform specific kernel modules are expected to develop out-of-tree kernel modules, provide them in debian packages to be embeded into SONiC ONE image and installed on their platforms.
+Platform specific kernel modules are expected to develop out-of-tree kernel modules, provide them in debian packages to be embedded into SONiC ONE image and installed on their platforms.
 
 Usage:
 
