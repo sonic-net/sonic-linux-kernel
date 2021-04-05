@@ -2,12 +2,19 @@ Add PMBUS driver for DPS200 Power Supply
 
 From: Saranpong Chgobtrong <schobtr@celestica.com>
 
+The generic PMBUS driver does not support the chip that uses direct mode yet.
+This driver supports dps200 which uses coefficients defined in the datasheet.
+Ref: datasheet is DPS200PB184E-ES002.pdf [not public access datasheet]
+
+DP200 does not support pmbus coefficient commands.
+Each field of direct mode has a conversion definition defined by the datasheet.
+
 Signed-off-by: Saranpong Chobtrong <schobtr@celestica.com>
 ---
- drivers/hwmon/pmbus/Kconfig  |   10 +++
+ drivers/hwmon/pmbus/Kconfig  |   10 ++++
  drivers/hwmon/pmbus/Makefile |    1 
- drivers/hwmon/pmbus/dps200.c |  130 ++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 141 insertions(+)
+ drivers/hwmon/pmbus/dps200.c |  116 ++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 127 insertions(+)
  create mode 100644 drivers/hwmon/pmbus/dps200.c
 
 diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
@@ -40,30 +47,16 @@ index c76820a4d..f072288f6 100644
 +obj-$(CONFIG_SENSORS_DPS200)	+= dps200.o
 diff --git a/drivers/hwmon/pmbus/dps200.c b/drivers/hwmon/pmbus/dps200.c
 new file mode 100644
-index 000000000..578cc1b2c
+index 000000000..d11d455b3
 --- /dev/null
 +++ b/drivers/hwmon/pmbus/dps200.c
-@@ -0,0 +1,130 @@
+@@ -0,0 +1,116 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + * Hardware monitoring driver for Delta DPS200
 + *
 + * (C) Copyright 2019, Celestica Inc.
 + * Author: Pradchaya Phucharoen <pphuchar@celestica.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2 of the License, or
-+ * (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 + */
 +
 +#include <linux/kernel.h>
