@@ -22,7 +22,7 @@ index 76c1f7f54..fb4919520 100644
  };
 @@ -231,6 +231,7 @@ static ssize_t get_fan(struct device *dev, struct device_attribute *devattr, cha
  	} else {
- 		rpm = (60 * sr * clock)/(tach * np);
+ 		rpm = (60 * DIV_FROM_REG(data->fandyn[attr->index]) * clock)/(tach * np);
  	}
 +
  	return sprintf(buf, "%d\n", rpm);

@@ -52,7 +52,7 @@ index 3c337c7b0..76c1f7f54 100644
  		rpm = 0;
  	} else {
 -		rpm = ((clock / (data->tach[attr->index] << 3)) * 30 * DIV_FROM_REG(data->fandyn[attr->index]));
-+		rpm = (60 * sr * clock)/(tach * np);
++		rpm = (60 * DIV_FROM_REG(data->fandyn[attr->index]) * clock)/(tach * np);
  	}
 -
  	return sprintf(buf, "%d\n", rpm);
@@ -90,7 +90,7 @@ index 3c337c7b0..76c1f7f54 100644
  		rpm = 0;
  	} else {
 -		rpm = ((60 * kscale * clock) / (ktach << 3));
-+		rpm = (60 * sr * clock)/(target * np);
++		rpm = (60 * DIV_FROM_REG(data->fandyn[attr->index]) * clock)/(target * np);
  	}
  	return sprintf(buf, "%d\n", rpm);
  }
@@ -131,7 +131,7 @@ index 3c337c7b0..76c1f7f54 100644
 -
 -	i2c_smbus_write_byte_data(client, target_reg[attr->index], data->target[attr->index]);
 -	i2c_smbus_write_byte_data(client, target_reg[attr->index]+0x01, 0x00);
-+	target = (60 * sr * 8192)/(rpm * np);
++	target = (60 * DIV_FROM_REG(data->fandyn[attr->index]) * clock)/(rpm * np);
 +	target1 = (target >> 3) & 0xff;
 +	target2 = (target << 5) & 0xe0;
 +	i2c_smbus_write_byte_data(client, target_reg[attr->index], target1);

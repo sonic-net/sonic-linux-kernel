@@ -1,0 +1,66 @@
+From f84450af3a86368a64c36c114a2a69068a130d47 Mon Sep 17 00:00:00 2001
+From: Arun Saravanan Balachandran <Arun_Saravanan_Balac@dell.com>
+Date: Wed, 17 Mar 2021 18:04:29 +0530
+Subject: [PATCH] Add attributes in MAX6620 driver to retrieve fan fault status
+
+Signed-off-by: Arun Saravanan Balachandran <Arun_Saravanan_Balac@dell.com>
+---
+ drivers/hwmon/max6620.c | 18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/hwmon/max6620.c b/drivers/hwmon/max6620.c
+index 5c8b155..6f921bb 100644
+--- a/drivers/hwmon/max6620.c
++++ b/drivers/hwmon/max6620.c
+@@ -283,6 +283,9 @@ static ssize_t set_target(struct device *dev, struct device_attribute *devattr,
+ 	i2c_smbus_write_byte_data(client, target_reg[attr->index], target1);
+ 	i2c_smbus_write_byte_data(client, target_reg[attr->index] + 1, target2);
+ 
++	/* Setting TACH count re-enables fan fault detection */
++	data->fault &= ~(1 << attr->index);
++
+ 	mutex_unlock(&data->update_lock);
+ 
+ 	return count;
+@@ -469,14 +472,11 @@ static ssize_t get_alarm(struct device *dev, struct device_attribute *devattr, c
+ 	struct i2c_client *client = to_i2c_client(dev);
+ 	int alarm = 0;
+ 
++	mutex_lock(&data->update_lock);
+ 	if (data->fault & (1 << attr->index)) {
+-		mutex_lock(&data->update_lock);
+ 		alarm = 1;
+-		data->fault &= ~(1 << attr->index);
+-		data->fault |= i2c_smbus_read_byte_data(client,
+-							MAX6620_REG_FAULT);
+-		mutex_unlock(&data->update_lock);
+ 	}
++	mutex_unlock(&data->update_lock);
+ 
+ 	return sprintf(buf, "%d\n", alarm);
+ }
+@@ -485,6 +485,10 @@ static SENSOR_DEVICE_ATTR(fan1_input, S_IRUGO, get_fan, NULL, 0);
+ static SENSOR_DEVICE_ATTR(fan2_input, S_IRUGO, get_fan, NULL, 1);
+ static SENSOR_DEVICE_ATTR(fan3_input, S_IRUGO, get_fan, NULL, 2);
+ static SENSOR_DEVICE_ATTR(fan4_input, S_IRUGO, get_fan, NULL, 3);
++static SENSOR_DEVICE_ATTR(fan1_alarm, S_IRUGO, get_alarm, NULL, 0);
++static SENSOR_DEVICE_ATTR(fan2_alarm, S_IRUGO, get_alarm, NULL, 1);
++static SENSOR_DEVICE_ATTR(fan3_alarm, S_IRUGO, get_alarm, NULL, 2);
++static SENSOR_DEVICE_ATTR(fan4_alarm, S_IRUGO, get_alarm, NULL, 3);
+ static SENSOR_DEVICE_ATTR(fan1_target, S_IWUSR | S_IRUGO, get_target, set_target, 0);
+ static SENSOR_DEVICE_ATTR(fan1_div, S_IWUSR | S_IRUGO, get_div, set_div, 0);
+ // static SENSOR_DEVICE_ATTR(pwm1_enable, S_IWUSR | S_IRUGO, get_enable, set_enable, 0);
+@@ -507,6 +511,10 @@ static struct attribute *max6620_attrs[] = {
+ 	&sensor_dev_attr_fan2_input.dev_attr.attr,
+ 	&sensor_dev_attr_fan3_input.dev_attr.attr,
+ 	&sensor_dev_attr_fan4_input.dev_attr.attr,
++	&sensor_dev_attr_fan1_alarm.dev_attr.attr,
++	&sensor_dev_attr_fan2_alarm.dev_attr.attr,
++	&sensor_dev_attr_fan3_alarm.dev_attr.attr,
++	&sensor_dev_attr_fan4_alarm.dev_attr.attr,
+ 	&sensor_dev_attr_fan1_target.dev_attr.attr,
+ 	&sensor_dev_attr_fan1_div.dev_attr.attr,
+ //	&sensor_dev_attr_pwm1_enable.dev_attr.attr,
+-- 
+2.7.4
+
