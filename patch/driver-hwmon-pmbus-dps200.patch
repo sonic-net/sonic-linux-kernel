@@ -1,6 +1,7 @@
-Add PMBUS driver for DPS200 Power Supply
-
+From ca75248998521d54d670253fa63dc8cd109dd354 Mon Sep 17 00:00:00 2001
 From: Saranpong Chgobtrong <schobtr@celestica.com>
+Date: Mon, 5 Apr 2021 16:10:53 +0700
+Subject: [PATCH] hwmon: (pmbus/dps200): Support DPS200 PSU module
 
 The generic PMBUS driver does not support the chip that uses direct mode yet.
 This driver supports dps200 which uses coefficients defined in the datasheet.
@@ -11,10 +12,10 @@ Each field of direct mode has a conversion definition defined by the datasheet.
 
 Signed-off-by: Saranpong Chobtrong <schobtr@celestica.com>
 ---
- drivers/hwmon/pmbus/Kconfig  |   10 ++++
- drivers/hwmon/pmbus/Makefile |    1 
- drivers/hwmon/pmbus/dps200.c |  116 ++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 127 insertions(+)
+ drivers/hwmon/pmbus/Kconfig  |  10 +++
+ drivers/hwmon/pmbus/Makefile |   1 +
+ drivers/hwmon/pmbus/dps200.c | 115 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 126 insertions(+)
  create mode 100644 drivers/hwmon/pmbus/dps200.c
 
 diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
@@ -47,10 +48,10 @@ index c76820a4d..f072288f6 100644
 +obj-$(CONFIG_SENSORS_DPS200)	+= dps200.o
 diff --git a/drivers/hwmon/pmbus/dps200.c b/drivers/hwmon/pmbus/dps200.c
 new file mode 100644
-index 000000000..d11d455b3
+index 000000000..3b770946a
 --- /dev/null
 +++ b/drivers/hwmon/pmbus/dps200.c
-@@ -0,0 +1,116 @@
+@@ -0,0 +1,115 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + * Hardware monitoring driver for Delta DPS200
@@ -89,7 +90,7 @@ index 000000000..d11d455b3
 +		return -ENXIO;
 +
 +	/*
-+	 * NOTE: The following feild have constant driver value.
++	 * NOTE: The following field have constant driver value.
 +	 * If the register are PMBUS_IOUT_OC_WARN_LIMIT or
 +	 * PMBUS_IOUT_OC_FAULT_LIMIT convert the constant value from linear
 +	 * to direct format.
@@ -103,7 +104,7 @@ index 000000000..d11d455b3
 +}
 +
 +/*
-+ * Form DPS-200 datasheet the supported sensors format defined as:
++ * From DPS-200 datasheet the supported sensors format defined as:
 + * VOUT: direct mode with one decimal place.
 + *
 + * Other sensors:
@@ -135,7 +136,7 @@ index 000000000..d11d455b3
 +		[PSC_VOLTAGE_OUT] = 0,
 +		[PSC_CURRENT_OUT] = 0,
 +	},
-+	.read_word_data = &dps200_read_word_data,
++	.read_word_data = dps200_read_word_data,
 +};
 +
 +static int pmbus_probe(struct i2c_client *client,
@@ -144,7 +145,6 @@ index 000000000..d11d455b3
 +	return pmbus_do_probe(client, id, &dps200_info);
 +}
 +
-+/* user driver datat to pass the grpup */
 +static const struct i2c_device_id dps200_id[] = {
 +	{"dps200", 0},
 +	{}
@@ -167,3 +167,6 @@ index 000000000..d11d455b3
 +MODULE_AUTHOR("Pradchaya Phucharoen");
 +MODULE_DESCRIPTION("PMBus driver for Delta DPS200");
 +MODULE_LICENSE("GPL");
+-- 
+2.25.1
+
