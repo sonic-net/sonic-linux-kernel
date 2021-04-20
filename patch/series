@@ -109,6 +109,7 @@ linux-4.13-thermal-intel_pch_thermal-Fix-enable-check-on.patch
 0072-thermal-Fix-deadlock-in-thermal-thermal_zone_device_.patch
 0073-mlxsw-core-Fix-memory-leak-on-module-removal.patch
 0074-platform-x86-mlx-platform-Remove-PSU-EEPROM-configur.patch
+0075-platform-x86-mlx-platform-Remove-PSU-EEPROM-configur.patch
 0077-mlxsw-core-Increase-critical-threshold-for-ASIC-ther.patch
 0078-mlxsw-core-Add-validation-of-transceiver-temperature.patch
 0079-mlxsw-core-Remove-critical-trip-point-from-thermal-z.patch
