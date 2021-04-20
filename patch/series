@@ -105,7 +105,7 @@ linux-4.13-thermal-intel_pch_thermal-Fix-enable-check-on.patch
 0067-Add-support-for-new-transceivers-types-QSFP-DD-and-Q.patch
 0068-mlxsw-core-thermal-Separate-temperature-trend-read-c.patch
 0069-watchdog-mlx-wdt-support-new-watchdog-type-with-long.patch
-0070-mlxsw-core-Increase-critical-threshold-for-ASIC-ther.patch
+0077-mlxsw-core-Increase-critical-threshold-for-ASIC-ther.patch
 0071-mlxsw-core-Add-validation-of-transceiver-temperature.patch
 0072-mlxsw-core-Remove-critical-trip-point-from-thermal-z.patch
 linux-4.16-firmware-dmi-handle-missing-DMI-data-gracefully.patch
