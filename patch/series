@@ -80,6 +80,7 @@ driver-ixgbe-external-phy.patch
 0028-thermal-Fix-deadlock-in-thermal-thermal_zone_device_.patch
 0029-hwmon-pmbus-Add-support-for-MPS-Multi-phase-mp2975-c.patch
 0030-hwmon-Add-convience-macro-to-define-simple-static-se.patch
+0031-backport-nvme-Add-hardware-monitoring-support.patch
 ############################################################
 #
 # Internal patches will be added below (placeholder)
