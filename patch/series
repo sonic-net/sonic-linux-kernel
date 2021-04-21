@@ -77,6 +77,7 @@ driver-ixgbe-external-phy.patch
 0025-platform-x86-mlx-platform-Remove-PSU-EEPROM-configur.patch
 0026-platform-x86-mlx-platform-Remove-PSU-EEPROM-configur.patch
 0027-mlxsw-core-Remove-critical-trip-point-from-thermal-z.patch
+0028-thermal-Fix-deadlock-in-thermal-thermal_zone_device_.patch
 ############################################################
 #
 # Internal patches will be added below (placeholder)
