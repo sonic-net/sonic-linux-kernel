@@ -1,0 +1,39 @@
+From b33335cbc89357b415865e7c55a4103bbd47f629 Mon Sep 17 00:00:00 2001
+From: Charles Keepax <ckeepax@opensource.cirrus.com>
+Date: Wed, 20 Mar 2019 14:58:17 +0000
+Subject: [PATCH 1/2] hwmon: Add convience macro to define simple static
+ sensors
+
+cherry-picked from upstream c43a113ca2c807c3e66a5de0ec57d69803b8bc10
+
+It takes a fair amount of boiler plate code to add new sensors, add a
+macro that can be used to specify simple static sensors.
+
+Signed-off-by: Charles Keepax <ckeepax@opensource.cirrus.com>
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
+---
+ include/linux/hwmon.h | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/include/linux/hwmon.h b/include/linux/hwmon.h
+index 9493d4a..faa67641 100644
+--- a/include/linux/hwmon.h
++++ b/include/linux/hwmon.h
+@@ -363,6 +363,14 @@ struct hwmon_channel_info {
+ 	const u32 *config;
+ };
+ 
++#define HWMON_CHANNEL_INFO(stype, ...)	\
++	(&(struct hwmon_channel_info) {	\
++		.type = hwmon_##stype,	\
++		.config = (u32 []) {	\
++			__VA_ARGS__, 0	\
++		}			\
++	})
++
+ /**
+  * Chip configuration
+  * @ops:	Pointer to hwmon operations.
+-- 
+2.8.4
+
