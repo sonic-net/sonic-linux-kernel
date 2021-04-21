@@ -1,0 +1,12 @@
+diff --git a/debian/build/build_amd64_none_amd64/.config b/debian/build/build_amd64_none_amd64/.config
+index 286b750..718ae95 100644
+--- a/debian/build/build_amd64_none_amd64/.config
++++ b/debian/build/build_amd64_none_amd64/.config
+@@ -3971,6 +3971,7 @@ CONFIG_SENSORS_TPS53679=m
+ CONFIG_SENSORS_UCD9000=m
+ CONFIG_SENSORS_UCD9200=m
+ CONFIG_SENSORS_XDPE122=m
++CONFIG_SENSORS_MP2975=m
+ # CONFIG_SENSORS_ZL6100 is not set
+ CONFIG_SENSORS_DPS1900=m
+ # CONFIG_SENSORS_SHT15 is not set
