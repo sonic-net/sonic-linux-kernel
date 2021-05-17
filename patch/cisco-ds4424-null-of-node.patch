@@ -1,0 +1,23 @@
+commit 166b37e58be17655da39f3d7ad61014db4afa4a1
+Author: Billie R Alsup <balsup@cisco.com>
+Date:   Sun Aug 23 14:57:55 2020 -0700
+
+    Allow NULL of_node
+
+diff --git a/drivers/iio/dac/ds4424.c b/drivers/iio/dac/ds4424.c
+index 714a97f91..ae9be7926 100644
+--- a/drivers/iio/dac/ds4424.c
++++ b/drivers/iio/dac/ds4424.c
+@@ -236,12 +236,6 @@ static int ds4424_probe(struct i2c_client *client,
+ 	indio_dev->dev.of_node = client->dev.of_node;
+ 	indio_dev->dev.parent = &client->dev;
+ 
+-	if (!client->dev.of_node) {
+-		dev_err(&client->dev,
+-				"Not found DT.\n");
+-		return -ENODEV;
+-	}
+-
+ 	data->vcc_reg = devm_regulator_get(&client->dev, "vcc");
+ 	if (IS_ERR(data->vcc_reg)) {
+ 		dev_err(&client->dev,

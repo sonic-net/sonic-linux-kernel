@@ -1,0 +1,431 @@
+commit f9575da7c4864489a373f438f3993387fd9b69c4
+Author: Billie R Alsup <balsup@cisco.com>
+Date:   Sun Aug 23 14:30:43 2020 -0700
+
+    Support multiple peer chips
+
+diff --git a/drivers/i2c/muxes/i2c-mux-ltc4306.c b/drivers/i2c/muxes/i2c-mux-ltc4306.c
+index a9af93259..0d8bf4c3b 100644
+--- a/drivers/i2c/muxes/i2c-mux-ltc4306.c
++++ b/drivers/i2c/muxes/i2c-mux-ltc4306.c
+@@ -38,26 +38,40 @@
+ enum ltc_type {
+ 	ltc_4305,
+ 	ltc_4306,
++	ltc_4306x2,
+ };
+ 
+ struct chip_desc {
+ 	u8 nchans;
+-	u8 num_gpios;
++	u8 ngpios;
++        u8 nchips;
++        u8 chip_stride;
+ };
+ 
++#define MAX_CHIPS       2
++
+ struct ltc4306 {
+-	struct regmap *regmap;
++	struct regmap *regmap[MAX_CHIPS];
+ 	struct gpio_chip gpiochip;
+ 	const struct chip_desc *chip;
++        struct i2c_client *peers[MAX_CHIPS];
+ };
+ 
+ static const struct chip_desc chips[] = {
+ 	[ltc_4305] = {
+ 		.nchans = LTC4305_MAX_NCHANS,
++                .nchips = 1,
+ 	},
+ 	[ltc_4306] = {
+ 		.nchans = LTC4306_MAX_NCHANS,
+-		.num_gpios = 2,
++		.ngpios = 2,
++                .nchips = 1,
++	},
++	[ltc_4306x2] = {
++		.nchans = LTC4306_MAX_NCHANS,
++		.ngpios = 2,
++                .nchips = 2,
++                .chip_stride = 8,
+ 	},
+ };
+ 
+@@ -79,21 +93,27 @@ static int ltc4306_gpio_get(struct gpio_chip *chip, unsigned int offset)
+ 	struct ltc4306 *data = gpiochip_get_data(chip);
+ 	unsigned int val;
+ 	int ret;
++        u8 ngpios = data->chip->ngpios;
++        u8 chip_index = offset / ngpios;
++        u8 chip_offset = offset % ngpios;
+ 
+-	ret = regmap_read(data->regmap, LTC_REG_CONFIG, &val);
++	ret = regmap_read(data->regmap[chip_index], LTC_REG_CONFIG, &val);
+ 	if (ret < 0)
+ 		return ret;
+ 
+-	return !!(val & BIT(1 - offset));
++	return !!(val & BIT(1 - chip_offset));
+ }
+ 
+ static void ltc4306_gpio_set(struct gpio_chip *chip, unsigned int offset,
+ 			     int value)
+ {
+ 	struct ltc4306 *data = gpiochip_get_data(chip);
++        u8 ngpios = data->chip->ngpios;
++        u8 chip_index = offset / ngpios;
++        u8 chip_offset = offset % ngpios;
+ 
+-	regmap_update_bits(data->regmap, LTC_REG_CONFIG, BIT(5 - offset),
+-			   value ? BIT(5 - offset) : 0);
++	regmap_update_bits(data->regmap[chip_index], LTC_REG_CONFIG, BIT(5 - chip_offset),
++			   value ? BIT(5 - chip_offset) : 0);
+ }
+ 
+ static int ltc4306_gpio_get_direction(struct gpio_chip *chip,
+@@ -102,31 +122,40 @@ static int ltc4306_gpio_get_direction(struct gpio_chip *chip,
+ 	struct ltc4306 *data = gpiochip_get_data(chip);
+ 	unsigned int val;
+ 	int ret;
++        u8 ngpios = data->chip->ngpios;
++        u8 chip_index = offset / ngpios;
++        u8 chip_offset = offset % ngpios;
+ 
+-	ret = regmap_read(data->regmap, LTC_REG_MODE, &val);
++	ret = regmap_read(data->regmap[chip_index], LTC_REG_MODE, &val);
+ 	if (ret < 0)
+ 		return ret;
+ 
+-	return !!(val & BIT(7 - offset));
++	return !!(val & BIT(7 - chip_offset));
+ }
+ 
+ static int ltc4306_gpio_direction_input(struct gpio_chip *chip,
+ 					unsigned int offset)
+ {
+ 	struct ltc4306 *data = gpiochip_get_data(chip);
++        u8 ngpios = data->chip->ngpios;
++        u8 chip_index = offset / ngpios;
++        u8 chip_offset = offset % ngpios;
+ 
+-	return regmap_update_bits(data->regmap, LTC_REG_MODE,
+-				  BIT(7 - offset), BIT(7 - offset));
++	return regmap_update_bits(data->regmap[chip_index], LTC_REG_MODE,
++				  BIT(7 - chip_offset), BIT(7 - chip_offset));
+ }
+ 
+ static int ltc4306_gpio_direction_output(struct gpio_chip *chip,
+ 					 unsigned int offset, int value)
+ {
+ 	struct ltc4306 *data = gpiochip_get_data(chip);
++        u8 ngpios = data->chip->ngpios;
++        u8 chip_index = offset / ngpios;
++        u8 chip_offset = offset % ngpios;
+ 
+ 	ltc4306_gpio_set(chip, offset, value);
+-	return regmap_update_bits(data->regmap, LTC_REG_MODE,
+-				  BIT(7 - offset), 0);
++	return regmap_update_bits(data->regmap[chip_offset], LTC_REG_MODE,
++				  BIT(7 - chip_offset), 0);
+ }
+ 
+ static int ltc4306_gpio_set_config(struct gpio_chip *chip,
+@@ -134,32 +163,37 @@ static int ltc4306_gpio_set_config(struct gpio_chip *chip,
+ {
+ 	struct ltc4306 *data = gpiochip_get_data(chip);
+ 	unsigned int val;
++        u8 ngpios = data->chip->ngpios;
++        u8 chip_index = offset / ngpios;
++        u8 chip_offset = offset % ngpios;
+ 
+ 	switch (pinconf_to_config_param(config)) {
+ 	case PIN_CONFIG_DRIVE_OPEN_DRAIN:
+ 		val = 0;
+ 		break;
+ 	case PIN_CONFIG_DRIVE_PUSH_PULL:
+-		val = BIT(4 - offset);
++		val = BIT(4 - chip_offset);
+ 		break;
+ 	default:
+ 		return -ENOTSUPP;
+ 	}
+ 
+-	return regmap_update_bits(data->regmap, LTC_REG_MODE,
+-				  BIT(4 - offset), val);
++	return regmap_update_bits(data->regmap[chip_index], LTC_REG_MODE,
++				  BIT(4 - chip_offset), val);
+ }
+ 
+ static int ltc4306_gpio_init(struct ltc4306 *data)
+ {
+-	struct device *dev = regmap_get_device(data->regmap);
++	struct device *dev = regmap_get_device(data->regmap[0]);
++        u8 chip,nchips;
+ 
+-	if (!data->chip->num_gpios)
++	if (!data->chip->ngpios)
+ 		return 0;
+ 
++        nchips = data->chip->nchips;
+ 	data->gpiochip.label = dev_name(dev);
+ 	data->gpiochip.base = -1;
+-	data->gpiochip.ngpio = data->chip->num_gpios;
++	data->gpiochip.ngpio = data->chip->ngpios * nchips;
+ 	data->gpiochip.parent = dev;
+ 	data->gpiochip.can_sleep = true;
+ 	data->gpiochip.get_direction = ltc4306_gpio_get_direction;
+@@ -171,7 +205,9 @@ static int ltc4306_gpio_init(struct ltc4306 *data)
+ 	data->gpiochip.owner = THIS_MODULE;
+ 
+ 	/* gpiolib assumes all GPIOs default input */
+-	regmap_write(data->regmap, LTC_REG_MODE, LTC_GPIO_ALL_INPUT);
++        for (chip = 0; chip < nchips; ++chip) {
++            regmap_write(data->regmap[chip], LTC_REG_MODE, LTC_GPIO_ALL_INPUT);
++        }
+ 
+ 	return devm_gpiochip_add_data(dev, &data->gpiochip, data);
+ }
+@@ -180,7 +216,7 @@ static int ltc4306_select_mux(struct i2c_mux_core *muxc, u32 chan)
+ {
+ 	struct ltc4306 *data = i2c_mux_priv(muxc);
+ 
+-	return regmap_update_bits(data->regmap, LTC_REG_SWITCH,
++	return regmap_update_bits(data->regmap[0], LTC_REG_SWITCH,
+ 				  LTC_SWITCH_MASK, BIT(7 - chan));
+ }
+ 
+@@ -188,13 +224,47 @@ static int ltc4306_deselect_mux(struct i2c_mux_core *muxc, u32 chan)
+ {
+ 	struct ltc4306 *data = i2c_mux_priv(muxc);
+ 
+-	return regmap_update_bits(data->regmap, LTC_REG_SWITCH,
++	return regmap_update_bits(data->regmap[0], LTC_REG_SWITCH,
++				  LTC_SWITCH_MASK, 0);
++}
++
++static int ltc4306_select_mux_multiple(struct i2c_mux_core *muxc, u32 chan)
++{
++	struct ltc4306 *data = i2c_mux_priv(muxc);
++        u8 nchans = data->chip->nchans;
++        u8 nchips = data->chip->nchips;
++        u8 chip_index = chan / nchans;
++        u8 chip_chan = chan % nchans;
++        u8 chip;
++        int e = 0;
++
++        for (chip = 0; !e && (chip < nchips); ++chip) {
++            if (chip != chip_index) {
++                e = regmap_update_bits(data->regmap[chip], LTC_REG_SWITCH,
++				  LTC_SWITCH_MASK, 0);
++            }
++        }
++        if (!e) {
++            e = regmap_update_bits(data->regmap[chip_index], LTC_REG_SWITCH,
++				  LTC_SWITCH_MASK, BIT(7 - chip_chan));
++        }
++        return e;
++}
++
++static int ltc4306_deselect_mux_multiple(struct i2c_mux_core *muxc, u32 chan)
++{
++	struct ltc4306 *data = i2c_mux_priv(muxc);
++        u8 nchans = data->chip->nchans;
++        u8 chip_index = chan / nchans;
++
++	return regmap_update_bits(data->regmap[chip_index], LTC_REG_SWITCH,
+ 				  LTC_SWITCH_MASK, 0);
+ }
+ 
+ static const struct i2c_device_id ltc4306_id[] = {
+ 	{ "ltc4305", ltc_4305 },
+ 	{ "ltc4306", ltc_4306 },
++	{ "ltc4306x2", ltc_4306x2 },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(i2c, ltc4306_id);
+@@ -202,6 +272,7 @@ MODULE_DEVICE_TABLE(i2c, ltc4306_id);
+ static const struct of_device_id ltc4306_of_match[] = {
+ 	{ .compatible = "lltc,ltc4305", .data = &chips[ltc_4305] },
+ 	{ .compatible = "lltc,ltc4306", .data = &chips[ltc_4306] },
++	{ .compatible = "lltc,ltc4306x2", .data = &chips[ltc_4306x2] },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(of, ltc4306_of_match);
+@@ -216,6 +287,11 @@ static int ltc4306_probe(struct i2c_client *client)
+ 	bool idle_disc;
+ 	unsigned int val = 0;
+ 	int num, ret;
++        struct i2c_client *peers[MAX_CHIPS] = { 0 };
++        u8 nchips, nchans;
++        u16 addr;
++
++        peers[0] = client;
+ 
+ 	chip = of_device_get_match_data(&client->dev);
+ 
+@@ -225,45 +301,57 @@ static int ltc4306_probe(struct i2c_client *client)
+ 	idle_disc = device_property_read_bool(&client->dev,
+ 					      "i2c-mux-idle-disconnect");
+ 
++
++        nchips = chip->nchips;
++        addr = client->addr;
++        for (num = 1; num < nchips; ++num) {
++            addr += chip->chip_stride;
++            peers[num] = i2c_new_dummy(client->adapter, addr);
++            if (!peers[num]) {
++                dev_err(&client->dev, "address 0x%x unavailable\n", addr);
++                ret = -EADDRINUSE;
++                goto cleanup_i2c;
++            }
++        }
+ 	muxc = i2c_mux_alloc(adap, &client->dev,
+-			     chip->nchans, sizeof(*data),
+-			     I2C_MUX_LOCKED, ltc4306_select_mux,
+-			     idle_disc ? ltc4306_deselect_mux : NULL);
+-	if (!muxc)
+-		return -ENOMEM;
++			     chip->nchans * nchips, sizeof(*data),
++			     I2C_MUX_LOCKED, 
++                             (nchips < 2) ? ltc4306_select_mux : ltc4306_select_mux_multiple,
++			     idle_disc ? ((nchips < 2) ? ltc4306_deselect_mux : ltc4306_deselect_mux_multiple) : NULL);
++	if (!muxc) {
++                ret = -ENOMEM;
++                goto cleanup_i2c;
++        }
++
+ 	data = i2c_mux_priv(muxc);
+ 	data->chip = chip;
+ 
+ 	i2c_set_clientdata(client, muxc);
+ 
+-	data->regmap = devm_regmap_init_i2c(client, &ltc4306_regmap_config);
+-	if (IS_ERR(data->regmap)) {
+-		ret = PTR_ERR(data->regmap);
+-		dev_err(&client->dev, "Failed to allocate register map: %d\n",
+-			ret);
+-		return ret;
+-	}
++        for (num = 0; num < nchips; ++num) {
++            data->peers[num] = peers[num];
++            data->regmap[num] = devm_regmap_init_i2c(peers[num], &ltc4306_regmap_config);
++            if (IS_ERR(data->regmap[num])) {
++                    ret = PTR_ERR(data->regmap[num]);
++                    dev_err(&client->dev, "Failed to allocate register map: %d\n",
++                            ret);
++                    goto cleanup_regmap;
++            }
++        }
+ 
+ 	/* Reset and enable the mux if an enable GPIO is specified. */
++        /* Presumption is that one pin enables all peers. */
+ 	gpio = devm_gpiod_get_optional(&client->dev, "enable", GPIOD_OUT_LOW);
+-	if (IS_ERR(gpio))
+-		return PTR_ERR(gpio);
++	if (IS_ERR(gpio)) {
++                ret = PTR_ERR(gpio);
++                goto cleanup_regmap;
++        }
+ 
+ 	if (gpio) {
+ 		udelay(1);
+ 		gpiod_set_value(gpio, 1);
+ 	}
+ 
+-	/*
+-	 * Write the mux register at addr to verify
+-	 * that the mux is in fact present. This also
+-	 * initializes the mux to disconnected state.
+-	 */
+-	if (regmap_write(data->regmap, LTC_REG_SWITCH, 0) < 0) {
+-		dev_warn(&client->dev, "probe failed\n");
+-		return -ENODEV;
+-	}
+-
+ 	if (device_property_read_bool(&client->dev,
+ 				      "ltc,downstream-accelerators-enable"))
+ 		val |= LTC_DOWNSTREAM_ACCL_EN;
+@@ -272,19 +360,36 @@ static int ltc4306_probe(struct i2c_client *client)
+ 				      "ltc,upstream-accelerators-enable"))
+ 		val |= LTC_UPSTREAM_ACCL_EN;
+ 
+-	if (regmap_write(data->regmap, LTC_REG_CONFIG, val) < 0)
+-		return -ENODEV;
++	/*
++	 * Write the mux register at addr to verify
++	 * that the mux is in fact present. This also
++	 * initializes the mux to disconnected state.
++	 */
++        for (num = 0; num < nchips; ++num) {
++            if (regmap_write(data->regmap[num], LTC_REG_SWITCH, 0) < 0) {
++                    dev_warn(&client->dev, "probe failed\n");
++                    ret = -ENODEV;
++                    goto cleanup_regmap;
++            }
++            if (regmap_write(data->regmap[num], LTC_REG_CONFIG, val) < 0) {
++                    ret = -ENODEV;
++                    goto cleanup_regmap;
++            }
++        }
++
+ 
+ 	ret = ltc4306_gpio_init(data);
+-	if (ret < 0)
+-		return ret;
++	if (ret < 0) {
++                goto cleanup_regmap;
++        }
+ 
+ 	/* Now create an adapter for each channel */
+-	for (num = 0; num < chip->nchans; num++) {
++        nchans = chip->nchans * nchips;
++	for (num = 0; num < nchans; num++) {
+ 		ret = i2c_mux_add_adapter(muxc, 0, num, 0);
+ 		if (ret) {
+ 			i2c_mux_del_adapters(muxc);
+-			return ret;
++			goto cleanup_regmap;
+ 		}
+ 	}
+ 
+@@ -293,14 +398,39 @@ static int ltc4306_probe(struct i2c_client *client)
+ 		 num, client->name);
+ 
+ 	return 0;
++
++cleanup_regmap:
++        for (num = 0; num < nchips; ++num) {
++            if (IS_ERR(data->regmap[num])) {
++                break;
++            }
++            regmap_exit(data->regmap[num]);
++        }
++cleanup_i2c:
++        for (num = 1; num < nchips; ++num) {
++            if (peers[num]) {
++                i2c_unregister_device(peers[num]);
++            }
++        }
++
++        return ret;
+ }
+ 
+ static int ltc4306_remove(struct i2c_client *client)
+ {
+ 	struct i2c_mux_core *muxc = i2c_get_clientdata(client);
++	struct ltc4306 *data = i2c_mux_priv(muxc);
++        u8 nchips = data->chip->nchips;
++        u8 chip;
+ 
+ 	i2c_mux_del_adapters(muxc);
+ 
++        for (chip = 1; chip < nchips; ++chip) {
++            if (data->peers[chip]) {
++                i2c_unregister_device(data->peers[chip]);
++            }
++        }
++
+ 	return 0;
+ }
+ 

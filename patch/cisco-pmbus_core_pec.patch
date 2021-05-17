@@ -1,0 +1,27 @@
+commit 23e50c33b5d80873673c9741665f2b667465a2b9
+Author: balsup <balsup@contoso.com>
+Date:   Thu Aug 13 23:49:43 2020 +0000
+
+    pmbus_core: do not enable PEC if adapter doesn't support it
+
+diff --git a/drivers/hwmon/pmbus/pmbus_core.c b/drivers/hwmon/pmbus/pmbus_core.c
+index 1d7f950..b0b4f17 100644
+--- a/drivers/hwmon/pmbus/pmbus_core.c
++++ b/drivers/hwmon/pmbus/pmbus_core.c
+@@ -2044,10 +2044,12 @@ static int pmbus_init_common(struct i2c_client *client, struct pmbus_data *data,
+ 		data->has_status_word = true;
+ 	}
+ 
+-	/* Enable PEC if the controller supports it */
+-	ret = i2c_smbus_read_byte_data(client, PMBUS_CAPABILITY);
+-	if (ret >= 0 && (ret & PB_CAPABILITY_ERROR_CHECK))
+-		client->flags |= I2C_CLIENT_PEC;
++	/* Enable PEC if the controller and bus support it */
++	if (i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_PEC)) {
++		ret = i2c_smbus_read_byte_data(client, PMBUS_CAPABILITY);
++		if (ret >= 0 && (ret & PB_CAPABILITY_ERROR_CHECK))
++			client->flags |= I2C_CLIENT_PEC;
++	}
+ 
+ 	if (data->info->pages)
+ 		pmbus_clear_faults(client);

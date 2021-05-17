@@ -1,0 +1,18 @@
+commit fb93f739e32768a78a063901ff9c89749deca530
+Author: Billie R Alsup <balsup@cisco.com>
+Date:   Wed Aug 19 14:24:55 2020 -0700
+
+    Prefer cisco-acpi-part partitioner over ofpart
+
+diff --git a/drivers/mtd/mtdpart.c b/drivers/mtd/mtdpart.c
+index 10c5336..fd9b134 100644
+--- a/drivers/mtd/mtdpart.c
++++ b/drivers/mtd/mtdpart.c
+@@ -821,6 +821,7 @@ EXPORT_SYMBOL_GPL(deregister_mtd_parser);
+  */
+ static const char * const default_mtd_part_types[] = {
+ 	"cmdlinepart",
++	"cisco-acpi-mtd-part",
+ 	"ofpart",
+ 	NULL
+ };

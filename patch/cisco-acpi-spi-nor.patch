@@ -1,0 +1,30 @@
+commit baaac832b8a63756933f71ead22ce2bb9ed98eb0
+Author: balsup <balsup@contoso.com>
+Date:   Thu Aug 13 23:57:13 2020 +0000
+
+    Support ACPI table match
+
+diff --git a/drivers/mtd/devices/m25p80.c b/drivers/mtd/devices/m25p80.c
+index c4a1d04..3e77c6d 100644
+--- a/drivers/mtd/devices/m25p80.c
++++ b/drivers/mtd/devices/m25p80.c
+@@ -319,11 +319,19 @@ static const struct of_device_id m25p_of_table[] = {
+ };
+ MODULE_DEVICE_TABLE(of, m25p_of_table);
+ 
++static const struct acpi_device_id m25p_acpi_table[] = {
++	{ "JEDEC,SPI-NOR", 0 },
++	{ "ACPI0000", 0 },
++	{}
++};
++MODULE_DEVICE_TABLE(acpi, m25p_acpi_table);
++
+ static struct spi_mem_driver m25p80_driver = {
+ 	.spidrv = {
+ 		.driver = {
+ 			.name	= "m25p80",
+ 			.of_match_table = m25p_of_table,
++			.acpi_match_table = m25p_acpi_table,
+ 		},
+ 		.id_table	= m25p_ids,
+ 	},

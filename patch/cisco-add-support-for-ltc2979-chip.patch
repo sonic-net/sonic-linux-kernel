@@ -1,0 +1,67 @@
+From 841b03103bc8336f1737c48859897bfd6b63730b Mon Sep 17 00:00:00 2001
+From: Harsh Bhuwania <hbhuwani@cisco.com>
+Date: Thu, 8 Oct 2020 14:38:04 -0700
+Subject: [PATCH] Add support for LTC2979 chip
+
+---
+ drivers/hwmon/pmbus/ltc2978.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/hwmon/pmbus/ltc2978.c b/drivers/hwmon/pmbus/ltc2978.c
+index 94eea2a..388244d 100644
+--- a/drivers/hwmon/pmbus/ltc2978.c
++++ b/drivers/hwmon/pmbus/ltc2978.c
+@@ -27,7 +27,7 @@
+ #include <linux/regulator/driver.h>
+ #include "pmbus.h"
+ 
+-enum chips { ltc2974, ltc2975, ltc2977, ltc2978, ltc2980, ltc3880, ltc3882,
++enum chips { ltc2974, ltc2975, ltc2977, ltc2978, ltc2979, ltc2980, ltc3880, ltc3882,
+ 	ltc3883, ltc3886, ltc3887, ltm2987, ltm4675, ltm4676 };
+ 
+ /* Common for all chips */
+@@ -67,6 +67,8 @@ enum chips { ltc2974, ltc2975, ltc2977, ltc2978, ltc2980, ltc3880, ltc3882,
+ #define LTC2977_ID			0x0130
+ #define LTC2978_ID_REV1			0x0110	/* Early revision */
+ #define LTC2978_ID_REV2			0x0120
++#define LTC2979_ID_A			0x8060
++#define LTC2979_ID_B			0x8070
+ #define LTC2980_ID_A			0x8030	/* A/B for two die IDs */
+ #define LTC2980_ID_B			0x8040
+ #define LTC3880_ID			0x4020
+@@ -503,6 +505,7 @@ static int ltc2978_write_word_data(struct i2c_client *client, int page,
+ 	{"ltc2975", ltc2975},
+ 	{"ltc2977", ltc2977},
+ 	{"ltc2978", ltc2978},
++        {"ltc2979", ltc2979},
+ 	{"ltc2980", ltc2980},
+ 	{"ltc3880", ltc3880},
+ 	{"ltc3882", ltc3882},
+@@ -569,6 +572,8 @@ static int ltc2978_get_id(struct i2c_client *client)
+ 		return ltc2977;
+ 	else if (chip_id == LTC2978_ID_REV1 || chip_id == LTC2978_ID_REV2)
+ 		return ltc2978;
++	else if (chip_id == LTC2979_ID_A || chip_id == LTC2979_ID_B)
++		return ltc2979;
+ 	else if (chip_id == LTC2980_ID_A || chip_id == LTC2980_ID_B)
+ 		return ltc2980;
+ 	else if (chip_id == LTC3880_ID)
+@@ -668,6 +673,7 @@ static int ltc2978_probe(struct i2c_client *client,
+ 		break;
+ 	case ltc2977:
+ 	case ltc2978:
++        case ltc2979:
+ 	case ltc2980:
+ 	case ltm2987:
+ 		info->read_word_data = ltc2978_read_word_data;
+@@ -761,6 +767,7 @@ static int ltc2978_probe(struct i2c_client *client,
+ 	{ .compatible = "lltc,ltc2975" },
+ 	{ .compatible = "lltc,ltc2977" },
+ 	{ .compatible = "lltc,ltc2978" },
++        { .compatible = "lltc,ltc2979" },
+ 	{ .compatible = "lltc,ltc2980" },
+ 	{ .compatible = "lltc,ltc3880" },
+ 	{ .compatible = "lltc,ltc3882" },
+-- 
+1.8.3.1
+
