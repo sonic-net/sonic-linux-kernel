@@ -1,0 +1,110 @@
+From cfb4b5420339995a76f765e72b1c916029f264ae Mon Sep 17 00:00:00 2001
+From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+Date: Mon, 24 May 2021 16:02:21 -0700
+Subject: [PATCH] Add supporting for additional PSU sensor in pmbus driver
+
+PSU650W has 4 temperature sensors and pmbus driver has support for 3 senosrs. Added support for 4th temp sensor (i.e. PSU Outlet temperature sensor)
+
+Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+---
+ drivers/hwmon/pmbus/pmbus.c      |  4 +++-
+ drivers/hwmon/pmbus/pmbus.h      |  3 +++
+ drivers/hwmon/pmbus/pmbus_core.c | 38 ++++++++++++++++++++++++++++++++
+ 3 files changed, 44 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/hwmon/pmbus/pmbus.c b/drivers/hwmon/pmbus/pmbus.c
+index 4db0400b7..1ce0e00d0 100644
+--- a/drivers/hwmon/pmbus/pmbus.c
++++ b/drivers/hwmon/pmbus/pmbus.c
+@@ -66,8 +66,10 @@ static void pmbus_find_sensor_groups(struct i2c_client *client,
+ 		info->func[0] |= PMBUS_HAVE_TEMP2;
+ 	if (pmbus_check_word_register(client, 0, PMBUS_READ_TEMPERATURE_3))
+ 		info->func[0] |= PMBUS_HAVE_TEMP3;
++	if (pmbus_check_word_register(client, 0, PMBUS_READ_TEMPERATURE_4))
++		info->func[0] |= PMBUS_HAVE_TEMP4;
+ 	if (info->func[0] & (PMBUS_HAVE_TEMP | PMBUS_HAVE_TEMP2
+-			     | PMBUS_HAVE_TEMP3)
++			     | PMBUS_HAVE_TEMP3 | PMBUS_HAVE_TEMP4)
+ 	    && pmbus_check_byte_register(client, 0,
+ 					 PMBUS_STATUS_TEMPERATURE))
+ 			info->func[0] |= PMBUS_HAVE_STATUS_TEMP;
+diff --git a/drivers/hwmon/pmbus/pmbus.h b/drivers/hwmon/pmbus/pmbus.h
+index 5481ff9f8..a7562d727 100644
+--- a/drivers/hwmon/pmbus/pmbus.h
++++ b/drivers/hwmon/pmbus/pmbus.h
+@@ -130,6 +130,8 @@ enum pmbus_regs {
+ 	PMBUS_MFR_DATE			= 0x9D,
+ 	PMBUS_MFR_SERIAL		= 0x9E,
+ 
++	PMBUS_READ_TEMPERATURE_4        = 0xDF,
++
+ /*
+  * Virtual registers.
+  * Useful to support attributes which are not supported by standard PMBus
+@@ -371,6 +373,7 @@ enum pmbus_sensor_classes {
+ #define PMBUS_HAVE_STATUS_VMON	BIT(19)
+ #define PMBUS_HAVE_PWM12	BIT(20)
+ #define PMBUS_HAVE_PWM34	BIT(21)
++#define PMBUS_HAVE_TEMP4	BIT(22)
+ 
+ #define PMBUS_PAGE_VIRTUAL	BIT(31)
+ 
+diff --git a/drivers/hwmon/pmbus/pmbus_core.c b/drivers/hwmon/pmbus/pmbus_core.c
+index 1d7f950e6..df4a6de24 100644
+--- a/drivers/hwmon/pmbus/pmbus_core.c
++++ b/drivers/hwmon/pmbus/pmbus_core.c
+@@ -1754,6 +1754,32 @@ static const struct pmbus_limit_attr temp_limit_attrs3[] = {
+ 	}
+ };
+ 
++static const struct pmbus_limit_attr temp_limit_attrs4[] = {
++	{
++		.reg = PMBUS_UT_WARN_LIMIT,
++		.low = true,
++		.attr = "min",
++		.alarm = "min_alarm",
++		.sbit = PB_TEMP_UT_WARNING,
++	}, {
++		.reg = PMBUS_UT_FAULT_LIMIT,
++		.low = true,
++		.attr = "lcrit",
++		.alarm = "lcrit_alarm",
++		.sbit = PB_TEMP_UT_FAULT,
++	}, {
++		.reg = PMBUS_OT_WARN_LIMIT,
++		.attr = "max",
++		.alarm = "max_alarm",
++		.sbit = PB_TEMP_OT_WARNING,
++	}, {
++		.reg = PMBUS_OT_FAULT_LIMIT,
++		.attr = "crit",
++		.alarm = "crit_alarm",
++		.sbit = PB_TEMP_OT_FAULT,
++	}
++};
++
+ static const struct pmbus_sensor_attr temp_attributes[] = {
+ 	{
+ 		.reg = PMBUS_READ_TEMPERATURE_1,
+@@ -1791,6 +1817,18 @@ static const struct pmbus_sensor_attr temp_attributes[] = {
+ 		.gbit = PB_STATUS_TEMPERATURE,
+ 		.limit = temp_limit_attrs3,
+ 		.nlimit = ARRAY_SIZE(temp_limit_attrs3),
++	}, {
++		.reg = PMBUS_READ_TEMPERATURE_4,
++		.class = PSC_TEMPERATURE,
++		.paged = true,
++		.update = true,
++		.compare = true,
++		.func = PMBUS_HAVE_TEMP4,
++		.sfunc = PMBUS_HAVE_STATUS_TEMP,
++		.sbase = PB_STATUS_TEMP_BASE,
++		.gbit = PB_STATUS_TEMPERATURE,
++		.limit = temp_limit_attrs4,
++		.nlimit = ARRAY_SIZE(temp_limit_attrs4),
+ 	}
+ };
+ 
+-- 
+2.26.2
+
