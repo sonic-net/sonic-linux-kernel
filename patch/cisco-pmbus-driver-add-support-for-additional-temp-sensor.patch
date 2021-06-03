@@ -1,9 +1,15 @@
-From cfb4b5420339995a76f765e72b1c916029f264ae Mon Sep 17 00:00:00 2001
+From aa09f80eb343110869b796205a45c16ed8951dea Mon Sep 17 00:00:00 2001
 From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
-Date: Mon, 24 May 2021 16:02:21 -0700
-Subject: [PATCH] Add supporting for additional PSU sensor in pmbus driver
+Date: Tue, 1 Jun 2021 19:31:36 -0700
+Subject: [PATCH] hwmon: (pmbus) Support fourth PSU temperature sensor
 
-PSU650W has 4 temperature sensors and pmbus driver has support for 3 senosrs. Added support for 4th temp sensor (i.e. PSU Outlet temperature sensor)
+PSU650W has 4 temperature sensors and pmbus driver has support
+for 3 sensors. Added support for 4th temp sensor.
+(i.e. PSU Outlet temperature sensor)
+
+PSU650W is based on LITE-ON vendor.
+LITE-ON MFG part numbers for the PSU are
+PS-2651-3SB5 Z and PS-2651-3SA5 Z.
 
 Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
 ---
@@ -29,14 +35,14 @@ index 4db0400b7..1ce0e00d0 100644
  					 PMBUS_STATUS_TEMPERATURE))
  			info->func[0] |= PMBUS_HAVE_STATUS_TEMP;
 diff --git a/drivers/hwmon/pmbus/pmbus.h b/drivers/hwmon/pmbus/pmbus.h
-index 5481ff9f8..a7562d727 100644
+index 5481ff9f8..cdeb3bbee 100644
 --- a/drivers/hwmon/pmbus/pmbus.h
 +++ b/drivers/hwmon/pmbus/pmbus.h
 @@ -130,6 +130,8 @@ enum pmbus_regs {
  	PMBUS_MFR_DATE			= 0x9D,
  	PMBUS_MFR_SERIAL		= 0x9E,
  
-+	PMBUS_READ_TEMPERATURE_4        = 0xDF,
++	PMBUS_READ_TEMPERATURE_4	= 0xDF,
 +
  /*
   * Virtual registers.
