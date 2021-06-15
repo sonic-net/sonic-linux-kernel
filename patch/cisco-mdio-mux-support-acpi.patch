@@ -1,0 +1,85 @@
+From 3f82482489e986fc3b0a38163902842d0c4fa2f2 Mon Sep 17 00:00:00 2001
+From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+Date: Tue, 15 Jun 2021 11:32:49 -0700
+Subject: [PATCH] support reading mdio config from APCI tables
+
+Current mdio-mux does not support reading configuration
+from ACPI tables.
+
+cisco-8000 platform configures mdio phy config through ACPI
+tables.
+
+Added support int he mdio-mux driver to read from ACPI
+
+Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+---
+ drivers/net/phy/mdio-mux.c | 24 +++++++++++++++++++-----
+ 1 file changed, 19 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/net/phy/mdio-mux.c b/drivers/net/phy/mdio-mux.c
+index 0a86f1e4c..b6116f9af 100644
+--- a/drivers/net/phy/mdio-mux.c
++++ b/drivers/net/phy/mdio-mux.c
+@@ -93,7 +93,7 @@ int mdio_mux_init(struct device *dev,
+ 		  struct mii_bus *mux_bus)
+ {
+ 	struct device_node *parent_bus_node;
+-	struct device_node *child_bus_node;
++	struct fwnode_handle *child_bus_node;
+ 	int r, ret_val;
+ 	struct mii_bus *parent_bus;
+ 	struct mdio_mux_parent_bus *pb;
+@@ -103,6 +103,9 @@ int mdio_mux_init(struct device *dev,
+ 		return -ENODEV;
+ 
+ 	if (!mux_bus) {
++		if (!mux_node)
++			return -ENODEV;
++
+ 		parent_bus_node = of_parse_phandle(mux_node,
+ 						   "mdio-parent-bus", 0);
+ 
+@@ -133,10 +136,12 @@ int mdio_mux_init(struct device *dev,
+ 	pb->mii_bus = parent_bus;
+ 
+ 	ret_val = -ENODEV;
+-	for_each_available_child_of_node(mux_node, child_bus_node) {
+-		int v;
++	device_for_each_child_node(dev, child_bus_node) {
++		u32 v;
++		u32 phy_mask;
+ 
+-		r = of_property_read_u32(child_bus_node, "reg", &v);
++		r = fwnode_property_read_u32(child_bus_node, 
++				"reg", &v);
+ 		if (r) {
+ 			dev_err(dev,
+ 				"Error: Failed to find reg for child %pOF\n",
+@@ -144,6 +149,11 @@ int mdio_mux_init(struct device *dev,
+ 			continue;
+ 		}
+ 
++		r = fwnode_property_read_u32(child_bus_node, 
++				"phy_mask", &phy_mask);
++		if (r)
++			phy_mask = 0;
++
+ 		cb = devm_kzalloc(dev, sizeof(*cb), GFP_KERNEL);
+ 		if (!cb) {
+ 			ret_val = -ENOMEM;
+@@ -166,7 +176,11 @@ int mdio_mux_init(struct device *dev,
+ 		cb->mii_bus->parent = dev;
+ 		cb->mii_bus->read = mdio_mux_read;
+ 		cb->mii_bus->write = mdio_mux_write;
+-		r = of_mdiobus_register(cb->mii_bus, child_bus_node);
++		cb->mii_bus->phy_mask = phy_mask;
++		if (is_of_node(child_bus_node))
++			r = of_mdiobus_register(cb->mii_bus, to_of_node(child_bus_node));
++		else
++			r = mdiobus_register(cb->mii_bus);
+ 		if (r) {
+ 			dev_err(dev,
+ 				"Error: Failed to register MDIO bus for child %pOF\n",
+-- 
+2.26.2.dirty
+
