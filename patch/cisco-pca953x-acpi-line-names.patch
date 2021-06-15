@@ -1,0 +1,62 @@
+From 3e69a3a676baafb13418921967d430399d70b498 Mon Sep 17 00:00:00 2001
+From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+Date: Tue, 15 Jun 2021 10:20:54 -0700
+Subject: [PATCH] gpio pin names assignment from ACPI
+
+Current gpio pca953x driver does not have capability
+to assign gpio pin names configured through ACPI tables.
+
+Cisco-8000 platform configures gpio pin names though ACPI
+files for few varients.
+
+pca953x driver updated to read gpio pin names from ACPI and
+assign pin name accordingly
+
+Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+---
+ drivers/gpio/gpio-pca953x.c | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
+
+diff --git a/drivers/gpio/gpio-pca953x.c b/drivers/gpio/gpio-pca953x.c
+index 0232c25a1..e9aeafa9a 100644
+--- a/drivers/gpio/gpio-pca953x.c
++++ b/drivers/gpio/gpio-pca953x.c
+@@ -854,6 +854,35 @@ static int pca953x_probe(struct i2c_client *client,
+ 		}
+ 	}
+ 
++	if (!chip->names) {
++		int ngpio = chip->driver_data & PCA_GPIO_MASK;
++		ret = device_property_read_string_array(
++				&client->dev,
++				"gpio-line-names",
++				NULL,
++				0);
++		if (ret < 0) {
++			dev_err(&client->dev,
++				"no gpio-line-names property;ret %d",
++				ret);
++		} else if (ret != ngpio) {
++			dev_err(&client->dev,
++				"gpio-line-names %d do not match ngpios %d"
++				, ret, ngpio);
++		} else {
++			chip->names = devm_kzalloc(&client->dev,
++					sizeof(*chip->names) * ngpio,
++					GFP_KERNEL);
++			if (chip->names) {
++				device_property_read_string_array(
++						&client->dev,
++						"gpio-line-names",
++						(const char**)chip->names,
++						ngpio);
++			}
++		}
++	}
++
+ 	mutex_init(&chip->i2c_lock);
+ 	/*
+ 	 * In case we have an i2c-mux controlled by a GPIO provided by an
+-- 
+2.26.2
+
