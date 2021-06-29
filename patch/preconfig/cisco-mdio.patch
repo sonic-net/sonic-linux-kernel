@@ -1,0 +1,40 @@
+From 40effb100908437fa43fe0b8fa9c5802ea1cf162 Mon Sep 17 00:00:00 2001
+From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+Date: Tue, 9 Mar 2021 08:41:15 -0800
+Subject: [PATCH] Enable MDIO related options
+
+---
+ debian/config/amd64/config | 4 ++++
+ drivers/net/phy/Kconfig    | 4 ++--
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/debian/config/amd64/config b/debian/config/amd64/config
+index 4ffe17e12..e3f9ad9e3 100644
+--- a/debian/config/amd64/config
++++ b/debian/config/amd64/config
+@@ -247,3 +247,7 @@ CONFIG_ZONE_DEVICE=y
+ ##
+ CONFIG_LSM_MMAP_MIN_ADDR=65536
+ 
++#
++CONFIG_PHYLIB=m
++CONFIG_OF_MDIO=m
++CONFIG_MDIO_BUS_MUX=m
+diff --git a/drivers/net/phy/Kconfig b/drivers/net/phy/Kconfig
+index 2386871e1..b1592f43b 100644
+--- a/drivers/net/phy/Kconfig
++++ b/drivers/net/phy/Kconfig
+@@ -45,8 +45,8 @@ config MDIO_BITBANG
+ 	  If in doubt, say N.
+ 
+ config MDIO_BUS_MUX
+-	tristate
+-	depends on OF_MDIO
++        tristate "Generic MDIO Bus Multiplexor"
++#       depends on OF_MDIO
+ 	help
+ 	  This module provides a driver framework for MDIO bus
+ 	  multiplexers which connect one of several child MDIO busses
+-- 
+2.26.2
+
