@@ -1,0 +1,44 @@
+From a50833bc31b4cac171ccf1cb922c51e8f7ce0089 Mon Sep 17 00:00:00 2001
+From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+Date: Tue, 9 Mar 2021 08:46:16 -0800
+Subject: [PATCH] Increase ARCH_NR_GPIO for Cisco 8000
+
+---
+ arch/x86/Kconfig           | 10 ++++++++++
+ debian/config/amd64/config |  2 ++
+ 2 files changed, 12 insertions(+)
+
+diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
+index d2453b251..58d696fd6 100644
+--- a/arch/x86/Kconfig
++++ b/arch/x86/Kconfig
+@@ -1033,6 +1033,16 @@ config SCHED_MC_PRIO
+ 
+ 	  If unsure say Y here.
+ 
++config ARCH_NR_GPIO
++        int
++        prompt "Maximum number of GPIOs"
++        default 0
++        ---help---
++          Maximum number of GPIOs in the system.
++
++          If unsure, leave the default value.
++
++
+ config UP_LATE_INIT
+        def_bool y
+        depends on !SMP && X86_LOCAL_APIC
+diff --git a/debian/config/amd64/config b/debian/config/amd64/config
+index e3f9ad9e3..b2ba0012a 100644
+--- a/debian/config/amd64/config
++++ b/debian/config/amd64/config
+@@ -251,3 +251,5 @@ CONFIG_LSM_MMAP_MIN_ADDR=65536
+ CONFIG_PHYLIB=m
+ CONFIG_OF_MDIO=m
+ CONFIG_MDIO_BUS_MUX=m
++#
++CONFIG_ARCH_NR_GPIO=10240
+-- 
+2.26.2
+
