@@ -1,0 +1,46 @@
+From 94efa7350c1630ca20ab2adabc7ef7452b8d4dc5 Mon Sep 17 00:00:00 2001
+From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+Date: Tue, 9 Mar 2021 09:49:12 -0800
+Subject: [PATCH] Enable REGMAP_I2C, REGMAP_MMIO
+
+---
+ debian/config/amd64/config  | 3 +++
+ drivers/base/regmap/Kconfig | 4 ++--
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/debian/config/amd64/config b/debian/config/amd64/config
+index b2ba0012a..b7f816c43 100644
+--- a/debian/config/amd64/config
++++ b/debian/config/amd64/config
+@@ -253,3 +253,6 @@ CONFIG_OF_MDIO=m
+ CONFIG_MDIO_BUS_MUX=m
+ #
+ CONFIG_ARCH_NR_GPIO=10240
++#
++CONFIG_REGMAP_I2C=m
++CONFIG_REGMAP_MMIO=m
+diff --git a/drivers/base/regmap/Kconfig b/drivers/base/regmap/Kconfig
+index 8cd2ac650..409cd726f 100644
+--- a/drivers/base/regmap/Kconfig
++++ b/drivers/base/regmap/Kconfig
+@@ -17,7 +17,7 @@ config REGMAP_AC97
+ 	tristate
+ 
+ config REGMAP_I2C
+-	tristate
++	tristate "Regmap I2C"
+ 	depends on I2C
+ 
+ config REGMAP_SLIMBUS
+@@ -37,7 +37,7 @@ config REGMAP_W1
+ 	depends on W1
+ 
+ config REGMAP_MMIO
+-	tristate
++	tristate "Regmap MMIO"
+ 
+ config REGMAP_IRQ
+ 	bool
+-- 
+2.26.2
+
