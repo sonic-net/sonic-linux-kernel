@@ -1,0 +1,198 @@
+commit 9a57f4339767fb8129ee54e9d1714af59d4a6937
+Author: balsup <balsup@contoso.com>
+Date:   Fri Aug 14 00:09:18 2020 +0000
+
+    Reserve address space for powered-off devices behind bridges
+
+diff --git a/drivers/pci/setup-bus.c b/drivers/pci/setup-bus.c
+index 8e5b00a..062cbe1 100644
+--- a/drivers/pci/setup-bus.c
++++ b/drivers/pci/setup-bus.c
+@@ -979,6 +979,149 @@ static inline resource_size_t calculate_mem_align(resource_size_t *aligns,
+ 	return min_align;
+ }
+ 
++#define PLX_RES_MAGIC_VALUE            0xABBA
++#define PLX_RES_DS_PORT_REG0           0xC6C
++#define PLX_RES_DS_PORT_REG1           0xC70
++#define PLX_RES_MAGIC_OFFSET           0xC76
++#define PLX_RES_NP_MASK                0x1
++#define PLX_RES_P_MASK                 0x1F
++
++static struct pci_dev *
++plx_find_nt_device(struct pci_bus *bus, unsigned short brg_dev_id)
++{
++       struct pci_dev *dev, *nt_virt_dev = NULL;
++       struct pci_bus *child_bus;
++       unsigned short vendor, devid, class;
++
++       if (!bus)
++               return NULL;
++
++       list_for_each_entry(child_bus, &bus->children, node) {
++               list_for_each_entry(dev, &child_bus->devices, bus_list) {
++                       vendor = dev->vendor;
++                       devid = dev->device;
++                       class = dev->class >> 8;
++
++                       if ((vendor == PCI_VENDOR_ID_PLX) &&
++                               (brg_dev_id == devid) &&
++                               (class == PCI_CLASS_BRIDGE_OTHER)) {
++                               dev_dbg(&dev->dev, "Found NT device 0x%x\n",
++                                       devid);
++                               nt_virt_dev = dev;
++                               break;
++                       }
++               }
++
++               if (nt_virt_dev)
++                       break;
++       }
++       return nt_virt_dev;
++}
++
++static resource_size_t
++pci_get_plx_downstream_res_size(struct pci_bus *bus,
++                                unsigned long res_type)
++{
++       int depth = 0;
++       resource_size_t size = 0;
++       struct pci_dev *dev = bus->self;
++       struct pci_bus *tmp_bus;
++       struct pci_dev *nt_virt_dev;
++       u16 res_magic = 0;
++
++       /*
++        * 32 bits to store the memory requirement for PLX ports.
++        * Following is the layout:
++        * np32_0:1;  --> non-prefetchable port 0
++        * p64_0:5;   --> prefetchable port 0
++        * np32_1:1;  --> non-prefetchable port 1
++        * p64_1:5;   --> prefetchable port 1
++        * np32_2:1;  --> non-prefetchable port 2
++        * p64_2:5;   --> prefetchable port 2
++        * np32_3:1;  --> non-prefetchable port 3
++        * p64_3:5;   --> prefetchable port 3
++        * np32_4:1;  --> non-prefetchable port 4
++        * p64_4:5;   --> prefetchable port 4
++        * reserved:2;
++        */
++       unsigned int port_bitmap;
++
++       u32 mem_res_bitmap = 0;
++       unsigned int ds_port_offset = 0;
++       unsigned short multiplier = 0;
++       unsigned short np_size = 0;
++
++       /*
++        * PLX8713 used on FC4 and FC8
++        * PLX8725 used on FC12 and FC18
++        */
++       if (!dev || dev->vendor != PCI_VENDOR_ID_PLX ||
++               ((dev->device & 0xFF00) != 0x8700))
++               return size;
++
++       tmp_bus = bus;
++       while (tmp_bus->parent) {
++               tmp_bus = tmp_bus->parent;
++               depth++;
++       }
++
++       /* Only for Second level bridges */
++       if (depth != 5)
++               return size;
++
++       nt_virt_dev = plx_find_nt_device(bus->parent, 0x87b0);
++       if (nt_virt_dev) {
++               pci_read_config_word(nt_virt_dev, PLX_RES_MAGIC_OFFSET,
++                       &res_magic);
++               dev_dbg(&nt_virt_dev->dev,
++                       "Magic offset of 0x%x found in NT device\n", res_magic);
++       }
++
++       if (res_magic == PLX_RES_MAGIC_VALUE) {
++               /*
++                * The pacifics are connected on PLX ports:
++                *  FC4 and FC8: #3, #4
++                *  FC12       : #3, #4, #5
++                *  FC18       : #3, #4, #5, #11
++                */
++
++               /* Calculate resource based on EEPROM values */
++               ds_port_offset = (bus->number - bus->parent->number) - 1;
++               if (ds_port_offset < 5) {
++                       pci_read_config_dword(nt_virt_dev, PLX_RES_DS_PORT_REG0,
++                               &mem_res_bitmap);
++               } else {
++                       ds_port_offset -= 5;
++                       pci_read_config_dword(nt_virt_dev, PLX_RES_DS_PORT_REG1,
++                               &mem_res_bitmap);
++               }
++               port_bitmap = mem_res_bitmap;
++               dev_dbg(&bus->dev, "Port offset: 0x%x, res bitmap 0x%x\n",
++                       ds_port_offset, mem_res_bitmap);
++
++               if (ds_port_offset < 5) {
++                       u8 m[] = { 26, 20, 14, 8, 2 };
++                       u8 s[] = { 31, 25, 19, 13, 7 };
++
++                       multiplier = (port_bitmap >> m[ds_port_offset]) & PLX_RES_P_MASK;
++                       np_size = (port_bitmap >> s[ds_port_offset]) & PLX_RES_NP_MASK;
++
++                       dev_dbg(&bus->dev, "Multiplier: %d, np_size: %d\n",
++                               multiplier, np_size);
++
++                       if (res_type & IORESOURCE_PREFETCH) {
++                               size = 0x100000 << (multiplier - 1);
++                               dev_dbg(&bus->dev, "Pref Multiplier %d, Size 0x%llx\n",
++                                       multiplier, (long long) size);
++                       } else if (np_size) {
++                               size = 0x100000;
++                               dev_dbg(&bus->dev, "NP Size 0x%llx\n", (long long) size);
++                       }
++                }
++       }
++       return size;
++}
++
+ /**
+  * pbus_size_mem() - size the memory window of a given bus
+  *
+@@ -1013,6 +1156,7 @@ static int pbus_size_mem(struct pci_bus *bus, unsigned long mask,
+ 	resource_size_t children_add_size = 0;
+ 	resource_size_t children_add_align = 0;
+ 	resource_size_t add_align = 0;
++        unsigned int dev_count = 0;
+ 
+ 	if (!b_res)
+ 		return -ENOSPC;
+@@ -1024,6 +1168,7 @@ static int pbus_size_mem(struct pci_bus *bus, unsigned long mask,
+ 	list_for_each_entry(dev, &bus->devices, bus_list) {
+ 		int i;
+ 
++                dev_count++;
+ 		for (i = 0; i < PCI_NUM_RESOURCES; i++) {
+ 			struct resource *r = &dev->resource[i];
+ 			resource_size_t r_size;
+@@ -1077,6 +1222,21 @@ static int pbus_size_mem(struct pci_bus *bus, unsigned long mask,
+ 		}
+ 	}
+ 
++        /* Static allocation for FC pacific */
++        if (!size && !dev_count) {
++            size = pci_get_plx_downstream_res_size(bus, type);
++            if (size) {
++                order = __ffs(size);
++                dev_dbg(&bus->self->dev, "order for %llx is %u\n", (long long) size, order);
++                if ((order >= 20) &&
++                    ((order -= 20) < ARRAY_SIZE(aligns)) &&
++                    (order > max_order)) {
++                        max_order = order;
++                        dev_dbg(&bus->self->dev, "max_order reset to %d; size %zx\n", max_order, (size_t)size);
++                }
++            }
++        }
++
+ 	min_align = calculate_mem_align(aligns, max_order);
+ 	min_align = max(min_align, window_alignment(bus, b_res->flags));
+ 	size0 = calculate_memsize(size, min_size, 0, resource_size(b_res), min_align);
