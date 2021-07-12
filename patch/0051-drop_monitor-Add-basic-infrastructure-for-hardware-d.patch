@@ -1,0 +1,164 @@
+From 61b1ea11cf26eebecebc2eba58c4ea876ddba2c2 Mon Sep 17 00:00:00 2001
+From: Ido Schimmel <idosch@mellanox.com>
+Date: Tue, 21 Jul 2020 15:31:05 -0700
+Subject: [PATCH 20/25] drop_monitor: Add basic infrastructure for hardware
+ drops
+
+[ upstream commit edd3d0074c256848bbf5805350b39d40b1e2bf2b ]
+
+Export a function that can be invoked in order to report packets that
+were dropped by the underlying hardware along with metadata.
+
+Subsequent patches will add support for the different alert modes.
+
+Signed-off-by: Ido Schimmel <idosch@mellanox.com>
+Acked-by: Jiri Pirko <jiri@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+(cherry picked from commit edd3d0074c256848bbf5805350b39d40b1e2bf2b)
+Closes: CM-30791
+Signed-off-by: Andy Roulin <aroulin@nvidia.com>
+Signed-off-by: Benjamin Poirier <bpoirier@cumulusnetworks.com>
+---
+ MAINTAINERS                |  2 ++
+ include/net/drop_monitor.h | 33 +++++++++++++++++++++++++++++++++
+ net/core/drop_monitor.c    | 28 ++++++++++++++++++++++++++++
+ 3 files changed, 63 insertions(+)
+ create mode 100644 include/net/drop_monitor.h
+
+diff --git a/MAINTAINERS b/MAINTAINERS
+index b22e7fdfd2ea..a35112ea772a 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -10049,6 +10049,8 @@ L:	netdev@vger.kernel.org
+ S:	Maintained
+ W:	https://fedorahosted.org/dropwatch/
+ F:	net/core/drop_monitor.c
++F:	include/uapi/linux/net_dropmon.h
++F:	include/net/drop_monitor.h
+ 
+ NETWORKING DRIVERS
+ M:	"David S. Miller" <davem@davemloft.net>
+diff --git a/include/net/drop_monitor.h b/include/net/drop_monitor.h
+new file mode 100644
+index 000000000000..2ab668461463
+--- /dev/null
++++ b/include/net/drop_monitor.h
+@@ -0,0 +1,33 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++
++#ifndef _NET_DROP_MONITOR_H_
++#define _NET_DROP_MONITOR_H_
++
++#include <linux/ktime.h>
++#include <linux/netdevice.h>
++#include <linux/skbuff.h>
++
++/**
++ * struct net_dm_hw_metadata - Hardware-supplied packet metadata.
++ * @trap_group_name: Hardware trap group name.
++ * @trap_name: Hardware trap name.
++ * @input_dev: Input netdevice.
++ */
++struct net_dm_hw_metadata {
++	const char *trap_group_name;
++	const char *trap_name;
++	struct net_device *input_dev;
++};
++
++#if IS_ENABLED(CONFIG_NET_DROP_MONITOR)
++void net_dm_hw_report(struct sk_buff *skb,
++		      const struct net_dm_hw_metadata *hw_metadata);
++#else
++static inline void
++net_dm_hw_report(struct sk_buff *skb,
++		 const struct net_dm_hw_metadata *hw_metadata)
++{
++}
++#endif
++
++#endif /* _NET_DROP_MONITOR_H_ */
+diff --git a/net/core/drop_monitor.c b/net/core/drop_monitor.c
+index 2a92326b79fc..78c09aab43fe 100644
+--- a/net/core/drop_monitor.c
++++ b/net/core/drop_monitor.c
+@@ -25,6 +25,7 @@
+ #include <linux/bitops.h>
+ #include <linux/slab.h>
+ #include <linux/module.h>
++#include <net/drop_monitor.h>
+ #include <net/genetlink.h>
+ #include <net/netevent.h>
+ 
+@@ -42,6 +43,7 @@
+  * netlink alerts
+  */
+ static int trace_state = TRACE_OFF;
++static bool monitor_hw;
+ 
+ /* net_dm_mutex
+  *
+@@ -92,6 +94,8 @@ struct net_dm_alert_ops {
+ 	void (*napi_poll_probe)(void *ignore, struct napi_struct *napi,
+ 				int work, int budget);
+ 	void (*work_item_func)(struct work_struct *work);
++	void (*hw_probe)(struct sk_buff *skb,
++			 const struct net_dm_hw_metadata *hw_metadata);
+ };
+ 
+ struct net_dm_skb_cb {
+@@ -269,10 +273,17 @@ static void trace_napi_poll_hit(void *ignore, struct napi_struct *napi,
+ 	rcu_read_unlock();
+ }
+ 
++static void
++net_dm_hw_summary_probe(struct sk_buff *skb,
++			const struct net_dm_hw_metadata *hw_metadata)
++{
++}
++
+ static const struct net_dm_alert_ops net_dm_alert_summary_ops = {
+ 	.kfree_skb_probe	= trace_kfree_skb_hit,
+ 	.napi_poll_probe	= trace_napi_poll_hit,
+ 	.work_item_func		= send_dm_alert,
++	.hw_probe		= net_dm_hw_summary_probe,
+ };
+ 
+ static void net_dm_packet_trace_kfree_skb_hit(void *ignore,
+@@ -484,10 +495,17 @@ static void net_dm_packet_work(struct work_struct *work)
+ 		net_dm_packet_report(skb);
+ }
+ 
++static void
++net_dm_hw_packet_probe(struct sk_buff *skb,
++		       const struct net_dm_hw_metadata *hw_metadata)
++{
++}
++
+ static const struct net_dm_alert_ops net_dm_alert_packet_ops = {
+ 	.kfree_skb_probe	= net_dm_packet_trace_kfree_skb_hit,
+ 	.napi_poll_probe	= net_dm_packet_trace_napi_poll_hit,
+ 	.work_item_func		= net_dm_packet_work,
++	.hw_probe		= net_dm_hw_packet_probe,
+ };
+ 
+ static const struct net_dm_alert_ops *net_dm_alert_ops_arr[] = {
+@@ -495,6 +513,16 @@ static const struct net_dm_alert_ops *net_dm_alert_ops_arr[] = {
+ 	[NET_DM_ALERT_MODE_PACKET]	= &net_dm_alert_packet_ops,
+ };
+ 
++void net_dm_hw_report(struct sk_buff *skb,
++		      const struct net_dm_hw_metadata *hw_metadata)
++{
++	if (!monitor_hw)
++		return;
++
++	net_dm_alert_ops_arr[net_dm_alert_mode]->hw_probe(skb, hw_metadata);
++}
++EXPORT_SYMBOL_GPL(net_dm_hw_report);
++
+ static int net_dm_trace_on_set(struct netlink_ext_ack *extack)
+ {
+ 	const struct net_dm_alert_ops *ops;
+-- 
+2.25.1
+

@@ -1,0 +1,84 @@
+From 323b4a8fea3424ccadbf335ec19b0e7963f59a0d Mon Sep 17 00:00:00 2001
+From: Ido Schimmel <idosch@mellanox.com>
+Date: Tue, 21 Jul 2020 15:31:04 -0700
+Subject: [PATCH 19/25] drop_monitor: Initialize hardware per-CPU data
+
+[ upstream commit cac1174fa17f2cf5d504cbe00c0053f0b9e3b58d ]
+
+Like software drops, hardware drops also need the same type of per-CPU
+data. Therefore, initialize it during module initialization and
+de-initialize it during module exit.
+
+Signed-off-by: Ido Schimmel <idosch@mellanox.com>
+Acked-by: Jiri Pirko <jiri@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+(cherry picked from commit cac1174fa17f2cf5d504cbe00c0053f0b9e3b58d)
+Closes: CM-30791
+Signed-off-by: Andy Roulin <aroulin@nvidia.com>
+Signed-off-by: Benjamin Poirier <bpoirier@cumulusnetworks.com>
+---
+ net/core/drop_monitor.c | 25 +++++++++++++++++++++++--
+ 1 file changed, 23 insertions(+), 2 deletions(-)
+
+diff --git a/net/core/drop_monitor.c b/net/core/drop_monitor.c
+index 5b79b4b648f4..2a92326b79fc 100644
+--- a/net/core/drop_monitor.c
++++ b/net/core/drop_monitor.c
+@@ -75,6 +75,7 @@ struct dm_hw_stat_delta {
+ static struct genl_family net_drop_monitor_family;
+ 
+ static DEFINE_PER_CPU(struct per_cpu_dm_data, dm_cpu_data);
++static DEFINE_PER_CPU(struct per_cpu_dm_data, dm_hw_cpu_data);
+ 
+ static int dm_hit_limit = 64;
+ static int dm_delay = 1;
+@@ -963,6 +964,22 @@ static void net_dm_cpu_data_fini(int cpu)
+ 	__net_dm_cpu_data_fini(data);
+ }
+ 
++static void net_dm_hw_cpu_data_init(int cpu)
++{
++	struct per_cpu_dm_data *hw_data;
++
++	hw_data = &per_cpu(dm_hw_cpu_data, cpu);
++	__net_dm_cpu_data_init(hw_data);
++}
++
++static void net_dm_hw_cpu_data_fini(int cpu)
++{
++	struct per_cpu_dm_data *hw_data;
++
++	hw_data = &per_cpu(dm_hw_cpu_data, cpu);
++	__net_dm_cpu_data_fini(hw_data);
++}
++
+ static int __init init_net_drop_monitor(void)
+ {
+ 	int cpu, rc;
+@@ -989,8 +1006,10 @@ static int __init init_net_drop_monitor(void)
+ 
+ 	rc = 0;
+ 
+-	for_each_possible_cpu(cpu)
++	for_each_possible_cpu(cpu) {
+ 		net_dm_cpu_data_init(cpu);
++		net_dm_hw_cpu_data_init(cpu);
++	}
+ 
+ 	goto out;
+ 
+@@ -1011,8 +1030,10 @@ static void exit_net_drop_monitor(void)
+ 	 * we are guarnateed not to have any current users when we get here
+ 	 */
+ 
+-	for_each_possible_cpu(cpu)
++	for_each_possible_cpu(cpu) {
++		net_dm_hw_cpu_data_fini(cpu);
+ 		net_dm_cpu_data_fini(cpu);
++	}
+ 
+ 	BUG_ON(genl_unregister_family(&net_drop_monitor_family));
+ }
+-- 
+2.25.1
+

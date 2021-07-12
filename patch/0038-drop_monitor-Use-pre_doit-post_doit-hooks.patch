@@ -1,0 +1,78 @@
+From d47fcced735b8f085937bbc0ec48921bcfa84ae2 Mon Sep 17 00:00:00 2001
+From: Ido Schimmel <idosch@mellanox.com>
+Date: Mon, 22 Jun 2020 11:31:50 -0700
+Subject: [PATCH 07/25] drop_monitor: Use pre_doit / post_doit hooks
+
+[ upstream commit b19d955055480ac4e03f5afec0ca80f0de7b7013 ]
+
+Each operation from user space should be protected by the global drop
+monitor mutex. Use the pre_doit / post_doit hooks to take / release the
+lock instead of doing it explicitly in each function.
+
+Signed-off-by: Ido Schimmel <idosch@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+(cherry picked from commit b19d955055480ac4e03f5afec0ca80f0de7b7013)
+Signed-off-by: Andy Roulin <aroulin@nvidia.com>
+Signed-off-by: Benjamin Poirier <bpoirier@cumulusnetworks.com>
+---
+ net/core/drop_monitor.c | 24 +++++++++++++++++-------
+ 1 file changed, 17 insertions(+), 7 deletions(-)
+
+diff --git a/net/core/drop_monitor.c b/net/core/drop_monitor.c
+index da953f553388..b56cb0c7e146 100644
+--- a/net/core/drop_monitor.c
++++ b/net/core/drop_monitor.c
+@@ -249,12 +249,9 @@ static int set_all_monitor_traces(int state, struct netlink_ext_ack *extack)
+ 	struct dm_hw_stat_delta *new_stat = NULL;
+ 	struct dm_hw_stat_delta *temp;
+ 
+-	mutex_lock(&net_dm_mutex);
+-
+ 	if (state == trace_state) {
+ 		NL_SET_ERR_MSG_MOD(extack, "Trace state already set to requested state");
+-		rc = -EAGAIN;
+-		goto out_unlock;
++		return -EAGAIN;
+ 	}
+ 
+ 	switch (state) {
+@@ -298,9 +295,6 @@ static int set_all_monitor_traces(int state, struct netlink_ext_ack *extack)
+ 	else
+ 		rc = -EINPROGRESS;
+ 
+-out_unlock:
+-	mutex_unlock(&net_dm_mutex);
+-
+ 	return rc;
+ }
+ 
+@@ -379,10 +373,26 @@ static const struct genl_ops dropmon_ops[] = {
+ 	},
+ };
+ 
++static int net_dm_nl_pre_doit(const struct genl_ops *ops,
++			      struct sk_buff *skb, struct genl_info *info)
++{
++	mutex_lock(&net_dm_mutex);
++
++	return 0;
++}
++
++static void net_dm_nl_post_doit(const struct genl_ops *ops,
++				struct sk_buff *skb, struct genl_info *info)
++{
++	mutex_unlock(&net_dm_mutex);
++}
++
+ static struct genl_family net_drop_monitor_family __ro_after_init = {
+ 	.hdrsize        = 0,
+ 	.name           = "NET_DM",
+ 	.version        = 2,
++	.pre_doit	= net_dm_nl_pre_doit,
++	.post_doit	= net_dm_nl_post_doit,
+ 	.module		= THIS_MODULE,
+ 	.ops		= dropmon_ops,
+ 	.n_ops		= ARRAY_SIZE(dropmon_ops),
+-- 
+2.25.1
+

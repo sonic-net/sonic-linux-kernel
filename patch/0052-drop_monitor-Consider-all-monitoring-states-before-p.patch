@@ -1,0 +1,55 @@
+From 8be8e9af28b1ba0473695eaf16b9fbe33f20c2b9 Mon Sep 17 00:00:00 2001
+From: Ido Schimmel <idosch@mellanox.com>
+Date: Tue, 21 Jul 2020 15:31:06 -0700
+Subject: [PATCH 21/25] drop_monitor: Consider all monitoring states before
+ performing configuration
+
+[ upstream commit 80cebed85c88e71fb435b9eb5948548f10f15cba ]
+
+The drop monitor configuration (e.g., alert mode) is global, but user
+will be able to enable monitoring of only software or hardware drops.
+
+Therefore, ensure that monitoring of both software and hardware drops are
+disabled before allowing drop monitor configuration to take place.
+
+Signed-off-by: Ido Schimmel <idosch@mellanox.com>
+Acked-by: Jiri Pirko <jiri@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+(cherry picked from commit 80cebed85c88e71fb435b9eb5948548f10f15cba)
+Closes: CM-30791
+Signed-off-by: Andy Roulin <aroulin@nvidia.com>
+Signed-off-by: Benjamin Poirier <bpoirier@cumulusnetworks.com>
+---
+ net/core/drop_monitor.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/net/core/drop_monitor.c b/net/core/drop_monitor.c
+index 78c09aab43fe..79c950dd6c1b 100644
+--- a/net/core/drop_monitor.c
++++ b/net/core/drop_monitor.c
+@@ -635,6 +635,11 @@ static int set_all_monitor_traces(int state, struct netlink_ext_ack *extack)
+ 	return rc;
+ }
+ 
++static bool net_dm_is_monitoring(void)
++{
++	return trace_state == TRACE_ON || monitor_hw;
++}
++
+ static int net_dm_alert_mode_get_from_info(struct genl_info *info,
+ 					   enum net_dm_alert_mode *p_alert_mode)
+ {
+@@ -696,8 +701,8 @@ static int net_dm_cmd_config(struct sk_buff *skb,
+ 	struct netlink_ext_ack *extack = info->extack;
+ 	int rc;
+ 
+-	if (trace_state == TRACE_ON) {
+-		NL_SET_ERR_MSG_MOD(extack, "Cannot configure drop monitor while tracing is on");
++	if (net_dm_is_monitoring()) {
++		NL_SET_ERR_MSG_MOD(extack, "Cannot configure drop monitor during monitoring");
+ 		return -EBUSY;
+ 	}
+ 
+-- 
+2.25.1
+

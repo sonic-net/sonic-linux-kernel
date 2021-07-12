@@ -1,0 +1,44 @@
+From 89611b0ce5f42080c087e61d70f36bb036b53b04 Mon Sep 17 00:00:00 2001
+From: Ido Schimmel <idosch@mellanox.com>
+Date: Mon, 22 Jun 2020 11:31:45 -0700
+Subject: [PATCH 02/25] drop_monitor: Use correct error code
+
+[ upstream commit 2230a7ef5198632bdbf844fcf0abdd7958a6ac7d ]
+
+The error code 'ENOTSUPP' is reserved for use with NFS. Use 'EOPNOTSUPP'
+instead.
+
+Signed-off-by: Ido Schimmel <idosch@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+(cherry picked from commit 2230a7ef5198632bdbf844fcf0abdd7958a6ac7d)
+Signed-off-by: Andy Roulin <aroulin@nvidia.com>
+Signed-off-by: Benjamin Poirier <bpoirier@cumulusnetworks.com>
+---
+ net/core/drop_monitor.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/core/drop_monitor.c b/net/core/drop_monitor.c
+index 3978a5e8d261..d8d110db9f70 100644
+--- a/net/core/drop_monitor.c
++++ b/net/core/drop_monitor.c
+@@ -300,7 +300,7 @@ static int set_all_monitor_traces(int state)
+ static int net_dm_cmd_config(struct sk_buff *skb,
+ 			struct genl_info *info)
+ {
+-	return -ENOTSUPP;
++	return -EOPNOTSUPP;
+ }
+ 
+ static int net_dm_cmd_trace(struct sk_buff *skb,
+@@ -313,7 +313,7 @@ static int net_dm_cmd_trace(struct sk_buff *skb,
+ 		return set_all_monitor_traces(TRACE_OFF);
+ 	}
+ 
+-	return -ENOTSUPP;
++	return -EOPNOTSUPP;
+ }
+ 
+ static int dropmon_net_event(struct notifier_block *ev_block,
+-- 
+2.25.1
+

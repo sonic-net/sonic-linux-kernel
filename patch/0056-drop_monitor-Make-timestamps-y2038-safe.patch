@@ -1,0 +1,104 @@
+From e602e8ad9dee2b9696fd2b47900e1bf67f474517 Mon Sep 17 00:00:00 2001
+From: Ido Schimmel <idosch@mellanox.com>
+Date: Mon, 27 Jul 2020 18:11:08 -0700
+Subject: [PATCH 25/25] drop_monitor: Make timestamps y2038 safe
+
+[ upstream commit bd1200b79510a68554890af2f48d92be6eb1daf8 ]
+
+Timestamps are currently communicated to user space as 'struct
+timespec', which is not considered y2038 safe since it uses a 32-bit
+signed value for seconds.
+
+Fix this while the API is still not part of any official kernel release
+by using 64-bit nanoseconds timestamps instead.
+
+Fixes: ca30707dee2b ("drop_monitor: Add packet alert mode")
+Fixes: 5e58109b1ea4 ("drop_monitor: Add support for packet alert mode for hardware drops")
+Signed-off-by: Ido Schimmel <idosch@mellanox.com>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+(cherry picked from commit bd1200b79510a68554890af2f48d92be6eb1daf8)
+Closes: CM-30791
+Signed-off-by: Andy Roulin <aroulin@nvidia.com>
+Signed-off-by: Benjamin Poirier <bpoirier@cumulusnetworks.com>
+---
+ include/uapi/linux/net_dropmon.h |  2 +-
+ net/core/drop_monitor.c          | 14 ++++++--------
+ 2 files changed, 7 insertions(+), 9 deletions(-)
+
+diff --git a/include/uapi/linux/net_dropmon.h b/include/uapi/linux/net_dropmon.h
+index 75a35dccb675..8bf79a9eb234 100644
+--- a/include/uapi/linux/net_dropmon.h
++++ b/include/uapi/linux/net_dropmon.h
+@@ -75,7 +75,7 @@ enum net_dm_attr {
+ 	NET_DM_ATTR_PC,				/* u64 */
+ 	NET_DM_ATTR_SYMBOL,			/* string */
+ 	NET_DM_ATTR_IN_PORT,			/* nested */
+-	NET_DM_ATTR_TIMESTAMP,			/* struct timespec */
++	NET_DM_ATTR_TIMESTAMP,			/* u64 */
+ 	NET_DM_ATTR_PROTO,			/* u16 */
+ 	NET_DM_ATTR_PAYLOAD,			/* binary */
+ 	NET_DM_ATTR_PAD,
+diff --git a/net/core/drop_monitor.c b/net/core/drop_monitor.c
+index 1993188d96a3..69b1a211a3ce 100644
+--- a/net/core/drop_monitor.c
++++ b/net/core/drop_monitor.c
+@@ -554,7 +554,7 @@ static size_t net_dm_packet_report_size(size_t payload_len)
+ 	       /* NET_DM_ATTR_IN_PORT */
+ 	       net_dm_in_port_size() +
+ 	       /* NET_DM_ATTR_TIMESTAMP */
+-	       nla_total_size(sizeof(struct timespec)) +
++	       nla_total_size(sizeof(u64)) +
+ 	       /* NET_DM_ATTR_ORIG_LEN */
+ 	       nla_total_size(sizeof(u32)) +
+ 	       /* NET_DM_ATTR_PROTO */
+@@ -594,7 +594,6 @@ static int net_dm_packet_report_fill(struct sk_buff *msg, struct sk_buff *skb,
+ 	u64 pc = (u64)(uintptr_t) NET_DM_SKB_CB(skb)->pc;
+ 	char buf[NET_DM_MAX_SYMBOL_LEN];
+ 	struct nlattr *attr;
+-	struct timespec ts;
+ 	void *hdr;
+ 	int rc;
+ 
+@@ -617,8 +616,8 @@ static int net_dm_packet_report_fill(struct sk_buff *msg, struct sk_buff *skb,
+ 	if (rc)
+ 		goto nla_put_failure;
+ 
+-	if (ktime_to_timespec_cond(skb->tstamp, &ts) &&
+-	    nla_put(msg, NET_DM_ATTR_TIMESTAMP, sizeof(ts), &ts))
++	if (nla_put_u64_64bit(msg, NET_DM_ATTR_TIMESTAMP,
++			      ktime_to_ns(skb->tstamp), NET_DM_ATTR_PAD))
+ 		goto nla_put_failure;
+ 
+ 	if (nla_put_u32(msg, NET_DM_ATTR_ORIG_LEN, skb->len))
+@@ -718,7 +717,7 @@ net_dm_hw_packet_report_size(size_t payload_len,
+ 	       /* NET_DM_ATTR_IN_PORT */
+ 	       net_dm_in_port_size() +
+ 	       /* NET_DM_ATTR_TIMESTAMP */
+-	       nla_total_size(sizeof(struct timespec)) +
++	       nla_total_size(sizeof(u64)) +
+ 	       /* NET_DM_ATTR_ORIG_LEN */
+ 	       nla_total_size(sizeof(u32)) +
+ 	       /* NET_DM_ATTR_PROTO */
+@@ -732,7 +731,6 @@ static int net_dm_hw_packet_report_fill(struct sk_buff *msg,
+ {
+ 	struct net_dm_hw_metadata *hw_metadata;
+ 	struct nlattr *attr;
+-	struct timespec ts;
+ 	void *hdr;
+ 
+ 	hw_metadata = NET_DM_SKB_CB(skb)->hw_metadata;
+@@ -763,8 +761,8 @@ static int net_dm_hw_packet_report_fill(struct sk_buff *msg,
+ 			goto nla_put_failure;
+ 	}
+ 
+-	if (ktime_to_timespec_cond(skb->tstamp, &ts) &&
+-	    nla_put(msg, NET_DM_ATTR_TIMESTAMP, sizeof(ts), &ts))
++	if (nla_put_u64_64bit(msg, NET_DM_ATTR_TIMESTAMP,
++			      ktime_to_ns(skb->tstamp), NET_DM_ATTR_PAD))
+ 		goto nla_put_failure;
+ 
+ 	if (nla_put_u32(msg, NET_DM_ATTR_ORIG_LEN, skb->len))
+-- 
+2.25.1
+

@@ -1,0 +1,114 @@
+From 0761ed61e8da7dcf948d949b11cbe8ec23d13366 Mon Sep 17 00:00:00 2001
+From: Ido Schimmel <idosch@mellanox.com>
+Date: Tue, 21 Jul 2020 15:30:59 -0700
+Subject: [PATCH 14/25] drop_monitor: Allow truncation of dropped packets
+
+[ upstream commit 57986617a736aec2980c1c78a9dd8dcdf477ee6e ]
+
+When sending dropped packets to user space it is not always necessary to
+copy the entire packet as usually only the headers are of interest.
+
+Allow user to specify the truncation length and add the original length
+of the packet as additional metadata to the netlink message.
+
+By default no truncation is performed.
+
+Signed-off-by: Ido Schimmel <idosch@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+(cherry picked from commit 57986617a736aec2980c1c78a9dd8dcdf477ee6e)
+Closes: CM-30791
+Signed-off-by: Andy Roulin <aroulin@nvidia.com>
+Signed-off-by: Benjamin Poirier <bpoirier@cumulusnetworks.com>
+---
+ include/uapi/linux/net_dropmon.h |  2 ++
+ net/core/drop_monitor.c          | 19 +++++++++++++++++++
+ 2 files changed, 21 insertions(+)
+
+diff --git a/include/uapi/linux/net_dropmon.h b/include/uapi/linux/net_dropmon.h
+index cfaaf75371b8..5cd7eb1f66ba 100644
+--- a/include/uapi/linux/net_dropmon.h
++++ b/include/uapi/linux/net_dropmon.h
+@@ -75,6 +75,8 @@ enum net_dm_attr {
+ 	NET_DM_ATTR_PROTO,			/* u16 */
+ 	NET_DM_ATTR_PAYLOAD,			/* binary */
+ 	NET_DM_ATTR_PAD,
++	NET_DM_ATTR_TRUNC_LEN,			/* u32 */
++	NET_DM_ATTR_ORIG_LEN,			/* u32 */
+ 
+ 	__NET_DM_ATTR_MAX,
+ 	NET_DM_ATTR_MAX = __NET_DM_ATTR_MAX - 1
+diff --git a/net/core/drop_monitor.c b/net/core/drop_monitor.c
+index 7f297b9704cf..e9dcf1483dac 100644
+--- a/net/core/drop_monitor.c
++++ b/net/core/drop_monitor.c
+@@ -76,6 +76,7 @@ static unsigned long dm_hw_check_delta = 2*HZ;
+ static LIST_HEAD(hw_stats_list);
+ 
+ static enum net_dm_alert_mode net_dm_alert_mode = NET_DM_ALERT_MODE_SUMMARY;
++static u32 net_dm_trunc_len;
+ 
+ struct net_dm_alert_ops {
+ 	void (*kfree_skb_probe)(void *ignore, struct sk_buff *skb,
+@@ -336,6 +337,8 @@ static size_t net_dm_packet_report_size(size_t payload_len)
+ 	       net_dm_in_port_size() +
+ 	       /* NET_DM_ATTR_TIMESTAMP */
+ 	       nla_total_size(sizeof(struct timespec)) +
++	       /* NET_DM_ATTR_ORIG_LEN */
++	       nla_total_size(sizeof(u32)) +
+ 	       /* NET_DM_ATTR_PROTO */
+ 	       nla_total_size(sizeof(u16)) +
+ 	       /* NET_DM_ATTR_PAYLOAD */
+@@ -393,6 +396,9 @@ static int net_dm_packet_report_fill(struct sk_buff *msg, struct sk_buff *skb,
+ 	    nla_put(msg, NET_DM_ATTR_TIMESTAMP, sizeof(ts), &ts))
+ 		goto nla_put_failure;
+ 
++	if (nla_put_u32(msg, NET_DM_ATTR_ORIG_LEN, skb->len))
++		goto nla_put_failure;
++
+ 	if (!payload_len)
+ 		goto out;
+ 
+@@ -431,6 +437,8 @@ static void net_dm_packet_report(struct sk_buff *skb)
+ 
+ 	/* Ensure packet fits inside a single netlink attribute */
+ 	payload_len = min_t(size_t, skb->len, NET_DM_MAX_PACKET_SIZE);
++	if (net_dm_trunc_len)
++		payload_len = min_t(size_t, net_dm_trunc_len, payload_len);
+ 
+ 	msg = nlmsg_new(net_dm_packet_report_size(payload_len), GFP_KERNEL);
+ 	if (!msg)
+@@ -629,6 +637,14 @@ static int net_dm_alert_mode_set(struct genl_info *info)
+ 	return 0;
+ }
+ 
++static void net_dm_trunc_len_set(struct genl_info *info)
++{
++	if (!info->attrs[NET_DM_ATTR_TRUNC_LEN])
++		return;
++
++	net_dm_trunc_len = nla_get_u32(info->attrs[NET_DM_ATTR_TRUNC_LEN]);
++}
++
+ static int net_dm_cmd_config(struct sk_buff *skb,
+ 			struct genl_info *info)
+ {
+@@ -644,6 +660,8 @@ static int net_dm_cmd_config(struct sk_buff *skb,
+ 	if (rc)
+ 		return rc;
+ 
++	net_dm_trunc_len_set(info);
++
+ 	return 0;
+ }
+ 
+@@ -701,6 +719,7 @@ static int dropmon_net_event(struct notifier_block *ev_block,
+ 
+ static const struct nla_policy net_dm_nl_policy[NET_DM_ATTR_MAX + 1] = {
+ 	[NET_DM_ATTR_ALERT_MODE] = { .type = NLA_U8 },
++	[NET_DM_ATTR_TRUNC_LEN] = { .type = NLA_U32 },
+ };
+ 
+ static const struct genl_ops dropmon_ops[] = {
+-- 
+2.25.1
+

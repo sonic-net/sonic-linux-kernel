@@ -1,0 +1,40 @@
+From c342382f24f779bdedb65d4e0b4e7d43d7b1c258 Mon Sep 17 00:00:00 2001
+From: Ido Schimmel <idosch@mellanox.com>
+Date: Tue, 21 Jul 2020 15:30:56 -0700
+Subject: [PATCH 11/25] drop_monitor: Require CAP_NET_ADMIN for drop monitor
+ configuration
+
+[ upstream commit c5ab9b1c41f6d89d84fe147e51fe623f90bd026c ]
+
+Currently, the configure command does not do anything but return an
+error. Subsequent patches will enable the command to change various
+configuration options such as alert mode and packet truncation.
+
+Similar to other netlink-based configuration channels, make sure only
+users with the CAP_NET_ADMIN capability set can execute this command.
+
+Signed-off-by: Ido Schimmel <idosch@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+(cherry picked from commit c5ab9b1c41f6d89d84fe147e51fe623f90bd026c)
+Closes: CM-30791
+Signed-off-by: Andy Roulin <aroulin@nvidia.com>
+Signed-off-by: Benjamin Poirier <bpoirier@cumulusnetworks.com>
+---
+ net/core/drop_monitor.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/net/core/drop_monitor.c b/net/core/drop_monitor.c
+index bad952b1be8b..910704e30339 100644
+--- a/net/core/drop_monitor.c
++++ b/net/core/drop_monitor.c
+@@ -410,6 +410,7 @@ static const struct genl_ops dropmon_ops[] = {
+ 	{
+ 		.cmd = NET_DM_CMD_CONFIG,
+ 		.doit = net_dm_cmd_config,
++		.flags = GENL_ADMIN_PERM,
+ 	},
+ 	{
+ 		.cmd = NET_DM_CMD_START,
+-- 
+2.25.1
+

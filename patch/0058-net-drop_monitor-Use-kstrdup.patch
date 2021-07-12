@@ -1,0 +1,41 @@
+From 72d62c4e422ed2380a2acd51747789b48146e4ee Mon Sep 17 00:00:00 2001
+From: Joe Perches <joe@perches.com>
+Date: Tue, 28 Jan 2020 11:02:50 -0800
+Subject: [PATCH] net: drop_monitor: Use kstrdup
+
+Convert the equivalent but rather odd uses of kmemdup with
+__GFP_ZERO to the more common kstrdup and avoid unnecessary
+zeroing of copied over memory.
+
+Signed-off-by: Joe Perches <joe@perches.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ net/core/drop_monitor.c | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/net/core/drop_monitor.c b/net/core/drop_monitor.c
+index 536e032d95c8..ea46fc6aa883 100644
+--- a/net/core/drop_monitor.c
++++ b/net/core/drop_monitor.c
+@@ -802,16 +802,12 @@ net_dm_hw_metadata_clone(const struct net_dm_hw_metadata *hw_metadata)
+ 	if (!n_hw_metadata)
+ 		return NULL;
+ 
+-	trap_group_name = kmemdup(hw_metadata->trap_group_name,
+-				  strlen(hw_metadata->trap_group_name) + 1,
+-				  GFP_ATOMIC | __GFP_ZERO);
++	trap_group_name = kstrdup(hw_metadata->trap_group_name, GFP_ATOMIC);
+ 	if (!trap_group_name)
+ 		goto free_hw_metadata;
+ 	n_hw_metadata->trap_group_name = trap_group_name;
+ 
+-	trap_name = kmemdup(hw_metadata->trap_name,
+-			    strlen(hw_metadata->trap_name) + 1,
+-			    GFP_ATOMIC | __GFP_ZERO);
++	trap_name = kstrdup(hw_metadata->trap_name, GFP_ATOMIC);
+ 	if (!trap_name)
+ 		goto free_trap_group;
+ 	n_hw_metadata->trap_name = trap_name;
+-- 
+2.11.0
+

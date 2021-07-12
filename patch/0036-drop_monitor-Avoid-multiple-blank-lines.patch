@@ -1,0 +1,44 @@
+From a976cda650a4cec069aba30e55fd5cdb46209f34 Mon Sep 17 00:00:00 2001
+From: Ido Schimmel <idosch@mellanox.com>
+Date: Mon, 22 Jun 2020 11:31:48 -0700
+Subject: [PATCH 05/25] drop_monitor: Avoid multiple blank lines
+
+[ upstream commit ff3818ca39c9f9ce07c4d50db594b9673dfa422c ]
+
+Remove multiple blank lines which are visually annoying and useless.
+
+This suppresses the "Please don't use multiple blank lines" checkpatch
+messages.
+
+Signed-off-by: Ido Schimmel <idosch@mellanox.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+(cherry picked from commit ff3818ca39c9f9ce07c4d50db594b9673dfa422c)
+Signed-off-by: Andy Roulin <aroulin@nvidia.com>
+Signed-off-by: Benjamin Poirier <bpoirier@cumulusnetworks.com>
+---
+ net/core/drop_monitor.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/net/core/drop_monitor.c b/net/core/drop_monitor.c
+index 43f951f34feb..b053f8ab529c 100644
+--- a/net/core/drop_monitor.c
++++ b/net/core/drop_monitor.c
+@@ -302,7 +302,6 @@ static int set_all_monitor_traces(int state)
+ 	return rc;
+ }
+ 
+-
+ static int net_dm_cmd_config(struct sk_buff *skb,
+ 			struct genl_info *info)
+ {
+@@ -426,7 +425,6 @@ static int __init init_net_drop_monitor(void)
+ 		reset_per_cpu_data(data);
+ 	}
+ 
+-
+ 	goto out;
+ 
+ out_unreg:
+-- 
+2.25.1
+
