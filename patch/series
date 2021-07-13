@@ -84,6 +84,10 @@ net-sch_generic-fix-the-missing-new-qdisc-assignment.patch
 0030-hwmon-Add-convience-macro-to-define-simple-static-se.patch
 0031-backport-nvme-Add-hardware-monitoring-support.patch
 0032-platform-mellanox-mlxreg-hotplug-Use-capability-regi.patch
+
+#
+# Marvell platform patches for 4.19
+armhf_secondary_boot_online.patch
 ############################################################
 #
 # Internal patches will be added below (placeholder)
