@@ -1,37 +1,24 @@
-From 2bc0b2e84866a7733fc05a34bd8a93e165db99cc Mon Sep 17 00:00:00 2001
+From abed4e61fa2865893ccb4f0da8c31ab9d431c4d9 Mon Sep 17 00:00:00 2001
 From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
-Date: Tue, 9 Mar 2021 13:54:28 -0800
-Subject: [PATCH] NPU disable other bars
+Date: Mon, 12 Jul 2021 23:21:08 -0700
+Subject: [PATCH] NPU disable unused PCI BAR
 
-    This is a port of IOS XR patch
+For Cisco ASIC only BAR0 is valid. Not disabling other BAR's
+was resulting in pci_enable_device function failure.
+Further debugging and consultion with Hardware team, issue seems
+to be related to ASIC and workaround suggested is to disable
+unused PCI BAR
 
-        Spitfire-pacific-disable-all-bars-other-than-0.patch
-
-    to Debian kernel. Modifications from IOS XR:
-
-    a. Only issue an INFO message for changed resources
-    b. Include the previous resource data in the INFO message
-    c. Prepare for the possibility of applying patch to
-       future NPU revisions.
-
-    Original patch message follows:
-
-    For Pacific, only bar 0 is valid. Hence disable all other bars as a work
-    around for spitfire
-
-    CDETS: CSCvi15029
-
-    Signed-off-by: Gaurav Gupta <gauragup@cisco.com>
-    Signed-off-by: Subha Keshavaraj <subkesha@cisco.com>
+Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
 ---
- drivers/pci/quirks.c | 50 ++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 50 insertions(+)
+ drivers/pci/quirks.c | 52 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 52 insertions(+)
 
 diff --git a/drivers/pci/quirks.c b/drivers/pci/quirks.c
-index af2149632..932d219e7 100644
+index af2149632..1772d8304 100644
 --- a/drivers/pci/quirks.c
 +++ b/drivers/pci/quirks.c
-@@ -5462,3 +5462,53 @@ static void apex_pci_fixup_class(struct pci_dev *pdev)
+@@ -5462,3 +5462,55 @@ static void apex_pci_fixup_class(struct pci_dev *pdev)
  }
  DECLARE_PCI_FIXUP_CLASS_HEADER(0x1ac1, 0x089a,
  			       PCI_CLASS_NOT_DEFINED, 8, apex_pci_fixup_class);
@@ -56,7 +43,8 @@ index af2149632..932d219e7 100644
 +		if (!r->start && !r->end && !r->flags)
 +			continue;
 +
-+		dev_info(&dev->dev, "Cisco Silicon One BAR %d %pR fixed up\n", i, r);
++		dev_info(&dev->dev,
++			"Cisco Silicon One BAR %d %pR fixed up\n", i, r);
 +		r->start = 0;
 +		r->end = 0;
 +		r->flags = 0;
@@ -70,21 +58,22 @@ index af2149632..932d219e7 100644
 +	dev->class = PCI_CLASS_MEMORY_OTHER << 8;
 +	dev_info(&dev->dev, "Cisco Silicon One class adjusted\n");
 +}
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_SYNOPSYS, PCI_DEVICE_ID_LEABA_PACIFIC,
-+                        silicon_one_fixup);
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_PACIFIC,
-+                        silicon_one_fixup);
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_GIBRALTAR,
-+                        silicon_one_fixup);
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_GRAPHENE,
-+                        silicon_one_fixup);
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_PALLADIUM,
-+                        silicon_one_fixup);
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_ARGON,
-+                        silicon_one_fixup);
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_KRYPTON,
-+                        silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_SYNOPSYS,
++		PCI_DEVICE_ID_LEABA_PACIFIC, silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO,
++		PCI_DEVICE_ID_LEABA_PACIFIC, silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO,
++		PCI_DEVICE_ID_LEABA_GIBRALTAR, silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO,
++		PCI_DEVICE_ID_LEABA_GRAPHENE, silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO,
++		PCI_DEVICE_ID_LEABA_PALLADIUM, silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO,
++		PCI_DEVICE_ID_LEABA_ARGON, silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO,
++		PCI_DEVICE_ID_LEABA_KRYPTON, silicon_one_fixup);
++
 +
 -- 
-2.26.2
+2.26.2.dirty
 
