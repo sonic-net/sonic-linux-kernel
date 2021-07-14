@@ -113,6 +113,10 @@ net-sch_generic-fix-the-missing-new-qdisc-assignment.patch
 0059-drop_monitor-Do-not-cancel-uninitialized-work-item.patch
 0060-flow_offload-pass-action-cookie-through-offload-structures.patch
 0061-drop_monitor-extend-by-passing-cookie-from-driver.patch
+
+#
+# Marvell platform patches for 4.19
+armhf_secondary_boot_online.patch
 ############################################################
 #
 # Internal patches will be added below (placeholder)
