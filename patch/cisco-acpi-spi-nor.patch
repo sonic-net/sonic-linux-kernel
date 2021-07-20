@@ -1,6 +1,6 @@
-From 68853e9c3d5e19a0145cb75226d239e8a869742d Mon Sep 17 00:00:00 2001
+From d7cdcd35762d7c0957fd356b65456bf3cb952b73 Mon Sep 17 00:00:00 2001
 From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
-Date: Mon, 19 Jul 2021 13:33:44 -0700
+Date: Tue, 20 Jul 2021 12:22:47 -0700
 Subject: [PATCH] mtd: m25p80 spi driver update to support ACPI table match
 
 Current m25p80 spi nor driver does not support ACPI table match.
@@ -16,7 +16,7 @@ Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
  1 file changed, 10 insertions(+)
 
 diff --git a/drivers/mtd/devices/m25p80.c b/drivers/mtd/devices/m25p80.c
-index c4a1d04b8..7a291b649 100644
+index c4a1d04b8..9b7bd47c5 100644
 --- a/drivers/mtd/devices/m25p80.c
 +++ b/drivers/mtd/devices/m25p80.c
 @@ -319,11 +319,21 @@ static const struct of_device_id m25p_of_table[] = {
@@ -37,7 +37,7 @@ index c4a1d04b8..7a291b649 100644
  		.driver = {
  			.name	= "m25p80",
  			.of_match_table = m25p_of_table,
-+			.acpi_match_table = m25p_acpi_table,
++			.acpi_match_table = ACPI_PTR(m25p_acpi_table),
  		},
  		.id_table	= m25p_ids,
  	},
