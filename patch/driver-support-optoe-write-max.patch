@@ -1,5 +1,22 @@
+From 83573e4c3171b528a4516caf3483cfccf90b9a32 Mon Sep 17 00:00:00 2001
+From: Prince George <prgeor@microsoft.com>
+Date: Wed, 4 Aug 2021 10:06:18 +0000
+Subject: [PATCH] Increase optoe's write-max to support i2c block write
+
+In current optoe driver, the value of write_max is hardcoded to one byte.
+CMIS spec supports firmware upgrade on QSFP-DD transceivers which means
+there is significant overhead due to this one byte write limit when a
+platform wants to upgrade the firmware over an i2c bus at 100Khz. The
+overhead is more pronounced when a platform has shared master and
+platform needs to perform firmware upgrade on multiple transceivers.
+
+Signed-off-by: Prince George <prgeor@microsoft.com>
+---
+ drivers/misc/eeprom/optoe.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
 diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
-index 16287fdc5..61c408a84 100644
+index 16287fdc5..6cf61e645 100644
 --- a/drivers/misc/eeprom/optoe.c
 +++ b/drivers/misc/eeprom/optoe.c
 @@ -1069,7 +1069,7 @@ static int optoe_probe(struct i2c_client *client,
@@ -11,12 +28,19 @@ index 16287fdc5..61c408a84 100644
  
  		optoe->bin.write = optoe_bin_write;
  		optoe->bin.attr.mode |= 0200;
-@@ -1131,6 +1131,8 @@ static int optoe_probe(struct i2c_client *client,
- 	dev_info(&client->dev, "%zu byte %s EEPROM, %s\n",
+@@ -1128,9 +1128,10 @@ static int optoe_probe(struct i2c_client *client,
+ 
+ 	i2c_set_clientdata(client, optoe);
+ 
+-	dev_info(&client->dev, "%zu byte %s EEPROM, %s\n",
++	dev_info(&client->dev, "%zu byte %s EEPROM, %s write_max=%u\n",
  		optoe->bin.size, client->name,
- 		optoe->bin.write ? "read/write" : "read-only");
-+    printk(KERN_ERR "$$$optoe_probe(): %zu byte %s EEPROM, write_max=%u\n",
-+            optoe->bin.size, client->name, optoe->write_max);
+-		optoe->bin.write ? "read/write" : "read-only");
++		optoe->bin.write ? "read/write" : "read-only",
++		optoe->bin.size, client->name, optoe->write_max);
  
  	if (use_smbus == I2C_SMBUS_WORD_DATA ||
  	    use_smbus == I2C_SMBUS_BYTE_DATA) {
+-- 
+2.17.1
+
