@@ -1,0 +1,22 @@
+diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
+index 16287fdc5..61c408a84 100644
+--- a/drivers/misc/eeprom/optoe.c
++++ b/drivers/misc/eeprom/optoe.c
+@@ -1069,7 +1069,7 @@ static int optoe_probe(struct i2c_client *client,
+ 		 * 2 byte writes are acceptable for PE and Vout changes per
+ 		 * Application Note AN-2071.
+ 		 */
+-		unsigned int write_max = 1;
++		unsigned int write_max = 32;
+ 
+ 		optoe->bin.write = optoe_bin_write;
+ 		optoe->bin.attr.mode |= 0200;
+@@ -1131,6 +1131,8 @@ static int optoe_probe(struct i2c_client *client,
+ 	dev_info(&client->dev, "%zu byte %s EEPROM, %s\n",
+ 		optoe->bin.size, client->name,
+ 		optoe->bin.write ? "read/write" : "read-only");
++    printk(KERN_ERR "$$$optoe_probe(): %zu byte %s EEPROM, write_max=%u\n",
++            optoe->bin.size, client->name, optoe->write_max);
+ 
+ 	if (use_smbus == I2C_SMBUS_WORD_DATA ||
+ 	    use_smbus == I2C_SMBUS_BYTE_DATA) {
