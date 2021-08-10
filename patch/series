@@ -83,6 +83,8 @@ driver-ixgbe-external-phy.patch
 0030-hwmon-Add-convience-macro-to-define-simple-static-se.patch
 0031-backport-nvme-Add-hardware-monitoring-support.patch
 0032-platform-mellanox-mlxreg-hotplug-Use-capability-regi.patch
+
+cisco-ds4424-null-of-node.patch
 ############################################################
 #
 # Internal patches will be added below (placeholder)
