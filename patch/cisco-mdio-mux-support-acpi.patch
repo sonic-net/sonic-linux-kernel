@@ -1,7 +1,7 @@
 From 3f82482489e986fc3b0a38163902842d0c4fa2f2 Mon Sep 17 00:00:00 2001
 From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
 Date: Tue, 15 Jun 2021 11:32:49 -0700
-Subject: [PATCH] support reading mdio config from APCI tables
+Subject: [PATCH] support reading mdio config from ACPI tables
 
 Current mdio-mux does not support reading configuration
 from ACPI tables.
@@ -81,5 +81,5 @@ index 0a86f1e4c..b6116f9af 100644
  			dev_err(dev,
  				"Error: Failed to register MDIO bus for child %pOF\n",
 -- 
-2.26.2.dirty
+2.26.2
 
