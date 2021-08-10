@@ -9,7 +9,7 @@ from ACPI tables.
 cisco-8000 platform configures mdio phy config through ACPI
 tables.
 
-Added support int he mdio-mux driver to read from ACPI
+Added support in the mdio-mux driver to read from ACPI
 
 Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
 ---
