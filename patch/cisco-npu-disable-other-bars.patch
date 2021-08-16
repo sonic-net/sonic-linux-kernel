@@ -1,24 +1,24 @@
-From abed4e61fa2865893ccb4f0da8c31ab9d431c4d9 Mon Sep 17 00:00:00 2001
+From 0be339b4c8468138dfe1a30de29511e94b846af6 Mon Sep 17 00:00:00 2001
 From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
-Date: Mon, 12 Jul 2021 23:21:08 -0700
+Date: Mon, 16 Aug 2021 12:55:37 -0700
 Subject: [PATCH] NPU disable unused PCI BAR
 
 For Cisco ASIC only BAR0 is valid. Not disabling other BAR's
-was resulting in pci_enable_device function failure.
-Further debugging and consultion with Hardware team, issue seems
-to be related to ASIC and workaround suggested is to disable
-unused PCI BAR
+was resulting in pci_enable_device function failure in P0
+Pacific ASIC's. Further debugging and consultion with Hardware
+team, issue seems to be related to only P0 version of ASIC and
+workaround suggested is to disable unused PCI BAR.
 
 Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
 ---
- drivers/pci/quirks.c | 52 ++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 52 insertions(+)
+ drivers/pci/quirks.c | 54 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 54 insertions(+)
 
 diff --git a/drivers/pci/quirks.c b/drivers/pci/quirks.c
-index af2149632..1772d8304 100644
+index af2149632..8b99883e1 100644
 --- a/drivers/pci/quirks.c
 +++ b/drivers/pci/quirks.c
-@@ -5462,3 +5462,55 @@ static void apex_pci_fixup_class(struct pci_dev *pdev)
+@@ -5462,3 +5462,57 @@ static void apex_pci_fixup_class(struct pci_dev *pdev)
  }
  DECLARE_PCI_FIXUP_CLASS_HEADER(0x1ac1, 0x089a,
  			       PCI_CLASS_NOT_DEFINED, 8, apex_pci_fixup_class);
@@ -43,8 +43,9 @@ index af2149632..1772d8304 100644
 +		if (!r->start && !r->end && !r->flags)
 +			continue;
 +
-+		dev_info(&dev->dev,
-+			"Cisco Silicon One BAR %d %pR fixed up\n", i, r);
++		dev_info(&dev->dev, 
++			"Cisco Silicon One BAR %d %pR disabled due to "
++			"NPU hardware bug in P0 Pacific ASIC\n", i, r);
 +		r->start = 0;
 +		r->end = 0;
 +		r->flags = 0;
@@ -53,25 +54,26 @@ index af2149632..1772d8304 100644
 +	 * Pacific device was misbehaving during rescan not enumerating
 +	 * memory for bar. Due to this HW issue, added this workaround
 +	 * and verified that during rescan memory gets assigned properly
-+	 * to the device. This is only a temporary fix.
++	 * to the device. This is only a temporary fix for pacific ASIC
++	 * only
 +	 */
 +	dev->class = PCI_CLASS_MEMORY_OTHER << 8;
 +	dev_info(&dev->dev, "Cisco Silicon One class adjusted\n");
 +}
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_SYNOPSYS,
-+		PCI_DEVICE_ID_LEABA_PACIFIC, silicon_one_fixup);
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO,
-+		PCI_DEVICE_ID_LEABA_PACIFIC, silicon_one_fixup);
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO,
-+		PCI_DEVICE_ID_LEABA_GIBRALTAR, silicon_one_fixup);
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO,
-+		PCI_DEVICE_ID_LEABA_GRAPHENE, silicon_one_fixup);
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO,
-+		PCI_DEVICE_ID_LEABA_PALLADIUM, silicon_one_fixup);
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO,
-+		PCI_DEVICE_ID_LEABA_ARGON, silicon_one_fixup);
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO,
-+		PCI_DEVICE_ID_LEABA_KRYPTON, silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_SYNOPSYS, PCI_DEVICE_ID_LEABA_PACIFIC,
++			silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_PACIFIC,
++			silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_GIBRALTAR,
++			silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_GRAPHENE,
++			silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_PALLADIUM,
++			silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_ARGON,
++			silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_KRYPTON,
++			silicon_one_fixup);
 +
 +
 -- 
