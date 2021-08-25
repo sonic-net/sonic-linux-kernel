@@ -86,7 +86,11 @@ net-sch_generic-fix-the-missing-new-qdisc-assignment.patch
 0032-platform-mellanox-mlxreg-hotplug-Use-capability-regi.patch
 
 
+
+# Cisco patches for 4.19 kernel
+cisco-mtd-part.patch
 cisco-acpi-spi-nor.patch
+
 #
 # Marvell platform patches for 4.19
 armhf_secondary_boot_online.patch
