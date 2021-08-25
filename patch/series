@@ -30,6 +30,7 @@ driver-support-optoe.patch
 driver-support-optoe-EOF_fix.patch
 driver-support-optoe-chunk-offset-fix.patch
 driver-support-optoe-QSFP_DD.patch
+driver-support-optoe-write-max.patch
 driver-net-tg3-add-param-short-preamble-and-reset.patch
 0001-hwmon-lm75-add-support-for-PCT2075.patch
 0004-dt-bindings-hwmon-Add-missing-documentation-for-lm75.patch
@@ -40,6 +41,7 @@ netlink-add-NLA_MIN_LEN.patch
 macsec-Netlink-support-of-XPN-cipher-suites-IEEE-802.patch
 Support-for-fullcone-nat.patch
 driver-ixgbe-external-phy.patch
+net-sch_generic-fix-the-missing-new-qdisc-assignment.patch
 #
 # This series applies on GIT commit 1451b36b2b0d62178e42f648d8a18131af18f7d8
 # Tkernel-sched-core-fix-cgroup-fork-race.patch
@@ -78,13 +80,16 @@ driver-ixgbe-external-phy.patch
 0025-platform-x86-mlx-platform-Remove-PSU-EEPROM-configur.patch
 0026-platform-x86-mlx-platform-Remove-PSU-EEPROM-configur.patch
 0027-mlxsw-core-Remove-critical-trip-point-from-thermal-z.patch
-0028-thermal-Fix-deadlock-in-thermal-thermal_zone_device_.patch
 0029-hwmon-pmbus-Add-support-for-MPS-Multi-phase-mp2975-c.patch
 0030-hwmon-Add-convience-macro-to-define-simple-static-se.patch
 0031-backport-nvme-Add-hardware-monitoring-support.patch
 0032-platform-mellanox-mlxreg-hotplug-Use-capability-regi.patch
 
 cisco-add-support-for-ltc2979-chip.patch
+=======
+#
+# Marvell platform patches for 4.19
+armhf_secondary_boot_online.patch
 ############################################################
 #
 # Internal patches will be added below (placeholder)
