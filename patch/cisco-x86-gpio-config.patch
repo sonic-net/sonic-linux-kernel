@@ -1,0 +1,42 @@
+From 7106f3961be1dc0d921efe5c719ada6096307227 Mon Sep 17 00:00:00 2001
+From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+Date: Tue, 10 Aug 2021 12:51:47 -0700
+Subject: [PATCH] x86/Kconfig: Introduce ARCH_NR_GPIO
+
+The x86 platform did not allow configuring the maximum number of GPIOs
+supported, although the ARM platform did. For cisco-8000 platform,
+each FPGA gpio IP block can support 1K pins. Distributed chassis with
+Route Processor and Fabric cards can have 10 such IP blocks, along with
+additional pins through i2c gpio extenders.
+
+This patch supports configurable number of GPIO's at kernel config time
+similar to ARM platform.
+
+Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+---
+ arch/x86/Kconfig | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
+index d2453b251..e894cd71d 100644
+--- a/arch/x86/Kconfig
++++ b/arch/x86/Kconfig
+@@ -1033,6 +1033,15 @@ config SCHED_MC_PRIO
+ 
+ 	  If unsure say Y here.
+ 
++config ARCH_NR_GPIO
++	int
++	prompt "Maximum number of GPIO's"
++	default 512
++	help
++	  Maximum number of GPIOs in the system.
++
++	  If unsure, leave the default value.
++
+ config UP_LATE_INIT
+        def_bool y
+        depends on !SMP && X86_LOCAL_APIC
+-- 
+2.26.2
+
