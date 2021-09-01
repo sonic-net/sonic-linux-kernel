@@ -1,0 +1,33 @@
+From 157c059a2c639ecc69080ecb004a94e652467a4a Mon Sep 17 00:00:00 2001
+From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+Date: Tue, 8 Jun 2021 10:19:36 -0700
+Subject: [PATCH] mtd: Add support for reading partition data from ACPI
+
+Current mtd driver supports reading mtd partition information from
+command line and dts file, but cannot read partition information
+from ACPI files.
+
+Added code to support new partition type "acpipart" to
+default_mtd_part_types structure. This partition type can be used
+to configure mtd partition data in ACPI tables.
+
+Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+---
+ drivers/mtd/mtdpart.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/mtd/mtdpart.c b/drivers/mtd/mtdpart.c
+index 10c53364a..1ff24e5d9 100644
+--- a/drivers/mtd/mtdpart.c
++++ b/drivers/mtd/mtdpart.c
+@@ -822,6 +822,7 @@ EXPORT_SYMBOL_GPL(deregister_mtd_parser);
+ static const char * const default_mtd_part_types[] = {
+ 	"cmdlinepart",
+ 	"ofpart",
++	"acpipart",
+ 	NULL
+ };
+ 
+-- 
+2.26.2
+
