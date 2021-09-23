@@ -91,7 +91,9 @@ net-sch_generic-fix-the-missing-new-qdisc-assignment.patch
 cisco-mtd-part.patch
 cisco-mdio-mux-support-acpi.patch
 cisco-x86-gpio-config.patch
+cisco-acpi-spi-nor.patch
 cisco-Enable-static-memory-reservation-for-OIRable-PCIe-de.patch
+
 #
 # Marvell platform patches for 4.19
 armhf_secondary_boot_online.patch
