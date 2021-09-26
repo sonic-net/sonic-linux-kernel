@@ -41,5 +41,5 @@ index 714a97f91..ae9be7926 100644
  	if (IS_ERR(data->vcc_reg)) {
  		dev_err(&client->dev,
 -- 
-2.26.2.dirty
+2.26.2
 
