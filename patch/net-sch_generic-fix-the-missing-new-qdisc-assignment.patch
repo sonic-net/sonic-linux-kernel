@@ -1,0 +1,45 @@
+From 81504d1952d712c8bb9c3966896efee8a37ea966 Mon Sep 17 00:00:00 2001
+From: Yunsheng Lin <linyunsheng@huawei.com>
+Date: Tue, 3 Nov 2020 11:25:38 +0800
+Subject: net: sch_generic: fix the missing new qdisc assignment bug
+
+When commit 2fb541c862c9 ("net: sch_generic: aviod concurrent reset and
+enqueue op for lockless qdisc") is backported to stable kernel, one
+assignment is missing, which causes two problems reported by Joakim and
+Vishwanath, see [1] and [2].
+
+So add the assignment back to fix it.
+
+1. https://www.spinics.net/lists/netdev/msg693916.html
+2. https://www.spinics.net/lists/netdev/msg695131.html
+
+Fixes: 749cc0b0c7f3 ("net: sch_generic: aviod concurrent reset and enqueue op for lockless qdisc")
+Signed-off-by: Yunsheng Lin <linyunsheng@huawei.com>
+Acked-by: Jakub Kicinski <kuba@kernel.org>
+Tested-by: Brian Norris <briannorris@chromium.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ net/sched/sch_generic.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/net/sched/sch_generic.c b/net/sched/sch_generic.c
+index bd96fd261dba3..4e15913e7519e 100644
+--- a/net/sched/sch_generic.c
++++ b/net/sched/sch_generic.c
+@@ -1116,10 +1116,13 @@ static void dev_deactivate_queue(struct net_device *dev,
+ 				 void *_qdisc_default)
+ {
+ 	struct Qdisc *qdisc = rtnl_dereference(dev_queue->qdisc);
++	struct Qdisc *qdisc_default = _qdisc_default;
+
+ 	if (qdisc) {
+ 		if (!(qdisc->flags & TCQ_F_BUILTIN))
+ 			set_bit(__QDISC_STATE_DEACTIVATED, &qdisc->state);
++
++		rcu_assign_pointer(dev_queue->qdisc, qdisc_default);
+ 	}
+ }
+
+--
+cgit 1.2.3-1.el7
+
