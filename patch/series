@@ -39,6 +39,7 @@ driver-net-tg3-add-param-short-preamble-and-reset.patch
 macsec-Support-XPN-frame-handling-IEEE-802.1AEbw.patch
 netlink-add-NLA_MIN_LEN.patch
 macsec-Netlink-support-of-XPN-cipher-suites-IEEE-802.patch
+kernel-ipv6-ra-metric-sysctl.patch
 Support-for-fullcone-nat.patch
 driver-ixgbe-external-phy.patch
 net-sch_generic-fix-the-missing-new-qdisc-assignment.patch
