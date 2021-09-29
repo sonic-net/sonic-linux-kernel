@@ -85,11 +85,14 @@ net-sch_generic-fix-the-missing-new-qdisc-assignment.patch
 0031-backport-nvme-Add-hardware-monitoring-support.patch
 0032-platform-mellanox-mlxreg-hotplug-Use-capability-regi.patch
 
+
+
 # Cisco patches for 4.19 kernel
 cisco-mtd-part.patch
 cisco-mdio-mux-support-acpi.patch
 cisco-x86-gpio-config.patch
 cisco-acpi-spi-nor.patch
+cisco-Enable-static-memory-reservation-for-OIRable-PCIe-de.patch
 cisco-ds4424-null-of-node.patch
 
 #
@@ -97,7 +100,6 @@ cisco-ds4424-null-of-node.patch
 armhf_secondary_boot_online.patch
 #
 #
-
 ############################################################
 #
 # Internal patches will be added below (placeholder)
