@@ -112,6 +112,8 @@ net-sch_generic-fix-the-missing-new-qdisc-assignment.patch
 0059-pinctrl-intel-Allow-to-request-locked-pads.patch
 0060-pinctrl-intel-Actually-disable-Tx-and-Rx-buffers-on-.patch
 0061-hwmon-pmbus-Add-support-for-MPS-Multi-phase-mp2888-c.patch
+0062-i2c-mlxcpld-Fix-criteria-for-frequency-setting.patch
+0063-i2c-mlxcpld-Reduce-polling-time-for-performance-impr.patch
 ############################################################
 #
 # Internal patches will be added below (placeholder)

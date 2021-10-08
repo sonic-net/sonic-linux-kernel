@@ -1,0 +1,33 @@
+From 827dcff28f5cfd0385eda0a3c0489b56685dd568 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Tue, 6 Jul 2021 09:37:04 +0000
+Subject: [PATCH 63/63] i2c: mlxcpld: Reduce polling time for performance
+ improvement
+
+Decrease polling time 'MLXCPLD_I2C_POLL_TIME' from 400 usec to 200
+usec. It improves performance of I2C transactions.
+
+Reliability of setting polling time to 200 usec has been validated
+across all the supported systems.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/i2c/busses/i2c-mlxcpld.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/i2c/busses/i2c-mlxcpld.c b/drivers/i2c/busses/i2c-mlxcpld.c
+index 6d41c3db8a2b..8e110d792147 100644
+--- a/drivers/i2c/busses/i2c-mlxcpld.c
++++ b/drivers/i2c/busses/i2c-mlxcpld.c
+@@ -27,7 +27,7 @@
+ #define MLXCPLD_I2C_MAX_ADDR_LEN	4
+ #define MLXCPLD_I2C_RETR_NUM		2
+ #define MLXCPLD_I2C_XFER_TO		500000 /* usec */
+-#define MLXCPLD_I2C_POLL_TIME		400   /* usec */
++#define MLXCPLD_I2C_POLL_TIME		200   /* usec */
+ 
+ /* LPC I2C registers */
+ #define MLXCPLD_LPCI2C_CPBLTY_REG	0x0
+-- 
+2.17.1
+
