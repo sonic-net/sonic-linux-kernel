@@ -1,0 +1,43 @@
+From ead3d0ece82a8e2711d4bdf30e2bc0ec4d6d2f79 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Wed, 23 Sep 2020 20:20:52 +0300
+Subject: [PATCH 54/60] platform_data/mlxreg: Extend core platform structure
+
+Add 'capability' field to structure 'mlxreg_core_platform_data'.
+The purpose of this filed to indicate  the actual number of the
+components within the particular group. Such components could be,
+for example the number of the FAN drawers. Some systems are equipped
+with FAN drawers with one tachometer inside, others with FAN drawers
+with several tachometers inside.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+Reviewed-by: Hans de Goede <hdegoede@redhat.com>
+Link: https://lore.kernel.org/r/20200923172053.26296-5-vadimp@nvidia.com
+Signed-off-by: Hans de Goede <hdegoede@redhat.com>
+---
+ include/linux/platform_data/mlxreg.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/linux/platform_data/mlxreg.h b/include/linux/platform_data/mlxreg.h
+index 1af9c01563f9..0efc6759d94d 100644
+--- a/include/linux/platform_data/mlxreg.h
++++ b/include/linux/platform_data/mlxreg.h
+@@ -137,6 +137,7 @@ struct mlxreg_core_item {
+  * @features: supported features of device;
+  * @version: implementation version;
+  * @identity: device identity name;
++ * @capability: device capability register;
+  */
+ struct mlxreg_core_platform_data {
+ 	struct mlxreg_core_data *data;
+@@ -145,6 +146,7 @@ struct mlxreg_core_platform_data {
+ 	u32 features;
+ 	u32 version;
+ 	char identity[MLXREG_CORE_LABEL_MAX_SIZE];
++	u32 capability;
+ };
+ 
+ /**
+-- 
+2.17.1
+

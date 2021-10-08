@@ -1,0 +1,50 @@
+From a0c05cd4c98b65d8796a8172657a5ae44e280982 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Sun, 7 Feb 2021 21:29:06 +0200
+Subject: [PATCH 43/60] i2c: mux: mlxcpld: Extend supported mux number
+
+Allow to extend mux number supported by driver.
+Currently it is limited by eight, which is not enough for new coming
+Mellanox modular system with line cards, which require up to 64 mux
+support.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+Reviewed-by: Michael Shych <michaelsh@nvidia.com>
+---
+ drivers/i2c/muxes/i2c-mux-mlxcpld.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/i2c/muxes/i2c-mux-mlxcpld.c b/drivers/i2c/muxes/i2c-mux-mlxcpld.c
+index ba307ee6b034..5e0672f9979b 100644
+--- a/drivers/i2c/muxes/i2c-mux-mlxcpld.c
++++ b/drivers/i2c/muxes/i2c-mux-mlxcpld.c
+@@ -15,8 +15,6 @@
+ #include <linux/platform_device.h>
+ #include <linux/slab.h>
+ 
+-#define CPLD_MUX_MAX_NCHANS	8
+-
+ /* mlxcpld_mux - mux control structure:
+  * @last_val - last selected register value or -1 if mux deselected
+  * @client - I2C device client
+@@ -142,7 +140,7 @@ static int mlxcpld_mux_probe(struct platform_device *pdev)
+ 	if (!i2c_check_functionality(client->adapter, func))
+ 		return -ENODEV;
+ 
+-	muxc = i2c_mux_alloc(client->adapter, &pdev->dev, CPLD_MUX_MAX_NCHANS,
++	muxc = i2c_mux_alloc(client->adapter, &pdev->dev, pdata->num_adaps,
+ 			     sizeof(*data), 0, mlxcpld_mux_select_chan,
+ 			     mlxcpld_mux_deselect);
+ 	if (!muxc)
+@@ -155,7 +153,7 @@ static int mlxcpld_mux_probe(struct platform_device *pdev)
+ 	data->last_val = -1; /* force the first selection */
+ 
+ 	/* Create an adapter for each channel. */
+-	for (num = 0; num < CPLD_MUX_MAX_NCHANS; num++) {
++	for (num = 0; num < pdata->num_adaps; num++) {
+ 		err = i2c_mux_add_adapter(muxc, 0, pdata->chan_ids[num], 0);
+ 		if (err)
+ 			goto virt_reg_failed;
+-- 
+2.17.1
+

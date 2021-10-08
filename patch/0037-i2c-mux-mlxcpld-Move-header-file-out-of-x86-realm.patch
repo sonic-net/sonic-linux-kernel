@@ -1,0 +1,39 @@
+From 15d88491548062c35ca8969597074a2ab66ac149 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Fri, 22 Jan 2021 21:24:58 +0200
+Subject: [PATCH 37/60] i2c: mux: mlxcpld: Move header file out of x86 realm
+
+Move out header file from include/linux/platform_data/x86/ to
+include/linux/platform_data/, since it does not depend on x86
+architecture.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+Reviewed-by: Michael Shych <michaelsh@nvidia.com>
+Acked-by: Peter Rosin <peda@axentia.se>
+Signed-off-by: Wolfram Sang <wsa@kernel.org>
+---
+ drivers/i2c/muxes/i2c-mux-mlxcpld.c             | 2 +-
+ include/linux/platform_data/{x86 => }/mlxcpld.h | 0
+ 2 files changed, 1 insertion(+), 1 deletion(-)
+ rename include/linux/platform_data/{x86 => }/mlxcpld.h (100%)
+
+diff --git a/drivers/i2c/muxes/i2c-mux-mlxcpld.c b/drivers/i2c/muxes/i2c-mux-mlxcpld.c
+index c9a94abcb6be..be2d0fa24096 100644
+--- a/drivers/i2c/muxes/i2c-mux-mlxcpld.c
++++ b/drivers/i2c/muxes/i2c-mux-mlxcpld.c
+@@ -11,7 +11,7 @@
+ #include <linux/io.h>
+ #include <linux/init.h>
+ #include <linux/module.h>
+-#include <linux/platform_data/x86/mlxcpld.h>
++#include <linux/platform_data/mlxcpld.h>
+ #include <linux/platform_device.h>
+ #include <linux/slab.h>
+ 
+diff --git a/include/linux/platform_data/x86/mlxcpld.h b/include/linux/platform_data/mlxcpld.h
+similarity index 100%
+rename from include/linux/platform_data/x86/mlxcpld.h
+rename to include/linux/platform_data/mlxcpld.h
+-- 
+2.17.1
+

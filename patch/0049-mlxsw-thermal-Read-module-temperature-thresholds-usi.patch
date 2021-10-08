@@ -1,0 +1,104 @@
+From efe03d2c5df056f7c03f4a4da5718c8d4a509cad Mon Sep 17 00:00:00 2001
+From: Mykola Kostenok <c_mykolak@nvidia.com>
+Date: Thu, 3 Jun 2021 18:18:06 +0300
+Subject: [PATCH 49/60] mlxsw: thermal: Read module temperature thresholds
+ using MTMP register
+
+mlxsw_thermal_module_trips_update() is used to update the trip points of
+the module's thermal zone. Currently, this is done by querying the
+thresholds from the module's EEPROM via MCIA register. This data does
+not pass validation and in some cases can be unreliable. For example,
+due to some problem with transceiver module.
+
+Previous patch made it possible to read module's temperature and
+thresholds via MTMP register. Therefore, extend
+mlxsw_thermal_module_trips_update() to use the thresholds queried from
+MTMP, if valid.
+
+This is both more reliable and more efficient than current method, as
+temperature and thresholds are queried in one transaction instead of
+three. This is significant when working over a slow bus such as I2C.
+
+Signed-off-by: Mykola Kostenok <c_mykolak@nvidia.com>
+Acked-by: Vadim Pasternak <vadimp@nvidia.com>
+Signed-off-by: Ido Schimmel <idosch@nvidia.com>
+---
+ .../ethernet/mellanox/mlxsw/core_thermal.c    | 36 +++++++++++--------
+ 1 file changed, 21 insertions(+), 15 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 7ae496d4c737..60b685630c0f 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -155,22 +155,27 @@ mlxsw_thermal_module_trips_reset(struct mlxsw_thermal_module *tz)
+ 
+ static int
+ mlxsw_thermal_module_trips_update(struct device *dev, struct mlxsw_core *core,
+-				  struct mlxsw_thermal_module *tz)
++				  struct mlxsw_thermal_module *tz,
++				  int crit_temp, int emerg_temp)
+ {
+-	int crit_temp, emerg_temp;
+ 	int err;
+ 
+-	err = mlxsw_env_module_temp_thresholds_get(core, tz->module,
+-						   SFP_TEMP_HIGH_WARN,
+-						   &crit_temp);
+-	if (err)
+-		return err;
++	/* Do not try to query temperature thresholds directly from the module's
++	 * EEPROM if we got valid thresholds from MTMP.
++	 */
++	if (!emerg_temp || !crit_temp) {
++		err = mlxsw_env_module_temp_thresholds_get(core, tz->module,
++							   SFP_TEMP_HIGH_WARN,
++							   &crit_temp);
++		if (err)
++			return err;
+ 
+-	err = mlxsw_env_module_temp_thresholds_get(core, tz->module,
+-						   SFP_TEMP_HIGH_ALARM,
+-						   &emerg_temp);
+-	if (err)
+-		return err;
++		err = mlxsw_env_module_temp_thresholds_get(core, tz->module,
++							   SFP_TEMP_HIGH_ALARM,
++							   &emerg_temp);
++		if (err)
++			return err;
++	}
+ 
+ 	if (crit_temp > emerg_temp) {
+ 		dev_warn(dev, "%s : Critical threshold %d is above emergency threshold %d\n",
+@@ -531,9 +536,9 @@ static int mlxsw_thermal_module_temp_get(struct thermal_zone_device *tzdev,
+ {
+ 	struct mlxsw_thermal_module *tz = tzdev->devdata;
+ 	struct mlxsw_thermal *thermal = tz->parent;
++	int temp, crit_temp, emerg_temp;
+ 	struct device *dev;
+ 	u16 sensor_index;
+-	int temp;
+ 	int err;
+ 
+ 	/* Do not read temperature in initialization stage. */
+@@ -548,14 +553,15 @@ static int mlxsw_thermal_module_temp_get(struct thermal_zone_device *tzdev,
+ 	/* Read module temperature and thresholds. */
+ 	mlxsw_thermal_module_temp_and_thresholds_get(thermal->core,
+ 						     sensor_index, &temp,
+-						     NULL,  NULL);
++						     &crit_temp, &emerg_temp);
+ 	*p_temp = temp;
+ 
+ 	if (!temp)
+ 		return 0;
+ 
+ 	/* Update trip points. */
+-	err = mlxsw_thermal_module_trips_update(dev, thermal->core, tz);
++	err = mlxsw_thermal_module_trips_update(dev, thermal->core, tz,
++						crit_temp, emerg_temp);
+ 	if (!err && temp > 0)
+ 		mlxsw_thermal_tz_score_update(thermal, tzdev, tz->trips, temp);
+ 
+-- 
+2.17.1
+

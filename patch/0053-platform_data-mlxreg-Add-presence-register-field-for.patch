@@ -1,0 +1,40 @@
+From 1a725818227a5c435718fe7d3df9af470a5417d3 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Tue, 14 Jul 2020 15:02:02 +0300
+Subject: [PATCH 53/60] platform_data/mlxreg: Add presence register field for
+ FAN devices
+
+Add new field 'reg_prsnt' to the structure 'mlxreg_core_data' to
+provide the number FAN drawers equpped within the system. The purpose
+is to allow mapping between FAN drawers and FAN rotors (tachometer),
+since FAN drawer can be eqipped with a few rotors.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+---
+ include/linux/platform_data/mlxreg.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/linux/platform_data/mlxreg.h b/include/linux/platform_data/mlxreg.h
+index 03d768d73a5f..1af9c01563f9 100644
+--- a/include/linux/platform_data/mlxreg.h
++++ b/include/linux/platform_data/mlxreg.h
+@@ -78,6 +78,7 @@ struct mlxreg_hotplug_device {
+  * @mask: attribute access mask;
+  * @bit: attribute effective bit;
+  * @capability: attribute capability register;
++ * @reg_prsnt: attribute presence register;
+  * @mode: access mode;
+  * @np - pointer to node platform associated with attribute;
+  * @hpdev - hotplug device data;
+@@ -91,6 +92,7 @@ struct mlxreg_core_data {
+ 	u32 mask;
+ 	u32 bit;
+ 	u32 capability;
++	u32 reg_prsnt;
+ 	umode_t	mode;
+ 	struct device_node *np;
+ 	struct mlxreg_hotplug_device hpdev;
+-- 
+2.17.1
+

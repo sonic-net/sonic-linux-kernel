@@ -1,0 +1,98 @@
+From 0e549136c4ca54079850af411d759fd355e696de Mon Sep 17 00:00:00 2001
+From: Mykola Kostenok <c_mykolak@nvidia.com>
+Date: Thu, 3 Jun 2021 18:18:05 +0300
+Subject: [PATCH 48/60] mlxsw: thermal: Add function for reading module
+ temperature and thresholds
+
+Provide new function mlxsw_thermal_module_temp_and_thresholds_get() for
+reading temperature and temperature thresholds by a single operation.
+The motivation is to reduce the number of transactions with the device
+which is important when operating over a slow bus such as I2C.
+
+Currently, the sole caller of the function is only using it to read the
+module's temperature. The next patch will also use it to query the
+module's temperature thresholds.
+
+Signed-off-by: Mykola Kostenok <c_mykolak@nvidia.com>
+Acked-by: Vadim Pasternak <vadimp@nvidia.com>
+Signed-off-by: Ido Schimmel <idosch@nvidia.com>
+---
+ .../ethernet/mellanox/mlxsw/core_thermal.c    | 50 +++++++++++++------
+ 1 file changed, 35 insertions(+), 15 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index b2ad0d0f636b..7ae496d4c737 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -500,13 +500,39 @@ static int mlxsw_thermal_module_mode_set(struct thermal_zone_device *tzdev,
+ 	return 0;
+ }
+ 
++static void
++mlxsw_thermal_module_temp_and_thresholds_get(struct mlxsw_core *core,
++					     u16 sensor_index, int *p_temp,
++					     int *p_crit_temp,
++					     int *p_emerg_temp)
++{
++	char mtmp_pl[MLXSW_REG_MTMP_LEN];
++	int err;
++
++	/* Read module temperature and thresholds. */
++	mlxsw_reg_mtmp_pack(mtmp_pl, sensor_index, false, false);
++	err = mlxsw_reg_query(core, MLXSW_REG(mtmp), mtmp_pl);
++	if (err) {
++		/* Set temperature and thresholds to zero to avoid passing
++		 * uninitialized data back to the caller.
++		 */
++		*p_temp = 0;
++		*p_crit_temp = 0;
++		*p_emerg_temp = 0;
++
++		return;
++	}
++	mlxsw_reg_mtmp_unpack(mtmp_pl, p_temp, NULL, p_crit_temp, p_emerg_temp,
++			      NULL);
++}
++
+ static int mlxsw_thermal_module_temp_get(struct thermal_zone_device *tzdev,
+ 					 int *p_temp)
+ {
+ 	struct mlxsw_thermal_module *tz = tzdev->devdata;
+ 	struct mlxsw_thermal *thermal = tz->parent;
+-	struct device *dev = thermal->bus_info->dev;
+-	char mtmp_pl[MLXSW_REG_MTMP_LEN];
++	struct device *dev;
++	u16 sensor_index;
+ 	int temp;
+ 	int err;
+ 
+@@ -516,19 +542,13 @@ static int mlxsw_thermal_module_temp_get(struct thermal_zone_device *tzdev,
+ 		return 0;
+ 	}
+ 
+-	/* Read module temperature. */
+-	mlxsw_reg_mtmp_pack(mtmp_pl, MLXSW_REG_MTMP_MODULE_INDEX_MIN +
+-			    tz->module, false, false);
+-	err = mlxsw_reg_query(thermal->core, MLXSW_REG(mtmp), mtmp_pl);
+-	if (err) {
+-		/* Do not return error - in case of broken module's sensor
+-		 * it will cause error message flooding.
+-		 */
+-		temp = 0;
+-		*p_temp = (int) temp;
+-		return 0;
+-	}
+-	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL, NULL, NULL);
++	dev = thermal->bus_info->dev;
++	sensor_index = MLXSW_REG_MTMP_MODULE_INDEX_MIN + tz->module;
++
++	/* Read module temperature and thresholds. */
++	mlxsw_thermal_module_temp_and_thresholds_get(thermal->core,
++						     sensor_index, &temp,
++						     NULL,  NULL);
+ 	*p_temp = temp;
+ 
+ 	if (!temp)
+-- 
+2.17.1
+

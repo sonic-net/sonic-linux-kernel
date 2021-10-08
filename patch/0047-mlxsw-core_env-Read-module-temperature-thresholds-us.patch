@@ -1,0 +1,73 @@
+From 6653dc6c4f7a0330651d27652ada508ff36e0c9f Mon Sep 17 00:00:00 2001
+From: Mykola Kostenok <c_mykolak@nvidia.com>
+Date: Thu, 3 Jun 2021 18:18:04 +0300
+Subject: [PATCH 47/60] mlxsw: core_env: Read module temperature thresholds
+ using MTMP register
+
+Currently, module temperature thresholds are obtained from Management
+Cable Info Access (MCIA) register by specifying the thresholds offsets
+within module EEPROM layout. This data does not pass validation and in
+some cases can be unreliable. For example, due to some problem with the
+module.
+
+Add support for a new feature provided by Management Temperature (MTMP)
+register for sanitization of temperature thresholds values.
+
+Extend mlxsw_env_module_temp_thresholds_get() to get temperature
+thresholds through MTMP field 'max_operational_temperature' - if it is
+not zero, feature is supported. Otherwise fallback to old method and get
+the thresholds through MCIA.
+
+Signed-off-by: Mykola Kostenok <c_mykolak@nvidia.com>
+Acked-by: Vadim Pasternak <vadimp@nvidia.com>
+Signed-off-by: Ido Schimmel <idosch@nvidia.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_env.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_env.c b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+index 09e72c8f7910..19da7408a422 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_env.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+@@ -109,6 +109,7 @@ mlxsw_env_query_module_eeprom(struct mlxsw_core *mlxsw_core, int module,
+ int mlxsw_env_module_temp_thresholds_get(struct mlxsw_core *core, int module,
+ 					 int off, int *temp)
+ {
++	unsigned int module_temp, module_crit, module_emerg;
+ 	char eeprom_tmp[MLXSW_REG_MCIA_EEPROM_SIZE];
+ 	union {
+ 		u8 buf[MLXSW_REG_MCIA_TH_ITEM_SIZE];
+@@ -116,7 +117,6 @@ int mlxsw_env_module_temp_thresholds_get(struct mlxsw_core *core, int module,
+ 	} temp_thresh;
+ 	char mcia_pl[MLXSW_REG_MCIA_LEN] = {0};
+ 	char mtmp_pl[MLXSW_REG_MTMP_LEN];
+-	unsigned int module_temp;
+ 	bool qsfp, cmis;
+ 	int page;
+ 	int err;
+@@ -126,12 +126,21 @@ int mlxsw_env_module_temp_thresholds_get(struct mlxsw_core *core, int module,
+ 	err = mlxsw_reg_query(core, MLXSW_REG(mtmp), mtmp_pl);
+ 	if (err)
+ 		return err;
+-	mlxsw_reg_mtmp_unpack(mtmp_pl, &module_temp, NULL, NULL, NULL, NULL);
++	mlxsw_reg_mtmp_unpack(mtmp_pl, &module_temp, NULL, &module_crit,
++			      &module_emerg, NULL);
+ 	if (!module_temp) {
+ 		*temp = 0;
+ 		return 0;
+ 	}
+ 
++	/* Validate if threshold reading is available through MTMP register,
++	 * otherwise fallback to read through MCIA.
++	 */
++	if (module_emerg) {
++		*temp = off == SFP_TEMP_HIGH_WARN ? module_crit : module_emerg;
++		return 0;
++	}
++
+ 	/* Read Free Side Device Temperature Thresholds from page 03h
+ 	 * (MSB at lower byte address).
+ 	 * Bytes:
+-- 
+2.17.1
+

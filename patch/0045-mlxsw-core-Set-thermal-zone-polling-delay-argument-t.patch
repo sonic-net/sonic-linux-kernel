@@ -1,0 +1,61 @@
+From 1b35442243766d0bce691434d9fff7c413bcf27c Mon Sep 17 00:00:00 2001
+From: Mykola Kostenok <c_mykolak@nvidia.com>
+Date: Tue, 1 Jun 2021 14:40:22 +0300
+Subject: [PATCH 45/60] mlxsw: core: Set thermal zone polling delay argument to
+ real value at init
+
+Thermal polling delay argument for modules and gearboxes thermal zones
+used to be initialized with zero value, while actual delay was used to be
+set by mlxsw_thermal_set_mode() by thermal operation callback set_mode().
+After operation set_mode()/get_mode() have been removed by cited commits,
+ modules and gearboxes thermal zones always have polling time set to zero
+and do not perform temperature monitoring.
+
+Set non-zero "polling_delay" in thermal_zone_device_register() routine,
+thus, the relevant thermal zones will perform thermal monitoring.
+
+Fixes: 5d7bd8aa7c35 ("thermal: Simplify or eliminate unnecessary set_mode() methods")
+Fixes: 1ee14820fd8e ("thermal: remove get_mode() operation of drivers")
+Signed-off-by: Mykola Kostenok <c_mykolak@nvidia.com>
+Acked-by: Vadim Pasternak <vadimp@nvidia.com>
+Reviewed-by: Jiri Pirko <jiri@nvidia.com>
+Signed-off-by: Ido Schimmel <idosch@nvidia.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 0cfabbd0ad27..02abfa027ba1 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -785,11 +785,12 @@ mlxsw_thermal_module_tz_init(struct mlxsw_thermal_module *module_tz)
+ 	snprintf(tz_name, sizeof(tz_name), "mlxsw-module%d",
+ 		 module_tz->module + 1);
+ 	module_tz->tzdev = thermal_zone_device_register(tz_name,
+-						MLXSW_THERMAL_NUM_TRIPS,
+-						MLXSW_THERMAL_TRIP_MASK,
+-						module_tz,
+-						&mlxsw_thermal_module_ops,
+-						&mlxsw_thermal_params, 0, 0);
++							MLXSW_THERMAL_NUM_TRIPS,
++							MLXSW_THERMAL_TRIP_MASK,
++							module_tz,
++							&mlxsw_thermal_module_ops,
++							&mlxsw_thermal_params, 0,
++							module_tz->parent->polling_delay);
+ 	if (IS_ERR(module_tz->tzdev)) {
+ 		err = PTR_ERR(module_tz->tzdev);
+ 		return err;
+@@ -909,7 +910,8 @@ mlxsw_thermal_gearbox_tz_init(struct mlxsw_thermal_module *gearbox_tz)
+ 						MLXSW_THERMAL_TRIP_MASK,
+ 						gearbox_tz,
+ 						&mlxsw_thermal_gearbox_ops,
+-						&mlxsw_thermal_params, 0, 0);
++						&mlxsw_thermal_params, 0,
++						gearbox_tz->parent->polling_delay);
+ 	if (IS_ERR(gearbox_tz->tzdev))
+ 		return PTR_ERR(gearbox_tz->tzdev);
+ 
+-- 
+2.17.1
+

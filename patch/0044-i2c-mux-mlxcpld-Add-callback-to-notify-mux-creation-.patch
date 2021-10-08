@@ -1,0 +1,58 @@
+From 8b03c37d1bbfa7cfe9a3630a8e04cea8c95b5531 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Sun, 7 Feb 2021 21:29:38 +0200
+Subject: [PATCH 44/60] i2c: mux: mlxcpld: Add callback to notify mux creation
+ completion
+
+Add notification to inform caller that mux objects array has been
+created. It allows to user, invoked platform device registration for
+"i2c-mux-mlxcpld" driver, to be notified that mux infrastructure is
+available, and thus some devices could be connected to this
+infrastructure.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/i2c/muxes/i2c-mux-mlxcpld.c   | 4 ++++
+ include/linux/platform_data/mlxcpld.h | 5 +++++
+ 2 files changed, 9 insertions(+)
+
+diff --git a/drivers/i2c/muxes/i2c-mux-mlxcpld.c b/drivers/i2c/muxes/i2c-mux-mlxcpld.c
+index 5e0672f9979b..1a879f6a31ef 100644
+--- a/drivers/i2c/muxes/i2c-mux-mlxcpld.c
++++ b/drivers/i2c/muxes/i2c-mux-mlxcpld.c
+@@ -159,6 +159,10 @@ static int mlxcpld_mux_probe(struct platform_device *pdev)
+ 			goto virt_reg_failed;
+ 	}
+ 
++	/* Notify caller when all channels' adapters are created. */
++	if (pdata->completion_notify)
++		pdata->completion_notify(pdata->handle, muxc->parent, muxc->adapter);
++
+ 	return 0;
+ 
+ virt_reg_failed:
+diff --git a/include/linux/platform_data/mlxcpld.h b/include/linux/platform_data/mlxcpld.h
+index a7bee798d991..d7610b528856 100644
+--- a/include/linux/platform_data/mlxcpld.h
++++ b/include/linux/platform_data/mlxcpld.h
+@@ -15,12 +15,17 @@
+  * @num_adaps - number of adapters
+  * @sel_reg_addr - mux select register offset in CPLD space
+  * @reg_size: register size in bytes
++ * @handle: handle to be passed by callback
++ * @completion_notify: callback to notify when all the adapters are created
+  */
+ struct mlxcpld_mux_plat_data {
+ 	int *chan_ids;
+ 	int num_adaps;
+ 	int sel_reg_addr;
+ 	u8 reg_size;
++	void *handle;
++	int (*completion_notify)(void *handle, struct i2c_adapter *parent,
++				 struct i2c_adapter *adapters[]);
+ };
+ 
+ #endif /* _LINUX_I2C_MLXCPLD_H */
+-- 
+2.17.1
+

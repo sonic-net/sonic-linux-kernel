@@ -1,0 +1,147 @@
+From 864847678a3bb56deb691dfa584331f5d5478645 Mon Sep 17 00:00:00 2001
+From: Mykola Kostenok <c_mykolak@nvidia.com>
+Date: Thu, 3 Jun 2021 18:18:03 +0300
+Subject: [PATCH 46/60] mlxsw: reg: Extend MTMP register with new threshold
+ field
+
+Extend Management Temperature (MTMP) register with new field specifying
+the maximum temperature threshold.
+
+Extend mlxsw_reg_mtmp_unpack() function with two extra arguments,
+providing high and maximum temperature thresholds. For modules, these
+thresholds correspond to critical and emergency thresholds that are read
+from the module's EEPROM.
+
+Signed-off-by: Mykola Kostenok <c_mykolak@nvidia.com>
+Acked-by: Vadim Pasternak <vadimp@nvidia.com>
+Signed-off-by: Ido Schimmel <idosch@nvidia.com>
+---
+ .../net/ethernet/mellanox/mlxsw/core_env.c    |  2 +-
+ .../net/ethernet/mellanox/mlxsw/core_hwmon.c  |  6 +++---
+ .../ethernet/mellanox/mlxsw/core_thermal.c    |  6 +++---
+ drivers/net/ethernet/mellanox/mlxsw/reg.h     | 20 ++++++++++++++++++-
+ 4 files changed, 26 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_env.c b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+index 80c8432dde18..09e72c8f7910 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_env.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+@@ -126,7 +126,7 @@ int mlxsw_env_module_temp_thresholds_get(struct mlxsw_core *core, int module,
+ 	err = mlxsw_reg_query(core, MLXSW_REG(mtmp), mtmp_pl);
+ 	if (err)
+ 		return err;
+-	mlxsw_reg_mtmp_unpack(mtmp_pl, &module_temp, NULL, NULL);
++	mlxsw_reg_mtmp_unpack(mtmp_pl, &module_temp, NULL, NULL, NULL, NULL);
+ 	if (!module_temp) {
+ 		*temp = 0;
+ 		return 0;
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+index 3fe878d7c94c..7cea54ce4a43 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+@@ -63,7 +63,7 @@ static ssize_t mlxsw_hwmon_temp_show(struct device *dev,
+ 		dev_err(mlxsw_hwmon->bus_info->dev, "Failed to query temp sensor\n");
+ 		return err;
+ 	}
+-	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL);
++	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL, NULL, NULL);
+ 	return sprintf(buf, "%d\n", temp);
+ }
+ 
+@@ -86,7 +86,7 @@ static ssize_t mlxsw_hwmon_temp_max_show(struct device *dev,
+ 		dev_err(mlxsw_hwmon->bus_info->dev, "Failed to query temp sensor\n");
+ 		return err;
+ 	}
+-	mlxsw_reg_mtmp_unpack(mtmp_pl, NULL, &temp_max, NULL);
++	mlxsw_reg_mtmp_unpack(mtmp_pl, NULL, &temp_max, NULL, NULL, NULL);
+ 	return sprintf(buf, "%d\n", temp_max);
+ }
+ 
+@@ -223,7 +223,7 @@ static ssize_t mlxsw_hwmon_module_temp_show(struct device *dev,
+ 	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(mtmp), mtmp_pl);
+ 	if (err)
+ 		return err;
+-	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL);
++	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL, NULL, NULL);
+ 
+ 	return sprintf(buf, "%d\n", temp);
+ }
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 02abfa027ba1..b2ad0d0f636b 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -324,7 +324,7 @@ static int mlxsw_thermal_get_temp(struct thermal_zone_device *tzdev,
+ 		dev_err(dev, "Failed to query temp sensor\n");
+ 		return err;
+ 	}
+-	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL);
++	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL, NULL, NULL);
+ 	if (temp > 0)
+ 		mlxsw_thermal_tz_score_update(thermal, tzdev, thermal->trips,
+ 					      temp);
+@@ -528,7 +528,7 @@ static int mlxsw_thermal_module_temp_get(struct thermal_zone_device *tzdev,
+ 		*p_temp = (int) temp;
+ 		return 0;
+ 	}
+-	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL);
++	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL, NULL, NULL);
+ 	*p_temp = temp;
+ 
+ 	if (!temp)
+@@ -654,7 +654,7 @@ static int mlxsw_thermal_gearbox_temp_get(struct thermal_zone_device *tzdev,
+ 	if (err)
+ 		return err;
+ 
+-	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL);
++	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL, NULL, NULL);
+ 	if (temp > 0)
+ 		mlxsw_thermal_tz_score_update(thermal, tzdev, tz->trips, temp);
+ 
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/reg.h b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+index a5952a03f517..c6a4b569fc82 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/reg.h
++++ b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+@@ -7948,6 +7948,14 @@ MLXSW_ITEM32(reg, mtmp, sensor_index, 0x00, 0, 12);
+ 					  ((s16)((GENMASK(15, 0) + (v_) + 1) \
+ 					   * 125)); })
+ 
++/* reg_mtmp_max_operational_temperature
++ * The highest temperature in the nominal operational range. Reading is in
++ * 0.125 Celsius degrees units.
++ * In case of module this is SFF critical temperature threshold.
++ * Access: RO
++ */
++MLXSW_ITEM32(reg, mtmp, max_operational_temperature, 0x04, 16, 16);
++
+ /* reg_mtmp_temperature
+  * Temperature reading from the sensor. Reading is in 0.125 Celsius
+  * degrees units.
+@@ -8018,7 +8026,9 @@ static inline void mlxsw_reg_mtmp_pack(char *payload, u16 sensor_index,
+ }
+ 
+ static inline void mlxsw_reg_mtmp_unpack(char *payload, int *p_temp,
+-					 int *p_max_temp, char *sensor_name)
++					 int *p_max_temp, int *p_temp_hi,
++					 int *p_max_oper_temp,
++					 char *sensor_name)
+ {
+ 	s16 temp;
+ 
+@@ -8030,6 +8040,14 @@ static inline void mlxsw_reg_mtmp_unpack(char *payload, int *p_temp,
+ 		temp = mlxsw_reg_mtmp_max_temperature_get(payload);
+ 		*p_max_temp = MLXSW_REG_MTMP_TEMP_TO_MC(temp);
+ 	}
++	if (p_temp_hi) {
++		temp = mlxsw_reg_mtmp_temperature_threshold_hi_get(payload);
++		*p_temp_hi = MLXSW_REG_MTMP_TEMP_TO_MC(temp);
++	}
++	if (p_max_oper_temp) {
++		temp = mlxsw_reg_mtmp_max_operational_temperature_get(payload);
++		*p_max_oper_temp = MLXSW_REG_MTMP_TEMP_TO_MC(temp);
++	}
+ 	if (sensor_name)
+ 		mlxsw_reg_mtmp_sensor_name_memcpy_from(payload, sensor_name);
+ }
+-- 
+2.17.1
+

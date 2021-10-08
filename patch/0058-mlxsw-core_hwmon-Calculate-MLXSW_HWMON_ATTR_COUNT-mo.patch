@@ -1,0 +1,50 @@
+From 76d3c20754fdfb66272a564b98bc2ff2a6311a7a Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Sun, 18 Jul 2021 17:21:32 +0000
+Subject: [PATCH 58/60] mlxsw: core_hwmon: Calculate MLXSW_HWMON_ATTR_COUNT
+ more accurately
+
+Currently the value of MLXSW_HWMON_ATTR_COUNT is calculated not really
+accurate.
+
+Add several defines to make the calculation clearer and easier to
+change.
+
+Calculate the precise high bound of number of attributes that may be
+needed.
+
+Signed-off-by: Amit Cohen <amitc@mellanox.com>
+Reviewed-by: Petr Machata <petrm@mellanox.com>
+Signed-off-by: Ido Schimmel <idosch@nvidia.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+index 7cea54ce4a43..ac47a691f318 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+@@ -12,8 +12,17 @@
+ #include "core.h"
+ #include "core_env.h"
+ 
+-#define MLXSW_HWMON_TEMP_SENSOR_MAX_COUNT 127
+-#define MLXSW_HWMON_ATTR_COUNT (MLXSW_HWMON_TEMP_SENSOR_MAX_COUNT * 4 + \
++#define MLXSW_HWMON_SENSORS_MAX_COUNT 64
++#define MLXSW_HWMON_MODULES_MAX_COUNT 64
++#define MLXSW_HWMON_GEARBOXES_MAX_COUNT 32
++
++#define MLXSW_HWMON_ATTR_PER_SENSOR 3
++#define MLXSW_HWMON_ATTR_PER_MODULE 7
++#define MLXSW_HWMON_ATTR_PER_GEARBOX 4
++
++#define MLXSW_HWMON_ATTR_COUNT (MLXSW_HWMON_SENSORS_MAX_COUNT * MLXSW_HWMON_ATTR_PER_SENSOR + \
++				MLXSW_HWMON_MODULES_MAX_COUNT * MLXSW_HWMON_ATTR_PER_MODULE + \
++				MLXSW_HWMON_GEARBOXES_MAX_COUNT * MLXSW_HWMON_ATTR_PER_GEARBOX + \
+ 				MLXSW_MFCR_TACHOS_MAX + MLXSW_MFCR_PWMS_MAX)
+ 
+ struct mlxsw_hwmon_attr {
+-- 
+2.17.1
+
