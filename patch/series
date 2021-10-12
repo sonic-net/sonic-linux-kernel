@@ -16,9 +16,7 @@ driver-i2c-mux-pca954x-remove-support-for-unused-platform-d.patch
 driver-i2c-mux-pca954x-allow-management-of-device-idle-stat.patch
 driver-pca954x-i2c-mux-force-deselect-on-exit-flag.patch
 kernel-add-kexec-reboot-string.patch
-driver-hwmon-max6620.patch
-driver-hwmon-max6620-fix-rpm-calc.patch
-driver-hwmon-max6620-update.patch
+hwmon-Add-Maxim-MAX6620-hardware-monitoring-driver-buster.patch
 driver-hwmon-max6658-fix-write-convrate.patch
 driver-hwmon-pmbus-dni_dps460.patch
 driver-hwmon-pmbus-dni_dps460-update-pmbus-core.patch
