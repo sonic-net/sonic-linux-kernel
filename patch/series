@@ -83,7 +83,6 @@ net-sch_generic-fix-the-missing-new-qdisc-assignment.patch
 0030-hwmon-Add-convience-macro-to-define-simple-static-se.patch
 0031-backport-nvme-Add-hardware-monitoring-support.patch
 0032-platform-mellanox-mlxreg-hotplug-Use-capability-regi.patch
-0033-thermal-Fix-use-after-free-when-unregistering-therma.patch
 0034-i2c-mlxcpld-Update-module-license.patch
 0035-i2c-mlxcpld-Add-support-for-I2C-bus-frequency-settin.patch
 0036-i2c-mux-mlxcpld-Update-module-license.patch
