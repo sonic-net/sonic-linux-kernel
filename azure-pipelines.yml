@@ -18,19 +18,18 @@ stages:
       sonic_slave: sonic-slave-bullseye
       artifact_name: sonic-linux-kernel
 
-  - ${{ if ne(variables['Build.Reason'], 'PullRequest') }}:
-    - template: .azure-pipelines/build-template.yml
-      parameters:
-        arch: armhf
-        timeout: 1440
-        pool: sonicbld_8c
-        sonic_slave: sonic-slave-bullseye-armhf
-        artifact_name: sonic-linux-kernel.armhf
+  - template: .azure-pipelines/build-template.yml
+    parameters:
+      arch: arm64
+      pool: sonicbld-arm64
+      sonic_slave: sonic-slave-bullseye-arm64
+      artifact_name: sonic-linux-kernel.arm64
 
-    - template: .azure-pipelines/build-template.yml
-      parameters:
-        arch: arm64
-        timeout: 1440
-        pool: sonicbld_8c
-        sonic_slave: sonic-slave-bullseye-arm64
-        artifact_name: sonic-linux-kernel.arm64
+  - template: .azure-pipelines/build-template.yml
+    parameters:
+      arch: armhf
+      pool: sonicbld-armhf
+      sonic_slave: sonic-slave-bullseye-armhf
+      artifact_name: sonic-linux-kernel.armhf
+
+
