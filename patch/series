@@ -11,9 +11,7 @@ driver-sff-8436-use-nvmem_device_read.patch
 driver-support-sff-8436-read-write-fix.patch
 driver-i2c-bus-intel-ismt-add-delay-param.patch
 kernel-add-kexec-reboot-string.patch
-driver-hwmon-max6620.patch
-driver-hwmon-max6620-fix-rpm-calc.patch
-driver-hwmon-max6620-update.patch
+hwmon-Add-Maxim-MAX6620-hardware-monitoring-driver.patch
 #driver-hwmon-max6658-fix-write-convrate.patch # TODO: update for current version
 driver-hwmon-pmbus-dni_dps460.patch
 driver-hwmon-pmbus-dni_dps460-update-pmbus-core.patch
