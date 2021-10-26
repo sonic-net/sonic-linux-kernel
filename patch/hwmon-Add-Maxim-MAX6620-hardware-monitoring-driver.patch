@@ -3,6 +3,8 @@ From: Arun Saravanan Balachandran <Arun_Saravanan_Balac@dell.com>
 Date: Mon, 13 Sep 2021 13:40:15 +0000
 Subject: hwmon: Add Maxim MAX6620 hardware monitoring driver
 
+commit https://git.kernel.org/pub/scm/linux/kernel/git/groeck/linux-staging.git/commit/?h=hwmon-next&id=e8ac01e5db329cf4ac2b36ef66b9d877330a990c upstream
+
 Add hardware monitoring driver for Maxim MAX6620 Fan controller
 
 Originally-from: L. Grunenberg <contact@lgrunenberg.de>
