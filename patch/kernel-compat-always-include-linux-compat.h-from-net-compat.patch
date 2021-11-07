@@ -1,0 +1,63 @@
+From fc0d3b24bdb7a523e973e49648c45d240320ee95 Mon Sep 17 00:00:00 2001
+From: Jakub Kicinski <kuba@kernel.org>
+Date: Sat, 21 Nov 2020 13:48:44 -0800
+Subject: [PATCH] compat: always include linux/compat.h from net/compat.h
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+We're about to do reshuffling in networking headers and
+eliminate some implicit includes. This results in:
+
+In file included from ../net/ipv4/netfilter/arp_tables.c:26:
+include/net/compat.h:60:40: error: unknown type name ‘compat_uptr_t’; did you mean ‘compat_ptr_ioctl’?
+    struct sockaddr __user **save_addr, compat_uptr_t *ptr,
+                                        ^~~~~~~~~~~~~
+                                        compat_ptr_ioctl
+include/net/compat.h:61:4: error: unknown type name ‘compat_size_t’; did you mean ‘compat_sigset_t’?
+    compat_size_t *len);
+    ^~~~~~~~~~~~~
+    compat_sigset_t
+
+Currently net/compat.h depends on linux/compat.h being included
+first. After the upcoming changes this would break the 32bit build.
+
+Reviewed-by: Arnd Bergmann <arnd@arndb.de>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Link: https://lore.kernel.org/r/20201121214844.1488283-1-kuba@kernel.org
+Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+---
+ include/net/compat.h | 10 ----------
+ 1 file changed, 10 deletions(-)
+
+diff --git a/include/net/compat.h b/include/net/compat.h
+index 745db0d605b6..84805bdc4435 100644
+--- a/include/net/compat.h
++++ b/include/net/compat.h
+@@ -5,8 +5,6 @@
+ 
+ struct sock;
+ 
+-#if defined(CONFIG_COMPAT)
+-
+ #include <linux/compat.h>
+ 
+ struct compat_msghdr {
+@@ -48,14 +46,6 @@ struct compat_rtentry {
+ 	unsigned short  rt_irtt;        /* Initial RTT                  */
+ };
+ 
+-#else /* defined(CONFIG_COMPAT) */
+-/*
+- * To avoid compiler warnings:
+- */
+-#define compat_msghdr	msghdr
+-#define compat_mmsghdr	mmsghdr
+-#endif /* defined(CONFIG_COMPAT) */
+-
+ int __get_compat_msghdr(struct msghdr *kmsg, struct compat_msghdr __user *umsg,
+ 			struct sockaddr __user **save_addr, compat_uptr_t *ptr,
+ 			compat_size_t *len);
+-- 
+2.25.1
+
