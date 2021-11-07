@@ -61,7 +61,8 @@ function get_section_opts(){
 ret=0
 exclusion_file="../patch/kconfig-exclusions"
 inclusion_file="../patch/kconfig-inclusions"
-if [ -e ${exclusion_file} -o -e ${inclusion_file} ]; then
+force_inclusion_file="../patch/kconfig-force-inclusions"
+if [ -e ${exclusion_file} -o -e ${inclusion_file} -o -e ${force_inclusion_file} ]; then
 
     # Process any exclusions in the kernel
     if [ -f ${exclusion_file} ]; then
@@ -122,6 +123,16 @@ if [ -e ${exclusion_file} -o -e ${inclusion_file} ]; then
         if [ ! $ret = 2 ]; then
             echo "No error"
         fi
+    fi
+
+    # Process any force inclusions in the kernel
+    if [ -f ${force_inclusion_file} ]; then
+        force_inclusion_opts=$(get_section_opts ${force_inclusion_file} "common" ${ARCH} ${PLATFORM})
+        while read -r opt; do
+            if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
+                echo $opt >> ${CONFIG_FILE}
+            fi
+        done <<< ${force_inclusion_opts};
     fi
 
     echo
