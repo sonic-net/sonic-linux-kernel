@@ -1,0 +1,57 @@
+From 31c2f29dd926d31b5d700f9f811aff3eaaefc5a9 Mon Sep 17 00:00:00 2001
+From: Jemston Fernando <jemston_fernando@dell.com>
+Date: Thu, 18 Nov 2021 00:22:50 -0800
+Subject: [PATCH] Enable 0x51(A2h) access even when DDM is unsupported, for
+ accessing vendor specific fields. Some SFP optics have do not support DDM
+ can have vendor specific implementation via 0x51 in A2h register space
+ (eg. Mailbox Registers).
+
+ Removed the DDM support check for optoe2 (TWO_ADDR) and assumes its
+ EEPROM size as 512 bytes minimum. Returns error when accessing beyond
+ 256 bytes for optics that do not support I2C address 0x51.
+
+Signed-off-by: Jemston Fernando <jemston_fernando@dell.com>
+---
+ drivers/misc/eeprom/optoe.c | 19 +------------------
+ 1 file changed, 1 insertion(+), 18 deletions(-)
+
+diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
+index 1432ab6..9800b19 100644
+--- a/drivers/misc/eeprom/optoe.c
++++ b/drivers/misc/eeprom/optoe.c
+@@ -174,8 +174,6 @@ struct optoe_platform_data {
+ #define CMIS_NOT_PAGEABLE (1<<7)
+ #define TWO_ADDR_PAGEABLE_REG 0x40
+ #define TWO_ADDR_PAGEABLE (1<<4)
+-#define TWO_ADDR_0X51_REG 92
+-#define TWO_ADDR_0X51_SUPP (1<<6)
+ #define OPTOE_ID_REG 0
+ #define OPTOE_READ_OP 0
+ #define OPTOE_WRITE_OP 1
+@@ -611,22 +609,7 @@ static ssize_t optoe_page_legal(struct optoe_data *optoe,
+ 			/* pages not supported, trim len to unpaged size */
+ 			if (off >= TWO_ADDR_EEPROM_UNPAGED_SIZE)
+ 				return OPTOE_EOF;
+-
+-			/* will be accessing addr 0x51, is that supported? */
+-			/* byte 92, bit 6 implies DDM support, 0x51 support */
+-			status = optoe_eeprom_read(optoe, client, &regval,
+-						TWO_ADDR_0X51_REG, 1);
+-			if (status < 0)
+-				return status;
+-			if (regval & TWO_ADDR_0X51_SUPP) {
+-				/* addr 0x51 is OK */
+-				maxlen = TWO_ADDR_EEPROM_UNPAGED_SIZE - off;
+-			} else {
+-				/* addr 0x51 NOT supported, trim to 256 max */
+-				if (off >= TWO_ADDR_NO_0X51_SIZE)
+-					return OPTOE_EOF;
+-				maxlen = TWO_ADDR_NO_0X51_SIZE - off;
+-			}
++			maxlen = TWO_ADDR_EEPROM_UNPAGED_SIZE - off;
+ 		}
+ 		len = (len > maxlen) ? maxlen : len;
+ 		dev_dbg(&client->dev,
+-- 
+2.7.4
+
