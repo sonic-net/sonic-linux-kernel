@@ -1,14 +1,15 @@
 From 31c2f29dd926d31b5d700f9f811aff3eaaefc5a9 Mon Sep 17 00:00:00 2001
 From: Jemston Fernando <jemston_fernando@dell.com>
 Date: Thu, 18 Nov 2021 00:22:50 -0800
-Subject: [PATCH] Enable 0x51(A2h) access even when DDM is unsupported, for
- accessing vendor specific fields. Some SFP optics have do not support DDM
+Subject: [PATCH] A2h access for optoe2 even when DDM is unsupported
+ Enable 0x51 (A2h) access for optoe2 even when DDM is unsupported, for
+ accessing vendor specific fields. Some SFP optics that do not support DDM
  can have vendor specific implementation via 0x51 in A2h register space
  (eg. Mailbox Registers).
 
- Removed the DDM support check for optoe2 (TWO_ADDR) and assumes its
- EEPROM size as 512 bytes minimum. Returns error when accessing beyond
- 256 bytes for optics that do not support I2C address 0x51.
+ Removed the DDM support check for optoe2 (TWO_ADDR) and now its EEPROM
+ size is 512 bytes minimum. Return error when accessing beyond 256 bytes
+ for optics that do not support I2C address 0x51.
 
 Signed-off-by: Jemston Fernando <jemston_fernando@dell.com>
 ---
