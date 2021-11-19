@@ -95,6 +95,7 @@ cisco-mdio-mux-support-acpi.patch
 cisco-x86-gpio-config.patch
 cisco-acpi-spi-nor.patch
 cisco-Enable-static-memory-reservation-for-OIRable-PCIe-de.patch
+cisco-hwmon-pmbus_core-pec-support-check.patch
 
 #
 # Marvell platform patches for 4.19
