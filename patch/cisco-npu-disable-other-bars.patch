@@ -1,24 +1,29 @@
-From d9ddce0a1c4699cf6c2c139da907a09cc1255178 Mon Sep 17 00:00:00 2001
+From 5b025a4732297147ec5c264225e1ffb50a09bfe5 Mon Sep 17 00:00:00 2001
 From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
-Date: Mon, 15 Nov 2021 23:22:15 -0800
+Date: Wed, 1 Dec 2021 13:59:29 -0800
 Subject: [PATCH] NPU disable unused PCI BAR's
 
-For Cisco ASIC only BAR0 is valid. Not disabling other BAR's
-was resulting in pci_enable_device function failure in P0
-Pacific ASIC's. Further debugging and consultion with Hardware
-team, issue seems to be related to only P0 version of ASIC and
-workaround suggested is to disable unused PCI BAR.
+For Cisco Network Processing Unit ASIC only BAR0 is valid.
+Not disabling other BAR's was resulting in pci_enable_device
+function failure in P0 Pacific ASIC's. Further debugging and
+consultion with Hardware team, issue seems to be related to
+only P0 version of ASIC and workaround suggested is to disable
+unused PCI BAR.
+
+This patch disables unused PCI BAR of NPU ASIC.
+
+NPU is commonly used name for the packet forwarding ASIC's.
 
 Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
 ---
- drivers/pci/quirks.c | 44 ++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 44 insertions(+)
+ drivers/pci/quirks.c | 45 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 45 insertions(+)
 
 diff --git a/drivers/pci/quirks.c b/drivers/pci/quirks.c
-index 16fb3d771..a48efa6fe 100644
+index 16fb3d771..0efe3f62a 100644
 --- a/drivers/pci/quirks.c
 +++ b/drivers/pci/quirks.c
-@@ -5686,3 +5686,47 @@ static void apex_pci_fixup_class(struct pci_dev *pdev)
+@@ -5686,3 +5686,48 @@ static void apex_pci_fixup_class(struct pci_dev *pdev)
  }
  DECLARE_PCI_FIXUP_CLASS_HEADER(0x1ac1, 0x089a,
  			       PCI_CLASS_NOT_DEFINED, 8, apex_pci_fixup_class);
@@ -43,14 +48,14 @@ index 16fb3d771..a48efa6fe 100644
 +		if (!r->start && !r->end && !r->flags)
 +			continue;
 +
-+		dev_info(&dev->dev, "Cisco Silicon One BAR %d %pR fixed up\n", i, r);
++		pci_info(dev, "Cisco Silicon One BAR %d %pR fixed up\n", i, r);
 +		r->start = 0;
 +		r->end = 0;
 +		r->flags = 0;
 +	}
 +
 +	dev->class = PCI_CLASS_MEMORY_OTHER << 8;
-+	dev_info(&dev->dev, "Cisco Silicon One class adjusted\n");
++	pci_info(dev, "Cisco Silicon One class adjusted\n");
 +}
 +DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_SYNOPSYS, PCI_DEVICE_ID_LEABA_PACIFIC,
 +				silicon_one_fixup);
@@ -66,6 +71,7 @@ index 16fb3d771..a48efa6fe 100644
 +				silicon_one_fixup);
 +DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_KRYPTON,
 +				silicon_one_fixup);
++
 -- 
 2.25.1
 
