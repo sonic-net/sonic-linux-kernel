@@ -1,0 +1,54 @@
+From cac7ee957753518f366b7afa4afa13f528af71f5 Mon Sep 17 00:00:00 2001
+From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+Date: Tue, 7 Sep 2021 15:57:12 -0700
+Subject: [PATCH] mtd: m25p80 spi driver update to support ACPI table match
+
+Current m25p80 spi nor driver does not support ACPI table match.
+Configuration done through ACPI tables is not recognized by driver.
+Cisco 8000 platform configures NOR flash partition information
+through ACPI table which is not recognized by m25p80.
+
+Added support in m25p80 to perform ACPI table match.
+
+Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+---
+ drivers/mtd/devices/m25p80.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/drivers/mtd/devices/m25p80.c b/drivers/mtd/devices/m25p80.c
+index c4a1d04b8..df21dd79f 100644
+--- a/drivers/mtd/devices/m25p80.c
++++ b/drivers/mtd/devices/m25p80.c
+@@ -22,6 +22,7 @@
+ 
+ #include <linux/mtd/mtd.h>
+ #include <linux/mtd/partitions.h>
++#include <linux/acpi.h>
+ 
+ #include <linux/spi/spi.h>
+ #include <linux/spi/spi-mem.h>
+@@ -319,11 +320,21 @@ static const struct of_device_id m25p_of_table[] = {
+ };
+ MODULE_DEVICE_TABLE(of, m25p_of_table);
+ 
++#ifdef CONFIG_ACPI
++static const struct acpi_device_id m25p_acpi_table[] = {
++       { "JEDEC,SPI-NOR", 0 },
++       { "ACPI0000", 0 },
++       {}
++};
++MODULE_DEVICE_TABLE(acpi, m25p_acpi_table);
++#endif
++
+ static struct spi_mem_driver m25p80_driver = {
+ 	.spidrv = {
+ 		.driver = {
+ 			.name	= "m25p80",
+ 			.of_match_table = m25p_of_table,
++			.acpi_match_table = ACPI_PTR(m25p_acpi_table),
+ 		},
+ 		.id_table	= m25p_ids,
+ 	},
+-- 
+2.26.2
+
