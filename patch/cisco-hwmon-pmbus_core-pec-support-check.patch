@@ -12,6 +12,10 @@ adapter supports it.
 Added code to check PEC capability for adapter and enable it
 only if both controller and adapter supports PEC.
 
+This patch was applied to Linux 5.14 in commit
+4e5418f787ec56d7fe3c6efee486b8f508c58baf  
+(hwmon: (pmbus_core) Check adapter PEC support).
+
 Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
 ---
  drivers/hwmon/pmbus/pmbus_core.c | 10 ++++++----
