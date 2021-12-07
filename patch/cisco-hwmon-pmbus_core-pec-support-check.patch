@@ -1,0 +1,46 @@
+From a3e00e49a8647ea9ba6f08a36c1bf6884f91619a Mon Sep 17 00:00:00 2001
+From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+Date: Tue, 1 Jun 2021 22:42:41 -0700
+Subject: [PATCH] hwmon: (pmbus_core) Check adapter PEC support
+
+Currently, for Packet Error Checking (PEC) only the controller
+is checked for support. This causes problems on the cisco-8000
+platform where a SMBUS transaction errors are observed. This is
+because PEC has to be enabled only if both controller and
+adapter supports it.
+
+Added code to check PEC capability for adapter and enable it
+only if both controller and adapter supports PEC.
+
+This patch is bakported to 4.19.x kernel
+
+Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+---
+ drivers/hwmon/pmbus/pmbus_core.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/hwmon/pmbus/pmbus_core.c b/drivers/hwmon/pmbus/pmbus_core.c
+index df4a6de24..2f98b4785 100644
+--- a/drivers/hwmon/pmbus/pmbus_core.c
++++ b/drivers/hwmon/pmbus/pmbus_core.c
+@@ -2082,10 +2082,14 @@ static int pmbus_init_common(struct i2c_client *client, struct pmbus_data *data,
+ 		data->has_status_word = true;
+ 	}
+ 
+-	/* Enable PEC if the controller supports it */
++	/* Enable PEC if the controller and bus supports it */
+ 	ret = i2c_smbus_read_byte_data(client, PMBUS_CAPABILITY);
+-	if (ret >= 0 && (ret & PB_CAPABILITY_ERROR_CHECK))
+-		client->flags |= I2C_CLIENT_PEC;
++	if (ret >= 0 && (ret & PB_CAPABILITY_ERROR_CHECK)) {
++		if (i2c_check_functionality(client->adapter,
++			I2C_FUNC_SMBUS_PEC)) {
++			client->flags |= I2C_CLIENT_PEC;
++		}
++	}
+ 
+ 	if (data->info->pages)
+ 		pmbus_clear_faults(client);
+-- 
+2.26.2
+
