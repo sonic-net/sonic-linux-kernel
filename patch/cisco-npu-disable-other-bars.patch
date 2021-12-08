@@ -1,0 +1,77 @@
+From 5b025a4732297147ec5c264225e1ffb50a09bfe5 Mon Sep 17 00:00:00 2001
+From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+Date: Wed, 1 Dec 2021 13:59:29 -0800
+Subject: [PATCH] NPU disable unused PCI BAR's
+
+For Cisco Network Processing Unit ASIC only BAR0 is valid.
+Not disabling other BAR's was resulting in pci_enable_device
+function failure in P0 Pacific ASIC's. Further debugging and
+consultion with Hardware team, issue seems to be related to
+only P0 version of ASIC and workaround suggested is to disable
+unused PCI BAR.
+
+This patch disables unused PCI BAR of NPU ASIC.
+
+NPU is commonly used name for the packet forwarding ASIC's.
+
+Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+---
+ drivers/pci/quirks.c | 45 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 45 insertions(+)
+
+diff --git a/drivers/pci/quirks.c b/drivers/pci/quirks.c
+index 16fb3d771..0efe3f62a 100644
+--- a/drivers/pci/quirks.c
++++ b/drivers/pci/quirks.c
+@@ -5686,3 +5686,48 @@ static void apex_pci_fixup_class(struct pci_dev *pdev)
+ }
+ DECLARE_PCI_FIXUP_CLASS_HEADER(0x1ac1, 0x089a,
+ 			       PCI_CLASS_NOT_DEFINED, 8, apex_pci_fixup_class);
++
++#define PCI_DEVICE_ID_LEABA_PACIFIC    0xabcd
++#define PCI_DEVICE_ID_LEABA_GIBRALTAR  0xa001
++#define PCI_DEVICE_ID_LEABA_GRAPHENE   0xa003
++#define PCI_DEVICE_ID_LEABA_PALLADIUM  0xa004
++#define PCI_DEVICE_ID_LEABA_ARGON      0xa005
++#define PCI_DEVICE_ID_LEABA_KRYPTON    0xa006
++
++/*
++ * For Pacific A0, only BAR 0 is valid
++ */
++static void silicon_one_fixup(struct pci_dev *dev)
++{
++	int i;
++	struct resource *r;
++
++	for (i = 1; i <= PCI_ROM_RESOURCE; i++) {
++		r = &dev->resource[i];
++		if (!r->start && !r->end && !r->flags)
++			continue;
++
++		pci_info(dev, "Cisco Silicon One BAR %d %pR fixed up\n", i, r);
++		r->start = 0;
++		r->end = 0;
++		r->flags = 0;
++	}
++
++	dev->class = PCI_CLASS_MEMORY_OTHER << 8;
++	pci_info(dev, "Cisco Silicon One class adjusted\n");
++}
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_SYNOPSYS, PCI_DEVICE_ID_LEABA_PACIFIC,
++				silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_PACIFIC,
++				silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_GIBRALTAR,
++				silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_GRAPHENE,
++				silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_PALLADIUM,
++				silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_ARGON,
++				silicon_one_fixup);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_LEABA_KRYPTON,
++				silicon_one_fixup);
++
+-- 
+2.25.1
+
