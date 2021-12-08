@@ -1,0 +1,45 @@
+From ec513d48cc5b25b98c15ec2a47658c71b2231f95 Mon Sep 17 00:00:00 2001
+From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+Date: Sat, 25 Sep 2021 20:44:20 -0700
+Subject: [PATCH] iio: (dac/ds4424) Allow NULL of_node
+
+Cisco is using ACPI to read device configuration instead of
+OF (device-tree) for ds4424 device.
+
+Kernel is in a transition period in its support for ACPI
+(cisco using ACPI for kernel module configuration). The kernel
+makes a distinction between device tree (of_node) and ACPI
+(fw_node) in the device structure. It is unclear if they can be
+used together or not, but I can definitively say that we are only
+using ACPI and not device tree. In this particular driver, there
+was an explicit check for having a device tree node, even though no
+reference to the device tree was made within the driver. This caused
+the probe routine to fail with -ENODEV in cisco environment.
+
+This patch removes the check for of_node.
+
+Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+---
+ drivers/iio/dac/ds4424.c | 6 ------
+ 1 file changed, 6 deletions(-)
+
+diff --git a/drivers/iio/dac/ds4424.c b/drivers/iio/dac/ds4424.c
+index 714a97f91..ae9be7926 100644
+--- a/drivers/iio/dac/ds4424.c
++++ b/drivers/iio/dac/ds4424.c
+@@ -236,12 +236,6 @@ static int ds4424_probe(struct i2c_client *client,
+ 	indio_dev->dev.of_node = client->dev.of_node;
+ 	indio_dev->dev.parent = &client->dev;
+ 
+-	if (!client->dev.of_node) {
+-		dev_err(&client->dev,
+-				"Not found DT.\n");
+-		return -ENODEV;
+-	}
+-
+ 	data->vcc_reg = devm_regulator_get(&client->dev, "vcc");
+ 	if (IS_ERR(data->vcc_reg)) {
+ 		dev_err(&client->dev,
+-- 
+2.26.2
+
