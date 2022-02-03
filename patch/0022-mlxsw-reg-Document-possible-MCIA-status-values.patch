@@ -1,7 +1,6 @@
-From 477830ca2dd04fffdc4d62a2eccb59a1e120e349 Mon Sep 17 00:00:00 2001
 From: Ido Schimmel <idosch@nvidia.com>
 Date: Mon, 21 Jun 2021 10:50:40 +0300
-Subject: [PATCH 22/66] mlxsw: reg: Document possible MCIA status values
+Subject: 0022 mlxsw: reg: Document possible MCIA status values
 
 Will be used to emit meaningful messages to user space via extack in a
 subsequent patch.

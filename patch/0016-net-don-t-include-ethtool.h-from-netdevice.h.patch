@@ -1,7 +1,6 @@
-From 1a5b8d814300928a1ab8f70479484baab239d662 Mon Sep 17 00:00:00 2001
 From: Jakub Kicinski <kuba@kernel.org>
 Date: Fri, 20 Nov 2020 14:50:52 -0800
-Subject: [PATCH 16/66] net: don't include ethtool.h from netdevice.h
+Subject: 0016 net: don't include ethtool.h from netdevice.h
 
 linux/netdevice.h is included in very many places, touching any
 of its dependecies causes large incremental builds.

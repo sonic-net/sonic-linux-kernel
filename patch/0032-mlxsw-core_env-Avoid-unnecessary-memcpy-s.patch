@@ -1,7 +1,6 @@
-From 20e81d45c1ba8711c295bc26a1466cfc74671fd9 Mon Sep 17 00:00:00 2001
 From: Ido Schimmel <idosch@nvidia.com>
 Date: Thu, 24 Jun 2021 22:47:24 +0300
-Subject: [PATCH 32/66] mlxsw: core_env: Avoid unnecessary memcpy()s
+Subject: 0032 mlxsw: core_env: Avoid unnecessary memcpy()s
 
 Simply get a pointer to the data in the register payload instead of
 copying it to a temporary buffer.

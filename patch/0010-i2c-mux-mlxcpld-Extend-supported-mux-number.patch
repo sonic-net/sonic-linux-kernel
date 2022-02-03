@@ -1,7 +1,6 @@
-From 2e79909a3d3ad6e0e19c1bdba2ce07a7537d2013 Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Mon, 8 Feb 2021 22:16:05 +0200
-Subject: [PATCH 10/66] i2c: mux: mlxcpld: Extend supported mux number
+Subject: 0010 i2c: mux: mlxcpld: Extend supported mux number
 
 Allow to extend mux number supported by driver.
 Currently it is limited by eight, which is not enough for new coming

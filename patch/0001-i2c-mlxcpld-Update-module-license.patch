@@ -1,7 +1,6 @@
-From e86b9000839c44f1e6beff13680368124b733606 Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Thu, 10 Dec 2020 18:51:11 +0200
-Subject: [PATCH 01/66] i2c: mlxcpld: Update module license
+Subject: 0001 i2c: mlxcpld: Update module license
 
 Update license to SPDX-License.
 
