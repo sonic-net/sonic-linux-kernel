@@ -32,6 +32,8 @@ Support-for-fullcone-nat.patch
 driver-ixgbe-external-phy.patch
 kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 #net-sch_generic-fix-the-missing-new-qdisc-assignment.patch # Functionality is present
+increase-maximum-gpio-number-for-x86-64.patch
+
 #
 # This series applies on GIT commit 1451b36b2b0d62178e42f648d8a18131af18f7d8
 # Tkernel-sched-core-fix-cgroup-fork-race.patch
@@ -134,7 +136,6 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 # Cisco patches for 5.10 kernel
 cisco-mtd-part.patch
 cisco-mdio-mux-support-acpi.patch
-cisco-x86-gpio-config.patch
 cisco-acpi-spi-nor.patch
 cisco-Enable-static-memory-reservation-for-OIRable-PCIe-de.patch
 cisco-npu-disable-other-bars.patch
