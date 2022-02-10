@@ -1,0 +1,39 @@
+From d7109fe3a0991a0f7b4ac099b78c908e3b619787 Mon Sep 17 00:00:00 2001
+From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Date: Thu, 26 Aug 2021 18:03:17 +0300
+Subject: [PATCH] x86/platform: Increase maximum GPIO number for X86_64
+
+By default the 512 GPIOs is the maximum on any x86 platform.
+With, for example, Intel Tiger Lake-H the SoC based controller
+occupies up to 480 pins. This leaves only 32 available for
+GPIO expanders or other drivers, like PMIC. Hence, bump the
+maximum GPIO number to 1024 for X86_64 and leave 512 for X86_32.
+
+Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Reviewed-by: Linus Walleij <linus.walleij@linaro.org>
+Reviewed-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+Link: https://lore.kernel.org/r/20210826150317.29435-1-andriy.shevchenko@linux.intel.com
+---
+ arch/x86/Kconfig | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
+index 421fa9e38c60..10163887c5eb 100644
+--- a/arch/x86/Kconfig
++++ b/arch/x86/Kconfig
+@@ -340,6 +340,11 @@ config NEED_PER_CPU_PAGE_FIRST_CHUNK
+ config ARCH_HIBERNATION_POSSIBLE
+ 	def_bool y
+ 
++config ARCH_NR_GPIO
++	int
++	default 1024 if X86_64
++	default 512
++
+ config ARCH_SUSPEND_POSSIBLE
+ 	def_bool y
+ 
+-- 
+2.32.0
+
