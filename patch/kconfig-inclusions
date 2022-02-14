@@ -1,4 +1,5 @@
 [common]
+CONFIG_LOG_BUF_SHIFT=20
 
 [amd64]
 # For Arista
