@@ -138,6 +138,7 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 # Cisco patches for 5.10 kernel
 cisco-mtd-part.patch
 cisco-mdio-mux-support-acpi.patch
+cisco-x86-gpio-config.patch
 cisco-acpi-spi-nor.patch
 cisco-Enable-static-memory-reservation-for-OIRable-PCIe-de.patch
 cisco-npu-disable-other-bars.patch
