@@ -4,6 +4,8 @@ driver-arista-net-tg3-dma-mask-4g-sb800.patch
 driver-arista-net-tg3-disallow-broadcom-default-mac.patch
 driver-arista-net-tg3-access-regs-indirectly.patch
 driver-arista-pci-reassign-pref-mem.patch
+driver-arista-mmcblk-not-working-on-AMD-platforms.patch
+driver-arista-restrict-eMMC-drive-to-50Mhz-from-userland.patch
 driver-support-sff-8436-eeprom.patch
 driver-support-sff-8436-eeprom-update.patch
 driver-sff-8436-use-nvmem-framework.patch

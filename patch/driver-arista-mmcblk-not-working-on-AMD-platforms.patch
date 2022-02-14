@@ -1,0 +1,32 @@
+amd/mmc: mmcblk not working on some AMD platforms
+
+ADMA and ADMA-64 seem to be broken on AMD. This patch enables the
+following quirks (for AMD only):
+    SDHCI_QUIRK_BROKEN_ADMA
+    SDHCI_QUIRK2_BROKEN_64_BIT_DMA
+
+Signed-off-by: Radu Rendec <rrendec@arista.com>
+Signed-off-by: Samuel Angebault <staphylo@arista.com>
+---
+ drivers/mmc/host/sdhci-pci-core.c |    7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/mmc/host/sdhci-pci-core.c b/drivers/mmc/host/sdhci-pci-core.c
+index bf04a08ee..c10790dd6 100644
+--- a/drivers/mmc/host/sdhci-pci-core.c
++++ b/drivers/mmc/host/sdhci-pci-core.c
+@@ -1791,8 +1791,13 @@ static int amd_probe(struct sdhci_pci_chip *chip)
+ 		}
+ 	}
+ 
+-	if (gen == AMD_CHIPSET_BEFORE_ML || gen == AMD_CHIPSET_CZ)
++	dev_info(&chip->pdev->dev, "identified AMD generation %d chip\n", gen);
++
++	if (gen == AMD_CHIPSET_BEFORE_ML || gen == AMD_CHIPSET_CZ) {
++		chip->quirks |= SDHCI_QUIRK_BROKEN_ADMA;
++		chip->quirks2 |= SDHCI_QUIRK2_BROKEN_64_BIT_DMA;
+ 		chip->quirks2 |= SDHCI_QUIRK2_CLEAR_TRANSFERMODE_REG_BEFORE_CMD;
++	}
+ 
+ 	return 0;
+ }
