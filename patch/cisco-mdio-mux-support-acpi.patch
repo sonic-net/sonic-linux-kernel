@@ -69,8 +69,8 @@ index 6a1d35402..aa57da1fa 100644
 +			r = mdiobus_register(cb->mii_bus);
 +
  		if (r) {
- 			dev_err(dev,
- 				"Error: Failed to register MDIO bus for child %pOF\n",
+ 			mdiobus_free(cb->mii_bus);
+ 			if (r == -EPROBE_DEFER) {
 -- 
 2.26.2
 

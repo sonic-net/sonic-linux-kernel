@@ -23,10 +23,10 @@ diff --git a/drivers/pci/quirks.c b/drivers/pci/quirks.c
 index 16fb3d771..0efe3f62a 100644
 --- a/drivers/pci/quirks.c
 +++ b/drivers/pci/quirks.c
-@@ -5686,3 +5686,48 @@ static void apex_pci_fixup_class(struct pci_dev *pdev)
+@@ -5762,3 +5762,48 @@ static void apex_pci_fixup_class(struct pci_dev *pdev)
+ 	pdev->dev_flags |= PCI_DEV_FLAGS_HAS_MSI_MASKING;
  }
- DECLARE_PCI_FIXUP_CLASS_HEADER(0x1ac1, 0x089a,
- 			       PCI_CLASS_NOT_DEFINED, 8, apex_pci_fixup_class);
+ DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_NVIDIA, 0x0ab8, nvidia_ion_ahci_fixup);
 +
 +#define PCI_DEVICE_ID_LEABA_PACIFIC    0xabcd
 +#define PCI_DEVICE_ID_LEABA_GIBRALTAR  0xa001
