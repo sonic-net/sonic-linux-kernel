@@ -38,6 +38,7 @@ driver-support-tun-config-carrier-enable.patch
 driver-support-optoe.patch
 driver-support-optoe-EOF_fix.patch
 driver-support-optoe-chunk-offset-fix.patch
+driver-support-optoe-QSFP_DD.patch
 bridge-add-per-port-broadcast-flood-flag.patch
 driver-net-tg3-add-param-short-preamble-and-reset.patch
 config-dell-s6000.patch
