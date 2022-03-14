@@ -1,0 +1,31 @@
+From 07db018b0debfbd1246a529a35d4767415338b0f Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Tue, 6 Jul 2021 05:57:39 +0000
+Subject: [PATCH backport v4.19 040/104] platform/mellanox: mlxreg-io: Fix read
+ access of n-bytes size attributes
+
+Fix shift argument for function rol32(). It should be provided in bits,
+while was provided in bytes.
+
+Fixes: 86148190a7db: (" platform/mellanox: mlxreg-io: Add support for complex attributes")
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/platform/mellanox/mlxreg-io.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/platform/mellanox/mlxreg-io.c b/drivers/platform/mellanox/mlxreg-io.c
+index 6b82f5e0c1b0..475773f6dc4b 100644
+--- a/drivers/platform/mellanox/mlxreg-io.c
++++ b/drivers/platform/mellanox/mlxreg-io.c
+@@ -102,7 +102,7 @@ mlxreg_io_get_reg(void *regmap, struct mlxreg_core_data *data, u32 in_val,
+ 			if (ret)
+ 				goto access_error;
+ 
+-			*regval |= rol32(val, regsize * i);
++			*regval |= rol32(val, regsize * i * 8);
+ 		}
+ 		*regval = le32_to_cpu(*regval & regmax);
+ 	}
+-- 
+2.20.1
+
