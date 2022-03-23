@@ -83,6 +83,8 @@ net-sch_generic-fix-the-missing-new-qdisc-assignment.patch
 0030-hwmon-Add-convience-macro-to-define-simple-static-se.patch
 0031-backport-nvme-Add-hardware-monitoring-support.patch
 0032-platform-mellanox-mlxreg-hotplug-Use-capability-regi.patch
+0064-platform-mellanox-mlxreg-io-Fix-read-access-of-n-byt.patch
+0144-platform-x86-mlx-platform-Fix-cpld-_pn-register-seco.patch
 
 # Cisco patches for 4.19 kernel
 cisco-ds4424-null-of-node.patch

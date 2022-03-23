@@ -1,0 +1,60 @@
+From e14ffe4cfe1e63be1aa2fbec7d95637ed6fd18a3 Mon Sep 17 00:00:00 2001
+From: Oleksandr Shamray <oleksandrs@nvidia.com>
+Date: Thu, 14 Oct 2021 06:46:43 +0000
+Subject: [PATCH] platform/x86: mlx-platform: Fix cpld*_pn register second byte
+ reading
+
+When we are reading register which is 2 bytes length we checking both bytes
+for volatile/readable ability. We using a 2-byte type for reading CPLD{N}_PN
+value. This fix adds a second (CPLD{N}_PN+1) register to the volatile/read
+check function.
+
+Signed-off-by: Oleksandr Shamray <oleksandrs@nvidia.com>
+Reviewed-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/platform/x86/mlx-platform.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
+index 149a2e9e9..997e75fb6 100644
+--- a/drivers/platform/x86/mlx-platform.c
++++ b/drivers/platform/x86/mlx-platform.c
+@@ -27,7 +27,11 @@
+ #define MLXPLAT_CPLD_LPC_REG_CPLD3_VER_OFFSET	0x02
+ #define MLXPLAT_CPLD_LPC_REG_CPLD4_VER_OFFSET	0x03
+ #define MLXPLAT_CPLD_LPC_REG_CPLD1_PN_OFFSET	0x04
++#define MLXPLAT_CPLD_LPC_REG_CPLD1_PN1_OFFSET	0x05
+ #define MLXPLAT_CPLD_LPC_REG_CPLD2_PN_OFFSET	0x06
++#define MLXPLAT_CPLD_LPC_REG_CPLD2_PN1_OFFSET	0x07
+ #define MLXPLAT_CPLD_LPC_REG_CPLD3_PN_OFFSET	0x08
++#define MLXPLAT_CPLD_LPC_REG_CPLD3_PN1_OFFSET	0x09
+ #define MLXPLAT_CPLD_LPC_REG_CPLD4_PN_OFFSET	0x0a
++#define MLXPLAT_CPLD_LPC_REG_CPLD4_PN1_OFFSET	0x0b
+ #define MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET	0x1d
+@@ -4395,7 +4399,11 @@ static bool mlxplat_mlxcpld_readable_reg(struct device *dev, unsigned int reg)
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD3_VER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD4_VER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD1_PN_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD1_PN1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD2_PN_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD2_PN1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD3_PN_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD3_PN1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD4_PN_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD4_PN1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET:
+@@ -4524,7 +4532,11 @@ static bool mlxplat_mlxcpld_volatile_reg(struct device *dev, unsigned int reg)
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD3_VER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD4_VER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD1_PN_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD1_PN1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD2_PN_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD2_PN1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD3_PN_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD3_PN1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD4_PN_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD4_PN1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET:
+-- 
+2.20.1
+
