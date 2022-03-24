@@ -12,7 +12,7 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/hwmon/mlxreg-fan.c b/drivers/hwmon/mlxreg-fan.c
-index 689233edff9d..530858d43204 100644
+index 93fb991a5f4e..35c283405df6 100644
 --- a/drivers/hwmon/mlxreg-fan.c
 +++ b/drivers/hwmon/mlxreg-fan.c
 @@ -12,7 +12,7 @@

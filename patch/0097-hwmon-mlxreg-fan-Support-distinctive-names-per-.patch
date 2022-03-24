@@ -17,7 +17,7 @@ Signed-off-by: Guenter Roeck <linux@roeck-us.net>
  1 file changed, 9 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/hwmon/mlxreg-fan.c b/drivers/hwmon/mlxreg-fan.c
-index f32a34b371ec..5afad62060cc 100644
+index 780ae56a59ef..acba9d6888d4 100644
 --- a/drivers/hwmon/mlxreg-fan.c
 +++ b/drivers/hwmon/mlxreg-fan.c
 @@ -263,6 +263,13 @@ mlxreg_fan_is_visible(const void *data, enum hwmon_sensor_types type, u32 attr,

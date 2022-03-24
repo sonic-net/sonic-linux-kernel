@@ -21,7 +21,7 @@ Signed-off-by: David S. Miller <davem@davemloft.net>
  1 file changed, 6 insertions(+), 21 deletions(-)
 
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
-index 3032075e6cca..85f0ce285146 100644
+index ecd1856bef5e..5b37449d4b66 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
 @@ -19,7 +19,6 @@
@@ -32,7 +32,7 @@ index 3032075e6cca..85f0ce285146 100644
  #define MLXSW_THERMAL_HYSTERESIS_TEMP	5000	/* 5C */
  #define MLXSW_THERMAL_MODULE_TEMP_SHIFT	(MLXSW_THERMAL_HYSTERESIS_TEMP * 2)
  #define MLXSW_THERMAL_ZONE_MAX_NAME	16
-@@ -45,7 +44,6 @@ enum mlxsw_thermal_trips {
+@@ -37,7 +36,6 @@ enum mlxsw_thermal_trips {
  	MLXSW_THERMAL_TEMP_TRIP_NORM,
  	MLXSW_THERMAL_TEMP_TRIP_HIGH,
  	MLXSW_THERMAL_TEMP_TRIP_HOT,
@@ -40,7 +40,7 @@ index 3032075e6cca..85f0ce285146 100644
  };
  
  struct mlxsw_thermal_trip {
-@@ -75,16 +73,9 @@ static const struct mlxsw_thermal_trip default_thermal_trips[] = {
+@@ -67,16 +65,9 @@ static const struct mlxsw_thermal_trip default_thermal_trips[] = {
  	{	/* Warning */
  		.type		= THERMAL_TRIP_HOT,
  		.temp		= MLXSW_THERMAL_ASIC_TEMP_HOT,
@@ -57,7 +57,7 @@ index 3032075e6cca..85f0ce285146 100644
  };
  
  #define MLXSW_THERMAL_NUM_TRIPS	ARRAY_SIZE(default_thermal_trips)
-@@ -154,7 +145,6 @@ mlxsw_thermal_module_trips_reset(struct mlxsw_thermal_module *tz)
+@@ -146,7 +137,6 @@ mlxsw_thermal_module_trips_reset(struct mlxsw_thermal_module *tz)
  	tz->trips[MLXSW_THERMAL_TEMP_TRIP_NORM].temp = 0;
  	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HIGH].temp = 0;
  	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HOT].temp = 0;
@@ -65,7 +65,7 @@ index 3032075e6cca..85f0ce285146 100644
  }
  
  static int
-@@ -183,11 +173,10 @@ mlxsw_thermal_module_trips_update(struct device *dev, struct mlxsw_core *core,
+@@ -175,11 +165,10 @@ mlxsw_thermal_module_trips_update(struct device *dev, struct mlxsw_core *core,
  	}
  
  	/* According to the system thermal requirements, the thermal zones are
@@ -80,7 +80,7 @@ index 3032075e6cca..85f0ce285146 100644
  	 */
  	if (crit_temp >= MLXSW_THERMAL_MODULE_TEMP_SHIFT)
  		tz->trips[MLXSW_THERMAL_TEMP_TRIP_NORM].temp = crit_temp -
-@@ -196,8 +185,6 @@ mlxsw_thermal_module_trips_update(struct device *dev, struct mlxsw_core *core,
+@@ -188,8 +177,6 @@ mlxsw_thermal_module_trips_update(struct device *dev, struct mlxsw_core *core,
  		tz->trips[MLXSW_THERMAL_TEMP_TRIP_NORM].temp = crit_temp;
  	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HIGH].temp = crit_temp;
  	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HOT].temp = emerg_temp;
@@ -89,7 +89,7 @@ index 3032075e6cca..85f0ce285146 100644
  
  	return 0;
  }
-@@ -210,7 +197,7 @@ static void mlxsw_thermal_tz_score_update(struct mlxsw_thermal *thermal,
+@@ -202,7 +189,7 @@ static void mlxsw_thermal_tz_score_update(struct mlxsw_thermal *thermal,
  	struct mlxsw_thermal_trip *trip = trips;
  	unsigned int score, delta, i, shift = 1;
  
@@ -98,7 +98,7 @@ index 3032075e6cca..85f0ce285146 100644
  	 * threshold score is set to MLXSW_THERMAL_TEMP_SCORE_MAX.
  	 */
  	score = MLXSW_THERMAL_TEMP_SCORE_MAX;
-@@ -333,8 +320,7 @@ static int mlxsw_thermal_set_trip_temp(struct thermal_zone_device *tzdev,
+@@ -325,8 +312,7 @@ static int mlxsw_thermal_set_trip_temp(struct thermal_zone_device *tzdev,
  {
  	struct mlxsw_thermal *thermal = tzdev->devdata;
  
@@ -108,7 +108,7 @@ index 3032075e6cca..85f0ce285146 100644
  		return -EINVAL;
  
  	thermal->trips[trip].temp = temp;
-@@ -502,8 +488,7 @@ mlxsw_thermal_module_trip_temp_set(struct thermal_zone_device *tzdev,
+@@ -494,8 +480,7 @@ mlxsw_thermal_module_trip_temp_set(struct thermal_zone_device *tzdev,
  {
  	struct mlxsw_thermal_module *tz = tzdev->devdata;
  

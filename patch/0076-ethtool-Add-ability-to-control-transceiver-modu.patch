@@ -378,10 +378,10 @@ index 4fa59accec79..9de7c5a4baef 100644
 +  n/a                                 ``ETHTOOL_MSG_MODULE_SET``
    =================================== =====================================
 diff --git a/include/linux/ethtool.h b/include/linux/ethtool.h
-index f59504cdbe4a..2b2c65f7e753 100644
+index dbabd804b2cb..c7d232c27cdd 100644
 --- a/include/linux/ethtool.h
 +++ b/include/linux/ethtool.h
-@@ -288,6 +288,17 @@ struct ethtool_module_eeprom {
+@@ -284,6 +284,17 @@ struct ethtool_module_eeprom {
  	u8	*data;
  };
  
@@ -399,7 +399,7 @@ index f59504cdbe4a..2b2c65f7e753 100644
  /**
   * struct ethtool_ops - optional netdev operations
   * @supported_coalesce_params: supported types of interrupt coalescing.
-@@ -434,6 +445,11 @@ struct ethtool_module_eeprom {
+@@ -430,6 +441,11 @@ struct ethtool_module_eeprom {
   * @get_module_eeprom_by_page: Get a region of plug-in module EEPROM data from
   *	specified page. Returns a negative error code or the amount of bytes
   *	read.
@@ -411,7 +411,7 @@ index f59504cdbe4a..2b2c65f7e753 100644
   *
   * All operations are optional (i.e. the function pointer may be set
   * to %NULL) and callers must take this into account.  Callers must
-@@ -541,6 +557,12 @@ struct ethtool_ops {
+@@ -537,6 +553,12 @@ struct ethtool_ops {
  	int	(*get_module_eeprom_by_page)(struct net_device *dev,
  					     const struct ethtool_module_eeprom *page,
  					     struct netlink_ext_ack *extack);
@@ -425,7 +425,7 @@ index f59504cdbe4a..2b2c65f7e753 100644
  
  int ethtool_check_ops(const struct ethtool_ops *ops);
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index cde753bb2093..7a799291514b 100644
+index 13772f039c8d..d49bad6446f9 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
 @@ -649,6 +649,11 @@ enum ethtool_link_ext_substate_cable_issue {
@@ -471,7 +471,7 @@ index cde753bb2093..7a799291514b 100644
   * struct ethtool_gstrings - string set for data tagging
   * @cmd: Command number = %ETHTOOL_GSTRINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 1cc16df48c86..7bf634037ef3 100644
+index 8ac5c7e64314..9333f669feb7 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -45,6 +45,10 @@ enum {
@@ -496,7 +496,7 @@ index 1cc16df48c86..7bf634037ef3 100644
  
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
-@@ -651,6 +659,20 @@ enum {
+@@ -653,6 +661,20 @@ enum {
  	ETHTOOL_A_MODULE_EEPROM_MAX = (__ETHTOOL_A_MODULE_EEPROM_CNT - 1)
  };
  
@@ -769,10 +769,10 @@ index 5ae95f423780..32c9638300c9 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 5eaae7513999..ecb05d5ea4d8 100644
+index 28dbd582c860..6c4a5b39d807 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -345,6 +345,7 @@ extern const struct ethnl_request_ops ethnl_pause_request_ops;
+@@ -348,6 +348,7 @@ extern const struct ethnl_request_ops ethnl_pause_request_ops;
  extern const struct ethnl_request_ops ethnl_eee_request_ops;
  extern const struct ethnl_request_ops ethnl_tsinfo_request_ops;
  extern const struct ethnl_request_ops ethnl_module_eeprom_request_ops;
@@ -780,7 +780,7 @@ index 5eaae7513999..ecb05d5ea4d8 100644
  
  extern const struct nla_policy ethnl_header_policy[ETHTOOL_A_HEADER_FLAGS + 1];
  extern const struct nla_policy ethnl_header_policy_stats[ETHTOOL_A_HEADER_FLAGS + 1];
-@@ -377,6 +378,8 @@ extern const struct nla_policy ethnl_cable_test_act_policy[ETHTOOL_A_CABLE_TEST_
+@@ -380,6 +381,8 @@ extern const struct nla_policy ethnl_cable_test_act_policy[ETHTOOL_A_CABLE_TEST_
  extern const struct nla_policy ethnl_cable_test_tdr_act_policy[ETHTOOL_A_CABLE_TEST_TDR_CFG + 1];
  extern const struct nla_policy ethnl_tunnel_info_get_policy[ETHTOOL_A_TUNNEL_INFO_HEADER + 1];
  extern const struct nla_policy ethnl_module_eeprom_get_policy[ETHTOOL_A_MODULE_EEPROM_I2C_ADDRESS + 1];
@@ -789,7 +789,7 @@ index 5eaae7513999..ecb05d5ea4d8 100644
  
  int ethnl_set_linkinfo(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_linkmodes(struct sk_buff *skb, struct genl_info *info);
-@@ -394,5 +397,6 @@ int ethnl_act_cable_test_tdr(struct sk_buff *skb, struct genl_info *info);
+@@ -397,5 +400,6 @@ int ethnl_act_cable_test_tdr(struct sk_buff *skb, struct genl_info *info);
  int ethnl_tunnel_info_doit(struct sk_buff *skb, struct genl_info *info);
  int ethnl_tunnel_info_start(struct netlink_callback *cb);
  int ethnl_tunnel_info_dumpit(struct sk_buff *skb, struct netlink_callback *cb);

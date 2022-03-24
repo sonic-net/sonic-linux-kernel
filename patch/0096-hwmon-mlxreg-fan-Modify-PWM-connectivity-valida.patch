@@ -17,7 +17,7 @@ Signed-off-by: Guenter Roeck <linux@roeck-us.net>
  1 file changed, 8 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/hwmon/mlxreg-fan.c b/drivers/hwmon/mlxreg-fan.c
-index 6831bfe6cbaa..f32a34b371ec 100644
+index 21190020172a..780ae56a59ef 100644
 --- a/drivers/hwmon/mlxreg-fan.c
 +++ b/drivers/hwmon/mlxreg-fan.c
 @@ -488,9 +488,14 @@ static int mlxreg_fan_config(struct mlxreg_fan *fan,

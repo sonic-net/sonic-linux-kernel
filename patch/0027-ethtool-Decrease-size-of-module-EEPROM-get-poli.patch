@@ -13,10 +13,10 @@ Signed-off-by: David S. Miller <davem@davemloft.net>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index d2a1ac7a1ec6..5eaae7513999 100644
+index 4a07fc93c5cc..28dbd582c860 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -376,7 +376,7 @@ extern const struct nla_policy ethnl_tsinfo_get_policy[ETHTOOL_A_TSINFO_HEADER +
+@@ -379,7 +379,7 @@ extern const struct nla_policy ethnl_tsinfo_get_policy[ETHTOOL_A_TSINFO_HEADER +
  extern const struct nla_policy ethnl_cable_test_act_policy[ETHTOOL_A_CABLE_TEST_HEADER + 1];
  extern const struct nla_policy ethnl_cable_test_tdr_act_policy[ETHTOOL_A_CABLE_TEST_TDR_CFG + 1];
  extern const struct nla_policy ethnl_tunnel_info_get_policy[ETHTOOL_A_TUNNEL_INFO_HEADER + 1];

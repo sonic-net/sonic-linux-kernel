@@ -19,7 +19,7 @@ Signed-off-by: Guenter Roeck <linux@roeck-us.net>
  1 file changed, 50 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/hwmon/mlxreg-fan.c b/drivers/hwmon/mlxreg-fan.c
-index ed8d59d4eecb..116681fde33d 100644
+index bd8f5a3aaad9..89fe7b9fe26b 100644
 --- a/drivers/hwmon/mlxreg-fan.c
 +++ b/drivers/hwmon/mlxreg-fan.c
 @@ -67,11 +67,13 @@
@@ -79,7 +79,7 @@ index ed8d59d4eecb..116681fde33d 100644
  			err = regmap_read(fan->regmap, tacho->reg, &regval);
  			if (err)
  				return err;
-@@ -389,8 +413,8 @@ static int mlxreg_fan_config(struct mlxreg_fan *fan,
+@@ -395,8 +419,8 @@ static int mlxreg_fan_config(struct mlxreg_fan *fan,
  			     struct mlxreg_core_platform_data *pdata)
  {
  	struct mlxreg_core_data *data = pdata->data;
@@ -89,7 +89,7 @@ index ed8d59d4eecb..116681fde33d 100644
  	int err;
  
  	fan->samples = MLXREG_FAN_TACHO_SAMPLES_PER_PULSE_DEF;
-@@ -415,7 +439,9 @@ static int mlxreg_fan_config(struct mlxreg_fan *fan,
+@@ -421,7 +445,9 @@ static int mlxreg_fan_config(struct mlxreg_fan *fan,
  
  			fan->tacho[tacho_num].reg = data->reg;
  			fan->tacho[tacho_num].mask = data->mask;
@@ -99,7 +99,7 @@ index ed8d59d4eecb..116681fde33d 100644
  		} else if (strnstr(data->label, "pwm", sizeof(data->label))) {
  			if (fan->pwm.connected) {
  				dev_err(fan->dev, "duplicate pwm entry: %s\n",
-@@ -453,6 +479,29 @@ static int mlxreg_fan_config(struct mlxreg_fan *fan,
+@@ -459,6 +485,29 @@ static int mlxreg_fan_config(struct mlxreg_fan *fan,
  		}
  	}
  

@@ -21,10 +21,10 @@ Signed-off-by: David S. Miller <davem@davemloft.net>
  1 file changed, 35 insertions(+), 15 deletions(-)
 
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
-index 8d844d3c2e40..e1ef913c81ef 100644
+index a1025177c6ae..abbe02546164 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
-@@ -420,29 +420,49 @@ static int mlxsw_thermal_module_unbind(struct thermal_zone_device *tzdev,
+@@ -412,29 +412,49 @@ static int mlxsw_thermal_module_unbind(struct thermal_zone_device *tzdev,
  	return err;
  }
  

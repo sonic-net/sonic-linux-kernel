@@ -36,7 +36,7 @@ Signed-off-by: David S. Miller <davem@davemloft.net>
  1 file changed, 4 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 9941ec3bc48a..1cc16df48c86 100644
+index 7dda2cee919b..8ac5c7e64314 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -42,6 +42,8 @@ enum {

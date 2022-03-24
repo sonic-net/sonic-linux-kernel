@@ -15,10 +15,10 @@ Signed-off-by: David S. Miller <davem@davemloft.net>
  1 file changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/include/linux/ethtool.h b/include/linux/ethtool.h
-index 3181bd86caee..f59504cdbe4a 100644
+index 4d199de36e02..dbabd804b2cb 100644
 --- a/include/linux/ethtool.h
 +++ b/include/linux/ethtool.h
-@@ -280,12 +280,12 @@ struct ethtool_pause_stats {
+@@ -276,12 +276,12 @@ struct ethtool_pause_stats {
   * required information to the driver.
   */
  struct ethtool_module_eeprom {

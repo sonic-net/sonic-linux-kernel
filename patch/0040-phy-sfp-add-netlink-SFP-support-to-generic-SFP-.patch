@@ -25,7 +25,7 @@ Signed-off-by: David S. Miller <davem@davemloft.net>
  4 files changed, 58 insertions(+)
 
 diff --git a/drivers/net/phy/sfp-bus.c b/drivers/net/phy/sfp-bus.c
-index 4cf874fb5c5b..4866b71d72ed 100644
+index a05d8372669c..30119f175781 100644
 --- a/drivers/net/phy/sfp-bus.c
 +++ b/drivers/net/phy/sfp-bus.c
 @@ -538,6 +538,26 @@ int sfp_get_module_eeprom(struct sfp_bus *bus, struct ethtool_eeprom *ee,
@@ -56,10 +56,10 @@ index 4cf874fb5c5b..4866b71d72ed 100644
   * sfp_upstream_start() - Inform the SFP that the network device is up
   * @bus: a pointer to the &struct sfp_bus structure for the sfp module
 diff --git a/drivers/net/phy/sfp.c b/drivers/net/phy/sfp.c
-index 2fff62695455..0d964b6ba47e 100644
+index efffa65f8214..817c74d476e5 100644
 --- a/drivers/net/phy/sfp.c
 +++ b/drivers/net/phy/sfp.c
-@@ -2278,6 +2278,30 @@ static int sfp_module_eeprom(struct sfp *sfp, struct ethtool_eeprom *ee,
+@@ -2295,6 +2295,30 @@ static int sfp_module_eeprom(struct sfp *sfp, struct ethtool_eeprom *ee,
  	return 0;
  }
  
@@ -90,7 +90,7 @@ index 2fff62695455..0d964b6ba47e 100644
  static const struct sfp_socket_ops sfp_module_ops = {
  	.attach = sfp_attach,
  	.detach = sfp_detach,
-@@ -2285,6 +2309,7 @@ static const struct sfp_socket_ops sfp_module_ops = {
+@@ -2302,6 +2326,7 @@ static const struct sfp_socket_ops sfp_module_ops = {
  	.stop = sfp_stop,
  	.module_info = sfp_module_info,
  	.module_eeprom = sfp_module_eeprom,
