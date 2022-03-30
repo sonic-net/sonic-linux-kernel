@@ -9,6 +9,8 @@ for volatile/readable ability. We using a 2-byte type for reading CPLD{N}_PN
 value. This fix adds a second (CPLD{N}_PN+1) register to the volatile/read
 check function.
 
+Upstream Commit: 9045512ca6cdb221cd1ed32d483eac3c30c53bed
+
 Signed-off-by: Oleksandr Shamray <oleksandrs@nvidia.com>
 Reviewed-by: Vadim Pasternak <vadimp@nvidia.com>
 ---

@@ -7,6 +7,8 @@ Subject: [PATCH 07/80] platform/mellanox: mlxreg-io: Fix read access of
 Fix shift argument for function rol32(). It should be provided in bits,
 while was provided in bytes.
 
+Upstream Commit: 5fd56f11838da1580cc77743c08cf02c9cd48380
+
 Fixes: 86148190a7db: (" platform/mellanox: mlxreg-io: Add support for complex attributes")
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
 ---
