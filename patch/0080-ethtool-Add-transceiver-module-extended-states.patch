@@ -62,10 +62,10 @@ index 9de7c5a4baef..9403a0f7e52a 100644
  =========
  
 diff --git a/include/linux/ethtool.h b/include/linux/ethtool.h
-index 2b2c65f7e753..e43e864404ad 100644
+index c7d232c27cdd..3ea8e319cb3d 100644
 --- a/include/linux/ethtool.h
 +++ b/include/linux/ethtool.h
-@@ -99,6 +99,7 @@ struct ethtool_link_ext_state_info {
+@@ -95,6 +95,7 @@ struct ethtool_link_ext_state_info {
  		enum ethtool_link_ext_substate_link_logical_mismatch link_logical_mismatch;
  		enum ethtool_link_ext_substate_bad_signal_integrity bad_signal_integrity;
  		enum ethtool_link_ext_substate_cable_issue cable_issue;
@@ -74,7 +74,7 @@ index 2b2c65f7e753..e43e864404ad 100644
  	};
  };
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index 7a799291514b..1a58c194b215 100644
+index d49bad6446f9..970f1446eaf7 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
 @@ -593,6 +593,7 @@ enum ethtool_link_ext_state {

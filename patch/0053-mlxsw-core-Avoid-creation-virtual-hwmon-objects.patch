@@ -28,10 +28,10 @@ Signed-off-by: Ido Schimmel <idosch@nvidia.com>
  1 file changed, 7 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
-index 0998dcc9cac0..f9c9ebf68fcd 100644
+index b29824448aa8..e1a760519097 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
-@@ -365,6 +365,10 @@ static int mlxsw_thermal_trend_get(struct thermal_zone_device *tzdev,
+@@ -357,6 +357,10 @@ static int mlxsw_thermal_trend_get(struct thermal_zone_device *tzdev,
  	return 0;
  }
  
@@ -42,7 +42,7 @@ index 0998dcc9cac0..f9c9ebf68fcd 100644
  static struct thermal_zone_device_ops mlxsw_thermal_ops = {
  	.bind = mlxsw_thermal_bind,
  	.unbind = mlxsw_thermal_unbind,
-@@ -719,7 +723,7 @@ mlxsw_thermal_module_tz_init(struct mlxsw_thermal_module *module_tz)
+@@ -678,7 +682,7 @@ mlxsw_thermal_module_tz_init(struct mlxsw_thermal_module *module_tz)
  							MLXSW_THERMAL_TRIP_MASK,
  							module_tz,
  							&mlxsw_thermal_module_ops,
@@ -51,7 +51,7 @@ index 0998dcc9cac0..f9c9ebf68fcd 100644
  							module_tz->parent->polling_delay);
  	if (IS_ERR(module_tz->tzdev)) {
  		err = PTR_ERR(module_tz->tzdev);
-@@ -849,7 +853,7 @@ mlxsw_thermal_gearbox_tz_init(struct mlxsw_thermal_module *gearbox_tz)
+@@ -808,7 +812,7 @@ mlxsw_thermal_gearbox_tz_init(struct mlxsw_thermal_module *gearbox_tz)
  						MLXSW_THERMAL_TRIP_MASK,
  						gearbox_tz,
  						&mlxsw_thermal_gearbox_ops,
@@ -60,7 +60,7 @@ index 0998dcc9cac0..f9c9ebf68fcd 100644
  						gearbox_tz->parent->polling_delay);
  	if (IS_ERR(gearbox_tz->tzdev))
  		return PTR_ERR(gearbox_tz->tzdev);
-@@ -1010,7 +1014,7 @@ int mlxsw_thermal_init(struct mlxsw_core *core,
+@@ -968,7 +972,7 @@ int mlxsw_thermal_init(struct mlxsw_core *core,
  						      MLXSW_THERMAL_TRIP_MASK,
  						      thermal,
  						      &mlxsw_thermal_ops,

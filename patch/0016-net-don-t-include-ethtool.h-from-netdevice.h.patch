@@ -99,7 +99,7 @@ index fd5c9cbe45b1..56d34be5e797 100644
  #include <net/net_namespace.h>
  #include <net/netns/generic.h>
 diff --git a/drivers/net/can/usb/gs_usb.c b/drivers/net/can/usb/gs_usb.c
-index 018ca3b057a3..4d81b964403b 100644
+index 3f759fae81fe..76d6cee81981 100644
 --- a/drivers/net/can/usb/gs_usb.c
 +++ b/drivers/net/can/usb/gs_usb.c
 @@ -9,6 +9,7 @@
@@ -136,7 +136,7 @@ index 926cca9a0c83..1a7148041e3d 100644
  #include "aq_rss.h"
  #include "aq_hw.h"
 diff --git a/drivers/net/ethernet/broadcom/bnxt/bnxt.h b/drivers/net/ethernet/broadcom/bnxt/bnxt.h
-index a95c5afa2f01..36342e4ebba9 100644
+index 92f9f7f5240b..91d45a83b67a 100644
 --- a/drivers/net/ethernet/broadcom/bnxt/bnxt.h
 +++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.h
 @@ -20,6 +20,7 @@
@@ -220,7 +220,7 @@ index 7b44769bd87c..2fb197fd3daf 100644
  #include "gve.h"
  #include "gve_adminq.h"
 diff --git a/drivers/net/ethernet/hisilicon/hns3/hnae3.h b/drivers/net/ethernet/hisilicon/hns3/hnae3.h
-index 912c51e327d6..ef68616612db 100644
+index 4a9576a449e1..fa1da6f88b88 100644
 --- a/drivers/net/ethernet/hisilicon/hns3/hnae3.h
 +++ b/drivers/net/ethernet/hisilicon/hns3/hnae3.h
 @@ -25,6 +25,7 @@
@@ -318,7 +318,7 @@ index 28bfe1ea9d94..131b2a53d261 100644
  #include <linux/slab.h>
  #include <linux/device.h>
 diff --git a/drivers/net/ethernet/pensando/ionic/ionic_lif.c b/drivers/net/ethernet/pensando/ionic/ionic_lif.c
-index d0ae1cf43592..465a4a481432 100644
+index e95c09dc2c30..81b22520ba78 100644
 --- a/drivers/net/ethernet/pensando/ionic/ionic_lif.c
 +++ b/drivers/net/ethernet/pensando/ionic/ionic_lif.c
 @@ -1,6 +1,7 @@
@@ -425,7 +425,7 @@ index 615f3776b4be..6d308183c25f 100644
  #include <linux/types.h>
  #include <linux/module.h>
 diff --git a/drivers/net/vrf.c b/drivers/net/vrf.c
-index bc96ac0c5769..41635b850007 100644
+index 8ab0b5a8dfef..9ecae9ff0e31 100644
 --- a/drivers/net/vrf.c
 +++ b/drivers/net/vrf.c
 @@ -9,6 +9,7 @@
@@ -459,7 +459,7 @@ index b684e97ac976..bfc2c57148a1 100644
  #include <linux/module.h>
  
 diff --git a/drivers/scsi/bnx2fc/bnx2fc_fcoe.c b/drivers/scsi/bnx2fc/bnx2fc_fcoe.c
-index 6890bbe04a8c..08fb7d5d08b3 100644
+index 8f47bf83694f..9b4a5872c241 100644
 --- a/drivers/scsi/bnx2fc/bnx2fc_fcoe.c
 +++ b/drivers/scsi/bnx2fc/bnx2fc_fcoe.c
 @@ -16,6 +16,8 @@
@@ -497,7 +497,7 @@ index ace4a6d28562..ad55cd738847 100644
  
  static struct {
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index e37480b5f4c0..0013b8bd932f 100644
+index 861f2480c457..71fea53dacc9 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
 @@ -34,7 +34,6 @@
@@ -529,7 +529,7 @@ index 57fb295ea41a..68d17a4fbf20 100644
  #include <linux/interrupt.h>
  #include <linux/netdevice.h>
 diff --git a/include/net/cfg80211.h b/include/net/cfg80211.h
-index 8a1bf2dbadd0..195bfe85a5f4 100644
+index 2a819be384a7..e6cd150f8da3 100644
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
 @@ -10,6 +10,7 @@
@@ -565,7 +565,7 @@ index ac6ffa561884..48c4503c16de 100644
  #include <linux/device.h>
  #include <linux/dma-mapping.h>
 diff --git a/net/packet/af_packet.c b/net/packet/af_packet.c
-index ddb68aa836f7..9613db97f0ae 100644
+index a31334b92be7..2a3ade22d34b 100644
 --- a/net/packet/af_packet.c
 +++ b/net/packet/af_packet.c
 @@ -46,6 +46,7 @@
@@ -589,7 +589,7 @@ index 2eaac2ff380f..459cc240eda9 100644
  #include <linux/types.h>
  #include <linux/kernel.h>
 diff --git a/net/sched/sch_taprio.c b/net/sched/sch_taprio.c
-index 00853065dfa0..c70f93d64483 100644
+index 806babdd838d..9d4d9e8ecfdd 100644
 --- a/net/sched/sch_taprio.c
 +++ b/net/sched/sch_taprio.c
 @@ -6,6 +6,7 @@
@@ -601,7 +601,7 @@ index 00853065dfa0..c70f93d64483 100644
  #include <linux/slab.h>
  #include <linux/kernel.h>
 diff --git a/net/socket.c b/net/socket.c
-index 002d5952ae5d..2cc7344e0521 100644
+index d52c265ad449..6415983cf5b6 100644
 --- a/net/socket.c
 +++ b/net/socket.c
 @@ -52,6 +52,7 @@

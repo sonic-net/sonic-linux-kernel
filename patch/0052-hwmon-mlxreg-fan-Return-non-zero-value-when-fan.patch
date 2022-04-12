@@ -67,53 +67,22 @@ Here is the trace from KASAN:
 Fixes: 65afb4c8e7e4: (hwmon: (mlxreg-fan) Add support for Mellanox FAN driver)
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
 ---
- drivers/hwmon/mlxreg-fan.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+ drivers/hwmon/mlxreg-fan.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/hwmon/mlxreg-fan.c b/drivers/hwmon/mlxreg-fan.c
-index 116681fde33d..689233edff9d 100644
+index 89fe7b9fe26b..93fb991a5f4e 100644
 --- a/drivers/hwmon/mlxreg-fan.c
 +++ b/drivers/hwmon/mlxreg-fan.c
-@@ -316,7 +316,7 @@ static int mlxreg_fan_set_cur_state(struct thermal_cooling_device *cdev,
- 	struct mlxreg_fan *fan = cdev->devdata;
- 	unsigned long cur_state;
- 	u32 regval;
--	int i;
-+	int i, config = 0;
- 	int err;
- 
- 	/*
-@@ -329,6 +329,12 @@ static int mlxreg_fan_set_cur_state(struct thermal_cooling_device *cdev,
- 	 * overwritten.
- 	 */
- 	if (state >= MLXREG_FAN_SPEED_MIN && state <= MLXREG_FAN_SPEED_MAX) {
-+		/*
-+		 * This is configuration change, which is only supported through sysfs.
-+		 * For configuration non-zero value is to be returned to avoid thermal
-+		 * statistics update.
-+		 */
+@@ -334,7 +334,7 @@ static int mlxreg_fan_set_cur_state(struct thermal_cooling_device *cdev,
+ 		 * For configuration non-zero value is to be returned to avoid thermal
+ 		 * statistics update.
+ 		 */
+-		config = 1;
 +		config = 0; /*1*/;
  		state -= MLXREG_FAN_MAX_STATE;
  		for (i = 0; i < state; i++)
  			fan->cooling_levels[i] = state;
-@@ -343,7 +349,7 @@ static int mlxreg_fan_set_cur_state(struct thermal_cooling_device *cdev,
- 
- 		cur_state = MLXREG_FAN_PWM_DUTY2STATE(regval);
- 		if (state < cur_state)
--			return 0;
-+			return config;
- 
- 		state = cur_state;
- 	}
-@@ -359,7 +365,7 @@ static int mlxreg_fan_set_cur_state(struct thermal_cooling_device *cdev,
- 		dev_err(fan->dev, "Failed to write PWM duty\n");
- 		return err;
- 	}
--	return 0;
-+	return config;
- }
- 
- static const struct thermal_cooling_device_ops mlxreg_fan_cooling_ops = {
 -- 
 2.17.1
 

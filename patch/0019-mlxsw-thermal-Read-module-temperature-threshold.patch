@@ -27,10 +27,10 @@ Signed-off-by: David S. Miller <davem@davemloft.net>
  1 file changed, 30 insertions(+), 17 deletions(-)
 
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
-index e1ef913c81ef..d54b67d0bda7 100644
+index abbe02546164..1f9ae663e133 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
-@@ -149,22 +149,27 @@ mlxsw_thermal_module_trips_reset(struct mlxsw_thermal_module *tz)
+@@ -141,22 +141,27 @@ mlxsw_thermal_module_trips_reset(struct mlxsw_thermal_module *tz)
  
  static int
  mlxsw_thermal_module_trips_update(struct device *dev, struct mlxsw_core *core,
@@ -70,7 +70,7 @@ index e1ef913c81ef..d54b67d0bda7 100644
  
  	if (crit_temp > emerg_temp) {
  		dev_warn(dev, "%s : Critical threshold %d is above emergency threshold %d\n",
-@@ -451,9 +456,9 @@ static int mlxsw_thermal_module_temp_get(struct thermal_zone_device *tzdev,
+@@ -443,9 +448,9 @@ static int mlxsw_thermal_module_temp_get(struct thermal_zone_device *tzdev,
  {
  	struct mlxsw_thermal_module *tz = tzdev->devdata;
  	struct mlxsw_thermal *thermal = tz->parent;
@@ -81,7 +81,7 @@ index e1ef913c81ef..d54b67d0bda7 100644
  	int err;
  
  	dev = thermal->bus_info->dev;
-@@ -461,15 +466,16 @@ static int mlxsw_thermal_module_temp_get(struct thermal_zone_device *tzdev,
+@@ -453,15 +458,16 @@ static int mlxsw_thermal_module_temp_get(struct thermal_zone_device *tzdev,
  
  	/* Read module temperature and thresholds. */
  	mlxsw_thermal_module_temp_and_thresholds_get(thermal->core,
@@ -101,7 +101,7 @@ index e1ef913c81ef..d54b67d0bda7 100644
  	if (!err && temp > 0)
  		mlxsw_thermal_tz_score_update(thermal, tzdev, tz->trips, temp);
  
-@@ -737,7 +743,10 @@ mlxsw_thermal_module_init(struct device *dev, struct mlxsw_core *core,
+@@ -696,7 +702,10 @@ mlxsw_thermal_module_init(struct device *dev, struct mlxsw_core *core,
  			  struct mlxsw_thermal *thermal, u8 module)
  {
  	struct mlxsw_thermal_module *module_tz;
@@ -112,7 +112,7 @@ index e1ef913c81ef..d54b67d0bda7 100644
  	module_tz = &thermal->tz_module_arr[module];
  	/* Skip if parent is already set (case of port split). */
  	if (module_tz->parent)
-@@ -748,8 +757,12 @@ mlxsw_thermal_module_init(struct device *dev, struct mlxsw_core *core,
+@@ -707,8 +716,12 @@ mlxsw_thermal_module_init(struct device *dev, struct mlxsw_core *core,
  	       sizeof(thermal->trips));
  	/* Initialize all trip point. */
  	mlxsw_thermal_module_trips_reset(module_tz);

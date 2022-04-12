@@ -33,10 +33,10 @@ index 3d9251c95a8b..955cd1e8b3fe 100644
 +
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 2917af3f5ac1..e27460223866 100644
+index 80d2a00d3097..3aee0a25e443 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -2176,8 +2176,8 @@ static int ethtool_get_ts_info(struct net_device *dev, void __user *useraddr)
+@@ -2280,8 +2280,8 @@ static int ethtool_get_ts_info(struct net_device *dev, void __user *useraddr)
  	return 0;
  }
  
@@ -47,7 +47,7 @@ index 2917af3f5ac1..e27460223866 100644
  {
  	const struct ethtool_ops *ops = dev->ethtool_ops;
  	struct phy_device *phydev = dev->phydev;
-@@ -2203,7 +2203,7 @@ static int ethtool_get_module_info(struct net_device *dev,
+@@ -2307,7 +2307,7 @@ static int ethtool_get_module_info(struct net_device *dev,
  	if (copy_from_user(&modinfo, useraddr, sizeof(modinfo)))
  		return -EFAULT;
  
@@ -56,7 +56,7 @@ index 2917af3f5ac1..e27460223866 100644
  	if (ret)
  		return ret;
  
-@@ -2213,8 +2213,8 @@ static int ethtool_get_module_info(struct net_device *dev,
+@@ -2317,8 +2317,8 @@ static int ethtool_get_module_info(struct net_device *dev,
  	return 0;
  }
  
@@ -67,7 +67,7 @@ index 2917af3f5ac1..e27460223866 100644
  {
  	const struct ethtool_ops *ops = dev->ethtool_ops;
  	struct phy_device *phydev = dev->phydev;
-@@ -2237,12 +2237,12 @@ static int ethtool_get_module_eeprom(struct net_device *dev,
+@@ -2341,12 +2341,12 @@ static int ethtool_get_module_eeprom(struct net_device *dev,
  	int ret;
  	struct ethtool_modinfo modinfo;
  

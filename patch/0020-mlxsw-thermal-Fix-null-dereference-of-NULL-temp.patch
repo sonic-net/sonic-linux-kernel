@@ -18,10 +18,10 @@ Signed-off-by: David S. Miller <davem@davemloft.net>
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
-index d54b67d0bda7..0998dcc9cac0 100644
+index 1f9ae663e133..b29824448aa8 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
-@@ -743,7 +743,7 @@ mlxsw_thermal_module_init(struct device *dev, struct mlxsw_core *core,
+@@ -702,7 +702,7 @@ mlxsw_thermal_module_init(struct device *dev, struct mlxsw_core *core,
  			  struct mlxsw_thermal *thermal, u8 module)
  {
  	struct mlxsw_thermal_module *module_tz;
@@ -30,7 +30,7 @@ index d54b67d0bda7..0998dcc9cac0 100644
  	u16 sensor_index;
  
  	sensor_index = MLXSW_REG_MTMP_MODULE_INDEX_MIN + module;
-@@ -758,7 +758,7 @@ mlxsw_thermal_module_init(struct device *dev, struct mlxsw_core *core,
+@@ -717,7 +717,7 @@ mlxsw_thermal_module_init(struct device *dev, struct mlxsw_core *core,
  	/* Initialize all trip point. */
  	mlxsw_thermal_module_trips_reset(module_tz);
  	/* Read module temperature and thresholds. */

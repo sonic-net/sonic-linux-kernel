@@ -140,7 +140,7 @@ index 2b23f8a87862..0bf5bd0f8a7e 100644
  mlxsw_env_module_overheat_counter_get(struct mlxsw_core *mlxsw_core, u8 module,
  				      u64 *p_counter);
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/minimal.c b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
-index c010db2c9dba..7644792f3c25 100644
+index 443dc44452ef..af4c9b44d9cf 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/minimal.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
 @@ -112,10 +112,23 @@ mlxsw_m_get_module_eeprom(struct net_device *netdev, struct ethtool_eeprom *ee,

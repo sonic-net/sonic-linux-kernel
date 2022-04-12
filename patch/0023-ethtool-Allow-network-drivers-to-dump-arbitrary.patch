@@ -158,10 +158,10 @@ index 30b98245979f..4fa59accec79 100644
    ``ETHTOOL_SEEE``                    ``ETHTOOL_MSG_EEE_SET``
    ``ETHTOOL_GRSSH``                   n/a
 diff --git a/include/linux/ethtool.h b/include/linux/ethtool.h
-index 6408b446051f..3181bd86caee 100644
+index b98291d391f3..4d199de36e02 100644
 --- a/include/linux/ethtool.h
 +++ b/include/linux/ethtool.h
-@@ -81,6 +81,7 @@ enum {
+@@ -77,6 +77,7 @@ enum {
  #define ETH_RSS_HASH_NO_CHANGE	0
  
  struct net_device;
@@ -169,7 +169,7 @@ index 6408b446051f..3181bd86caee 100644
  
  /* Some generic methods drivers may use in their ethtool_ops */
  u32 ethtool_op_get_link(struct net_device *dev);
-@@ -262,6 +263,31 @@ struct ethtool_pause_stats {
+@@ -258,6 +259,31 @@ struct ethtool_pause_stats {
  	u64 rx_pause_frames;
  };
  
@@ -201,7 +201,7 @@ index 6408b446051f..3181bd86caee 100644
  /**
   * struct ethtool_ops - optional netdev operations
   * @supported_coalesce_params: supported types of interrupt coalescing.
-@@ -405,6 +431,9 @@ struct ethtool_pause_stats {
+@@ -401,6 +427,9 @@ struct ethtool_pause_stats {
   * @get_ethtool_phy_stats: Return extended statistics about the PHY device.
   *	This is only useful if the device maintains PHY statistics and
   *	cannot use the standard PHY library helpers.
@@ -211,7 +211,7 @@ index 6408b446051f..3181bd86caee 100644
   *
   * All operations are optional (i.e. the function pointer may be set
   * to %NULL) and callers must take this into account.  Callers must
-@@ -509,6 +538,9 @@ struct ethtool_ops {
+@@ -505,6 +534,9 @@ struct ethtool_ops {
  				   const struct ethtool_tunable *, void *);
  	int	(*set_phy_tunable)(struct net_device *,
  				   const struct ethtool_tunable *, const void *);
@@ -221,7 +221,7 @@ index 6408b446051f..3181bd86caee 100644
  };
  
  int ethtool_check_ops(const struct ethtool_ops *ops);
-@@ -532,7 +564,6 @@ int ethtool_virtdev_set_link_ksettings(struct net_device *dev,
+@@ -528,7 +560,6 @@ int ethtool_virtdev_set_link_ksettings(struct net_device *dev,
  				       const struct ethtool_link_ksettings *cmd,
  				       u32 *dev_speed, u8 *dev_duplex);
  
@@ -230,7 +230,7 @@ index 6408b446051f..3181bd86caee 100644
  struct phy_tdr_config;
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index e2bf36e6964b..9941ec3bc48a 100644
+index c94fa2941502..7dda2cee919b 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -42,6 +42,7 @@ enum {
@@ -249,7 +249,7 @@ index e2bf36e6964b..9941ec3bc48a 100644
  
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
-@@ -628,6 +630,23 @@ enum {
+@@ -630,6 +632,23 @@ enum {
  	ETHTOOL_A_TUNNEL_INFO_MAX = (__ETHTOOL_A_TUNNEL_INFO_CNT - 1)
  };
  
@@ -490,10 +490,10 @@ index 25a55086d2b6..5ae95f423780 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index d8efec516d86..d2a1ac7a1ec6 100644
+index 979dee6bb88c..4a07fc93c5cc 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -344,6 +344,7 @@ extern const struct ethnl_request_ops ethnl_coalesce_request_ops;
+@@ -347,6 +347,7 @@ extern const struct ethnl_request_ops ethnl_coalesce_request_ops;
  extern const struct ethnl_request_ops ethnl_pause_request_ops;
  extern const struct ethnl_request_ops ethnl_eee_request_ops;
  extern const struct ethnl_request_ops ethnl_tsinfo_request_ops;
@@ -501,7 +501,7 @@ index d8efec516d86..d2a1ac7a1ec6 100644
  
  extern const struct nla_policy ethnl_header_policy[ETHTOOL_A_HEADER_FLAGS + 1];
  extern const struct nla_policy ethnl_header_policy_stats[ETHTOOL_A_HEADER_FLAGS + 1];
-@@ -375,6 +376,7 @@ extern const struct nla_policy ethnl_tsinfo_get_policy[ETHTOOL_A_TSINFO_HEADER +
+@@ -378,6 +379,7 @@ extern const struct nla_policy ethnl_tsinfo_get_policy[ETHTOOL_A_TSINFO_HEADER +
  extern const struct nla_policy ethnl_cable_test_act_policy[ETHTOOL_A_CABLE_TEST_HEADER + 1];
  extern const struct nla_policy ethnl_cable_test_tdr_act_policy[ETHTOOL_A_CABLE_TEST_TDR_CFG + 1];
  extern const struct nla_policy ethnl_tunnel_info_get_policy[ETHTOOL_A_TUNNEL_INFO_HEADER + 1];
