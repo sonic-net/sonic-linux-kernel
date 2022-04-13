@@ -1,18 +1,28 @@
 From 04be5041b17e03eb5b9ea474431369fa6a76b6b8 Mon Sep 17 00:00:00 2001
+
 From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
-Date: Wed, 29 Sep 2021 13:53:28 -0700
-Subject: [PATCH] Address compilation errors for porting to 5.10 kernel
+Date: 2021-09-29 13:53:28 -0700
+
+Subject: [PATCH] support reading mdio config from ACPI tables
+
+Current mdio-mux does not support reading configuration
+from ACPI tables.
+
+cisco-8000 platform configures mdio phy config through ACPI
+tables.
+
+Added support in the mdio-mux driver to read from ACPI
 
 Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
 ---
- drivers/net/mdio/mdio-mux.c | 25 +++++++++++++++++--------
- 1 file changed, 17 insertions(+), 8 deletions(-)
+ drivers/net/mdio/mdio-mux.c |   27 ++++++++++++++++++---------
+ 1 file changed, 18 insertions(+), 9 deletions(-)
 
 diff --git a/drivers/net/mdio/mdio-mux.c b/drivers/net/mdio/mdio-mux.c
-index 6a1d35402..aa57da1fa 100644
+index ccb3ee704..e70c8d36a 100644
 --- a/drivers/net/mdio/mdio-mux.c
 +++ b/drivers/net/mdio/mdio-mux.c
-@@ -90,16 +90,16 @@ int mdio_mux_init(struct device *dev,
+@@ -101,16 +101,16 @@ int mdio_mux_init(struct device *dev,
  		  struct mii_bus *mux_bus)
  {
  	struct device_node *parent_bus_node;
@@ -33,7 +43,7 @@ index 6a1d35402..aa57da1fa 100644
  		parent_bus_node = of_parse_phandle(mux_node,
  						   "mdio-parent-bus", 0);
  
-@@ -130,16 +130,20 @@ int mdio_mux_init(struct device *dev,
+@@ -141,16 +141,20 @@ int mdio_mux_init(struct device *dev,
  	pb->mii_bus = parent_bus;
  
  	ret_val = -ENODEV;
@@ -57,7 +67,7 @@ index 6a1d35402..aa57da1fa 100644
  
  		cb = devm_kzalloc(dev, sizeof(*cb), GFP_KERNEL);
  		if (!cb) {
-@@ -163,7 +167,12 @@ int mdio_mux_init(struct device *dev,
+@@ -173,7 +177,12 @@ int mdio_mux_init(struct device *dev,
  		cb->mii_bus->parent = dev;
  		cb->mii_bus->read = mdio_mux_read;
  		cb->mii_bus->write = mdio_mux_write;
@@ -71,6 +81,12 @@ index 6a1d35402..aa57da1fa 100644
  		if (r) {
  			mdiobus_free(cb->mii_bus);
  			if (r == -EPROBE_DEFER) {
--- 
-2.26.2
-
+@@ -199,7 +208,7 @@ int mdio_mux_init(struct device *dev,
+ 
+ err_loop:
+ 	mdio_mux_uninit_children(pb);
+-	of_node_put(child_bus_node);
++	fwnode_handle_put(child_bus_node);
+ err_pb_kz:
+ 	put_device(&parent_bus->dev);
+ err_parent_bus:
