@@ -1,0 +1,34 @@
+From 81abceea27623640f0d69d1526cb6d11d964025d Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Thu, 7 Oct 2021 19:04:25 +0000
+Subject: [PATCH backport 5.10/Alligator 3/9] i2c: mlxcpld: Add callback to
+ notify probing completion
+
+Add notification to inform caller that driver probing has been
+completed. It allows to user, invoked platform device registration for
+"i2c-mlxcpld" driver, to be notified that bus adapter is available, and
+thus some devices could be connected to this bus.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/i2c/busses/i2c-mlxcpld.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/i2c/busses/i2c-mlxcpld.c b/drivers/i2c/busses/i2c-mlxcpld.c
+index 56aa424fd..fb451d42a 100644
+--- a/drivers/i2c/busses/i2c-mlxcpld.c
++++ b/drivers/i2c/busses/i2c-mlxcpld.c
+@@ -560,6 +560,10 @@ static int mlxcpld_i2c_probe(struct platform_device *pdev)
+ 	if (err)
+ 		goto mlxcpld_i2_probe_failed;
+ 
++	/* Notify caller when adapter is added. */
++	if (pdata && pdata->completion_notify)
++		pdata->completion_notify(pdata->handle, mlxcpld_i2c_adapter.nr);
++
+ 	return 0;
+ 
+ mlxcpld_i2_probe_failed:
+-- 
+2.20.1
+
