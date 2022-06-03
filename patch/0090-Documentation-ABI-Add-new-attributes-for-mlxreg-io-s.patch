@@ -1,63 +1,63 @@
-From 673e5e3665235e5da5993032700b8e4b888c0468 Mon Sep 17 00:00:00 2001
+From b1a9c69792caaac0813c9dc7806fb8654212e56c Mon Sep 17 00:00:00 2001
 From: Michael Shych <michaelsh@nvidia.com>
-Date: Tue, 19 Oct 2021 16:51:07 +0000
-Subject: [PATCH backport 5.10/Alligator 9/9] Documentation/ABI: Add new
- attributes for mlxreg-io sysfs interfaces
+Date: Sat, 30 Apr 2022 14:58:09 +0300
+Subject: [PATCH] Documentation/ABI: Add new attributes for mlxreg-io sysfs
+ interfaces
 
 Add documentation for the new attributes:
 - "phy_reset" - Reset PHY.
 - "mac_reset" - Reset MAC.
-- "qsfp_pwr_good" - The power status of QSFP ports
+- "qsfp_pwr_good" - The power status of QSFP ports.
 
 Signed-off-by: Michael Shych <michaelsh@nvidia.com>
+Reviewed-by: Vadim Pasternak <vadimp@nvidia.com>
+Link: https://lore.kernel.org/r/20220430115809.54565-4-michaelsh@nvidia.com
+Signed-off-by: Hans de Goede <hdegoede@redhat.com>
 ---
- .../ABI/stable/sysfs-driver-mlxreg-io         | 36 +++++++++++++++++++
+ Documentation/ABI/stable/sysfs-driver-mlxreg-io | 36 +++++++++++++++++++++++++
  1 file changed, 36 insertions(+)
 
 diff --git a/Documentation/ABI/stable/sysfs-driver-mlxreg-io b/Documentation/ABI/stable/sysfs-driver-mlxreg-io
-index 3914bb95e..87180212c 100644
+index 12c3f895cd2f..b312242d4f40 100644
 --- a/Documentation/ABI/stable/sysfs-driver-mlxreg-io
 +++ b/Documentation/ABI/stable/sysfs-driver-mlxreg-io
-@@ -464,3 +464,39 @@ Description:	These files provide the maximum powered required for line card
+@@ -451,3 +451,39 @@
  		feeding and line card configuration Id.
  
  		The files are read only.
 +
-+What:           /sys/devices/platform/mlxplat/mlxreg-io/hwmon/hwmon*/phy_reset
-+Date:           October 2021
-+KernelVersion:  5.16
-+Contact:        Vadim Pasternak <vadimpmellanox.com>
-+Description:    This file allows to reset PHY 88E1548 when attribute is set 0
-+                due to some abnormal PHY behavior.
-+                Expected behavior:
-+                When phy_reset is written 1, all PHY 88E1548 are released
-+                from the reset state, when 0 - are hold in reset state.
++What:		/sys/devices/platform/mlxplat/mlxreg-io/hwmon/hwmon*/phy_reset
++Date:		May 2022
++KernelVersion:	5.19
++Contact:	Vadim Pasternak <vadimpmellanox.com>
++Description:	This file allows to reset PHY 88E1548 when attribute is set 0
++		due to some abnormal PHY behavior.
++		Expected behavior:
++		When phy_reset is written 1, all PHY 88E1548 are released
++		from the reset state, when 0 - are hold in reset state.
 +
-+                The files are read/write.
++		The files are read/write.
 +
-+What:           /sys/devices/platform/mlxplat/mlxreg-io/hwmon/hwmon*/mac_reset
-+Date:           October 2021
-+KernelVersion:  5.16
-+Contact:        Vadim Pasternak <vadimpmellanox.com>
-+Description:    This file allows to reset ASIC MT52132 when attribute is set 0
-+                due to some abnormal ASIC behavior.
-+                Expected behavior:
-+                When mac_reset is written 1, the ASIC MT52132 is released
-+                from the reset state, when 0 - is hold in reset state.
++What:		/sys/devices/platform/mlxplat/mlxreg-io/hwmon/hwmon*/mac_reset
++Date:		May 2022
++KernelVersion:	5.19
++Contact:	Vadim Pasternak <vadimpmellanox.com>
++Description:	This file allows to reset ASIC MT52132 when attribute is set 0
++		due to some abnormal ASIC behavior.
++		Expected behavior:
++		When mac_reset is written 1, the ASIC MT52132 is released
++		from the reset state, when 0 - is hold in reset state.
 +
-+                The files are read/write.
++		The files are read/write.
 +
-+What:           /sys/devices/platform/mlxplat/mlxreg-io/hwmon/hwmon*/qsfp_pwr_good
-+Date:           October 2021
-+KernelVersion:  5.16
-+Contact:        Vadim Pasternak <vadimpmellanox.com>
-+Description:    This file shows QSFP ports power status. The value is set to 0
-+                when one of any QSFP ports is plugged. The value is set to 1 when
-+                there are no any QSFP ports are plugged.
-+                The possible values are:
-+                0 - Power good, 1 - Not power good.
++What:		/sys/devices/platform/mlxplat/mlxreg-io/hwmon/hwmon*/qsfp_pwr_good
++Date:		May 2022
++KernelVersion:	5.19
++Contact:	Vadim Pasternak <vadimpmellanox.com>
++Description:	This file shows QSFP ports power status. The value is set to 0
++		when one of any QSFP ports is plugged. The value is set to 1 when
++		there are no any QSFP ports are plugged.
++		The possible values are:
++		0 - Power good, 1 - Not power good.
 +
-+                The files are read only.
--- 
-2.20.1
-
++		The files are read only.

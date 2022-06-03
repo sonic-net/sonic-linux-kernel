@@ -1,38 +1,37 @@
-From 556de3e2c7904065de92f38562fec511c472a29d Mon Sep 17 00:00:00 2001
-From: Vadim Pasternak <vadimp@nvidia.com>
-Date: Sat, 9 Oct 2021 12:37:39 +0000
-Subject: [PATCH backport 5.10/Alligator 5/9] hwmon: powr1220: Add support for
- Lattice's POWR1014 power manager IC
+From 9f93aa1005fa1b960f10e0ee3ed8c4e697526053 Mon Sep 17 00:00:00 2001
+From: Michael Shych <michaelsh@nvidia.com>
+Date: Tue, 18 Jan 2022 09:56:11 +0200
+Subject: [PATCH] hwmon: (powr1220) Add support for Lattice's POWR1014 power
+ manager IC
 
 This patch adds support for Lattice's POWR1014 power manager IC.
 Read access to all the ADCs on the chip are supported through
 the "hwmon" "sysfs" files.
 
-The main difference of POWR1014 compared to POWR1220 is amount
-of VMON input lines: 10 on POWR1014 and 12 lines on POWR1220.
-
-Extend wait time for conversion to complete, since for POWR1014 it
-could be longer.
+The main differences of POWR1014 compared to POWR1220 are
+amount of VMON input lines: 10 on POWR1014 and 12 lines on POWR1220 and
+number of output control signals: 14 on POWR1014 and 20 on POWR1220.
 
 Signed-off-by: Michael Shych <michaelsh@nvidia.com>
+Reviewed-by: Vadim Pasternak <vadimp@nvidia.com>
+Link: https://lore.kernel.org/r/20220118075611.10665-4-michaelsh@nvidia.com
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
 ---
- drivers/hwmon/powr1220.c | 27 +++++++++++++++++++++------
- 1 file changed, 21 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/hwmon/powr1220.c b/drivers/hwmon/powr1220.c
-index 1b833781e89d..84f1508f1cbd 100644
+index 0fa1a136eec8..f77dc6db31ac 100644
 --- a/drivers/hwmon/powr1220.c
 +++ b/drivers/hwmon/powr1220.c
 @@ -22,6 +22,8 @@
  #define ADC_STEP_MV			2
  #define ADC_MAX_LOW_MEASUREMENT_MV	2000
  
-+enum powr1xxx_chips { powr1220, powr1014 };
++enum powr1xxx_chips { powr1014, powr1220 };
 +
  enum powr1220_regs {
  	VMON_STATUS0,
  	VMON_STATUS1,
-@@ -74,6 +76,7 @@ enum powr1220_adc_values {
+@@ -74,6 +76,7 @@
  struct powr1220_data {
  	struct i2c_client *client;
  	struct mutex update_lock;
@@ -40,31 +39,19 @@ index 1b833781e89d..84f1508f1cbd 100644
  	bool adc_valid[MAX_POWR1220_ADC_VALUES];
  	 /* the next value is in jiffies */
  	unsigned long adc_last_updated[MAX_POWR1220_ADC_VALUES];
-@@ -128,11 +131,8 @@ static int powr1220_read_adc(struct device *dev, int ch_num)
- 		if (result)
- 			goto exit;
- 
--		/*
--		 * wait at least Tconvert time (200 us) for the
--		 * conversion to complete
--		 */
--		usleep(200);
-+		/* wait Tconvert time (200us - 400us) for the conversion to complete */
-+		usleep_range(200, 400);
- 
- 		/* get the ADC reading */
- 		result = i2c_smbus_read_byte_data(data->client, ADC_VALUE_LOW);
-@@ -170,6 +170,9 @@ static umode_t
+@@ -171,6 +174,11 @@
  powr1220_is_visible(const void *data, enum hwmon_sensor_types type, u32
  		    attr, int channel)
  {
-+	if (((struct powr1220_data *)data)->max_channels <= channel)
++	struct powr1220_data *chip_data = (struct powr1220_data *)data;
++
++	if (channel >= chip_data->max_channels)
 +		return 0;
 +
  	switch (type) {
  	case hwmon_in:
  		switch (attr) {
-@@ -270,6 +273,8 @@ static const struct hwmon_chip_info powr1220_chip_info = {
+@@ -271,6 +279,8 @@
  	.info = powr1220_info,
  };
  
@@ -73,7 +60,7 @@ index 1b833781e89d..84f1508f1cbd 100644
  static int powr1220_probe(struct i2c_client *client)
  {
  	struct powr1220_data *data;
-@@ -282,6 +287,15 @@ static int powr1220_probe(struct i2c_client *client)
+@@ -283,6 +293,15 @@
  	if (!data)
  		return -ENOMEM;
  
@@ -89,16 +76,13 @@ index 1b833781e89d..84f1508f1cbd 100644
  	mutex_init(&data->update_lock);
  	data->client = client;
  
-@@ -293,7 +307,8 @@ static int powr1220_probe(struct i2c_client *client)
+@@ -296,7 +315,8 @@
  }
  
  static const struct i2c_device_id powr1220_ids[] = {
 -	{ "powr1220", 0, },
-+	{ "powr1220", powr1220, },
 +	{ "powr1014", powr1014, },
++	{ "powr1220", powr1220, },
  	{ }
  };
  
--- 
-2.14.1
-
