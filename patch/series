@@ -128,7 +128,7 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 0095-hwmon-mlxreg-fan-Fix-out-of-bounds-read-on-arra.patch
 0096-hwmon-mlxreg-fan-Modify-PWM-connectivity-valida.patch
 0097-hwmon-mlxreg-fan-Support-distinctive-names-per-.patch
-0169-TMP-mlxsw-i2c-Prevent-transaction-execution-for-spec.patch
+0169-mlxsw-i2c-Prevent-transaction-execution-for-spec.patch
 
 0001-net-prefer-socket-bound-to-interface-when-not-in-VRF.patch
 
