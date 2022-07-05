@@ -1,0 +1,25 @@
+From 62228e8a35770a9f7059533acb51846872c03777 Mon Sep 17 00:00:00 2001
+From: inspurSDN <sdn@inspur.com>
+Date: Tue, 1 Mar 2022 14:38:35 +0000
+Subject: [PATCH] Consider if the socket is bound to a device when binding.
+
+---
+ net/core/sock.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 4d60e7fc..ef504469 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -534,7 +534,7 @@ static int sock_setbindtodevice(struct sock *sk, char __user *optval,
+ 
+ 	/* Sorry... */
+ 	ret = -EPERM;
+-	if (!ns_capable(net->user_ns, CAP_NET_RAW))
++	if (sk->sk_bound_dev_if && !ns_capable(net->user_ns, CAP_NET_RAW))
+ 		goto out;
+ 
+ 	ret = -EINVAL;
+-- 
+2.17.1
+
