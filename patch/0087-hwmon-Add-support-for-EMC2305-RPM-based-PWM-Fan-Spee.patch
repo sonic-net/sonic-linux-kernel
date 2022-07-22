@@ -66,7 +66,8 @@ new file mode 100644
 index 000000000..3f98bdcd2
 --- /dev/null
 +++ b/drivers/hwmon/emc2305.c
-@@ -0,0 +1,518 @@
+
+@@ -0,0 +1,523 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Hardware monitoring driver for EMC2305 fan controller
@@ -98,6 +99,7 @@ index 000000000..3f98bdcd2
 +#define EMC2305_REG_PRODUCT_ID		0xfd
 +#define EMC2305_TACH_REGS_UNUSE_BITS	3
 +#define EMC2305_TACH_CNT_MULTIPLIER	0x02
++#define EMC2305_TACH_RANGE_MIN		480
 +
 +/*
 + * Factor by equations [2] and [3] from data sheet; valid for fans where the number of edges
@@ -228,11 +230,15 @@ index 000000000..3f98bdcd2
 +	int ret;
 +
 +	ret = i2c_smbus_read_word_swapped(client, EMC2305_REG_FAN_TACH(channel));
-+	if (ret < 0)
++	if (ret <= 0)
 +		return ret;
 +
 +	ret = ret >> EMC2305_TACH_REGS_UNUSE_BITS;
-+	return EMC2305_RPM_FACTOR * EMC2305_TACH_CNT_MULTIPLIER / (ret > 0 ? ret : 1);
++	ret = EMC2305_RPM_FACTOR / ret;
++	if (ret <= EMC2305_TACH_RANGE_MIN)
++		return 0;
++
++	return ret * EMC2305_TACH_CNT_MULTIPLIER;
 +}
 +
 +static int emc2305_show_pwm(struct device *dev, int channel)
@@ -585,6 +591,6 @@ index 000000000..3f98bdcd2
 +MODULE_DESCRIPTION("SMSC EMC2305 fan controller driver");
 +MODULE_LICENSE("GPL");
 +
--- 
+--
 2.20.1
 
