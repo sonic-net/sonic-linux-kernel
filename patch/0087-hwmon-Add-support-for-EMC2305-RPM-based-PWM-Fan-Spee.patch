@@ -66,7 +66,6 @@ new file mode 100644
 index 000000000..3f98bdcd2
 --- /dev/null
 +++ b/drivers/hwmon/emc2305.c
-
 @@ -0,0 +1,523 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
