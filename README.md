@@ -45,3 +45,4 @@ If the files patch/kconfig-exclusions and patch/kconfig-inclusions exist, they w
 Also, the final kernel configuration will be checked to verify that:
 - all options asked to be excluded are effectively not present in the kernel,
 - and all options asked to be included are effectively present in the kernel, using the exact type (module or built-in) or string or number.
+HH
