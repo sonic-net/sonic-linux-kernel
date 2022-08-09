@@ -120,6 +120,7 @@ linux-4.13-thermal-intel_pch_thermal-Fix-enable-check-on.patch
 0078-mlxsw-core-Add-validation-of-transceiver-temperature.patch
 0079-mlxsw-core-Remove-critical-trip-point-from-thermal-z.patch
 0080-mlxsw-i2c-Prevent-transaction-execution-for-spec.patch
+0081-DBG-mlxsw-i2c-Add-retries-for-transaction-for-settin.patch
 linux-4.16-firmware-dmi-handle-missing-DMI-data-gracefully.patch
 mellanox-backport-introduce-psample-a-new-genetlink-channel.patch
 mellanox-backport-introduce-tc-sample-action.patch
