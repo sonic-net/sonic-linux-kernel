@@ -36,6 +36,9 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 # Backport from 5.15
 0001-x86-platform-Increase-maximum-GPIO-number-for-X86_64.patch
 
+# Backport from 5.16
+0001-net-arp-introduce-arp_evict_nocarrier-sysctl-paramet.patch
+
 # Backport from 5.19
 0001-net-ipv6-Introduce-accept_unsolicited_na-knob-to-imp.patch
 0002-net-ipv6-Expand-and-rename-accept_unsolicited_na-to-.patch
