@@ -126,6 +126,19 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 		../manage-config $(CONFIGURED_ARCH) $(CONFIGURED_PLATFORM)
 	fi
 
+ifeq ($(SECURE_UPGRADE_MOD),$(filter $(SECURE_UPGRADE_MOD),dev prod))
+	if [ -f $(SECURE_UPGRADE_DEV_SIGNING_CERT) ]; then
+		echo "Add secure boot support in kernel config file"
+		cp ../patch/secure_boot_kernel_config.sh .
+		cp $(SECURE_UPGRADE_DEV_SIGNING_CERT) debian/certs
+		bash secure_boot_kernel_config.sh $(SECURE_UPGRADE_DEV_SIGNING_CERT)
+	else
+		echo "no certificate file exist, SECURE_UPGRADE_DEV_SIGNING_CERT=$(SECURE_UPGRADE_DEV_SIGNING_CERT)"
+		exit 1
+	fi
+
+endif # ifeq ($(SECURE_UPGRADE_MOD),$(filter $(SECURE_UPGRADE_MOD),dev prod))
+
 	# Building a custom kernel from Debian kernel source
 	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) DEB_BUILD_PROFILES=nodoc fakeroot make -f debian/rules -j $(shell nproc) binary-indep
 ifeq ($(CONFIGURED_ARCH), armhf)
