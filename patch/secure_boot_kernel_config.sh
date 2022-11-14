@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Note: this script was created because there is a problem when changing the kernel config
-# values that requires in the Secure Boot feature when using patch/kconfig-inclusions (sonic flow to modify kernel flags).
+# values that are required by the Secure Boot feature when using patch/kconfig-inclusions (sonic flow to modify kernel flags).
 # So, when this problem will be resolved, this script should be removed and used the kconfig-inclusions.
 
 usage() {
@@ -9,13 +9,12 @@ usage() {
 $0: # Display Help
 $0 <PEM_CERT>
 Script is modifying kernel config file to support system trusted key with custom certificate.
-Note: The signature algorithem used will be SHA512.
+Note: The signature algorithm used will be RSA over SHA512 x509 format.
 
 Parameters description:
 PEM_CERT                             public key (pem format). Key to be store in kernel.
 
-Run example:
-bash secure_boot_kernel_config.sh cert.pem
+Usage example: bash secure_boot_kernel_config.sh cert.pem
 EOF
 }
 
@@ -50,5 +49,3 @@ sed -i 's/^CONFIG_LOCK_DOWN_IN_EFI_SECURE_BOOT=.*/# CONFIG_LOCK_DOWN_IN_EFI_SECU
 sed -i 's/# CONFIG_KEXEC_SIG_FORCE is not set/CONFIG_KEXEC_SIG_FORCE=y/g' $linux_cfg_file
 
 echo "$0: Secure Boot support in Kernel config file DONE."
-
-

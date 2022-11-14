@@ -133,7 +133,7 @@ ifeq ($(SECURE_UPGRADE_MOD),$(filter $(SECURE_UPGRADE_MOD),dev prod))
 		cp $(SECURE_UPGRADE_DEV_SIGNING_CERT) debian/certs
 		bash secure_boot_kernel_config.sh $(SECURE_UPGRADE_DEV_SIGNING_CERT)
 	else
-		echo "no certificate file exist, SECURE_UPGRADE_DEV_SIGNING_CERT=$(SECURE_UPGRADE_DEV_SIGNING_CERT)"
+		echo "no certificate file exists, SECURE_UPGRADE_DEV_SIGNING_CERT=$(SECURE_UPGRADE_DEV_SIGNING_CERT)"
 		exit 1
 	fi
 
