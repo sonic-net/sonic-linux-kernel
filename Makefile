@@ -126,7 +126,10 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 		../manage-config $(CONFIGURED_ARCH) $(CONFIGURED_PLATFORM)
 	fi
 
-ifeq ($(SECURE_UPGRADE_MOD),$(filter $(SECURE_UPGRADE_MOD),dev prod))
+# Secure Boot Configuration
+ifneq ($(origin SECURE_UPGRADE_MODE), undefined)
+ifeq ($(SECURE_UPGRADE_MODE),$(filter $(SECURE_UPGRADE_MODE),dev prod))
+ifneq ($(origin SECURE_UPGRADE_DEV_SIGNING_CERT), undefined)
 	if [ -f $(SECURE_UPGRADE_DEV_SIGNING_CERT) ]; then
 		echo "Add secure boot support in kernel config file"
 		cp ../patch/secure_boot_kernel_config.sh .
@@ -136,8 +139,11 @@ ifeq ($(SECURE_UPGRADE_MOD),$(filter $(SECURE_UPGRADE_MOD),dev prod))
 		echo "no certificate file exists, SECURE_UPGRADE_DEV_SIGNING_CERT=$(SECURE_UPGRADE_DEV_SIGNING_CERT)"
 		exit 1
 	fi
-
-endif # ifeq ($(SECURE_UPGRADE_MOD),$(filter $(SECURE_UPGRADE_MOD),dev prod))
+else
+	echo "SECURE_UPGRADE_DEV_SIGNING_CERT is not defined"
+endif # ifneq ($(origin SECURE_UPGRADE_DEV_SIGNING_CERT), undefined)
+endif # ifeq ($(SECURE_UPGRADE_MODE),$(filter $(SECURE_UPGRADE_MODE),dev prod))
+endif # ifneq ($(origin SECURE_UPGRADE_MODE), undefined)
 
 	# Building a custom kernel from Debian kernel source
 	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) DEB_BUILD_PROFILES=nodoc fakeroot make -f debian/rules -j $(shell nproc) binary-indep
