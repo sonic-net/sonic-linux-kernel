@@ -79,7 +79,9 @@ if [ -e ${exclusion_file} -o -e ${inclusion_file} -o -e ${force_inclusion_file} 
         inclusion_opts=$(get_section_opts ${inclusion_file} "common" ${ARCH} ${PLATFORM})
         while read -r opt; do
             if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
-                echo $opt >> ${CONFIG_FILE}
+                n=${opt%=*}
+                v="${opt#*=}"
+                scripts/config --file ${CONFIG_FILE} -k --set-val "$n" "$v"
             fi
         done <<< ${inclusion_opts};
     fi
