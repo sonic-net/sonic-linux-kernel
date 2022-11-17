@@ -115,6 +115,8 @@ if [ -e ${exclusion_file} -o -e ${inclusion_file} -o -e ${force_inclusion_file} 
             if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
                 n=${opt%=*}
                 v="${opt#*=}"
+                v="${v/#\"/}"
+                v="${v/%\"/}"
                 s=$(scripts/config --file ${CONFIG_FILE} -k --state $n)
                 if [ ! "$s" = "$v" ]; then
                     ret=2
