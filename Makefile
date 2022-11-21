@@ -3,9 +3,9 @@ SHELL = /bin/bash
 .SHELLFLAGS += -e
 
 KERNEL_ABI_MINOR_VERSION = 2
-KVERSION_SHORT ?= 5.10.0-12-$(KERNEL_ABI_MINOR_VERSION)
+KVERSION_SHORT ?= 5.10.0-18-$(KERNEL_ABI_MINOR_VERSION)
 KVERSION ?= $(KVERSION_SHORT)-amd64
-KERNEL_VERSION ?= 5.10.103
+KERNEL_VERSION ?= 5.10.140
 KERNEL_SUBVERSION ?= 1
 kernel_procure_method ?= build
 CONFIGURED_ARCH ?= amd64
@@ -56,6 +56,7 @@ SOURCE_FILE_BASE_URL="https://sonicstorage.blob.core.windows.net/debian-security
 DSC_FILE_URL = "$(SOURCE_FILE_BASE_URL)/$(DSC_FILE)"
 DEBIAN_FILE_URL = "$(SOURCE_FILE_BASE_URL)/$(DEBIAN_FILE)"
 ORIG_FILE_URL = "$(SOURCE_FILE_BASE_URL)/$(ORIG_FILE)"
+NON_UP_DIR = /tmp/non_upstream_patches
 
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Obtaining the Debian kernel source
@@ -98,6 +99,27 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Learning new git repo head (above commit) by calling stg repair.
 	stg repair
 	stg import -s ../patch/series
+
+	rm -rf $(NON_UP_DIR)
+	mkdir -p $(NON_UP_DIR)
+
+	if [ ! -z ${EXTERNAL_KERNEL_PATCH_URL} ];  then
+		wget $(EXTERNAL_KERNEL_PATCH_URL) -O patches.tar
+		tar -xf patches.tar -C $(NON_UP_DIR)
+	fi
+
+	# Precedence is given for external URL
+	if [ -z ${EXTERNAL_KERNEL_PATCH_URL} ] && [ x${INCLUDE_EXTERNAL_PATCH_TAR} == xy ]; then
+		if [ -f "$(EXTERNAL_KERNEL_PATCH_TAR)" ]; then
+			tar -xf $(EXTERNAL_KERNEL_PATCH_TAR) -C $(NON_UP_DIR)
+		fi
+	fi
+
+	if [ -f "$(NON_UP_DIR)/series" ]; then
+		echo "External Patches applied:"
+		cat $(NON_UP_DIR)/series
+		stg import -s $(NON_UP_DIR)/series
+	fi
 
 	# Optionally add/remove kernel options
 	if [ -f ../manage-config ]; then

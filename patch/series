@@ -69,7 +69,6 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 0011-i2c-mux-mlxcpld-Add-callback-to-notify-mux-crea.patch
 0012-hwmon-mlxreg-fan-Add-support-for-fan-drawers-ca.patch
 0013-hwmon-pmbus-shrink-code-and-remove-pmbus_do_rem.patch
-0014-thermal-drivers-core-Use-a-char-pointer-for-the.patch
 0015-mlxsw-core-Remove-critical-trip-points-from-the.patch
 0016-net-don-t-include-ethtool.h-from-netdevice.h.patch
 0017-mlxsw-reg-Extend-MTMP-register-with-new-thresho.patch
