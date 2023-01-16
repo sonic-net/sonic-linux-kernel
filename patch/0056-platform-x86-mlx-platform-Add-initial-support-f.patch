@@ -1,7 +1,8 @@
+From 1fe47720483933d41d480ae51c3487a2f34e6e1a Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Mon, 12 Jul 2021 16:39:11 +0000
-Subject: 0056 platform/x86: mlx-platform: Add initial support
- for new modular system
+Subject: [PATCH backport for v5.10 56/97] platform/x86: mlx-platform: Add
+ initial support for new modular system
 
 Add initial chassis management support for Nvidia modular Ethernet
 switch systems MSN4800, providing a high performance switching solution
@@ -33,8 +34,7 @@ line card. The line cards are hot-pluggable.
 
 Line cards are connected to the chassis through I2C interface for the
 chassis management operations and through PCIe for the networking
-operations. Future line cards could be connected to the chassis through
-InfiniBand fabric, instead of PCIe.
+operations.
 
 The first type of line card supports 16x100GbE QSFP28 Ethernet ports.
 Those line cards equipped with the programmable devices aimed for
@@ -2884,5 +2884,5 @@ index 8bce3da32a42..6d14eb3dab50 100644
  		.callback = mlxplat_dmi_msn274x_matched,
  		.matches = {
 -- 
-2.17.1
+2.20.1
 

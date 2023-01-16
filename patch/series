@@ -144,8 +144,20 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 0097-hwmon-mlxreg-fan-Support-distinctive-names-per-.patch
 0999-Revert-mlxsw-thermal-Fix-out-of-bounds-memory-a.patch
 0098-mlxsw-i2c-Prevent-transaction-execution-for.patch
-0163-platform-mellanox-Add-COME-board-revision-register.patch
+0157-platform-x86-mlx-platform-Make-activation-of-some-dr.patch
+0158-platform-x86-mlx-platform-Add-cosmetic-changes-for-a.patch
+0159-mlx-platform-Add-support-for-systems-equipped-with-t.patch
+0160-platform-mellanox-Introduce-support-for-COMe-NVSwitc.patch
+0161-platform-x86-mlx-platform-Add-support-for-new-system.patch
+0162-platform-mellanox-Add-COME-board-revision-register.patch
+0164-hwmon-jc42-Add-support-for-Seiko-Instruments-S-34TS0.patch
+0165-platform-mellanox-mlxreg-io-Add-locking-for-io-opera.patch
 0167-leds-mlxreg-Send-udev-change-event.patch
+0170-i2c-mlxcpld-Fix-register-setting-for-400KHz-frequenc.patch
+0171-platform-mellanox-mlxreg-lc-Fix-cleanup-on-failure-a.patch
+0173-core-Add-support-for-OSFP-transceiver-modules.patch
+0175-hwmon-pmbus-Add-support-for-Infineon-Digital-Multi-p.patch
+0180-hwmon-pmbus-Fix-sensors-readouts-for-MPS-Multi-phase.patch
 
 # Cisco patches for 5.10 kernel
 cisco-mtd-part.patch
