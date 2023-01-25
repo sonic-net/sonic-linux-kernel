@@ -121,29 +121,9 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 		stg import -s $(NON_UP_DIR)/series
 	fi
 
-# Secure Boot Configuration
-ifneq ($(origin SECURE_UPGRADE_MODE), undefined)
-ifeq ($(SECURE_UPGRADE_MODE),$(filter $(SECURE_UPGRADE_MODE),dev prod))
-ifneq ($(origin SECURE_UPGRADE_DEV_SIGNING_CERT), undefined)
-	if [ -f $(SECURE_UPGRADE_DEV_SIGNING_CERT) ]; then
-		echo "Add secure boot support in kernel config file"
-		cp ../patch/secure_boot_kernel_config.sh .
-		cp $(SECURE_UPGRADE_DEV_SIGNING_CERT) debian/certs
-		echo "secure_boot_kernel_config.sh -c $(SECURE_UPGRADE_DEV_SIGNING_CERT) -a $(CONFIGURED_ARCH)"
-		./secure_boot_kernel_config.sh -c $(SECURE_UPGRADE_DEV_SIGNING_CERT) -a $(CONFIGURED_ARCH)
-	else
-		echo "no certificate file exists, SECURE_UPGRADE_DEV_SIGNING_CERT=$(SECURE_UPGRADE_DEV_SIGNING_CERT)"
-		exit 1
-	fi
-else
-	echo "SECURE_UPGRADE_MODE is defined, but SECURE_UPGRADE_DEV_SIGNING_CERT is not defined"
-endif # ifneq ($(origin SECURE_UPGRADE_DEV_SIGNING_CERT), undefined)
-endif # ifeq ($(SECURE_UPGRADE_MODE),$(filter $(SECURE_UPGRADE_MODE),dev prod))
-endif # ifneq ($(origin SECURE_UPGRADE_MODE), undefined)
-
 	# Optionally add/remove kernel options
 	if [ -f ../manage-config ]; then
-		../manage-config $(CONFIGURED_ARCH) $(CONFIGURED_PLATFORM)
+		../manage-config $(CONFIGURED_ARCH) $(CONFIGURED_PLATFORM) $(SECURE_UPGRADE_MODE) $(SECURE_UPGRADE_DEV_SIGNING_CERT)
 	fi
 
 	# Building a custom kernel from Debian kernel source
