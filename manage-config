@@ -162,9 +162,16 @@ ret_process_inc_ex=0
 ret_process_inc_ex=$(process_inclusion_exclusion_files > /dev/null; echo $?)
 
 #  Secure Boot support
-if [ $ret_process_inc_ex -e 0 ]; then
+if [ $ret_process_inc_ex -eq 0 ]; then
+    echo "Secure Boot params: SECURE_UPGRADE_MODE=${SECURE_UPGRADE_MODE}, SECURE_UPGRADE_DEV_SIGNING_CERT=${SECURE_UPGRADE_DEV_SIGNING_CERT}"
     if [ ${SECURE_UPGRADE_MODE} == "dev" -o ${SECURE_UPGRADE_MODE} == "prod" ]; then
         echo "set kconfig-secure-boot-exclusions & kconfig-secure-boot-inclusions"
+
+        if [ ! -f "${SECURE_UPGRADE_DEV_SIGNING_CERT}" ]; then
+            echo "ERROR: SECURE_UPGRADE_DEV_SIGNING_CERT=${SECURE_UPGRADE_DEV_SIGNING_CERT} file does not exist"
+            exit 1
+        fi
+
         exclusion_file="../patch/kconfig-secure-boot-exclusions"
         inclusion_file="../patch/kconfig-secure-boot-inclusions"
         force_inclusion_file="../patch/kconfig-force-secure-boot-inclusions"
@@ -173,6 +180,9 @@ if [ $ret_process_inc_ex -e 0 ]; then
         sed -i "s|^CONFIG_SYSTEM_TRUSTED_KEYS=.*|CONFIG_SYSTEM_TRUSTED_KEYS=\"$SECURE_UPGRADE_DEV_SIGNING_CERT\"|g" ${inclusion_file}
 
         ret_process_inc_ex=$(process_inclusion_exclusion_files > /dev/null; echo $?)
+        echo "Secure Boot kernel configuration done."
+    else
+        echo "no Secure Boot Kernel configuration required."
     fi
 fi
 
