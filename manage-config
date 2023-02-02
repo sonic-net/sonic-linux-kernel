@@ -26,12 +26,21 @@
 # Configuration file to change
 ARCH=amd64
 PLATFORM=
+SECURE_UPGRADE_MODE="no_sign"
+SECURE_UPGRADE_DEV_SIGNING_CERT=
 if [ $# -ge 1 ]; then
     ARCH=$1
 fi
 if [ $# -ge 2 ]; then
     PLATFORM=$2
 fi
+if [ $# -ge 3 ]; then
+    SECURE_UPGRADE_MODE=$3
+fi
+if [ $# -ge 4 ]; then
+    SECURE_UPGRADE_DEV_SIGNING_CERT=$4
+fi
+
 case "$ARCH" in
     amd64)
         CONFIG_FILE_LOC=debian/build/build_amd64_none_amd64
@@ -58,88 +67,123 @@ function get_section_opts(){
     echo "$opts"
 }
 
-ret=0
+function process_inclusion_exclusion_files(){
+    echo "process_inclusion_exclusion_files Start"
+    ret=0
+    echo "debug ret=$ret 1"
+    if [ -e ${exclusion_file} -o -e ${inclusion_file} -o -e ${force_inclusion_file} ]; then
+
+        # Process any exclusions in the kernel
+        if [ -f ${exclusion_file} ]; then
+            exclusion_opts=$(get_section_opts ${exclusion_file} "common" ${ARCH} ${PLATFORM})
+            while read -r opt; do
+                if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
+                    scripts/config --file ${CONFIG_FILE} -d $opt
+                fi
+            done <<< ${exclusion_opts};
+        fi
+
+        # Process any inclusions in the kernel
+        if [ -f ${inclusion_file} ]; then
+            inclusion_opts=$(get_section_opts ${inclusion_file} "common" ${ARCH} ${PLATFORM})
+            while read -r opt; do
+                if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
+                    n=${opt%=*}
+                    v="${opt#*=}"
+                    scripts/config --file ${CONFIG_FILE} -k --set-val "$n" "$v"
+                fi
+            done <<< ${inclusion_opts};
+        fi
+
+        # Update the .config file to be sure it's consistent
+        make -C ${CONFIG_FILE_LOC} olddefconfig
+
+        # Verify that the kernel options we want to remove are not in the updated configuration
+        if [ -f ${exclusion_file} ]; then
+            echo
+            echo "Checking removed kernel options..."
+            while read -r opt; do
+                if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
+                    s=$(scripts/config --file ${CONFIG_FILE} -k --state $opt)
+                    if [ ! "$s" = "undef" -a ! "$s" = "n" ]; then
+                        ret=1
+                        echo "Option $opt should not be set, but is set to [$s]"
+                    fi
+                fi
+            done <<< ${exclusion_opts};
+            if [ $ret = 0 ]; then
+                echo "No error"
+            fi
+        fi
+
+        # Verify that the kernel options we want to add are now in the updated configuration
+        if [ -f ${inclusion_file} ]; then
+            echo
+            echo "Checking added kernel options..."
+            while read -r opt; do
+                if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
+                    n=${opt%=*}
+                    v="${opt#*=}"
+                    v="${v/#\"/}"
+                    v="${v/%\"/}"
+                    s=$(scripts/config --file ${CONFIG_FILE} -k --state $n)
+                    if [ ! "$s" = "$v" ]; then
+                        ret=2
+                        echo "Option $n should be set to [$v] instead of [$s]"
+                    fi
+                fi
+            done <<< ${inclusion_opts};
+            if [ ! $ret = 2 ]; then
+                echo "No error"
+            fi
+        fi
+
+        # Process any force inclusions in the kernel
+        if [ -f ${force_inclusion_file} ]; then
+            force_inclusion_opts=$(get_section_opts ${force_inclusion_file} "common" ${ARCH} ${PLATFORM})
+            while read -r opt; do
+                if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
+                    echo $opt >> ${CONFIG_FILE}
+                fi
+            done <<< ${force_inclusion_opts};
+        fi
+
+        echo
+    fi
+
+    echo "process_inclusion_exclusion_files Done"
+    return $ret
+}
+
 exclusion_file="../patch/kconfig-exclusions"
 inclusion_file="../patch/kconfig-inclusions"
 force_inclusion_file="../patch/kconfig-force-inclusions"
-if [ -e ${exclusion_file} -o -e ${inclusion_file} -o -e ${force_inclusion_file} ]; then
+ret_process_inc_ex=0
+ret_process_inc_ex=$(process_inclusion_exclusion_files > /dev/null; echo $?)
 
-    # Process any exclusions in the kernel
-    if [ -f ${exclusion_file} ]; then
-        exclusion_opts=$(get_section_opts ${exclusion_file} "common" ${ARCH} ${PLATFORM})
-        while read -r opt; do
-            if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
-                scripts/config --file ${CONFIG_FILE} -d $opt
-            fi
-        done <<< ${exclusion_opts};
-    fi
+#  Secure Boot support
+if [ $ret_process_inc_ex -eq 0 ]; then
+    echo "Secure Boot params: SECURE_UPGRADE_MODE=${SECURE_UPGRADE_MODE}, SECURE_UPGRADE_DEV_SIGNING_CERT=${SECURE_UPGRADE_DEV_SIGNING_CERT}"
+    if [ ${SECURE_UPGRADE_MODE} == "dev" -o ${SECURE_UPGRADE_MODE} == "prod" ]; then
+        echo "set kconfig-secure-boot-exclusions & kconfig-secure-boot-inclusions"
 
-    # Process any inclusions in the kernel
-    if [ -f ${inclusion_file} ]; then
-        inclusion_opts=$(get_section_opts ${inclusion_file} "common" ${ARCH} ${PLATFORM})
-        while read -r opt; do
-            if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
-                n=${opt%=*}
-                v="${opt#*=}"
-                scripts/config --file ${CONFIG_FILE} -k --set-val "$n" "$v"
-            fi
-        done <<< ${inclusion_opts};
-    fi
-
-    # Update the .config file to be sure it's consistent
-    make -C ${CONFIG_FILE_LOC} olddefconfig
-
-    # Verify that the kernel options we want to remove are not in the updated configuration
-    if [ -f ${exclusion_file} ]; then
-        echo
-        echo "Checking removed kernel options..."
-        while read -r opt; do
-            if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
-                s=$(scripts/config --file ${CONFIG_FILE} -k --state $opt)
-                if [ ! "$s" = "undef" -a ! "$s" = "n" ]; then
-                    ret=1
-                    echo "Option $opt should not be set, but is set to [$s]"
-                fi
-            fi
-        done <<< ${exclusion_opts};
-        if [ $ret = 0 ]; then
-            echo "No error"
+        if [ ! -f "${SECURE_UPGRADE_DEV_SIGNING_CERT}" ]; then
+            echo "ERROR: SECURE_UPGRADE_DEV_SIGNING_CERT=${SECURE_UPGRADE_DEV_SIGNING_CERT} file does not exist"
+            exit 1
         fi
-    fi
 
-    # Verify that the kernel options we want to add are now in the updated configuration
-    if [ -f ${inclusion_file} ]; then
-        echo
-        echo "Checking added kernel options..."
-        while read -r opt; do
-            if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
-                n=${opt%=*}
-                v="${opt#*=}"
-                v="${v/#\"/}"
-                v="${v/%\"/}"
-                s=$(scripts/config --file ${CONFIG_FILE} -k --state $n)
-                if [ ! "$s" = "$v" ]; then
-                    ret=2
-                    echo "Option $n should be set to [$v] instead of [$s]"
-                fi
-            fi
-        done <<< ${inclusion_opts};
-        if [ ! $ret = 2 ]; then
-            echo "No error"
-        fi
-    fi
+        exclusion_file="../patch/kconfig-secure-boot-exclusions"
+        inclusion_file="../patch/kconfig-secure-boot-inclusions"
+        force_inclusion_file="../patch/kconfig-force-secure-boot-inclusions"
 
-    # Process any force inclusions in the kernel
-    if [ -f ${force_inclusion_file} ]; then
-        force_inclusion_opts=$(get_section_opts ${force_inclusion_file} "common" ${ARCH} ${PLATFORM})
-        while read -r opt; do
-            if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
-                echo $opt >> ${CONFIG_FILE}
-            fi
-        done <<< ${force_inclusion_opts};
-    fi
+        # save the new pub key in kernel
+        sed -i "s|^CONFIG_SYSTEM_TRUSTED_KEYS=.*|CONFIG_SYSTEM_TRUSTED_KEYS=\"$SECURE_UPGRADE_DEV_SIGNING_CERT\"|g" ${inclusion_file}
 
-    echo
+        ret_process_inc_ex=$(process_inclusion_exclusion_files > /dev/null; echo $?)
+        echo "Secure Boot kernel configuration done."
+    else
+        echo "no Secure Boot Kernel configuration required."
+    fi
 fi
 
-exit $ret
+exit $ret_process_inc_ex
