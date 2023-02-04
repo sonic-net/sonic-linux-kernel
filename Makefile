@@ -9,6 +9,8 @@ KERNEL_VERSION ?= 5.10.140
 KERNEL_SUBVERSION ?= 1
 kernel_procure_method ?= build
 CONFIGURED_ARCH ?= amd64
+SECURE_UPGRADE_MODE ?=
+SECURE_UPGRADE_DEV_SIGNING_CERT =?
 
 LINUX_HEADER_COMMON = linux-headers-$(KVERSION_SHORT)-common_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_all.deb
 LINUX_HEADER_AMD64 = linux-headers-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_$(CONFIGURED_ARCH).deb
@@ -123,7 +125,7 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 
 	# Optionally add/remove kernel options
 	if [ -f ../manage-config ]; then
-		../manage-config $(CONFIGURED_ARCH) $(CONFIGURED_PLATFORM)
+		../manage-config $(CONFIGURED_ARCH) $(CONFIGURED_PLATFORM) $(SECURE_UPGRADE_MODE) $(SECURE_UPGRADE_DEV_SIGNING_CERT)
 	fi
 
 	# Building a custom kernel from Debian kernel source
