@@ -1,0 +1,31 @@
+Subject: i2c fails in LK 5.4
+
+Fix failure of probing I2C, due to definitions in
+it's DTS node which require (missing) corresponding
+pinctrl definition
+
+Tested-by: Raz Adashi <raza@marvell.com>
+Reviewed-by: Raz Adashi <raza@marvell.com>
+Signed-off-by: Noam <lnoam@marvell.com>
+---
+ drivers/pinctrl/mvebu/pinctrl-ac5.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/pinctrl/mvebu/pinctrl-ac5.c b/drivers/pinctrl/mvebu/pinctrl-ac5.c
+index c996efd3a..c33c9fc5e 100644
+--- a/drivers/pinctrl/mvebu/pinctrl-ac5.c
++++ b/drivers/pinctrl/mvebu/pinctrl-ac5.c
+@@ -75,9 +75,11 @@ static struct mvebu_mpp_mode ac5_mpp_modes[] = {
+ 	MPP_MODE(25,
+ 		 MPP_FUNCTION(0, "gpio",    NULL)),
+ 	MPP_MODE(26,
+-		 MPP_FUNCTION(0, "gpio",    NULL)),
++		 MPP_FUNCTION(0, "gpio",    NULL),
++		 MPP_FUNCTION(1, "i2c0-opt", "scl")),
+ 	MPP_MODE(27,
+-		 MPP_FUNCTION(0, "gpio",    NULL)),
++		 MPP_FUNCTION(0, "gpio",    NULL),
++		 MPP_FUNCTION(1, "i2c0-opt", "sda")),
+ 	MPP_MODE(28,
+ 		 MPP_FUNCTION(0, "gpio",    NULL)),
+ 	MPP_MODE(29,

@@ -1,0 +1,254 @@
+Subject: i2c bus lock (Arb-Loss)
+
+Some i2c slaves, maainly SFPs, might cause the bus to
+    lost arbitration while slave is in the middle of
+    responding.
+
+    The solution is to change the I2C mpps to gpios,
+    and toggle the i2c_scl gpio to emulate bus toggling,
+    so slave will finish its transimission.
+
+    The fix include support for configuring which pins need
+    to be toggled (done in dts & the pinctrl file)
+
+Tested-by: Raz Adashi <raza@marvell.com>
+Reviewed-by: Raz Adashi <raza@marvell.com>
+Signed-off-by: Noam Liron <lnoam@marvell.com>
+---
+ arch/arm/mach-mvebu/Kconfig             |    2 -
+ arch/arm64/boot/dts/marvell/ac5.dtsi    |   17 +++++++
+ arch/arm64/boot/dts/marvell/ac5x_db.dts |    4 ++
+ drivers/i2c/busses/i2c-mv64xxx.c        |   76 +++++++++++++++++++++++++++++++
+ drivers/pinctrl/mvebu/Kconfig           |    5 ++
+ drivers/pinctrl/mvebu/Makefile          |    1 
+ 6 files changed, 104 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/mach-mvebu/Kconfig b/arch/arm/mach-mvebu/Kconfig
+index 34dbeaab9..2ecd372ae 100644
+--- a/arch/arm/mach-mvebu/Kconfig
++++ b/arch/arm/mach-mvebu/Kconfig
+@@ -93,7 +93,7 @@ config MACH_ARMADA_XP
+ 	select ARMADA_XP_CLK
+ 	select CPU_PJ4B
+ 	select MACH_MVEBU_V7
+-	select PINCTRL_ARMADA_XP
++	select PINCTRL_AC3
+ 	help
+ 	  Say 'Y' here if you want your kernel to support boards based
+ 	  on the Marvell Armada XP SoC with device tree.
+diff --git a/arch/arm64/boot/dts/marvell/ac5.dtsi b/arch/arm64/boot/dts/marvell/ac5.dtsi
+index e64ed81a0..18b19f0da 100644
+--- a/arch/arm64/boot/dts/marvell/ac5.dtsi
++++ b/arch/arm64/boot/dts/marvell/ac5.dtsi
+@@ -120,6 +120,13 @@ i2c0: i2c@11000{
+ 				interrupts = <GIC_SPI 87 IRQ_TYPE_LEVEL_HIGH>;
+ 				clock-frequency=<100000>;
+ 				status="okay";
++
++				pinctrl-names = "i2c-mpp-state", "i2c-gpio-state";
++				pinctrl-0 = <&i2c_mpps>;
++				pinctrl-1 = <&i2c_gpio>;
++
++				scl_gpio = <&gpio0 26 GPIO_ACTIVE_HIGH>;
++				sda_gpio = <&gpio0 27 GPIO_ACTIVE_HIGH>;
+ 			};
+ 
+ 			i2c1: i2c@11100{
+@@ -202,6 +209,16 @@ pinctrl0: pinctrl@80020100 {
+ 			compatible = "marvell,ac5-pinctrl",
+ 				     "syscon", "simple-mfd";
+ 			reg = <0 0x80020100 0 0x20>;
++
++			i2c_mpps: i2c-mpps {
++				marvell,pins = "mpp26", "mpp27";
++				marvell,function = "i2c0-opt";
++			};
++
++			i2c_gpio: i2c-gpio {
++				marvell,pins = "mpp26", "mpp27";
++				marvell,function = "gpio";
++			};
+ 		};
+ 
+ 		pcie0: pcie@800a0000 {
+diff --git a/arch/arm64/boot/dts/marvell/ac5x_db.dts b/arch/arm64/boot/dts/marvell/ac5x_db.dts
+index 6a5bc72d4..55bc42c85 100644
+--- a/arch/arm64/boot/dts/marvell/ac5x_db.dts
++++ b/arch/arm64/boot/dts/marvell/ac5x_db.dts
+@@ -30,3 +30,7 @@ &usb1 {
+ 	dr_mode = "peripheral";
+ };
+ 
++&cnm_clock {
++    clock-frequency = <325000000>;
++};
++
+diff --git a/drivers/i2c/busses/i2c-mv64xxx.c b/drivers/i2c/busses/i2c-mv64xxx.c
+index e0e45fc19..494dd8f16 100644
+--- a/drivers/i2c/busses/i2c-mv64xxx.c
++++ b/drivers/i2c/busses/i2c-mv64xxx.c
+@@ -9,6 +9,8 @@
+  * is licensed "as is" without any warranty of any kind, whether express
+  * or implied.
+  */
++#undef UI_I2C_DEBUG
++
+ #include <linux/kernel.h>
+ #include <linux/slab.h>
+ #include <linux/module.h>
+@@ -25,6 +27,7 @@
+ #include <linux/clk.h>
+ #include <linux/err.h>
+ #include <linux/delay.h>
++#include <linux/of_gpio.h>
+ 
+ #define MV64XXX_I2C_ADDR_ADDR(val)			((val & 0x7f) << 1)
+ #define MV64XXX_I2C_BAUD_DIV_N(val)			(val & 0x7)
+@@ -103,6 +106,7 @@ enum {
+ 	MV64XXX_I2C_ACTION_RCV_DATA,
+ 	MV64XXX_I2C_ACTION_RCV_DATA_STOP,
+ 	MV64XXX_I2C_ACTION_SEND_STOP,
++	MV64XXX_I2C_ACTION_UNLOCK_BUS
+ };
+ 
+ struct mv64xxx_i2c_regs {
+@@ -147,6 +151,12 @@ struct mv64xxx_i2c_data {
+ 	bool			irq_clear_inverted;
+ 	/* Clk div is 2 to the power n, not 2 to the power n + 1 */
+ 	bool			clk_n_base_0;
++
++	/* I2C mpp states & gpios needed for ARB lost recovery */
++	int 			scl_gpio, sda_gpio;
++	bool  			arb_lost_reovery_ena;
++	struct pinctrl_state *i2c_mpp_state;
++	struct pinctrl_state *i2c_gpio_state;
+ };
+ 
+ static struct mv64xxx_i2c_regs mv64xxx_i2c_regs_mv64xxx = {
+@@ -308,6 +318,11 @@ mv64xxx_i2c_fsm(struct mv64xxx_i2c_data *drv_data, u32 status)
+ 		drv_data->state = MV64XXX_I2C_STATE_IDLE;
+ 		break;
+ 
++	case MV64XXX_I2C_STATUS_MAST_LOST_ARB: /*0x38*/
++	   drv_data->action = MV64XXX_I2C_ACTION_UNLOCK_BUS;
++	   drv_data->state = MV64XXX_I2C_STATE_IDLE;
++	   break;
++
+ 	case MV64XXX_I2C_STATUS_MAST_WR_ADDR_NO_ACK: /* 0x20 */
+ 	case MV64XXX_I2C_STATUS_MAST_WR_NO_ACK: /* 30 */
+ 	case MV64XXX_I2C_STATUS_MAST_RD_ADDR_NO_ACK: /* 48 */
+@@ -345,6 +360,9 @@ static void mv64xxx_i2c_send_start(struct mv64xxx_i2c_data *drv_data)
+ static void
+ mv64xxx_i2c_do_action(struct mv64xxx_i2c_data *drv_data)
+ {
++	struct pinctrl *pc;
++	int i, ret;
++
+ 	switch(drv_data->action) {
+ 	case MV64XXX_I2C_ACTION_SEND_RESTART:
+ 		/* We should only get here if we have further messages */
+@@ -398,6 +416,44 @@ mv64xxx_i2c_do_action(struct mv64xxx_i2c_data *drv_data)
+ 			drv_data->reg_base + drv_data->reg_offsets.control);
+ 		break;
+ 
++	case MV64XXX_I2C_ACTION_UNLOCK_BUS:
++
++		if (!drv_data->arb_lost_reovery_ena)
++			break;
++
++		pc = devm_pinctrl_get(drv_data->adapter.dev.parent);
++		if (IS_ERR(pc))
++			break;
++
++		/* Move i2c MPPs to GPIOs */
++		if (pinctrl_select_state(pc, drv_data->i2c_gpio_state) >=0) {
++			ret = devm_gpio_request_one(drv_data->adapter.dev.parent,
++					 drv_data->scl_gpio, GPIOF_DIR_OUT, NULL);
++			ret |= devm_gpio_request_one(drv_data->adapter.dev.parent,
++					 drv_data->sda_gpio, GPIOF_DIR_OUT, NULL);
++			if (!ret) {
++				/* toggle i2c scl 10 times, for the slave that occupies
++				   the bus Tx its remaining data, and release the bus
++				*/
++				for (i=0; i<10; i++) {
++					gpio_set_value(drv_data->scl_gpio, 1);
++					mdelay(1);
++					gpio_set_value(drv_data->scl_gpio, 0);
++				};
++
++				devm_gpio_free(drv_data->adapter.dev.parent, drv_data->scl_gpio);
++				devm_gpio_free(drv_data->adapter.dev.parent, drv_data->sda_gpio);
++			}
++
++			/* restore i2c MPPs */
++			pinctrl_select_state(pc, drv_data->i2c_mpp_state);
++		}
++
++		/* Trigger controller soft reset and restore MPPs */
++		writel(0x1, drv_data->reg_base + drv_data->reg_offsets.soft_reset);
++		mdelay(1);
++		/* fall through */
++
+ 	case MV64XXX_I2C_ACTION_RCV_DATA_STOP:
+ 		drv_data->msg->buf[drv_data->byte_posn++] =
+ 			readl(drv_data->reg_base + drv_data->reg_offsets.data);
+@@ -875,6 +931,7 @@ mv64xxx_i2c_probe(struct platform_device *pd)
+ {
+ 	struct mv64xxx_i2c_data		*drv_data;
+ 	struct mv64xxx_i2c_pdata	*pdata = dev_get_platdata(&pd->dev);
++	struct pinctrl *pc;
+ 	int	rc;
+ 
+ 	if ((!pdata && !pd->dev.of_node))
+@@ -926,6 +983,25 @@ mv64xxx_i2c_probe(struct platform_device *pd)
+ 		goto exit_reset;
+ 	}
+ 
++	drv_data->arb_lost_reovery_ena = false;
++	pc = devm_pinctrl_get(&pd->dev);
++	if (!IS_ERR(pc)) {
++		drv_data->i2c_mpp_state = pinctrl_lookup_state(pc, "i2c-mpp-state");
++		drv_data->i2c_gpio_state = pinctrl_lookup_state(pc, "i2c-gpio-state");
++		drv_data->scl_gpio = of_get_named_gpio(pd->dev.of_node, "scl_gpio", 0);
++		drv_data->sda_gpio = of_get_named_gpio(pd->dev.of_node, "sda_gpio", 0);
++
++		if (!IS_ERR(drv_data->i2c_gpio_state) &&
++			!IS_ERR(drv_data->i2c_mpp_state) &&
++			gpio_is_valid(drv_data->scl_gpio) &&
++			gpio_is_valid(drv_data->sda_gpio) )
++			drv_data->arb_lost_reovery_ena = true;
++	}
++
++	if (!drv_data->arb_lost_reovery_ena)
++		dev_info(&pd->dev,
++			"mv64xxx: missing ARB-lost recovery defs in dts file\n");
++
+ 	drv_data->adapter.dev.parent = &pd->dev;
+ 	drv_data->adapter.algo = &mv64xxx_i2c_algo;
+ 	drv_data->adapter.owner = THIS_MODULE;
+diff --git a/drivers/pinctrl/mvebu/Kconfig b/drivers/pinctrl/mvebu/Kconfig
+index aa5883f09..cd82576db 100644
+--- a/drivers/pinctrl/mvebu/Kconfig
++++ b/drivers/pinctrl/mvebu/Kconfig
+@@ -41,6 +41,11 @@ config PINCTRL_ARMADA_XP
+ 	bool
+ 	select PINCTRL_MVEBU
+ 
++config PINCTRL_AC3
++	bool
++	select PINCTRL_MVEBU
++
++
+ config PINCTRL_ORION
+ 	bool
+ 	select PINCTRL_MVEBU
+diff --git a/drivers/pinctrl/mvebu/Makefile b/drivers/pinctrl/mvebu/Makefile
+index 23458ab17..edda21439 100644
+--- a/drivers/pinctrl/mvebu/Makefile
++++ b/drivers/pinctrl/mvebu/Makefile
+@@ -12,3 +12,4 @@ obj-$(CONFIG_PINCTRL_ARMADA_XP)  += pinctrl-armada-xp.o
+ obj-$(CONFIG_PINCTRL_ARMADA_37XX)  += pinctrl-armada-37xx.o
+ obj-$(CONFIG_PINCTRL_ORION)  += pinctrl-orion.o
+ obj-$(CONFIG_PINCTRL_AC5) += pinctrl-ac5.o
++obj-$(CONFIG_PINCTRL_AC3)  += pinctrl-ac3.o
+\ No newline at end of file

@@ -1,0 +1,338 @@
+Subject: eMMC 4G DMA support + PIO
+
+Change-Id: I7308d2244f7a75d3a21af3bb04129dd719565740
+Reviewed-on: http://vgitil10.il.marvell.com:8080/c/NPS/linux/+/98957
+Tested-by: Raz Adashi <raza@marvell.com>
+Reviewed-by: Raz Adashi <raza@marvell.com>
+Signed-off-by: Noam Liron <lnoam@marvell.com>
+---
+ .../bindings/mmc/marvell,xenon-sdhci.txt           |   53 ++++++++++++++++++++
+ arch/arm64/boot/dts/marvell/ac5.dtsi               |   43 ++++++++++------
+ arch/arm64/boot/dts/marvell/ac5_4G_db.dts          |   47 ++++++++++++++++++
+ arch/arm64/boot/dts/marvell/ac5x_4G_db.dts         |   40 +++++++++++++++
+ drivers/mmc/host/sdhci-xenon.c                     |   33 ++++++++++++
+ 5 files changed, 199 insertions(+), 17 deletions(-)
+ create mode 100644 arch/arm64/boot/dts/marvell/ac5_4G_db.dts
+ create mode 100644 arch/arm64/boot/dts/marvell/ac5x_4G_db.dts
+
+diff --git a/Documentation/devicetree/bindings/mmc/marvell,xenon-sdhci.txt b/Documentation/devicetree/bindings/mmc/marvell,xenon-sdhci.txt
+index ed1456f5c..2d42ccfd5 100644
+--- a/Documentation/devicetree/bindings/mmc/marvell,xenon-sdhci.txt
++++ b/Documentation/devicetree/bindings/mmc/marvell,xenon-sdhci.txt
+@@ -13,6 +13,8 @@ Required Properties:
+   Must provide a second register area and marvell,pad-type.
+   - "marvell,armada-ap806-sdhci": For controllers on Armada AP806.
+   - "marvell,armada-cp110-sdhci": For controllers on Armada CP110.
++  - "marvell,armada-ap810-sdhci": For controllers on Armada AP810.
++  - "marvell,ac5-sdhci": For CnM on AC5, AC5X and derived.
+ 
+ - clocks:
+   Array of clocks required for SDHC.
+@@ -32,6 +34,13 @@ Required Properties:
+     in below.
+     Please also check property marvell,pad-type in below.
+ 
++  * For "marvell,ac5-sdhci", one or two register areas.
++    (reg-names "ctrl" & "decoder").
++    The first one is mandatory for the Xenon IP registers.
++    The second one is for systems where DMA mapping is required and is the
++    related address decoder register (the value to configure is derived from
++    the parent "dma-ranges").
++
+   * For other compatible strings, one register area for Xenon IP.
+ 
+ Optional Properties:
+@@ -170,3 +179,47 @@ Example:
+ 
+ 		marvell,pad-type = "sd";
+ 	};
++
++
++- For eMMC with compatible "marvell,ac5-sdhci" with one reg range (no dma):
++	sdhci0: sdhci@805c0000 {
++		compatible = "marvell,ac5-sdhci";
++		reg = <0x0 0x805c0000 0x0 0x300>;
++		reg-names = "ctrl", "decoder";
++		interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;
++		clocks = <&core_clock>;
++		clock-names = "core";
++		status = "okay";
++		bus-width = <8>;
++		/*marvell,xenon-phy-slow-mode;*/
++		non-removable;
++		mmc-ddr-1_8v;
++		mmc-hs200-1_8v;
++		mmc-hs400-1_8v;
++	}; 
++
++- For eMMC with compatible "marvell,ac5-sdhci" with two reg ranges (with dma):
++	mmc_dma: mmc-dma-peripherals@80500000 {
++		compatible = "simple-bus";
++		#address-cells = <0x2>;
++		#size-cells = <0x2>;
++		ranges;
++		dma-ranges = <0x2 0x0 0x2 0x80000000 0x1 0x0>;
++		dma-coherent;
++
++		sdhci0: sdhci@805c0000 {
++			compatible = "marvell,ac5-sdhci", "marvell,armada-ap806-sdhci";
++			reg = <0x0 0x805c0000 0x0 0x300>, <0x0 0x80440230 0x0 0x4>;
++			reg-names = "ctrl", "decoder";
++			interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&core_clock>;
++			clock-names = "core";
++			status = "okay";
++			bus-width = <8>;
++			/*marvell,xenon-phy-slow-mode;*/
++			non-removable;
++			mmc-ddr-1_8v;
++			mmc-hs200-1_8v;
++			mmc-hs400-1_8v;
++		};
++	};
+diff --git a/arch/arm64/boot/dts/marvell/ac5.dtsi b/arch/arm64/boot/dts/marvell/ac5.dtsi
+index b107347f7..7758ed3fe 100644
+--- a/arch/arm64/boot/dts/marvell/ac5.dtsi
++++ b/arch/arm64/boot/dts/marvell/ac5.dtsi
+@@ -150,6 +150,30 @@ gpio0: gpio@18100 {
+ 			};
+ 		};
+ 
++		mmc_dma: mmc-dma-peripherals@80500000 {
++				compatible = "simple-bus";
++				#address-cells = <0x2>;
++				#size-cells = <0x2>;
++				ranges;
++				dma-coherent;
++
++				sdhci0: sdhci@805c0000 {
++					compatible = "marvell,ac5-sdhci", "marvell,armada-ap806-sdhci";
++					reg = <0x0 0x805c0000 0x0 0x300>;
++					reg-names = "ctrl", "decoder";
++					interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;
++					clocks = <&core_clock>;
++					clock-names = "core";
++					status = "okay";
++					bus-width = <8>;
++					/*marvell,xenon-phy-slow-mode;*/
++					non-removable;
++					mmc-ddr-1_8v;
++					mmc-hs200-1_8v;
++					mmc-hs400-1_8v;
++				};
++		};
++
+ 		/* Dedicated section for devices behind 32bit controllers so we
+ 		   can configure specific DMA mapping for them */
+ 		behind-32bit-controller@7f000000 {
+@@ -157,7 +181,7 @@ behind-32bit-controller@7f000000 {
+ 			#address-cells = <0x2>;
+ 			#size-cells = <0x2>;
+ 			ranges = <0x0 0x0 0x0 0x7f000000 0x0 0x1000000>;
+-			/* Host addresses starts at 0x2000000 */
++			/* Host phy ram starts at 0x200M */
+ 			dma-ranges = <0x0 0x0 0x2 0x0 0x1 0x0>;
+ 			dma-coherent;
+ 
+@@ -311,21 +335,6 @@ spi@805a8000 {
+ 			status = "disabled";
+ 		};
+ 
+-		sdhci@805c0000 {
+-			compatible = "marvell, ac5-sdhci", "marvell,armada-ap806-sdhci";
+-			reg = <0x0 0x805c0000 0x0 0x300>;
+-			interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;
+-			clocks = <&core_clock>;
+-			clock-names = "core";
+-			status = "okay";
+-			bus-width = <8>;
+-			//marvell,xenon-phy-slow-mode;
+-			non-removable;
+-			mmc-ddr-1_8v;
+-			mmc-hs200-1_8v;
+-			mmc-hs400-1_8v;
+-		};
+-
+ 		nand0: nand@805b00 {
+ 			compatible = "marvell,ac5-nand-controller";
+ 			reg =  <0x0 0x805b0000 0x0 0x00000054
+@@ -337,7 +346,6 @@ nand0: nand@805b00 {
+ 			clocks = <&core_clock>;
+ 			/*marvell,system-controller = <0x15>*/
+ 			status = "okay";
+-			nand-timing-mode = <1>;
+ 
+ 			nand@0 {
+ 				reg = <0x0>;
+@@ -415,6 +423,7 @@ L2_0: l2-cache0 {
+ 	memory@00000000 {
+ 		device_type = "memory";
+ 		reg = <0x2 0x00000000 0x0 0x40000000>;
++		// linux,usable-memory = <0x2 0x00000000 0x0 0x80000000>;
+ 	};
+ 
+ };
+diff --git a/arch/arm64/boot/dts/marvell/ac5_4G_db.dts b/arch/arm64/boot/dts/marvell/ac5_4G_db.dts
+new file mode 100644
+index 000000000..8cc8b5c2b
+--- /dev/null
++++ b/arch/arm64/boot/dts/marvell/ac5_4G_db.dts
+@@ -0,0 +1,47 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Device Tree For AC5X 4G DB.
++ *
++ * Copyright (C) 2021 Marvell
++ *
++ */
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Device Tree file for Marvell Alleycat 5X 4G development board
++ * This board file supports the B configuration of the board
++ */
++
++#include "ac5.dtsi"
++
++/ {
++	model = "Marvell AC5 4G DB board";
++};
++
++&mmc_dma {
++	/* Host phy ram DMA mapping */
++	dma-ranges = <0x2 0x0 0x2 0x80000000 0x1 0x0>;
++};
++
++&sdhci0 {
++	reg = <0x0 0x805c0000 0x0 0x300>, <0x0 0x80440230 0x0 0x4>;
++};
++
++&eth0 {
++	status = "okay";
++	fixed-link {
++		speed = <1000>;
++		full-duplex;
++	};
++};
++
++&eth1 {
++	status = "okay";
++};
++
++&usb1 {
++	compatible = "chipidea,usb2";
++	phys = <&usb1phy>;
++	phy-names = "usb-phy";
++	dr_mode = "peripheral";
++};
++
+diff --git a/arch/arm64/boot/dts/marvell/ac5x_4G_db.dts b/arch/arm64/boot/dts/marvell/ac5x_4G_db.dts
+new file mode 100644
+index 000000000..009ce5fbc
+--- /dev/null
++++ b/arch/arm64/boot/dts/marvell/ac5x_4G_db.dts
+@@ -0,0 +1,40 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Device Tree For AC5X 4G DB.
++ *
++ * Copyright (C) 2021 Marvell
++ *
++ */
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Device Tree file for Marvell Alleycat 5X 4G development board
++ * This board file supports the B configuration of the board
++ */
++
++#include "ac5.dtsi"
++
++/ {
++	model = "Marvell AC5X 4G DB board";
++};
++
++&mmc_dma {
++	/* Host phy ram DMA mapping */
++	dma-ranges = <0x2 0x0 0x2 0x80000000 0x1 0x0>;
++};
++
++&sdhci0 {
++	reg = <0x0 0x805c0000 0x0 0x300>, <0x0 0x80440230 0x0 0x4>;
++};
++
++&eth0 {
++	status = "okay";
++	phy = <&phy0>;
++};
++
++&usb1 {
++	compatible = "chipidea,usb2";
++	phys = <&usb1phy>;
++	phy-names = "usb-phy";
++	dr_mode = "peripheral";
++};
++
+diff --git a/drivers/mmc/host/sdhci-xenon.c b/drivers/mmc/host/sdhci-xenon.c
+index d509198c0..86fb89351 100644
+--- a/drivers/mmc/host/sdhci-xenon.c
++++ b/drivers/mmc/host/sdhci-xenon.c
+@@ -17,6 +17,11 @@
+ #include <linux/of.h>
+ #include <linux/pm.h>
+ #include <linux/pm_runtime.h>
++#include <linux/of_reserved_mem.h>
++#include <linux/mm.h>
++
++#include <linux/dma-direct.h>
++#include <../drivers/of/of_private.h>
+ 
+ #include "sdhci-pltfm.h"
+ #include "sdhci-xenon.h"
+@@ -411,6 +416,9 @@ static int xenon_probe_dt(struct platform_device *pdev)
+ 	struct xenon_priv *priv = sdhci_pltfm_priv(pltfm_host);
+ 	u32 sdhc_id, nr_sdhc;
+ 	u32 tuning_count;
++	struct resource *decoder;
++	const struct bus_dma_region *dmap = NULL;
++	struct sysinfo si;
+ 
+ 	/* Disable HS200 on Armada AP806 */
+ 	if (of_device_is_compatible(np, "marvell,armada-ap806-sdhci"))
+@@ -439,6 +447,29 @@ static int xenon_probe_dt(struct platform_device *pdev)
+ 	}
+ 	priv->tuning_count = tuning_count;
+ 
++	decoder = platform_get_resource_byname(pdev, IORESOURCE_MEM, "decoder");
++	if (decoder) {
++		if (!of_dma_get_range(np, &dmap)) {
++			void __iomem *regs = ioremap(decoder->start, resource_size(decoder));
++			if (!regs) {
++				dev_err(mmc_dev(mmc), "Failed to map decoder address 0x%llx\n",
++						decoder->start);
++			} else {
++				writel(dmap->cpu_start>>16, regs);
++				iounmap(regs);
++			}
++		}
++	}
++
++	si_meminfo(&si);
++
++	if (of_device_is_compatible(np, "marvell,ac5-sdhci") &&
++			((si.totalram * si.mem_unit) > 0x80000000 /*2G*/)) {
++		host->quirks |= SDHCI_QUIRK_BROKEN_DMA;
++		host->quirks |= SDHCI_QUIRK_BROKEN_ADMA;
++		dev_info(mmc_dev(mmc), "Disabling DMA because of 2GB DMA access limit.\n");
++	}
++
+ 	return xenon_phy_parse_dt(np, host);
+ }
+ 
+@@ -665,6 +696,8 @@ static const struct of_device_id sdhci_xenon_dt_ids[] = {
+ 	{ .compatible = "marvell,armada-ap806-sdhci",},
+ 	{ .compatible = "marvell,armada-cp110-sdhci",},
+ 	{ .compatible = "marvell,armada-3700-sdhci",},
++	{ .compatible = "marvell,armada-ap810-sdhci",},
++	{ .compatible = "marvell,ac5-sdhci",},
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(of, sdhci_xenon_dt_ids);

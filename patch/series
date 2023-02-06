@@ -162,8 +162,21 @@ cisco-hwmon-pmbus_core-pec-support-check.patch
 0003-psample-define-the-macro-PSAMPLE_MD_EXTENDED_ATTR.patch
 
 #
-# Marvell platform patches for 4.19
+# Marvell patches for 5.10
 armhf_secondary_boot_online.patch
+001-falcon-dts.patch
+002-ac5x-cnm-support.patch
+003-ac5x-mvneta-xbar-window.patch
+004-ac5x-spi-driver-fix.patch
+005-ac5x-gpio-userspace-support.patch
+006-ac5x-i2c-fix.patch
+007-ac5x-wd-support.patch
+008-ac5x-emmc-4G-dma-fix.patch
+009-ac5x-dts-base-addr.patch
+010-ac5x-add-missing-pinctrl.patch
+011-ac5x-clock-fix.patch
+012-ac5xrd-dts.patch
+
 #
 #
 ############################################################

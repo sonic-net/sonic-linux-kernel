@@ -1,0 +1,61 @@
+Subject: net/mvneta: Setup xbar windows for AC5
+
+Tested-by: Raz Adashi <raza@marvell.com>
+Reviewed-by: Raz Adashi <raza@marvell.com>
+Signed-off-by: Yuval Shaia <yshaia@marvell.com>
+---
+ drivers/net/ethernet/marvell/mvneta.c |   27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/drivers/net/ethernet/marvell/mvneta.c b/drivers/net/ethernet/marvell/mvneta.c
+index 0f5264cfb..e166e6076 100644
+--- a/drivers/net/ethernet/marvell/mvneta.c
++++ b/drivers/net/ethernet/marvell/mvneta.c
+@@ -76,6 +76,8 @@
+ #define MVNETA_WIN_SIZE(w)                      (0x2204 + ((w) << 3))
+ #define MVNETA_WIN_REMAP(w)                     (0x2280 + ((w) << 2))
+ #define MVNETA_BASE_ADDR_ENABLE                 0x2290
++#define      MVNETA_AC5_CNM_DDR_TARGET		0x2
++#define      MVNETA_AC5_CNM_DDR_ATTR		0xb
+ #define MVNETA_ACCESS_PROTECT_ENABLE            0x2294
+ #define MVNETA_PORT_CONFIG                      0x2400
+ #define      MVNETA_UNI_PROMISC_MODE            BIT(0)
+@@ -5048,6 +5050,29 @@ static void mvneta_conf_mbus_windows(struct mvneta_port *pp,
+ 	mvreg_write(pp, MVNETA_ACCESS_PROTECT_ENABLE, win_protect);
+ }
+ 
++static void mvneta_conf_ac5_cnm_xbar_windows(struct mvneta_port *pp)
++{
++	int i;
++
++	/* Clear all windows */
++	for (i = 0; i < 6; i++) {
++		mvreg_write(pp, MVNETA_WIN_BASE(i), 0);
++		mvreg_write(pp, MVNETA_WIN_SIZE(i), 0);
++
++		if (i < 4)
++			mvreg_write(pp, MVNETA_WIN_REMAP(i), 0);
++	}
++
++	/*
++	 * Setup window #0 base 0x0 to target XBAR port 2 (AMB2), attribute 0xb,
++	 * size 4GB AMB2 address decoder remaps 0x0 to DDR 64 bit base address
++	 */
++	mvreg_write(pp, MVNETA_WIN_BASE(0), (MVNETA_AC5_CNM_DDR_ATTR << 8) |
++		    MVNETA_AC5_CNM_DDR_TARGET);
++	mvreg_write(pp, MVNETA_WIN_SIZE(0),0xffff0000);
++	mvreg_write(pp, MVNETA_BASE_ADDR_ENABLE, 0x3e);
++}
++
+ /* Power up the port */
+ static int mvneta_port_power_up(struct mvneta_port *pp, int phy_mode)
+ {
+@@ -5209,6 +5234,8 @@ static int mvneta_probe(struct platform_device *pdev)
+ 	 */
+ 	if (pp->dram_target_info || (pp->neta_type == MVNETA_TYPE_3700))
+ 		mvneta_conf_mbus_windows(pp, pp->dram_target_info);
++	if (pp->neta_type == MVNETA_TYPE_AC5)
++		mvneta_conf_ac5_cnm_xbar_windows(pp);
+ 
+ 	pp->tx_ring_size = MVNETA_MAX_TXD;
+ 	pp->rx_ring_size = MVNETA_MAX_RXD;
