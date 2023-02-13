@@ -176,8 +176,9 @@ cisco-hwmon-pmbus_core-pec-support-check.patch
 0003-psample-define-the-macro-PSAMPLE_MD_EXTENDED_ATTR.patch
 
 #
-# Marvell platform patches for 4.19
+# Marvell platform patches for 5.10
 armhf_secondary_boot_online.patch
+0001-dts-support-for-7020-comexpress.patch
 #
 #
 ############################################################
