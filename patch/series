@@ -179,6 +179,17 @@ cisco-hwmon-pmbus_core-pec-support-check.patch
 # Marvell platform patches for 5.10
 armhf_secondary_boot_online.patch
 0001-dts-support-for-7020-comexpress.patch
+0002-add-ac5x-cnm-support.patch
+0003-mvneta-setup-xbar-windows-for-ac5.patch
+0004-support-be-for-ac5-spi-driver.patch
+0005-add-ac5-gpio-userspace-support.patch
+0006-mv6xxx-i2c-bus-lock-arb-loss.patch
+0007-add-watchdog-smc.patch
+0008-emmc-4g-dma-support.patch
+0009-dts-ac5-make-base-address-non-zero.patch
+0010-update-ac5-clocks-in-dts.patch
+0011-ac5x-rd-dts.patch
+
 #
 #
 ############################################################

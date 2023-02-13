@@ -1,0 +1,57 @@
+From: Pavan Naregundi <pnaregundi@marvell.com>
+Date: Mon, 20 Feb 2023 04:11:11 +0000
+Subject: dts/ac5: make base address non zero
+
+CPSS gets upset if base address is zero.
+Fix it by moving to 0x400000.
+
+While there, fix also comments styling errors.
+
+Tested-by: Raz Adashi <raza@marvell.com>
+Reviewed-by: Raz Adashi <raza@marvell.com>
+Signed-off-by: Yuval Shaia <yshaia@marvell.com>
+---
+ arch/arm64/boot/dts/marvell/ac5.dtsi | 27 ++++++++++++++++-----------
+ 1 file changed, 16 insertions(+), 11 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/marvell/ac5.dtsi b/arch/arm64/boot/dts/marvell/ac5.dtsi
+index f8aa68a74..db40c9b84 100644
+--- a/arch/arm64/boot/dts/marvell/ac5.dtsi
++++ b/arch/arm64/boot/dts/marvell/ac5.dtsi
+@@ -25,17 +25,22 @@ reserved-memory {
+ 		ranges;
+ 
+ 		prestera_rsvd: buffer@200M {
+-			compatible = "shared-dma-pool"; /* to be used as a shared pool of
+-											DMA buffers for a set of devices
+-											*/
+-			no-map;	/* 	No one other than devices registered for that mem,
+-						may use this area
+-					*/
+-
+-			/*	addr (first 2 cells) need to be aligned with actual DMA that
+-				will be allocted, therefore we choose such addr, that will
+-				be aligned with many DMA sizes */
+-			reg = <0x2 0x0 0x0 0x400000>;
++			/**
++			 * To be used as a shared pool of DMA buffers for a set
++			 * of devices
++			 */
++			compatible = "shared-dma-pool";
++			/**
++			 * No one other than devices registered for that mem may
++			 * use this area
++			 */
++			no-map;
++			/**
++			 * Addr (first 2 cells) need to be aligned with actual
++			 * DMA that will be allocted, therefore we choose such
++			 * addr, that will be aligned with many DMA sizes
++			 */
++			reg = <0x2 0x400000 0x0 0x400000>;
+ 		};
+ 	};
+ 
+-- 
+2.25.1
+

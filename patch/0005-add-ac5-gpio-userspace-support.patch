@@ -1,0 +1,446 @@
+From: Pavan Naregundi <pnaregundi@marvell.com>
+Date: Mon, 20 Feb 2023 08:31:57 +0000
+Subject: add ac5 gpio userspace support
+
+Tested-by: Raz Adashi <raza@marvell.com>
+Reviewed-by: Raz Adashi <raza@marvell.com>
+Signed-off-by: Noam <lnoam@marvell.com>
+---
+ arch/arm64/Kconfig.platforms         |   2 +
+ arch/arm64/boot/dts/marvell/ac5.dtsi |  16 +++
+ drivers/gpio/gpio-mvebu.c            |  78 ++++++++++---
+ drivers/pinctrl/mvebu/Kconfig        |   4 +
+ drivers/pinctrl/mvebu/Makefile       |   1 +
+ drivers/pinctrl/mvebu/pinctrl-ac5.c  | 164 +++++++++++++++++++++++++++
+ 6 files changed, 247 insertions(+), 18 deletions(-)
+ create mode 100644 drivers/pinctrl/mvebu/pinctrl-ac5.c
+
+diff --git a/arch/arm64/Kconfig.platforms b/arch/arm64/Kconfig.platforms
+index 889e78f40..87ee9c01e 100644
+--- a/arch/arm64/Kconfig.platforms
++++ b/arch/arm64/Kconfig.platforms
+@@ -179,11 +179,13 @@ config ARCH_MVEBU
+ 	select PINCTRL_ARMADA_37XX
+ 	select PINCTRL_ARMADA_AP806
+ 	select PINCTRL_ARMADA_CP110
++	select PINCTRL_AC5
+ 	help
+ 	  This enables support for Marvell EBU familly, including:
+ 	   - Armada 3700 SoC Family
+ 	   - Armada 7K SoC Family
+ 	   - Armada 8K SoC Family
++	   - AC5 Family
+ 
+ config ARCH_MXC
+ 	bool "ARMv8 based NXP i.MX SoC family"
+diff --git a/arch/arm64/boot/dts/marvell/ac5.dtsi b/arch/arm64/boot/dts/marvell/ac5.dtsi
+index c0e777e3b..e64ed81a0 100644
+--- a/arch/arm64/boot/dts/marvell/ac5.dtsi
++++ b/arch/arm64/boot/dts/marvell/ac5.dtsi
+@@ -48,6 +48,7 @@ mvDma {
+ 	aliases {
+ 		serial0 = &uart0;
+ 		spiflash0 = &spiflash0;
++		gpio0 = &gpio0;
+ 		ethernet0 = &eth0;
+ 		ethernet1 = &eth1;
+ 	};
+@@ -131,6 +132,15 @@ i2c1: i2c@11100{
+ 				clock-frequency=<100000>;
+ 				status="okay";
+ 			};
++
++			gpio0: gpio@18100 {
++				compatible = "marvell,ac5-gpio";
++				#gpio-cells = <2>;
++				gpio-controller;
++				reg = <0x18100 0x200>;
++				// gpio-ranges = <&pinctrl0 0 0 46>;
++				ngpios = <46>;
++			};
+ 		};
+ 
+ 		/* Dedicated section for devices behind 32bit controllers so we
+@@ -188,6 +198,12 @@ usb1: usb@A0000 {
+ 			};
+ 		};
+ 
++		pinctrl0: pinctrl@80020100 {
++			compatible = "marvell,ac5-pinctrl",
++				     "syscon", "simple-mfd";
++			reg = <0 0x80020100 0 0x20>;
++		};
++
+ 		pcie0: pcie@800a0000 {
+ 			compatible = "marvell,ac5-pcie", "snps,dw-pcie";
+ 			reg = <0 0x800a0000 0 0x20000>, <0 0x3fff0000 0 0x10000>;
+diff --git a/drivers/gpio/gpio-mvebu.c b/drivers/gpio/gpio-mvebu.c
+index 2ab34a8e6..d44b82918 100644
+--- a/drivers/gpio/gpio-mvebu.c
++++ b/drivers/gpio/gpio-mvebu.c
+@@ -85,10 +85,16 @@
+ #define GPIO_EDGE_MASK_ARMADAXP_OFF(cpu)  (0x10 + (cpu) * 0x4)
+ #define GPIO_LEVEL_MASK_ARMADAXP_OFF(cpu) (0x20 + (cpu) * 0x4)
+ 
++#define AC5_HIGH_GPIO_OFF		0x40
++#define GPIO_AC5_REG_OFF(pin)   (((pin)/32)*AC5_HIGH_GPIO_OFF)
++
++
+ #define MVEBU_GPIO_SOC_VARIANT_ORION	0x1
+ #define MVEBU_GPIO_SOC_VARIANT_MV78200	0x2
+ #define MVEBU_GPIO_SOC_VARIANT_ARMADAXP 0x3
+-#define MVEBU_GPIO_SOC_VARIANT_A8K	0x4
++#define MVEBU_GPIO_SOC_VARIANT_A8K		0x4
++#define MVEBU_GPIO_SOC_VARIANT_AC5		0x5
++
+ 
+ #define MVEBU_MAX_GPIO_PER_BANK		32
+ 
+@@ -298,46 +304,59 @@ static void __iomem *mvebu_pwmreg_blink_off_duration(struct mvebu_pwm *mvpwm)
+ static void mvebu_gpio_set(struct gpio_chip *chip, unsigned int pin, int value)
+ {
+ 	struct mvebu_gpio_chip *mvchip = gpiochip_get_data(chip);
++	u32 reg_offset = 0;
++
++	if (mvchip->soc_variant == MVEBU_GPIO_SOC_VARIANT_AC5)
++		reg_offset = GPIO_AC5_REG_OFF(pin);
+ 
+-	regmap_update_bits(mvchip->regs, GPIO_OUT_OFF + mvchip->offset,
+-			   BIT(pin), value ? BIT(pin) : 0);
++	regmap_update_bits(mvchip->regs, GPIO_OUT_OFF + reg_offset + mvchip->offset,
++			BIT(pin%32), value ? BIT(pin%32) : 0);
+ }
+ 
+ static int mvebu_gpio_get(struct gpio_chip *chip, unsigned int pin)
+ {
+ 	struct mvebu_gpio_chip *mvchip = gpiochip_get_data(chip);
+ 	u32 u;
++	u32 reg_offset = 0;
+ 
+-	regmap_read(mvchip->regs, GPIO_IO_CONF_OFF + mvchip->offset, &u);
++	if (mvchip->soc_variant == MVEBU_GPIO_SOC_VARIANT_AC5)
++		reg_offset = GPIO_AC5_REG_OFF(pin);
++
++	regmap_read(mvchip->regs, GPIO_IO_CONF_OFF + reg_offset + mvchip->offset, &u);
+ 
+-	if (u & BIT(pin)) {
++	if (u & BIT(pin%32)) {
+ 		u32 data_in, in_pol;
+ 
+-		regmap_read(mvchip->regs, GPIO_DATA_IN_OFF + mvchip->offset,
++		regmap_read(mvchip->regs, GPIO_DATA_IN_OFF + reg_offset + mvchip->offset,
+ 			    &data_in);
+-		regmap_read(mvchip->regs, GPIO_IN_POL_OFF + mvchip->offset,
++		regmap_read(mvchip->regs, GPIO_IN_POL_OFF + reg_offset + mvchip->offset,
+ 			    &in_pol);
+ 		u = data_in ^ in_pol;
+ 	} else {
+-		regmap_read(mvchip->regs, GPIO_OUT_OFF + mvchip->offset, &u);
++		regmap_read(mvchip->regs, GPIO_OUT_OFF + reg_offset + mvchip->offset, &u);
+ 	}
+ 
+-	return (u >> pin) & 1;
++	return (u >> (pin%32)) & 1;
+ }
+ 
+ static void mvebu_gpio_blink(struct gpio_chip *chip, unsigned int pin,
+ 			     int value)
+ {
+ 	struct mvebu_gpio_chip *mvchip = gpiochip_get_data(chip);
++	u32 reg_offset = 0;
+ 
+-	regmap_update_bits(mvchip->regs, GPIO_BLINK_EN_OFF + mvchip->offset,
+-			   BIT(pin), value ? BIT(pin) : 0);
++	if (mvchip->soc_variant == MVEBU_GPIO_SOC_VARIANT_AC5)
++		reg_offset = GPIO_AC5_REG_OFF(pin);
++
++	regmap_update_bits(mvchip->regs, GPIO_BLINK_EN_OFF + reg_offset +
++			mvchip->offset, BIT(pin%32), value ? BIT(pin%32) : 0);
+ }
+ 
+ static int mvebu_gpio_direction_input(struct gpio_chip *chip, unsigned int pin)
+ {
+ 	struct mvebu_gpio_chip *mvchip = gpiochip_get_data(chip);
+ 	int ret;
++	u32 reg_offset = 0;
+ 
+ 	/*
+ 	 * Check with the pinctrl driver whether this pin is usable as
+@@ -347,8 +366,11 @@ static int mvebu_gpio_direction_input(struct gpio_chip *chip, unsigned int pin)
+ 	if (ret)
+ 		return ret;
+ 
+-	regmap_update_bits(mvchip->regs, GPIO_IO_CONF_OFF + mvchip->offset,
+-			   BIT(pin), BIT(pin));
++	if (mvchip->soc_variant == MVEBU_GPIO_SOC_VARIANT_AC5)
++		reg_offset = GPIO_AC5_REG_OFF(pin);
++
++	regmap_update_bits(mvchip->regs, GPIO_IO_CONF_OFF + mvchip->offset +
++			reg_offset, BIT(pin%32), BIT(pin%32));
+ 
+ 	return 0;
+ }
+@@ -358,6 +380,7 @@ static int mvebu_gpio_direction_output(struct gpio_chip *chip, unsigned int pin,
+ {
+ 	struct mvebu_gpio_chip *mvchip = gpiochip_get_data(chip);
+ 	int ret;
++	u32 reg_offset = 0;
+ 
+ 	/*
+ 	 * Check with the pinctrl driver whether this pin is usable as
+@@ -370,8 +393,11 @@ static int mvebu_gpio_direction_output(struct gpio_chip *chip, unsigned int pin,
+ 	mvebu_gpio_blink(chip, pin, 0);
+ 	mvebu_gpio_set(chip, pin, value);
+ 
+-	regmap_update_bits(mvchip->regs, GPIO_IO_CONF_OFF + mvchip->offset,
+-			   BIT(pin), 0);
++	if (mvchip->soc_variant == MVEBU_GPIO_SOC_VARIANT_AC5)
++		reg_offset = GPIO_AC5_REG_OFF(pin);
++
++	regmap_update_bits(mvchip->regs, GPIO_IO_CONF_OFF + reg_offset +
++			mvchip->offset, BIT(pin%32), 0);
+ 
+ 	return 0;
+ }
+@@ -380,11 +406,15 @@ static int mvebu_gpio_get_direction(struct gpio_chip *chip, unsigned int pin)
+ {
+ 	struct mvebu_gpio_chip *mvchip = gpiochip_get_data(chip);
+ 	u32 u;
++    u32 reg_offset = 0;
+ 
+-	regmap_read(mvchip->regs, GPIO_IO_CONF_OFF + mvchip->offset, &u);
++    if (mvchip->soc_variant == MVEBU_GPIO_SOC_VARIANT_AC5)
++        reg_offset = GPIO_AC5_REG_OFF(pin);
+ 
+-	if (u & BIT(pin))
+-		return GPIO_LINE_DIRECTION_IN;
++    regmap_read(mvchip->regs, GPIO_IO_CONF_OFF + reg_offset + mvchip->offset, &u);
++
++    if (u & BIT(pin%32))
++        return GPIO_LINE_DIRECTION_IN;
+ 
+ 	return GPIO_LINE_DIRECTION_OUT;
+ }
+@@ -911,6 +941,10 @@ static const struct of_device_id mvebu_gpio_of_match[] = {
+ 		.compatible = "marvell,armada-8k-gpio",
+ 		.data       = (void *) MVEBU_GPIO_SOC_VARIANT_A8K,
+ 	},
++	{
++		.compatible = "marvell,ac5-gpio",
++		.data       = (void *) MVEBU_GPIO_SOC_VARIANT_AC5,
++	},
+ 	{
+ 		/* sentinel */
+ 	},
+@@ -1158,6 +1192,14 @@ static int mvebu_gpio_probe(struct platform_device *pdev)
+ 	 * Mask and clear GPIO interrupts.
+ 	 */
+ 	switch (soc_variant) {
++	case MVEBU_GPIO_SOC_VARIANT_AC5:
++		regmap_write(mvchip->regs,
++				 AC5_HIGH_GPIO_OFF + GPIO_EDGE_CAUSE_OFF + mvchip->offset, 0);
++		regmap_write(mvchip->regs,
++				 AC5_HIGH_GPIO_OFF + GPIO_EDGE_MASK_OFF + mvchip->offset, 0);
++		regmap_write(mvchip->regs,
++				 AC5_HIGH_GPIO_OFF + GPIO_LEVEL_MASK_OFF + mvchip->offset, 0);
++		/* Fall through - AC5 has 46 GPIOs, that requires 2 registers */
+ 	case MVEBU_GPIO_SOC_VARIANT_ORION:
+ 	case MVEBU_GPIO_SOC_VARIANT_A8K:
+ 		regmap_write(mvchip->regs,
+diff --git a/drivers/pinctrl/mvebu/Kconfig b/drivers/pinctrl/mvebu/Kconfig
+index 0d12894d3..aa5883f09 100644
+--- a/drivers/pinctrl/mvebu/Kconfig
++++ b/drivers/pinctrl/mvebu/Kconfig
+@@ -45,6 +45,10 @@ config PINCTRL_ORION
+ 	bool
+ 	select PINCTRL_MVEBU
+ 
++config PINCTRL_AC5
++	bool
++	select PINCTRL_MVEBU
++
+ config PINCTRL_ARMADA_37XX
+ 	bool
+ 	select GENERIC_PINCONF
+diff --git a/drivers/pinctrl/mvebu/Makefile b/drivers/pinctrl/mvebu/Makefile
+index cd082dca4..23458ab17 100644
+--- a/drivers/pinctrl/mvebu/Makefile
++++ b/drivers/pinctrl/mvebu/Makefile
+@@ -11,3 +11,4 @@ obj-$(CONFIG_PINCTRL_ARMADA_CP110) += pinctrl-armada-cp110.o
+ obj-$(CONFIG_PINCTRL_ARMADA_XP)  += pinctrl-armada-xp.o
+ obj-$(CONFIG_PINCTRL_ARMADA_37XX)  += pinctrl-armada-37xx.o
+ obj-$(CONFIG_PINCTRL_ORION)  += pinctrl-orion.o
++obj-$(CONFIG_PINCTRL_AC5) += pinctrl-ac5.o
+diff --git a/drivers/pinctrl/mvebu/pinctrl-ac5.c b/drivers/pinctrl/mvebu/pinctrl-ac5.c
+new file mode 100644
+index 000000000..c33c9fc5e
+--- /dev/null
++++ b/drivers/pinctrl/mvebu/pinctrl-ac5.c
+@@ -0,0 +1,164 @@
++/*
++ * Marvell ac5 pinctrl driver based on mvebu pinctrl core
++ *
++ * Copyright (C) 2021 Marvell
++ *
++ * Noam Liron <lnoam@marvell.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ */
++
++#include <linux/err.h>
++#include <linux/init.h>
++#include <linux/io.h>
++#include <linux/platform_device.h>
++#include <linux/of.h>
++#include <linux/of_device.h>
++#include <linux/pinctrl/pinctrl.h>
++
++#include "pinctrl-mvebu.h"
++
++static struct mvebu_mpp_mode ac5_mpp_modes[] = {
++	MPP_MODE(0,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(1,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(2,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(3,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(4,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(5,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(6,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(7,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(8,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(9,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(10,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(11,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(12,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(13,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(14,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(15,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(16,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(17,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(18,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(19,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(20,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(21,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(22,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(23,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(24,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(25,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(26,
++		 MPP_FUNCTION(0, "gpio",    NULL),
++		 MPP_FUNCTION(1, "i2c0-opt", "scl")),
++	MPP_MODE(27,
++		 MPP_FUNCTION(0, "gpio",    NULL),
++		 MPP_FUNCTION(1, "i2c0-opt", "sda")),
++	MPP_MODE(28,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(29,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(30,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(31,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(32,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(33,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(34,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(35,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(36,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(37,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(38,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(39,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(40,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(41,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(42,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(43,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(44,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++	MPP_MODE(45,
++		 MPP_FUNCTION(0, "gpio",    NULL)),
++};
++
++static struct mvebu_pinctrl_soc_info ac5_pinctrl_info;
++
++static const struct of_device_id ac5_pinctrl_of_match[] = {
++	{
++		.compatible = "marvell,ac5-pinctrl",
++	},
++	{ },
++};
++
++static const struct mvebu_mpp_ctrl ac5_mpp_controls[] = {
++	MPP_FUNC_CTRL(0, 45, NULL, mvebu_regmap_mpp_ctrl), };
++
++static struct pinctrl_gpio_range ac5_mpp_gpio_ranges[] = {
++	MPP_GPIO_RANGE(0,   0,  0, 45), };
++
++static int ac5_pinctrl_probe(struct platform_device *pdev) {
++	struct mvebu_pinctrl_soc_info *soc = &ac5_pinctrl_info;
++	const struct of_device_id *match =
++		of_match_device(ac5_pinctrl_of_match, &pdev->dev);
++
++	if (!match || !pdev->dev.parent)
++		return -ENODEV;
++
++	soc->variant = 0; /* no variants for ac5 */
++	soc->controls = ac5_mpp_controls;
++	soc->ncontrols = ARRAY_SIZE(ac5_mpp_controls);
++	soc->gpioranges = ac5_mpp_gpio_ranges;
++	soc->ngpioranges = ARRAY_SIZE(ac5_mpp_gpio_ranges);
++	soc->modes = ac5_mpp_modes;
++	soc->nmodes = ac5_mpp_controls[0].npins;
++
++	pdev->dev.platform_data = soc;
++
++	return mvebu_pinctrl_simple_regmap_probe(pdev, &pdev->dev, 0); }
++
++static struct platform_driver ac5_pinctrl_driver = {
++	.driver = {
++		.name = "ac5-pinctrl",
++		.of_match_table = of_match_ptr(ac5_pinctrl_of_match),
++	},
++	.probe = ac5_pinctrl_probe,
++};
++
++builtin_platform_driver(ac5_pinctrl_driver);
+-- 
+2.25.1
+
