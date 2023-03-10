@@ -26,6 +26,7 @@ driver-support-optoe-chunk-offset-fix.patch
 driver-support-optoe-QSFP_DD.patch
 driver-support-optoe-write-max.patch
 driver-support-optoe-twoaddr-a2h-access.patch
+driver-support-optoe-oneaddr-pageable.patch
 driver-net-tg3-add-param-short-preamble-and-reset.patch
 0004-dt-bindings-hwmon-Add-missing-documentation-for-lm75.patch
 0005-dt-bindings-hwmon-Add-tmp75b-to-lm75.txt.patch
