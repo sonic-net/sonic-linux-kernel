@@ -1,4 +1,4 @@
-From 46089e210d17eeeff7a94877cd79b302a578994e Mon Sep 17 00:00:00 2001
+From cb4523bb02cb6228e3e8e5f3333e6af9a1b15466 Mon Sep 17 00:00:00 2001
 From: Mihir Patel <patelmi@microsoft.com>
 Date: Fri, 10 Mar 2023 06:52:27 +0000
 Subject: [PATCH] Read ID register to find pageable bit in optoe driver
@@ -12,8 +12,16 @@ for pageability on QSFP28 w/ CMIS transceiver and hence, we need to
 read the transceiver ID to see if the transceiver is CMIS based and then
 find the relevant pageable bit.
 
-Test result
+Test result summary
 Tested the changes on a switch with a 100G CMIS and non-CMIS transceiver
+
+No significant time difference is seen related to EEPROM read after adding
+the current changes. Below stats were taken for a 100G CMIS based
+transceiver with making it as optoe3 v/s optoe1
+
+Test stats (average time taken after 3 dumps)
+Time to dump first 4096B from EEPROM with transceiver as optoe3 - 914ms
+Time to dump first 4096B from EEPROM with transceiver as optoe1 - 911ms
 
 Signed-off-by: Mihir Patel <patelmi@microsoft.com>
 ---
