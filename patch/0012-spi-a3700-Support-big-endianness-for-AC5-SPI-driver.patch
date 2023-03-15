@@ -1,0 +1,41 @@
+From: Noam <lnoam@marvell.com>
+Date: Tue, 26 Jul 2022 16:00:37 +0300
+spi: a3700: Support big endianness for AC5 SPI driver
+
+Fix wrong endianness in a3700_spi_fifo_read() and a3700_spi_fifo_write().
+
+Signed-off-by: Noam <lnoam@marvell.com>
+Tested-by: Raz Adashi <raza@marvell.com>
+Reviewed-by: Raz Adashi <raza@marvell.com>
+Signed-off-by: Vadym Kochan <vadym.kochan@plvision.eu>
+Link: https://lore.kernel.org/r/20220726130038.20995-1-vadym.kochan@plvision.eu
+Signed-off-by: Mark Brown <broonie@kernel.org>
+---
+ drivers/spi/spi-armada-3700.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/spi/spi-armada-3700.c b/drivers/spi/spi-armada-3700.c
+index d8cc4b270..9df9fc40b 100644
+--- a/drivers/spi/spi-armada-3700.c
++++ b/drivers/spi/spi-armada-3700.c
+@@ -497,7 +497,7 @@ static int a3700_spi_fifo_write(struct a3700_spi *a3700_spi)
+ 
+ 	while (!a3700_is_wfifo_full(a3700_spi) && a3700_spi->buf_len) {
+ 		val = *(u32 *)a3700_spi->tx_buf;
+-		spireg_write(a3700_spi, A3700_SPI_DATA_OUT_REG, val);
++		spireg_write(a3700_spi, A3700_SPI_DATA_OUT_REG, cpu_to_le32(val));
+ 		a3700_spi->buf_len -= 4;
+ 		a3700_spi->tx_buf += 4;
+ 	}
+@@ -519,7 +519,7 @@ static int a3700_spi_fifo_read(struct a3700_spi *a3700_spi)
+ 	while (!a3700_is_rfifo_empty(a3700_spi) && a3700_spi->buf_len) {
+ 		val = spireg_read(a3700_spi, A3700_SPI_DATA_IN_REG);
+ 		if (a3700_spi->buf_len >= 4) {
+-
++			val = le32_to_cpu(val);
+ 			memcpy(a3700_spi->rx_buf, &val, 4);
+ 
+ 			a3700_spi->buf_len -= 4;
+-- 
+2.25.1
+

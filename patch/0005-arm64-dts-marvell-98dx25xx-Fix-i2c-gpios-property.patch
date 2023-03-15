@@ -1,0 +1,43 @@
+From: Chris Packham <chris.packham@alliedtelesis.co.nz>
+Date: Thu, 1 Sep 2022 14:28:08 +1200
+arm64: dts: marvell: 98dx25xx: Fix i2c gpios property
+
+Use the correct names for scl-gpios and sda-gpios so that the generic
+i2c recovery code will find them. While we're here set the
+GPIO_OPEN_DRAIN flag on the gpios.
+
+Signed-off-by: Chris Packham <chris.packham@alliedtelesis.co.nz>
+Signed-off-by: Gregory CLEMENT <gregory.clement@bootlin.com>
+---
+ arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
+index 914fcf9e2..44ed6f963 100644
+--- a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
++++ b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
+@@ -147,8 +147,8 @@ i2c0: i2c@11000{
+ 				pinctrl-names = "default", "gpio";
+ 				pinctrl-0 = <&i2c0_pins>;
+ 				pinctrl-1 = <&i2c0_gpio>;
+-				scl_gpio = <&gpio0 26 GPIO_ACTIVE_HIGH>;
+-				sda_gpio = <&gpio0 27 GPIO_ACTIVE_HIGH>;
++				scl-gpios = <&gpio0 26 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
++				sda-gpios = <&gpio0 27 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+ 				status = "disabled";
+ 			};
+ 
+@@ -166,8 +166,8 @@ i2c1: i2c@11100{
+ 				pinctrl-names = "default", "gpio";
+ 				pinctrl-0 = <&i2c1_pins>;
+ 				pinctrl-1 = <&i2c1_gpio>;
+-				scl_gpio = <&gpio0 20 GPIO_ACTIVE_HIGH>;
+-				sda_gpio = <&gpio0 21 GPIO_ACTIVE_HIGH>;
++				scl-gpios = <&gpio0 20 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
++				sda-gpios = <&gpio0 21 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+ 				status = "disabled";
+ 			};
+ 
+-- 
+2.25.1
+

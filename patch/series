@@ -189,8 +189,27 @@ cisco-hwmon-pmbus_core-pec-support-check.patch
 0003-psample-define-the-macro-PSAMPLE_MD_EXTENDED_ATTR.patch
 
 #
-# Marvell platform patches for 4.19
+# Marvell platform patches for 5.10
 armhf_secondary_boot_online.patch
+0001-dt-bindings-marvell-Document-the-AC5-AC5X-compatible.patch
+0002-dt-bindings-net-mvneta-Add-marvell-armada-ac5-neta.patch
+0003-arm64-dts-marvell-Add-Armada-98DX2530-SoC-and-RD-AC5.patch
+0004-arm64-dts-marvell-Add-UART1-3-for-AC5-AC5X.patch
+0005-arm64-dts-marvell-98dx25xx-Fix-i2c-gpios-property.patch
+0006-arm64-dts-Update-cache-properties-for-marvell.patch
+0007-arm64-dts-marvell-AC5-AC5X-Fix-address-for-UART1.patch
+0008-mtd-rawnand-marvell-Add-missing-layouts.patch
+0009-pinctrl-mvebu-Add-driver-for-98DX2530-SoC.patch
+0010-arm64-marvell-Enable-the-98DX2530-pinctrl-driver.patch
+0011-net-mvneta-Add-support-for-98DX2530-Ethernet-port.patch
+0012-spi-a3700-Support-big-endianness-for-AC5-SPI-driver.patch
+0013-dt-bindings-ac5-Add-mmc-and-usb-properties.patch
+0014-dts-ac5-marvell-Add-switching-mmc-watchdog-node.patch
+0015-ac5-marvell-Add-watchdog-support.patch
+0016-ac5-marvell-Add-support-for-emmc.patch
+0017-usb-ehci-Add-support-for-ac5.patch
+0018-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch
+
 #
 #
 ############################################################

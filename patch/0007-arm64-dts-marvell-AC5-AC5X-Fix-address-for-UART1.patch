@@ -1,0 +1,29 @@
+From: Chris Packham <chris.packham@alliedtelesis.co.nz>
+Date: Thu, 15 Dec 2022 15:54:02 +1300
+arm64: dts: marvell: AC5/AC5X: Fix address for UART1
+
+The correct address offset is 0x12100.
+
+Fixes: 31be791e26cf ("arm64: dts: marvell: Add UART1-3 for AC5/AC5X")
+Signed-off-by: Chris Packham <chris.packham@alliedtelesis.co.nz>
+Signed-off-by: Gregory CLEMENT <gregory.clement@bootlin.com>
+---
+ arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
+index 7308f7b6b..8bce64069 100644
+--- a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
++++ b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
+@@ -98,7 +98,7 @@ uart0: serial@12000 {
+ 
+ 			uart1: serial@12100 {
+ 				compatible = "snps,dw-apb-uart";
+-				reg = <0x11000 0x100>;
++				reg = <0x12100 0x100>;
+ 				reg-shift = <2>;
+ 				interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>;
+ 				reg-io-width = <1>;
+-- 
+2.25.1
+

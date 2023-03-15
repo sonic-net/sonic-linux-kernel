@@ -1,0 +1,124 @@
+From: Pavan Naregundi <pnaregundi@marvell.com>
+Date: Mon, 13 Mar 2023 09:58:10 +0000
+dts: ac5: marvell: Add switching/mmc/watchdog node
+
+This patch adds following changes to 98DX25xx and 98DX35xx SoC,
+	- SDMA(Subsystem DMA engine) node for control path Rx/Tx.
+	- prestera node for interupt handing from switching ASIC.
+	- mmc node using Xenon SDHCI Controller.
+	- watchdog node.
+	- clock-frequency in timer node.
+	- ac5-ehci compatible string in usb.
+
+Signed-off-by: Yuval Shaia <yshaia@marvell.com>
+Tested-by: Raz Adashi <raza@marvell.com>
+Reviewed-by: Raz Adashi <raza@marvell.com>
+---
+ arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi | 47 ++++++++++++++++++-
+ .../boot/dts/marvell/ac5-98dx35xx-rd.dts      |  8 ++++
+ 2 files changed, 54 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
+index 8bce64069..f1f96799b 100644
+--- a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
++++ b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
+@@ -64,6 +64,7 @@ timer {
+ 			     <GIC_PPI 8 IRQ_TYPE_LEVEL_HIGH>,
+ 			     <GIC_PPI 10 IRQ_TYPE_LEVEL_HIGH>,
+ 			     <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH>;
++		clock-frequency = <25000000>;
+ 	};
+ 
+ 	pmu {
+@@ -203,6 +204,30 @@ gpio1: gpio@18140 {
+ 			};
+ 		};
+ 
++		mmc_dma: mmc-dma-peripherals@80500000 {
++			compatible = "simple-bus";
++			#address-cells = <0x2>;
++			#size-cells = <0x2>;
++			ranges;
++			dma-coherent;
++
++			sdhci0: sdhci@805c0000 {
++				compatible = "marvell,ac5-sdhci", "marvell,armada-ap806-sdhci";
++				reg = <0x0 0x805c0000 0x0 0x300>;
++				reg-names = "ctrl";
++				interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;
++				clocks = <&emmc_clock>;
++				clock-names = "core";
++				status = "okay";
++				bus-width = <8>;
++				/*marvell,xenon-phy-slow-mode;*/
++				non-removable;
++				mmc-ddr-1_8v;
++				mmc-hs200-1_8v;
++				mmc-hs400-1_8v;
++			};
++		};
++
+ 		/*
+ 		 * Dedicated section for devices behind 32bit controllers so we
+ 		 * can configure specific DMA mapping for them
+@@ -235,7 +260,7 @@ eth1: ethernet@24000 {
+ 			};
+ 
+ 			usb0: usb@80000 {
+-				compatible = "marvell,orion-ehci";
++				compatible = "marvell,ac5-ehci", "marvell,orion-ehci";
+ 				reg = <0x0 0x80000 0x0 0x500>;
+ 				interrupts = <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;
+ 				status = "disabled";
+@@ -296,6 +321,20 @@ spi1: spi@805a8000 {
+ 			status = "disabled";
+ 		};
+ 
++		prestera {
++			compatible = "marvell,armada-ac5-switch";
++			interrupts = <GIC_SPI 0x23 IRQ_TYPE_LEVEL_HIGH>;
++			status = "okay";
++		};
++
++		watchdog@80216000 {
++			compatible = "marvell,ac5-wd";
++			reg = <0x0 0x80216000 0 0x1000>,
++			      <0x0 0x80215000 0 0x1000>;
++			interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>;
++			timeout-sec = <30>;
++		};
++
+ 		gic: interrupt-controller@80600000 {
+ 			compatible = "arm,gic-v3";
+ 			#interrupt-cells = <3>;
+@@ -318,5 +357,11 @@ spi_clock: spi-clock {
+ 			#clock-cells = <0>;
+ 			clock-frequency = <200000000>;
+ 		};
++
++		emmc_clock: emmc_clock@0 {
++			compatible = "fixed-clock";
++			#clock-cells = <0>;
++			clock-frequency = <400000000>;
++		};
+ 	};
+ };
+diff --git a/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts b/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts
+index f0ebdb84e..45c305d46 100644
+--- a/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts
++++ b/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts
+@@ -99,3 +99,11 @@ parition@2 {
+ 		};
+ 	};
+ };
++
++/{
++	sdma_drv {
++		compatible = "marvell,mvppnd";
++		interrupts = <GIC_SPI 0x23 IRQ_TYPE_LEVEL_HIGH>;
++		status = "okay";
++	};
++};
+-- 
+2.25.1
+

@@ -1,0 +1,38 @@
+From: Pavan Naregundi <pnaregundi@marvell.com>
+Date: Mon, 13 Mar 2023 10:01:51 +0000
+usb: ehci: Add support for ac5
+
+Add a new compatible string for 98DX25xx SoCs.
+Change DMA bit mask to 64-bit addressing.
+
+Signed-off-by: Yuval Shaia <yshaia@marvell.com>
+Tested-by: Raz Adashi <raza@marvell.com>
+Reviewed-by: Raz Adashi <raza@marvell.com>
+---
+ drivers/usb/host/ehci-orion.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/usb/host/ehci-orion.c b/drivers/usb/host/ehci-orion.c
+index 3626758b3..488a2ba86 100644
+--- a/drivers/usb/host/ehci-orion.c
++++ b/drivers/usb/host/ehci-orion.c
+@@ -232,7 +232,7 @@ static int ehci_orion_drv_probe(struct platform_device *pdev)
+ 	 * set. Since shared usb code relies on it, set it here for
+ 	 * now. Once we have dma capability bindings this can go away.
+ 	 */
+-	err = dma_coerce_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
++	err = dma_coerce_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
+ 	if (err)
+ 		goto err;
+ 
+@@ -341,6 +341,7 @@ static int ehci_orion_drv_remove(struct platform_device *pdev)
+ static const struct of_device_id ehci_orion_dt_ids[] = {
+ 	{ .compatible = "marvell,orion-ehci", },
+ 	{ .compatible = "marvell,armada-3700-ehci", },
++	{ .compatible = "marvell,ac5-ehci", },
+ 	{},
+ };
+ MODULE_DEVICE_TABLE(of, ehci_orion_dt_ids);
+-- 
+2.25.1
+

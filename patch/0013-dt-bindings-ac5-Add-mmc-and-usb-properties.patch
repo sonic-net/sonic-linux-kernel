@@ -1,0 +1,72 @@
+From: Pavan Naregundi <pnaregundi@marvell.com>
+Date: Tue, 14 Mar 2023 06:10:59 +0000
+dt-bindings: ac5: Add mmc and usb properties
+
+Describe compatible string in Marvell Xenon SDHCI Controller for mmc.
+Also documents compatible string for ac5 in ehci-orion.
+
+Signed-off-by: Noam Liron <lnoam@marvell.com>
+---
+ .../bindings/mmc/marvell,xenon-sdhci.txt      | 22 +++++++++++++++++++
+ .../devicetree/bindings/usb/ehci-orion.txt    |  1 +
+ 2 files changed, 23 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/mmc/marvell,xenon-sdhci.txt b/Documentation/devicetree/bindings/mmc/marvell,xenon-sdhci.txt
+index ed1456f5c..c5a4aebcd 100644
+--- a/Documentation/devicetree/bindings/mmc/marvell,xenon-sdhci.txt
++++ b/Documentation/devicetree/bindings/mmc/marvell,xenon-sdhci.txt
+@@ -13,6 +13,7 @@ Required Properties:
+   Must provide a second register area and marvell,pad-type.
+   - "marvell,armada-ap806-sdhci": For controllers on Armada AP806.
+   - "marvell,armada-cp110-sdhci": For controllers on Armada CP110.
++  - "marvell,ac5-sdhci": For CnM on AC5, AC5X and derived.
+ 
+ - clocks:
+   Array of clocks required for SDHC.
+@@ -32,6 +33,9 @@ Required Properties:
+     in below.
+     Please also check property marvell,pad-type in below.
+ 
++  * For "marvell,ac5-sdhci", one register area.
++    (reg-names "ctrl").
++
+   * For other compatible strings, one register area for Xenon IP.
+ 
+ Optional Properties:
+@@ -170,3 +174,21 @@ Example:
+ 
+ 		marvell,pad-type = "sd";
+ 	};
++
++
++- For eMMC with compatible "marvell,ac5-sdhci":
++	sdhci0: sdhci@805c0000 {
++		compatible = "marvell,ac5-sdhci";
++		reg = <0x0 0x805c0000>;
++		reg-names = "ctrl";
++		interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;
++		clocks = <&core_clock>;
++		clock-names = "core";
++		status = "okay";
++		bus-width = <8>;
++		/*marvell,xenon-phy-slow-mode;*/
++		non-removable;
++		mmc-ddr-1_8v;
++		mmc-hs200-1_8v;
++		mmc-hs400-1_8v;
++	};
+diff --git a/Documentation/devicetree/bindings/usb/ehci-orion.txt b/Documentation/devicetree/bindings/usb/ehci-orion.txt
+index 2855bae79..83e4d8992 100644
+--- a/Documentation/devicetree/bindings/usb/ehci-orion.txt
++++ b/Documentation/devicetree/bindings/usb/ehci-orion.txt
+@@ -4,6 +4,7 @@ Required properties:
+ - compatible: must be one of the following
+ 	"marvell,orion-ehci"
+ 	"marvell,armada-3700-ehci"
++	"marvell,ac5-ehci"
+ - reg: physical base address of the controller and length of memory mapped
+   region.
+ - interrupts: The EHCI interrupt
+-- 
+2.25.1
+
