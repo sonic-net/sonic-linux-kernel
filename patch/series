@@ -209,6 +209,8 @@ armhf_secondary_boot_online.patch
 0016-ac5-marvell-Add-support-for-emmc.patch
 0017-usb-ehci-Add-support-for-ac5.patch
 0018-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch
+0019-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
+0020-dts-marvell-Add-support-for-7020-comexpress.patch
 
 #
 #
