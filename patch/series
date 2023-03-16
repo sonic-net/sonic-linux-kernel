@@ -1,4 +1,8 @@
 # This series applies on GIT commit 18c5597832fcf6988111b05a9a1607ae148723c
+# Note: Markers should start with "###->". 
+#       Header should end with .*-start eg: any_description-start
+#       Footer must end with .*-end eg: any_description-end
+#       Markers should not be nested
 
 driver-arista-net-tg3-dma-mask-4g-sb800.patch
 driver-arista-net-tg3-disallow-broadcom-default-mac.patch
@@ -59,6 +63,10 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 #
 
 # Mellanox patches for 5.10
+###-> mellanox_sdk-start
+###-> mellanox_sdk-end
+
+###-> mellanox_hw_mgmt-start
 0001-i2c-mlxcpld-Update-module-license.patch
 0002-i2c-mlxcpld-Decrease-polling-time-for-performan.patch
 0003-i2c-mlxcpld-Add-support-for-I2C-bus-frequency-s.patch
@@ -161,6 +169,7 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 0173-core-Add-support-for-OSFP-transceiver-modules.patch
 0175-hwmon-pmbus-Add-support-for-Infineon-Digital-Multi-p.patch
 0180-hwmon-pmbus-Fix-sensors-readouts-for-MPS-Multi-phase.patch
+###-> mellanox_hw_mgmt-end
 
 # Cisco patches for 5.10 kernel
 cisco-mtd-part.patch
