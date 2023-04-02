@@ -27,7 +27,7 @@
 ARCH=amd64
 PLATFORM=
 SECURE_UPGRADE_MODE="no_sign"
-SECURE_UPGRADE_DEV_SIGNING_CERT=
+SECURE_UPGRADE_SIGNING_CERT=
 if [ $# -ge 1 ]; then
     ARCH=$1
 fi
@@ -38,7 +38,7 @@ if [ $# -ge 3 ]; then
     SECURE_UPGRADE_MODE=$3
 fi
 if [ $# -ge 4 ]; then
-    SECURE_UPGRADE_DEV_SIGNING_CERT=$4
+    SECURE_UPGRADE_SIGNING_CERT=$4
 fi
 
 case "$ARCH" in
@@ -163,12 +163,12 @@ ret_process_inc_ex=$(process_inclusion_exclusion_files > /dev/null; echo $?)
 
 #  Secure Boot support
 if [ $ret_process_inc_ex -eq 0 ]; then
-    echo "Secure Boot params: SECURE_UPGRADE_MODE=${SECURE_UPGRADE_MODE}, SECURE_UPGRADE_DEV_SIGNING_CERT=${SECURE_UPGRADE_DEV_SIGNING_CERT}"
+    echo "Secure Boot params: SECURE_UPGRADE_MODE=${SECURE_UPGRADE_MODE}, SECURE_UPGRADE_SIGNING_CERT=${SECURE_UPGRADE_SIGNING_CERT}"
     if [ ${SECURE_UPGRADE_MODE} == "dev" -o ${SECURE_UPGRADE_MODE} == "prod" ]; then
         echo "set kconfig-secure-boot-exclusions & kconfig-secure-boot-inclusions"
 
-        if [ ! -f "${SECURE_UPGRADE_DEV_SIGNING_CERT}" ]; then
-            echo "ERROR: SECURE_UPGRADE_DEV_SIGNING_CERT=${SECURE_UPGRADE_DEV_SIGNING_CERT} file does not exist"
+        if [ ! -f "${SECURE_UPGRADE_SIGNING_CERT}" ]; then
+            echo "ERROR: SECURE_UPGRADE_SIGNING_CERT=${SECURE_UPGRADE_SIGNING_CERT} file does not exist"
             exit 1
         fi
 
@@ -177,7 +177,7 @@ if [ $ret_process_inc_ex -eq 0 ]; then
         force_inclusion_file="../patch/kconfig-force-secure-boot-inclusions"
 
         # save the new pub key in kernel
-        sed -i "s|^CONFIG_SYSTEM_TRUSTED_KEYS=.*|CONFIG_SYSTEM_TRUSTED_KEYS=\"$SECURE_UPGRADE_DEV_SIGNING_CERT\"|g" ${inclusion_file}
+        sed -i "s|^CONFIG_SYSTEM_TRUSTED_KEYS=.*|CONFIG_SYSTEM_TRUSTED_KEYS=\"$SECURE_UPGRADE_SIGNING_CERT\"|g" ${inclusion_file}
 
         ret_process_inc_ex=$(process_inclusion_exclusion_files > /dev/null; echo $?)
         echo "Secure Boot kernel configuration done."
