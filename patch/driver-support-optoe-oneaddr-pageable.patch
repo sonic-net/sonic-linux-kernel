@@ -1,0 +1,64 @@
+From cb4523bb02cb6228e3e8e5f3333e6af9a1b15466 Mon Sep 17 00:00:00 2001
+From: Mihir Patel <patelmi@microsoft.com>
+Date: Fri, 10 Mar 2023 06:52:27 +0000
+Subject: [PATCH] Read ID register to find pageable bit in optoe driver
+
+The current optoe driver looks at bit 2 for all optoe1
+(dev_class as ONE_ADDR) transceivers to detect if it's pageable or not.
+However, for QSFP28 w/ CMIS optics, some platforms use it as optoe1
+and not optoe3. With CMIS, the pageable bit has now changed to bit 7 for
+the same register. This causes incorrect behavior when the driver checks
+for pageability on QSFP28 w/ CMIS transceiver and hence, we need to
+read the transceiver ID to see if the transceiver is CMIS based and then
+find the relevant pageable bit.
+
+Test result summary
+Tested the changes on a switch with a 100G CMIS and non-CMIS transceiver
+
+No significant time difference is seen related to EEPROM read after adding
+the current changes. Below stats were taken for a 100G CMIS based
+transceiver with making it as optoe3 v/s optoe1
+
+Test stats (average time taken after 3 dumps)
+Time to dump first 4096B from EEPROM with transceiver as optoe3 - 914ms
+Time to dump first 4096B from EEPROM with transceiver as optoe1 - 911ms
+
+Signed-off-by: Mihir Patel <patelmi@microsoft.com>
+---
+ drivers/misc/eeprom/optoe.c | 20 +++++++++++++++++++-
+ 1 file changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
+index 62294392c..f34bfe88b 100644
+--- a/drivers/misc/eeprom/optoe.c
++++ b/drivers/misc/eeprom/optoe.c
+@@ -630,7 +630,25 @@ static ssize_t optoe_page_legal(struct optoe_data *optoe,
+ 			return status;  /* error out (no module?) */
+ 
+ 		if (optoe->dev_class == ONE_ADDR) {
+-			not_pageable = QSFP_NOT_PAGEABLE;
++			u8 idRegVal;
++
++			status = optoe_eeprom_read(optoe, client, &idRegVal,
++					OPTOE_ID_REG, 1);
++			if (status < 0)
++				return status;  /* error out (no module?) */
++
++			/*
++			 * For QSFP28 with CMIS optic, if userspace has dev_class as ONE_ADDR,
++			 * the driver looks at the incorrect bit to find if it is pageable.
++			 * Below check ensures we read the appropriate bit for such QSFP28 CMIS
++			 * compliant optics with dev_class as ONE_ADDR
++			 * The ID values below are based on the SFF-8024 spec (Page 0, byte 0)
++			 * for CMIS optics
++			 */
++			if (idRegVal == 0x18 || idRegVal == 0x19 || idRegVal == 0x1e)
++				not_pageable = CMIS_NOT_PAGEABLE;
++			else
++				not_pageable = QSFP_NOT_PAGEABLE;
+ 		} else {
+ 			not_pageable = CMIS_NOT_PAGEABLE;
+ 		}
+-- 
+2.25.1
+

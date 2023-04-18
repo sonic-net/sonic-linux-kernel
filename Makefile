@@ -61,6 +61,36 @@ ORIG_FILE_URL = "$(SOURCE_FILE_BASE_URL)/$(ORIG_FILE)"
 NON_UP_DIR = /tmp/non_upstream_patches
 
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
+	# Include any non upstream patches
+	rm -rf $(NON_UP_DIR)
+	mkdir -p $(NON_UP_DIR)
+
+	if [ x${INCLUDE_EXTERNAL_PATCHES} == xy ]; then
+		if [ ! -z ${EXTERNAL_KERNEL_PATCH_URL} ]; then
+			wget $(EXTERNAL_KERNEL_PATCH_URL) -O patches.tar
+			tar -xf patches.tar -C $(NON_UP_DIR)
+		else
+			if [ -d "$(EXTERNAL_KERNEL_PATCH_LOC)" ]; then
+				cp -r $(EXTERNAL_KERNEL_PATCH_LOC)/* $(NON_UP_DIR)/
+			fi
+		fi
+	fi
+
+	if [ -f "$(NON_UP_DIR)/series.patch" ]; then
+		echo "Patch the series file"
+		cat $(NON_UP_DIR)/series.patch
+		pushd patch
+		# clear any unstaged changes
+		git stash -- series
+		git apply $(NON_UP_DIR)/series.patch
+		popd
+
+		if [ -d "$(NON_UP_DIR)/patches" ]; then
+			echo "Copy the non upstream patches"
+			cp $(NON_UP_DIR)/patches/*.patch patch/
+		fi
+	fi
+
 	# Obtaining the Debian kernel source
 	rm -rf $(BUILD_DIR)
 	wget -O $(DSC_FILE) $(DSC_FILE_URL)
@@ -101,27 +131,6 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Learning new git repo head (above commit) by calling stg repair.
 	stg repair
 	stg import -s ../patch/series
-
-	rm -rf $(NON_UP_DIR)
-	mkdir -p $(NON_UP_DIR)
-
-	if [ ! -z ${EXTERNAL_KERNEL_PATCH_URL} ];  then
-		wget $(EXTERNAL_KERNEL_PATCH_URL) -O patches.tar
-		tar -xf patches.tar -C $(NON_UP_DIR)
-	fi
-
-	# Precedence is given for external URL
-	if [ -z ${EXTERNAL_KERNEL_PATCH_URL} ] && [ x${INCLUDE_EXTERNAL_PATCH_TAR} == xy ]; then
-		if [ -f "$(EXTERNAL_KERNEL_PATCH_TAR)" ]; then
-			tar -xf $(EXTERNAL_KERNEL_PATCH_TAR) -C $(NON_UP_DIR)
-		fi
-	fi
-
-	if [ -f "$(NON_UP_DIR)/series" ]; then
-		echo "External Patches applied:"
-		cat $(NON_UP_DIR)/series
-		stg import -s $(NON_UP_DIR)/series
-	fi
 
 	# Optionally add/remove kernel options
 	if [ -f ../manage-config ]; then

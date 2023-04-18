@@ -1,9 +1,15 @@
 # This series applies on GIT commit 18c5597832fcf6988111b05a9a1607ae148723c
+# Note: Markers should start with "###->". 
+#       Header should end with .*-start eg: any_description-start
+#       Footer must end with .*-end eg: any_description-end
+#       Markers should not be nested
 
 driver-arista-net-tg3-dma-mask-4g-sb800.patch
 driver-arista-net-tg3-disallow-broadcom-default-mac.patch
 driver-arista-net-tg3-access-regs-indirectly.patch
 driver-arista-pci-reassign-pref-mem.patch
+driver-arista-mmcblk-not-working-on-AMD-platforms.patch
+driver-arista-restrict-eMMC-drive-to-50Mhz-from-userland.patch
 driver-support-sff-8436-eeprom.patch
 driver-support-sff-8436-eeprom-update.patch
 driver-sff-8436-use-nvmem-framework.patch
@@ -24,6 +30,7 @@ driver-support-optoe-chunk-offset-fix.patch
 driver-support-optoe-QSFP_DD.patch
 driver-support-optoe-write-max.patch
 driver-support-optoe-twoaddr-a2h-access.patch
+driver-support-optoe-oneaddr-pageable.patch
 driver-net-tg3-add-param-short-preamble-and-reset.patch
 0004-dt-bindings-hwmon-Add-missing-documentation-for-lm75.patch
 0005-dt-bindings-hwmon-Add-tmp75b-to-lm75.txt.patch
@@ -56,6 +63,10 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 #
 
 # Mellanox patches for 5.10
+###-> mellanox_sdk-start
+###-> mellanox_sdk-end
+
+###-> mellanox_hw_mgmt-start
 0001-i2c-mlxcpld-Update-module-license.patch
 0002-i2c-mlxcpld-Decrease-polling-time-for-performan.patch
 0003-i2c-mlxcpld-Add-support-for-I2C-bus-frequency-s.patch
@@ -158,6 +169,7 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 0173-core-Add-support-for-OSFP-transceiver-modules.patch
 0175-hwmon-pmbus-Add-support-for-Infineon-Digital-Multi-p.patch
 0180-hwmon-pmbus-Fix-sensors-readouts-for-MPS-Multi-phase.patch
+###-> mellanox_hw_mgmt-end
 
 # Cisco patches for 5.10 kernel
 cisco-mtd-part.patch
@@ -167,6 +179,9 @@ cisco-acpi-spi-nor.patch
 cisco-Enable-static-memory-reservation-for-OIRable-PCIe-de.patch
 cisco-npu-disable-other-bars.patch
 cisco-hwmon-pmbus_core-pec-support-check.patch
+
+# Nokia patches for 5.10 kernel
+0001-hwmon-emc2305-Fix-unable-to-probe-emc2301-2-3.patch
 
 # sFlow + dropmon support
 0001-psample-Encapsulate-packet-metadata-in-a-struct.patch

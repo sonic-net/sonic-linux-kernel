@@ -1,0 +1,70 @@
+mmc: restrict eMMC drive to 50Mhz from userland
+
+This issue was fixed for kernel 3.18 by setting sdhci.debug_quirks2=0x40
+from Aboot boot0 (conditionally, for specific Aboot versions).
+
+For kernel 4.9, however, we need SDHCI_QUIRK2_BROKEN_64_BIT_DMA, which
+is also in quirks2. The problem is that debug_quirks2 overwrites whatever
+is written to host->quirks2 during device probing (see __sdhci_read_caps).
+Since we set both SDHCI_QUIRK_BROKEN_DMA and
+SDHCI_QUIRK2_BROKEN_64_BIT_DMA (but the former is in quirks while the
+latter is in quirks2) and Aboot overwrites quirks2, we end up with only
+SDHCI_QUIRK_BROKEN_DMA being set. This causes some strange behavior with
+AMD devices, where the sdhci driver stalls for a while and eventually
+falls back to PIO mode. We need both quirk flags to be set in order for
+the controller to work in SDMA mode.
+
+This patch is a workaround for the quirks2 overwrite problem. It adds a
+set of new sdhci module parameters (append_quirks and append_quirks2)
+that *append* bits (i.e. logical "or") instead of overwriting the
+values. Then Aboot can use these parameters instead in order to set
+SDHCI_QUIRK2_BROKEN_HS200. Note that both quirk2 flags are set
+conditionally and independently by Aboot and the sdhci-pci probe code.
+
+Advantages of this approach:
+* This patch by itself doesn't change any kernel behavior: it just adds
+  two module parameters that default to zero and will have no effect
+  unless explicitly set to a different value from outside the driver.
+* SDHCI_QUIRK2_BROKEN_HS200 can be still controlled from Aboot and
+  conditionally (depending on the Aboot version).
+* SDHCI_QUIRK2_BROKEN_64_BIT_DMA can be set by the sdhci-pci probing
+  code, independently of Aboot.
+
+Signed-off-by: Radu Rendec <rrendec@arista.com>
+Signed-off-by: Samuel Angebault <staphylo@arista.com>
+---
+ drivers/mmc/host/sdhci.c |    7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/drivers/mmc/host/sdhci.c b/drivers/mmc/host/sdhci.c
+index b1e1d327c..817934f04 100644
+--- a/drivers/mmc/host/sdhci.c
++++ b/drivers/mmc/host/sdhci.c
+@@ -45,6 +45,8 @@
+ 
+ #define MAX_TUNING_LOOP 40
+ 
++static unsigned int append_quirks;
++static unsigned int append_quirks2;
+ static unsigned int debug_quirks = 0;
+ static unsigned int debug_quirks2;
+ 
+@@ -3990,6 +3992,9 @@ void __sdhci_read_caps(struct sdhci_host *host, const u16 *ver,
+ 
+ 	host->read_caps = true;
+ 
++	host->quirks |= append_quirks;
++	host->quirks2 |= append_quirks2;
++
+ 	if (debug_quirks)
+ 		host->quirks = debug_quirks;
+ 
+@@ -4850,6 +4855,8 @@ static void __exit sdhci_drv_exit(void)
+ module_init(sdhci_drv_init);
+ module_exit(sdhci_drv_exit);
+ 
++module_param(append_quirks, uint, 0444);
++module_param(append_quirks2, uint, 0444);
+ module_param(debug_quirks, uint, 0444);
+ module_param(debug_quirks2, uint, 0444);
+ 
