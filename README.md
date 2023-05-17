@@ -1,6 +1,11 @@
-[![Build Status](https://sonic-jenkins.westus2.cloudapp.azure.com/job/common/job/linux-kernel-build/badge/icon)](https://sonic-jenkins.westus2.cloudapp.azure.com/job/common/job/linux-kernel-build/)
 
 # SONiC - Kernel
+
+## Build Status
+
+[![Master Branch](https://dev.azure.com/mssonic/build/_apis/build/status%2FAzure.sonic-linux-kernel?branchName=master&label=Master)](https://dev.azure.com/mssonic/build/_build/latest?definitionId=13&branchName=master)
+[![202211 Branch](https://dev.azure.com/mssonic/build/_apis/build/status%2FAzure.sonic-linux-kernel?branchName=202211&label=202211)](https://dev.azure.com/mssonic/build/_build/latest?definitionId=13&branchName=202211)
+[![202205 Branch](https://dev.azure.com/mssonic/build/_apis/build/status%2FAzure.sonic-linux-kernel?branchName=202205&label=202205)](https://dev.azure.com/mssonic/build/_build/latest?definitionId=13&branchName=202205)
 
 ## Description
 This repository contains the scripts and patches to build the kernel for SONiC. SONiC uses the same kernel for all platforms. We prefer to out-of-tree kernel platform modules. We accept kernel patches on following conditions:
