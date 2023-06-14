@@ -211,6 +211,7 @@ armhf_secondary_boot_online.patch
 0018-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch
 0019-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
 0020-dts-marvell-Add-support-for-7020-comexpress.patch
+0021-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch
 
 #
 #

@@ -1,0 +1,143 @@
+From 79de58e232cf5880a8ff68f15091febfc6c8fb3b Mon Sep 17 00:00:00 2001
+From: Natarajan Subbiramani <natarajan.subbiramani.ext@nokia.com>
+Date: Tue, 13 Jun 2023 17:04:23 +0000
+Subject: [PATCH] arm64: dts: marvell: Add Nokia 7215-IXS-A1 board
+
+This dts is derived from Marvell RD-AC5X board to 
+create platform specific dts for Nokia 7215-IXS-A1 
+
+Signed-off-by: Natarajan Subbiramani <natarajan.subbiramani.ext@nokia.com>
+Tested-by:  Natarajan Subbiramani <natarajan.subbiramani.ext@nokia.com>
+Reviewed-by: Jon Goldberg <jon.goldberg@nokia.com>
+---
+ arch/arm64/boot/dts/marvell/7215-ixs-a1.dts | 108 ++++++++++++++++++++
+ arch/arm64/boot/dts/marvell/Makefile        |   1 +
+ 2 files changed, 109 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/marvell/7215-ixs-a1.dts
+
+diff --git a/arch/arm64/boot/dts/marvell/7215-ixs-a1.dts b/arch/arm64/boot/dts/marvell/7215-ixs-a1.dts
+new file mode 100644
+index 000000000..8c10c5415
+--- /dev/null
++++ b/arch/arm64/boot/dts/marvell/7215-ixs-a1.dts
+@@ -0,0 +1,108 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Copyright (C) 2023 Nokia
++ * Copyright (C) 2021 Marvell
++ * Copyright (C) 2022 Allied Telesis Labs
++ */
++/*
++ * Device Tree file for Nokia 7215-IXS-A1
++ */
++
++/dts-v1/;
++
++#include "ac5-98dx35xx.dtsi"
++
++/ {
++	model = "7215-IXS-A1";
++	compatible = "marvell,rd-ac5x", "marvell,ac5x", "marvell,ac5";
++
++	aliases {
++		serial0 = &uart0;
++		spiflash0 = &spiflash0;
++		gpio0 = &gpio0;
++		gpio1 = &gpio1;
++		ethernet0 = &eth0;
++		ethernet1 = &eth1;
++	};
++
++	memory@0 {
++		device_type = "memory";
++		reg = <0x2 0x00000000 0x0 0x40000000>;
++	};
++
++	usb1phy: usb-phy {
++		compatible = "usb-nop-xceiv";
++		#phy-cells = <0>;
++	};
++};
++
++&mdio {
++	phy0: ethernet-phy@0 {
++		marvell,reg-init = <0x03 0x10 0x0 0x1140>;
++		reg = <0>;
++	};
++};
++
++&i2c0 {
++	status = "okay";
++};
++
++&i2c1 {
++	status = "okay";
++};
++
++&eth0 {
++	status = "okay";
++	phy-handle = <&phy0>;
++};
++
++/* USB0 is a host USB */
++&usb0 {
++	status = "okay";
++};
++
++/* USB1 is a peripheral USB */
++&usb1 {
++	status = "okay";
++	phys = <&usb1phy>;
++	phy-names = "usb-phy";
++	dr_mode = "peripheral";
++};
++
++&spi0 {
++	status = "okay";
++
++	spiflash0: flash@0 {
++		compatible = "jedec,spi-nor";
++		spi-max-frequency = <50000000>;
++		spi-tx-bus-width = <1>; /* 1-single, 2-dual, 4-quad */
++		spi-rx-bus-width = <1>; /* 1-single, 2-dual, 4-quad */
++		reg = <0>;
++
++		#address-cells = <1>;
++		#size-cells = <1>;
++
++		partition@0 {
++			label = "spi_flash_part0";
++			reg = <0x0 0x800000>;
++		};
++
++		parition@1 {
++			label = "spi_flash_part1";
++			reg = <0x800000 0x700000>;
++		};
++
++		parition@2 {
++			label = "spi_flash_part2";
++			reg = <0xF00000 0x100000>;
++		};
++	};
++};
++
++/{
++	sdma_drv {
++		compatible = "marvell,mvppnd";
++		interrupts = <GIC_SPI 0x23 IRQ_TYPE_LEVEL_HIGH>;
++		status = "okay";
++	};
++};
+diff --git a/arch/arm64/boot/dts/marvell/Makefile b/arch/arm64/boot/dts/marvell/Makefile
+index 6873ad448..b53edc9b7 100644
+--- a/arch/arm64/boot/dts/marvell/Makefile
++++ b/arch/arm64/boot/dts/marvell/Makefile
+@@ -18,3 +18,4 @@ dtb-$(CONFIG_ARCH_MVEBU) += cn9131-db.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += cn9132-db.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += ac5-98dx35xx-rd.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += armada-7020-comexpress.dtb
++dtb-$(CONFIG_ARCH_MVEBU) += 7215-ixs-a1.dtb
+-- 
+2.25.1
+
