@@ -213,6 +213,22 @@ armhf_secondary_boot_online.patch
 0020-dts-marvell-Add-support-for-7020-comexpress.patch
 0021-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch
 
+# amd-pensando elba support
+0001-pensando-elba-soc-support.patch
+0002-ELBA-dts-changes.patch
+0003-Interrupt-domain-controllers-for-Elba-ASIC.patch
+0004-UIO-drivers-for-Elba.patch
+0005-Add-Elba-EDAC-support.patch
+0006-i2c-designware-stuck-bus-recovery.patch
+0007-i2c-Add-Lattice-RD1173-I2C-controller-driver.patch
+0008-spi-dw-elba-chipselect.patch
+0009-pensando-cpld-spidev.patch
+0010-Handle-SError-interrupt-of-type-Decode-Error.patch
+0011-mmc-cadence-elba-support.patch
+0012-drivers-hwmon-support-LTC3888.patch
+0013-hwmon-pmbus-Add-support-for-tps53659.patch
+0014-drivers-reset-Add-emmc-hardware-reset.patch
+
 #
 #
 ############################################################
