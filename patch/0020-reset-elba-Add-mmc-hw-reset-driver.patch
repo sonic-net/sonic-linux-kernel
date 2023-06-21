@@ -1,24 +1,26 @@
-From 440238d8b79343f6742ab155b9a66e1df842caf7 Mon Sep 17 00:00:00 2001
+From 19479299be6080c31d10568890bcab53d75218d7 Mon Sep 17 00:00:00 2001
 From: Ashwin H <Ashwin.H@amd.com>
-Date: Tue, 27 Jun 2023 06:46:42 +0000
-Subject: [PATCH 14/14] drivers/reset: Add emmc hardware reset
+Date: Wed, 5 Jul 2023 09:15:24 +0000
+Subject: [PATCH 20/29] reset: elba: Add mmc hw reset driver
 
 Add multi-function driver with sub-device reset driver to
 execute emmc hardware reset.
+
+Signed-off-by: Hiren Mehta <hiren@pensando.io>
+Signed-off-by: Ashwin H <Ashwin.H@amd.com>
 ---
  .../bindings/mfd/amd,pensando-elbasr.yaml     |  93 ++
- .../devicetree/bindings/mfd/syscon.yaml       |   1 +
  .../reset/amd,pensando-elbasr-reset.yaml      |  62 ++
+ .../boot/dts/pensando/elba-asic-common.dtsi   |  41 +-
  drivers/mfd/Kconfig                           |  14 +
  drivers/mfd/Makefile                          |   1 +
  drivers/mfd/pensando-elbasr.c                 | 867 ++++++++++++++++++
- drivers/mmc/host/sdhci-cadence.c              |  29 +
  drivers/reset/Kconfig                         |   9 +
  drivers/reset/Makefile                        |   1 +
  drivers/reset/reset-elbasr.c                  | 106 +++
  .../reset/amd,pensando-elba-reset.h           |  11 +
  include/linux/mfd/pensando-elbasr.h           |  41 +
- 12 files changed, 1235 insertions(+)
+ 11 files changed, 1228 insertions(+), 18 deletions(-)
  create mode 100644 Documentation/devicetree/bindings/mfd/amd,pensando-elbasr.yaml
  create mode 100644 Documentation/devicetree/bindings/reset/amd,pensando-elbasr-reset.yaml
  create mode 100644 drivers/mfd/pensando-elbasr.c
@@ -125,18 +127,6 @@ index 000000000..13356800b
 +    };
 +
 +...
-diff --git a/Documentation/devicetree/bindings/mfd/syscon.yaml b/Documentation/devicetree/bindings/mfd/syscon.yaml
-index 8f4764a9e..1b08cba4f 100644
---- a/Documentation/devicetree/bindings/mfd/syscon.yaml
-+++ b/Documentation/devicetree/bindings/mfd/syscon.yaml
-@@ -38,6 +38,7 @@ properties:
-               - allwinner,sun8i-h3-system-controller
-               - allwinner,sun8i-v3s-system-controller
-               - allwinner,sun50i-a64-system-controller
-+              - amd,pensando-elba-syscon
-               - hisilicon,dsa-subctrl
-               - hisilicon,hi6220-sramctrl
-               - hisilicon,pcie-sas-subctrl
 diff --git a/Documentation/devicetree/bindings/reset/amd,pensando-elbasr-reset.yaml b/Documentation/devicetree/bindings/reset/amd,pensando-elbasr-reset.yaml
 new file mode 100644
 index 000000000..03bb86ebc
@@ -205,6 +195,84 @@ index 000000000..03bb86ebc
 +    };
 +
 +...
+diff --git a/arch/arm64/boot/dts/pensando/elba-asic-common.dtsi b/arch/arm64/boot/dts/pensando/elba-asic-common.dtsi
+index 17dfb0c91..622a22310 100644
+--- a/arch/arm64/boot/dts/pensando/elba-asic-common.dtsi
++++ b/arch/arm64/boot/dts/pensando/elba-asic-common.dtsi
+@@ -1,5 +1,7 @@
+ // SPDX-License-Identifier: GPL-2.0
+ 
++#include <dt-bindings/reset/amd,pensando-elba-reset.h>
++
+ &ahb_clk {
+ 	clock-frequency = <400000000>;
+ };
+@@ -38,6 +40,9 @@
+ 
+ &emmc {
+ 	bus-width = <8>;
++	cap-mmc-hw-reset;
++	reset-names = "hw";
++	resets = <&rstc EMMC_HW_RESET>;
+ 	status = "ok";
+ };
+ 
+@@ -69,37 +74,37 @@
+ 	cs-gpios = <0>, <0>,
+ 		<&porta 1 GPIO_ACTIVE_LOW>, <&porta 7 GPIO_ACTIVE_LOW>;
+ 	status = "okay";
+-	spi0_cs0@0 {
+-		compatible = "pensando,cpld";
++	spi@0 {
++		compatible = "amd,pensando-elbasr", "simple-mfd";
++		reg = <0>;
+ 		#address-cells = <1>;
+-		#size-cells = <1>;
++		#size-cells = <0>;
+ 		spi-max-frequency = <12000000>;
+-		reg = <0>;
++
++		rstc: reset-controller@0 {
++			compatible = "amd,pensando-elbasr-reset";
++			reg = <0>;
++			#reset-cells = <1>;
++		};
+ 	};
+ 
+-	spi0_cs1@1 {
+-		compatible = "pensando,cpld";
+-		#address-cells = <1>;
+-		#size-cells = <1>;
+-		spi-max-frequency = <12000000>;
++	spi@1 {
++		compatible = "amd,pensando-elbasr", "simple-mfd";
+ 		reg = <1>;
++		spi-max-frequency = <12000000>;
+ 	};
+ 
+-	spi0_cs2@2 {
++	spi@2 {
+ 		compatible = "pensando,cpld-rd1173";
+-		#address-cells = <1>;
+-		#size-cells = <1>;
+-		spi-max-frequency = <12000000>;
+ 		reg = <2>;
++		spi-max-frequency = <12000000>;
+ 		interrupt-parent = <&porta>;
+ 		interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+ 	};
+ 
+-	spi0_cs3@3 {
+-		compatible = "pensando,cpld";
+-		#address-cells = <1>;
+-		#size-cells = <1>;
+-		spi-max-frequency = <12000000>;
++	spi@3 {
++		compatible = "amd,pensando-elbasr", "simple-mfd";
+ 		reg = <3>;
++		spi-max-frequency = <12000000>;
+ 	};
+ };
 diff --git a/drivers/mfd/Kconfig b/drivers/mfd/Kconfig
 index b8847ae04..94d9a9d0a 100644
 --- a/drivers/mfd/Kconfig
@@ -231,14 +299,14 @@ index b8847ae04..94d9a9d0a 100644
  	tristate "Qualcomm PM8xxx PMIC chips driver"
  	depends on (ARM || HEXAGON || COMPILE_TEST)
 diff --git a/drivers/mfd/Makefile b/drivers/mfd/Makefile
-index 1780019d2..2c41e61be 100644
+index 1780019d2..d20cf00a7 100644
 --- a/drivers/mfd/Makefile
 +++ b/drivers/mfd/Makefile
 @@ -217,6 +217,7 @@ obj-$(CONFIG_MFD_INTEL_LPSS_ACPI)	+= intel-lpss-acpi.o
  obj-$(CONFIG_MFD_INTEL_MSIC)	+= intel_msic.o
  obj-$(CONFIG_MFD_INTEL_PMC_BXT)	+= intel_pmc_bxt.o
  obj-$(CONFIG_MFD_PALMAS)	+= palmas.o
-+obj-$(CONFIG_MFD_PENSANDO_ELBASR)	+= pensando-elbasr.o
++obj-$(CONFIG_MFD_PENSANDO_ELBASR)  += pensando-elbasr.o
  obj-$(CONFIG_MFD_VIPERBOARD)    += viperboard.o
  obj-$(CONFIG_MFD_RC5T583)	+= rc5t583.o rc5t583-irq.o
  obj-$(CONFIG_MFD_RK808)		+= rk808.o
@@ -1115,86 +1183,25 @@ index 000000000..fe41d92f9
 +	},
 +};
 +builtin_driver(elbasr_spi_driver, spi_register_driver)
-diff --git a/drivers/mmc/host/sdhci-cadence.c b/drivers/mmc/host/sdhci-cadence.c
-index 072cb82ea..9b096c5d9 100644
---- a/drivers/mmc/host/sdhci-cadence.c
-+++ b/drivers/mmc/host/sdhci-cadence.c
-@@ -12,6 +12,7 @@
- #include <linux/mmc/mmc.h>
- #include <linux/of.h>
- #include <linux/of_device.h>
-+#include <linux/reset.h>
- 
- #include "sdhci-pltfm.h"
- 
-@@ -71,6 +72,7 @@ struct sdhci_cdns_priv {
- 	bool enhanced_strobe;
- 	void (*priv_write_l)(struct sdhci_cdns_priv *priv, u32 val,
- 			     void __iomem *reg);
-+	struct reset_control *rst_hw;
- 	unsigned int nr_phy_params;
- 	struct sdhci_cdns_phy_param phy_params[];
- };
-@@ -458,6 +460,22 @@ static void sdhci_cdns_hs400_enhanced_strobe(struct mmc_host *mmc,
- 					 SDHCI_CDNS_HRS06_MODE_MMC_HS400);
- }
- 
-+static void sdhci_mmc_hw_reset(struct mmc_host *mmc)
-+{
-+	struct sdhci_host *host = mmc_priv(mmc);
-+	struct sdhci_cdns_priv *priv = sdhci_cdns_priv(host);
-+
-+	dev_info(mmc_dev(host->mmc), "emmc hardware reset\n");
-+
-+	reset_control_assert(priv->rst_hw);
-+	/* For eMMC, minimum is 1us but give it 9us for good measure */
-+	udelay(9);
-+
-+	reset_control_deassert(priv->rst_hw);
-+	/* For eMMC, minimum is 200us but give it 300us for good measure */
-+	usleep_range(300, 1000);
-+}
-+
- static int sdhci_cdns_probe(struct platform_device *pdev)
- {
- 	struct sdhci_host *host;
-@@ -522,6 +540,17 @@ static int sdhci_cdns_probe(struct platform_device *pdev)
- 	if (ret)
- 		goto free;
- 
-+	if (host->mmc->caps & MMC_CAP_HW_RESET) {
-+		priv->rst_hw = devm_reset_control_get_optional_exclusive(dev, "hw");
-+		if (IS_ERR(priv->rst_hw)) {
-+			ret = PTR_ERR(priv->rst_hw);
-+			if (ret == -ENOENT)
-+				priv->rst_hw = NULL;
-+		} else {
-+			host->mmc_host_ops.hw_reset = sdhci_mmc_hw_reset;
-+		}
-+	}
-+
- 	ret = sdhci_add_host(host);
- 	if (ret)
- 		goto free;
 diff --git a/drivers/reset/Kconfig b/drivers/reset/Kconfig
-index 147543ad3..cded0a73e 100644
+index 147543ad3..7686b0204 100644
 --- a/drivers/reset/Kconfig
 +++ b/drivers/reset/Kconfig
-@@ -58,6 +58,15 @@ config RESET_BRCMSTB_RESCAL
- 	  This enables the RESCAL reset controller for SATA, PCIe0, or PCIe1 on
- 	  BCM7216.
+@@ -49,6 +49,15 @@ config RESET_BRCMSTB
+ 	  This enables the reset controller driver for Broadcom STB SoCs using
+ 	  a SUN_TOP_CTRL_SW_INIT style controller.
  
 +config RESET_ELBASR
-+	tristate "Pensando Elba System Resource reset controller"
-+	depends on MFD_PENSANDO_ELBASR || COMPILE_TEST
-+	help
-+	  This option enables support for the external reset functions
-+	  on the Pensando Elba System Resource Chip.  Reset control
-+	  of peripherals is accessed over SPI to the system resource
-+	  chip device registers using CS0.
++   tristate "Pensando Elba System Resource reset controller"
++   depends on MFD_PENSANDO_ELBASR || COMPILE_TEST
++   help
++     This option enables support for the external reset functions
++     on the Pensando Elba System Resource Chip.  Reset control
++     of peripherals is accessed over SPI to the system resource
++     chip device registers using CS0.
 +
- config RESET_HSDK
- 	bool "Synopsys HSDK Reset Driver"
+ config RESET_BRCMSTB_RESCAL
+ 	bool "Broadcom STB RESCAL reset controller"
  	depends on HAS_IOMEM
 diff --git a/drivers/reset/Makefile b/drivers/reset/Makefile
 index 16947610c..bb86360b6 100644

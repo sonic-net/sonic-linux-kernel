@@ -1,12 +1,16 @@
-From 4cf774176de6d2522206bd6b123f7822561b867c Mon Sep 17 00:00:00 2001
-From: Ashwin H <Ashwin.H@amd.com>
-Date: Mon, 26 Jun 2023 15:12:38 +0000
-Subject: [PATCH 08/14] spi-dw: Support Pensando Elba custom chip-select
+From b390a402c389aa636ef29ba4117d83d56a6f0850 Mon Sep 17 00:00:00 2001
+From: Brad Larson <blarson@amd.com>
+Date: Mon, 10 Apr 2023 11:45:21 -0700
+Subject: [PATCH 04/29] spi: dw: Add support for AMD Pensando Elba SoC
 
-Use a custom chip-select handler for Elba to ensure that a valid
-Designware intrinsic chip-select is still activated even when using GPIOs.
+The AMD Pensando Elba SoC includes a DW apb_ssi v4 controller
+with device specific chip-select control.  The Elba SoC
+provides four chip-selects where the native DW IP supports
+two chip-selects.  The Elba DW_SPI instance has two native
+CS signals that are always overridden.
 
-Specify "pensando,elba-spi" in the device-tree to pick up this change.
+Signed-off-by: Brad Larson <blarson@amd.com>
+Signed-off-by: Ashwin H <Ashwin.H@amd.com>
 ---
  drivers/spi/spi-dw-mmio.c | 90 ++++++++++++++++++++++++++++++++++++++-
  1 file changed, 89 insertions(+), 1 deletion(-)

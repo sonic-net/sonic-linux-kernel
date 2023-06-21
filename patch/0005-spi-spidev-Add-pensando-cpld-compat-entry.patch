@@ -1,11 +1,13 @@
-From a2e05a70ab1a5dfa1118814f061b9154fd62282a Mon Sep 17 00:00:00 2001
-From: Ashwin H <Ashwin.H@amd.com>
-Date: Mon, 26 Jun 2023 15:15:32 +0000
-Subject: [PATCH 09/14] drivers/spi/spidev.c: Add pensando,cpld device tree
- compat entry
+From b90a168df828ee5ece198602ae4d200d9bbb1951 Mon Sep 17 00:00:00 2001
+From: David Clear <dac2@pensando.io>
+Date: Fri, 28 Jan 2022 19:43:52 -0800
+Subject: [PATCH 05/29] spi: spidev: Add pensando,cpld compat entry
 
-The Pensando ASICs uses a spidev interface to access the board CPLD.
-This commit adds support for the entry in spidev.c
+The Pensando ASICs uses a spidev interface to access the board
+CPLD. This commit adds support for the entry in spidev.c
+
+Signed-off-by: David Clear <dac2@pensando.io>
+Signed-off-by: Ashwin H <Ashwin.H@amd.com>
 ---
  drivers/spi/spidev.c | 1 +
  1 file changed, 1 insertion(+)

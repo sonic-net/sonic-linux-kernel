@@ -1,21 +1,23 @@
-From f34df3664aff35549ed80b472b79a56d6844b738 Mon Sep 17 00:00:00 2001
+From a8ed7b3fa4ed7d7b863591cc553b403d12ef99f7 Mon Sep 17 00:00:00 2001
 From: Ashwin H <Ashwin.H@amd.com>
-Date: Mon, 26 Jun 2023 14:55:47 +0000
-Subject: [PATCH 04/14] UIO drivers for Elba
+Date: Wed, 5 Jul 2023 09:05:52 +0000
+Subject: [PATCH 11/29] uio: pensando: UIO drivers for Elba
 
-Support userspace interrupt drivers for Elba. PCIE events.
+Support userspace interrupt drivers for Elba pcie events.
+
+Signed-off-by: David Clear <dac2@pensando.io>
+Signed-off-by: Ashwin H <Ashwin.H@amd.com>
 ---
- drivers/uio/Kconfig       |  44 +++
- drivers/uio/Makefile      |   5 +
- drivers/uio/uio_linkmac.c |  30 ++
- drivers/uio/uio_pciemac.c |  30 ++
- drivers/uio/uio_pengic.c  | 664 ++++++++++++++++++++++++++++++++++++++
- drivers/uio/uio_pengic.h  |  18 ++
- drivers/uio/uio_penmsi.c  | 568 ++++++++++++++++++++++++++++++++
- drivers/uio/uio_penmsi.h  |  17 +
- drivers/uio/uio_penmsi1.c |  32 ++
- 9 files changed, 1408 insertions(+)
- create mode 100644 drivers/uio/uio_linkmac.c
+ arch/arm64/boot/dts/pensando/elba.dtsi |  30 ++
+ drivers/uio/Kconfig                    |  33 ++
+ drivers/uio/Makefile                   |   4 +
+ drivers/uio/uio_pciemac.c              |  30 ++
+ drivers/uio/uio_pengic.c               | 664 +++++++++++++++++++++++++
+ drivers/uio/uio_pengic.h               |  18 +
+ drivers/uio/uio_penmsi.c               | 568 +++++++++++++++++++++
+ drivers/uio/uio_penmsi.h               |  17 +
+ drivers/uio/uio_penmsi1.c              |  32 ++
+ 9 files changed, 1396 insertions(+)
  create mode 100644 drivers/uio/uio_pciemac.c
  create mode 100644 drivers/uio/uio_pengic.c
  create mode 100644 drivers/uio/uio_pengic.h
@@ -23,11 +25,66 @@ Support userspace interrupt drivers for Elba. PCIE events.
  create mode 100644 drivers/uio/uio_penmsi.h
  create mode 100644 drivers/uio/uio_penmsi1.c
 
+diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
+index 400eac0c0..aee157deb 100644
+--- a/arch/arm64/boot/dts/pensando/elba.dtsi
++++ b/arch/arm64/boot/dts/pensando/elba.dtsi
+@@ -49,6 +49,12 @@
+ 				IRQ_TYPE_LEVEL_LOW)>;
+ 	};
+ 
++	/* Common UIO device for MSI drivers */
++	uio_penmsi {
++		compatible = "pensando,uio_penmsi";
++		name = "uio_penmsi";
++	};
++
+ 	capmem {
+ 		compatible = "pensando,capmem";
+ 	};
+@@ -166,6 +172,14 @@
+ 			reg-io-width = <4>;
+ 		};
+ 
++		/* MSI UIO device 1 */
++		uio_penmsi1@520000 {
++			compatible = "pensando,uio_penmsi1";
++			reg = <0x0 0x520000 0x0 0x10000>;
++			msi-parent = <&its 0xa>;
++			num-interrupts = <16>;  /* # MSI interrupts to get */
++		};
++
+ 		gic: interrupt-controller@800000 {
+ 			compatible = "arm,gic-v3";
+ 			#interrupt-cells = <3>;
+@@ -203,6 +217,22 @@
+ 			interrupt-names = "pxc0_intr";
+ 		};
+ 
++		/* UIO device using interrupt line PCIEMAC */
++		pciemac@20102200 {
++			#address-cells = <2>;
++			#size-cells = <2>;
++			#interrupt-cells = <3>;
++
++			compatible = "pensando,uio_pciemac";
++			register-type = "csr-interrupt";
++			interrupt-parent = <&pxc0_intr>;
++			interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>;
++			reg = <0x0 0x20102200 0x0 0x10>; /* pxc0_intr */
++
++			enable_csr_paddr = <0x0 0x20102200 0x0 0x10>;
++			enable_mask = <(1 << 0)>;
++		};
++
+ 		emmc: mmc@30440000 {
+ 			compatible = "pensando,elba-emmc", "cdns,sd4hc";
+ 			clocks = <&emmc_clk>;
 diff --git a/drivers/uio/Kconfig b/drivers/uio/Kconfig
-index 202ee81cf..0d30dee50 100644
+index 202ee81cf..4c832a6fd 100644
 --- a/drivers/uio/Kconfig
 +++ b/drivers/uio/Kconfig
-@@ -125,6 +125,50 @@ config UIO_FSL_ELBC_GPCM_NETX5152
+@@ -125,6 +125,39 @@ config UIO_FSL_ELBC_GPCM_NETX5152
  	  Information about this hardware can be found at:
  	  http://www.hilscher.com/netx
  
@@ -35,7 +92,7 @@ index 202ee81cf..0d30dee50 100644
 +	tristate "Include PCI MAC status driver"
 +	default "y"
 +	select UIO_PENGIC
-+	depends on ARCH_PENSANDO_CAPRI_SOC || ARCH_PENSANDO_ELBA_SOC || ARCH_PENSANDO_GIGLIO_SOC
++	depends on ARCH_PENSANDO_ELBA_SOC
 +	help
 +	  Driver that allows handling of ring2 on Pensando Capri systems. It
 +	  is useful for having a userspace driver that can handle GIC 17
@@ -43,22 +100,11 @@ index 202ee81cf..0d30dee50 100644
 +
 +	  If you compile this as a module, it will be called uio_pciemac.
 +
-+config UIO_LINKMAC
-+	tristate "Include Pensando Capri uplink MAC status driver"
-+	default "y"
-+	select UIO_PENGIC
-+	depends on ARCH_PENSANDO_CAPRI_SOC || ARCH_PENSANDO_ELBA_SOC || ARCH_PENSANDO_GIGLIO_SOC
-+	help
-+	  Driver that allows monitoring of the Ethernet uplink MAC hardware so
-+	  that userspace can decode ASIC status changes.
-+
-+	  If you compile this as a module, it will be called uio_linkmac0.
-+
 +config UIO_PENMSI1
 +	tristate "Driver 1 for MSI"
 +	default "y"
 +	select UIO_PENMSI
-+	depends on ARCH_PENSANDO_CAPRI_SOC || ARCH_PENSANDO_ELBA_SOC || ARCH_PENSANDO_GIGLIO_SOC
++	depends on ARCH_PENSANDO_ELBA_SOC
 +	help
 +	  Driver that allows obtaining MSI data and handling MSI interrupts
 +	  in userspace.
@@ -79,55 +125,18 @@ index 202ee81cf..0d30dee50 100644
  	tristate "Texas Instruments PRUSS driver"
  	select GENERIC_ALLOCATOR
 diff --git a/drivers/uio/Makefile b/drivers/uio/Makefile
-index c285dd2a4..ae8ff402c 100644
+index c285dd2a4..a7f0f89cd 100644
 --- a/drivers/uio/Makefile
 +++ b/drivers/uio/Makefile
-@@ -10,4 +10,9 @@ obj-$(CONFIG_UIO_NETX)	+= uio_netx.o
+@@ -10,4 +10,8 @@ obj-$(CONFIG_UIO_NETX)	+= uio_netx.o
  obj-$(CONFIG_UIO_PRUSS)         += uio_pruss.o
  obj-$(CONFIG_UIO_MF624)         += uio_mf624.o
  obj-$(CONFIG_UIO_FSL_ELBC_GPCM)	+= uio_fsl_elbc_gpcm.o
 +obj-$(CONFIG_UIO_PENGIC)	+= uio_pengic.o
 +obj-$(CONFIG_UIO_PCIEMAC)	+= uio_pciemac.o
-+obj-$(CONFIG_UIO_LINKMAC)	+= uio_linkmac.o
 +obj-$(CONFIG_UIO_PENMSI)	+= uio_penmsi.o
 +obj-$(CONFIG_UIO_PENMSI1)	+= uio_penmsi1.o
  obj-$(CONFIG_UIO_HV_GENERIC)	+= uio_hv_generic.o
-diff --git a/drivers/uio/uio_linkmac.c b/drivers/uio/uio_linkmac.c
-new file mode 100644
-index 000000000..440daa882
---- /dev/null
-+++ b/drivers/uio/uio_linkmac.c
-@@ -0,0 +1,30 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+#include <linux/module.h>
-+
-+#include "uio_pengic.h"
-+
-+#define DRIVER_NAME_LINKMAC	"linkmac"
-+
-+#ifdef CONFIG_OF
-+static const struct of_device_id pengic_match[] = {
-+	{ .compatible = "pensando,uio_linkmac" },
-+	{ /* Mark the end of the list */ },
-+};
-+#endif
-+
-+static struct platform_driver uio_linkmac = {
-+	.probe = pengic_probe_enable,
-+	.remove = pengic_remove,
-+	.driver = {
-+		.name = DRIVER_NAME_LINKMAC,
-+		.pm = &pengic_pm_ops,
-+		.of_match_table = of_match_ptr(pengic_match),
-+	}
-+};
-+
-+module_platform_driver(uio_linkmac);
-+
-+MODULE_LICENSE("GPL v2");
-+MODULE_DESCRIPTION("Support Link MAC status reporting");
-+MODULE_AUTHOR("David VomLehn");
 diff --git a/drivers/uio/uio_pciemac.c b/drivers/uio/uio_pciemac.c
 new file mode 100644
 index 000000000..b7d89c64a

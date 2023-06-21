@@ -1,8 +1,7 @@
-From 8acadcbc8115fed8882ba29d274bd5d44a9e4659 Mon Sep 17 00:00:00 2001
+From 07d6fc782dd86ad386e9cc5eb13cbeec20a46db9 Mon Sep 17 00:00:00 2001
 From: Ashwin H <Ashwin.H@amd.com>
 Date: Tue, 27 Jun 2023 11:13:05 +0000
-Subject: [PATCH 06/14] i2c-designware: Add I2C code that attempts to recover
- from a stuck SDA line.
+Subject: [PATCH 02/29] i2c: designware: Recover from a stuck SDA line
 
 This patch supports the Designware I2C stuck bus recovery feature.
 The procedure for stuck SDA recovery involves a polling loop in interrupt
@@ -10,6 +9,9 @@ mode. This should last just long enough for transmission of 9 bits,
 after which the hardware should indicate that the recovery attempt is
 complete. There have been examples where this fails, so there is also
 a hard maximum on time in the recovery loop.
+
+Signed-off-by: David Clear <dac2@pensando.io>
+Signed-off-by: Ashwin H <Ashwin.H@amd.com>
 ---
  drivers/i2c/busses/i2c-designware-common.c  |  2 +
  drivers/i2c/busses/i2c-designware-core.h    | 10 +++

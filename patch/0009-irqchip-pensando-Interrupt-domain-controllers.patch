@@ -1,12 +1,15 @@
-From de6c7152409e9b521e2e6db8dcdb297289d25c8c Mon Sep 17 00:00:00 2001
+From 3a139889f8b1eb537d5e05d49543e7d4b9d51353 Mon Sep 17 00:00:00 2001
 From: Ashwin H <Ashwin.H@amd.com>
-Date: Mon, 26 Jun 2023 14:53:26 +0000
-Subject: [PATCH 03/14] Interrupt domain controllers for Elba ASIC
+Date: Wed, 5 Jul 2023 08:59:53 +0000
+Subject: [PATCH 09/29] irqchip: pensando: Interrupt domain controllers
 
 This supports using ASIC registers as IRQ chips, one per domain. The
 result is a many level interrupt controller. There are actually three
 different register blocks, each of which has its own configuration of
 enable and disable mechanisms.
+
+Signed-off-by: David Clear <dac2@pensando.io>
+Signed-off-by: Ashwin H <Ashwin.H@amd.com>
 ---
  drivers/irqchip/Kconfig              |  11 +
  drivers/irqchip/Makefile             |   1 +
@@ -17,7 +20,7 @@ enable and disable mechanisms.
  create mode 100644 include/linux/irqchip/irq-pensando.h
 
 diff --git a/drivers/irqchip/Kconfig b/drivers/irqchip/Kconfig
-index 3c24bf452..216503124 100644
+index 3c24bf452..21a9148f6 100644
 --- a/drivers/irqchip/Kconfig
 +++ b/drivers/irqchip/Kconfig
 @@ -190,6 +190,17 @@ config CLPS711X_IRQCHIP
@@ -26,7 +29,7 @@ index 3c24bf452..216503124 100644
  
 +config IRQ_PENSANDO
 +	bool "Support for Pensando SOC IRQ chip structure"
-+	depends on ARCH_PENSANDO_CAPRI_SOC || ARCH_PENSANDO_ELBA_SOC || ARCH_PENSANDO_GIGLIO_SOC
++	depends on ARCH_PENSANDO_ELBA_SOC
 +	default "y"
 +	select IRQ_DOMAIN
 +	select IRQ_DOMAIN_HIERARCHY
@@ -39,14 +42,14 @@ index 3c24bf452..216503124 100644
  	bool
  
 diff --git a/drivers/irqchip/Makefile b/drivers/irqchip/Makefile
-index 94c288588..4db853d5e 100644
+index 94c288588..6c280963a 100644
 --- a/drivers/irqchip/Makefile
 +++ b/drivers/irqchip/Makefile
 @@ -114,3 +114,4 @@ obj-$(CONFIG_LOONGSON_PCH_PIC)		+= irq-loongson-pch-pic.o
  obj-$(CONFIG_LOONGSON_PCH_MSI)		+= irq-loongson-pch-msi.o
  obj-$(CONFIG_MST_IRQ)			+= irq-mst-intc.o
  obj-$(CONFIG_SL28CPLD_INTC)		+= irq-sl28cpld.o
-+obj-$(CONFIG_IRQ_PENSANDO)		+= irq-pensando.o
++obj-$(CONFIG_IRQ_PENSANDO)      += irq-pensando.o
 diff --git a/drivers/irqchip/irq-pensando.c b/drivers/irqchip/irq-pensando.c
 new file mode 100644
 index 000000000..c7fcba03b
