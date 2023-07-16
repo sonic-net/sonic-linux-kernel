@@ -111,15 +111,21 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# re-generate debian/rules.gen, requires kernel-wedge
 	debian/bin/gencontrol.py
 
-	# generate linux build file for amd64_none_amd64
-	fakeroot make -f debian/rules.gen DEB_HOST_ARCH=armhf setup_armhf_none_armmp
-	fakeroot make -f debian/rules.gen DEB_HOST_ARCH=arm64 setup_arm64_none_arm64
-	fakeroot make -f debian/rules.gen DEB_HOST_ARCH=amd64 setup_amd64_none_amd64
+	# generate linux build file for $(CONFIGURED_ARCH)
+ifeq ($(CONFIGURED_ARCH), armhf)
+	DEB_RULES_REQUIRES_ROOT=no make -f debian/rules.gen DEB_HOST_ARCH=armhf setup_armhf_none_armmp
+	git add debian/build/build_armhf_none_armmp/.config -f
+else ifeq ($(CONFIGURED_ARCH), arm64)
+	DEB_RULES_REQUIRES_ROOT=no make -f debian/rules.gen DEB_HOST_ARCH=arm64 setup_arm64_none_arm64
+	git add debian/build/build_arm64_none_arm64/.config -f
+else ifeq ($(CONFIGURED_ARCH), amd64)
+	DEB_RULES_REQUIRES_ROOT=no make -f debian/rules.gen DEB_HOST_ARCH=amd64 setup_amd64_none_amd64
+	git add debian/build/build_amd64_none_amd64/.config -f
+else
+	$(error Unsupported arch: $(CONFIGURED_ARCH))
+endif
 
 	# Applying patches and configuration changes
-	git add debian/build/build_armhf_none_armmp/.config -f
-	git add debian/build/build_arm64_none_arm64/.config -f
-	git add debian/build/build_amd64_none_amd64/.config -f
 	git add debian/config.defines.dump -f
 	git add debian/control -f
 	git add debian/rules.gen -f
@@ -138,11 +144,11 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	fi
 
 	# Building a custom kernel from Debian kernel source
-	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) DEB_BUILD_PROFILES=nodoc fakeroot make -f debian/rules -j $(shell nproc) binary-indep
+	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) DEB_BUILD_PROFILES=nodoc DEB_RULES_REQUIRES_ROOT=no make -f debian/rules -j $(shell nproc) binary-indep
 ifeq ($(CONFIGURED_ARCH), armhf)
-	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none_armmp
+	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) DEB_RULES_REQUIRES_ROOT=no make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none_armmp
 else
-	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none_$(CONFIGURED_ARCH)
+	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) DEB_RULES_REQUIRES_ROOT=no make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none_$(CONFIGURED_ARCH)
 endif
 	popd
 
