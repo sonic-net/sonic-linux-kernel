@@ -1,7 +1,7 @@
-From f7e1245ebdab4cc3149f2435b2ca61e6bd4841d1 Mon Sep 17 00:00:00 2001
+From 98ce351fa6a36692005d5e1f9070941ea22a6650 Mon Sep 17 00:00:00 2001
 From: Ashwin H <Ashwin.H@amd.com>
 Date: Wed, 5 Jul 2023 10:29:59 +0000
-Subject: [PATCH 29/29] arm64: traps: Handle SError interrupt
+Subject: [PATCH 29/30] arm64: traps: Handle SError interrupt
 
 On Elba, an access to an invalid bus address results in a Decode SError
 that will panic the kernel. Bugs in the HAL that cause these are very

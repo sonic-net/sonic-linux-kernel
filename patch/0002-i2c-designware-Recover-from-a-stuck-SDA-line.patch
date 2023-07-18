@@ -1,7 +1,7 @@
 From 07d6fc782dd86ad386e9cc5eb13cbeec20a46db9 Mon Sep 17 00:00:00 2001
 From: Ashwin H <Ashwin.H@amd.com>
 Date: Tue, 27 Jun 2023 11:13:05 +0000
-Subject: [PATCH 02/29] i2c: designware: Recover from a stuck SDA line
+Subject: [PATCH 02/30] i2c: designware: Recover from a stuck SDA line
 
 This patch supports the Designware I2C stuck bus recovery feature.
 The procedure for stuck SDA recovery involves a polling loop in interrupt

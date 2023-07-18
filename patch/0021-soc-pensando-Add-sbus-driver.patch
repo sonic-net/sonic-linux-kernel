@@ -1,7 +1,7 @@
-From 21330e62caf4585d24358435f6c4e9280dfbdebe Mon Sep 17 00:00:00 2001
+From 3e790869fc52fb6a87a5eeddb8ce2698af2faa85 Mon Sep 17 00:00:00 2001
 From: Hiren Mehta <hiren@pensando.io>
 Date: Wed, 11 Jan 2023 17:15:54 -0800
-Subject: [PATCH 21/29] soc: pensando: Add sbus driver
+Subject: [PATCH 21/30] soc: pensando: Add sbus driver
 
 sbus driver provides read/write capability to the devices
 on the sbus rings using ioctl interface to /dev/sbus<n> device.

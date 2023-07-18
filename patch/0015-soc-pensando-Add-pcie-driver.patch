@@ -1,7 +1,7 @@
-From 6d834ad394b4e94344ac01389e5d828fb1258990 Mon Sep 17 00:00:00 2001
+From e1de79e7a8c066816567a22d46641d90ce9aa78c Mon Sep 17 00:00:00 2001
 From: David Clear <dac2@pensando.io>
 Date: Mon, 14 Feb 2022 10:31:52 -0800
-Subject: [PATCH 15/29] soc: pensando: Add pcie driver
+Subject: [PATCH 15/30] soc: pensando: Add pcie driver
 
 pcie driver provides these services on elba
 1) panic blink handler runs after panic, restart when host restarts

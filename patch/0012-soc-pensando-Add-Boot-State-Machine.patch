@@ -1,7 +1,7 @@
-From b698ed25ab7da8492bb6b3ab11ac005144207d33 Mon Sep 17 00:00:00 2001
+From 77d1874b0f2775327fefbd9f3afc1f9b9e7a94fc Mon Sep 17 00:00:00 2001
 From: David Clear <dac2@pensando.io>
 Date: Mon, 14 Feb 2022 10:24:27 -0800
-Subject: [PATCH 12/29] soc: pensando: Add Boot State Machine
+Subject: [PATCH 12/30] soc: pensando: Add Boot State Machine
 
 The Pensando Boot State Machine (BSM) interacts with
 the boot firmware to provide a level

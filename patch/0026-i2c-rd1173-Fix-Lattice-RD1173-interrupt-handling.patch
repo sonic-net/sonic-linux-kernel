@@ -1,7 +1,7 @@
-From df5f97092465f1cb5e57b9a238ae39acc9b69d50 Mon Sep 17 00:00:00 2001
+From ea0108022b6cad91278f6b22de8cd9c18419ff8f Mon Sep 17 00:00:00 2001
 From: Hiren Mehta <hiren@pensando.io>
 Date: Mon, 27 Feb 2023 22:09:43 -0800
-Subject: [PATCH 26/29] i2c: rd1173: Fix Lattice RD1173 interrupt handling
+Subject: [PATCH 26/30] i2c: rd1173: Fix Lattice RD1173 interrupt handling
 
 The rd1173 has two i2c masters whose interrupts are tied together.
 Fill out in the master_xfer which i2c adapter the transfer is for

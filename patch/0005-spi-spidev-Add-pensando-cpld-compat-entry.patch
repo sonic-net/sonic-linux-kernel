@@ -1,7 +1,7 @@
-From b90a168df828ee5ece198602ae4d200d9bbb1951 Mon Sep 17 00:00:00 2001
+From 35d35d80abb4c8e75420eb365a9c7291091228e9 Mon Sep 17 00:00:00 2001
 From: David Clear <dac2@pensando.io>
 Date: Fri, 28 Jan 2022 19:43:52 -0800
-Subject: [PATCH 05/29] spi: spidev: Add pensando,cpld compat entry
+Subject: [PATCH 05/30] spi: spidev: Add pensando,cpld compat entry
 
 The Pensando ASICs uses a spidev interface to access the board
 CPLD. This commit adds support for the entry in spidev.c

@@ -1,7 +1,7 @@
-From d3e38673aa99c6458755999c610dd8eee459d73e Mon Sep 17 00:00:00 2001
+From b4e8c9e1d57a8980f94c02dceeb4695e69693822 Mon Sep 17 00:00:00 2001
 From: David Clear <dac2@pensando.io>
 Date: Mon, 14 Feb 2022 10:26:53 -0800
-Subject: [PATCH 13/29] soc: pensando: Add crash dump driver.
+Subject: [PATCH 13/30] soc: pensando: Add crash dump driver.
 
 The crash dump driver writes the kernel message log to
 memory-mapped qspi flash.

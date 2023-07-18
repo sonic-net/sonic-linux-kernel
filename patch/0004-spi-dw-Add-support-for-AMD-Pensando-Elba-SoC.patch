@@ -1,7 +1,7 @@
-From b390a402c389aa636ef29ba4117d83d56a6f0850 Mon Sep 17 00:00:00 2001
+From 811f25a495fc0bba53d45164a4fb1e69220232bd Mon Sep 17 00:00:00 2001
 From: Brad Larson <blarson@amd.com>
 Date: Mon, 10 Apr 2023 11:45:21 -0700
-Subject: [PATCH 04/29] spi: dw: Add support for AMD Pensando Elba SoC
+Subject: [PATCH 04/30] spi: dw: Add support for AMD Pensando Elba SoC
 
 The AMD Pensando Elba SoC includes a DW apb_ssi v4 controller
 with device specific chip-select control.  The Elba SoC

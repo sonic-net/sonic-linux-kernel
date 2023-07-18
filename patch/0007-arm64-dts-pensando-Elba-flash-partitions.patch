@@ -1,7 +1,7 @@
-From 2dda70643c8d3383b2ad1dc9b296f264a7bdb35c Mon Sep 17 00:00:00 2001
+From 158d5f2e5d2efd3e6a243d57f0898ea111329f56 Mon Sep 17 00:00:00 2001
 From: David Clear <dac2@pensando.io>
 Date: Fri, 28 Jan 2022 23:00:53 -0800
-Subject: [PATCH 07/29] arm64: dts: pensando: Elba flash partitions
+Subject: [PATCH 07/30] arm64: dts: pensando: Elba flash partitions
 
 Pensando Elba-based PCIE cards have a common flash layout.
 This patch adds the partitions to the dts files.

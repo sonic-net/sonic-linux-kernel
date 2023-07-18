@@ -1,7 +1,7 @@
 From 7096c2c942eb2294e42b279f6fd60d780fb13db5 Mon Sep 17 00:00:00 2001
 From: Ashwin H <Ashwin.H@amd.com>
 Date: Tue, 27 Jun 2023 06:32:53 +0000
-Subject: [PATCH 01/29] hwmon: (ltc2978) Add support for LTC3888
+Subject: [PATCH 01/30] hwmon: (ltc2978) Add support for LTC3888
 
 Add support for LTC3888 and LTC3888-1 driver
 Add LTC3888 IOUT support.

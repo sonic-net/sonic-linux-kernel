@@ -1,7 +1,7 @@
-From 3a139889f8b1eb537d5e05d49543e7d4b9d51353 Mon Sep 17 00:00:00 2001
+From b0bd501e59e0ed8dd90fa4902caa0459d3f4b841 Mon Sep 17 00:00:00 2001
 From: Ashwin H <Ashwin.H@amd.com>
 Date: Wed, 5 Jul 2023 08:59:53 +0000
-Subject: [PATCH 09/29] irqchip: pensando: Interrupt domain controllers
+Subject: [PATCH 09/30] irqchip: pensando: Interrupt domain controllers
 
 This supports using ASIC registers as IRQ chips, one per domain. The
 result is a many level interrupt controller. There are actually three

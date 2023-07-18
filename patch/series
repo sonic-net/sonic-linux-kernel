@@ -243,6 +243,7 @@ armhf_secondary_boot_online.patch
 0027-hwmon-pmbus-tps53679-Add-support-for-TI-TPS53659.patch
 0028-EDAC-elba-Add-Elba-EDAC-support.patch
 0029-arm64-traps-Handle-SError-interrupt.patch
+0030-quirks-for-the-Pensando-qspi-controller.patch
 
 #
 #

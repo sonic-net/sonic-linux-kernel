@@ -1,7 +1,7 @@
-From 7a38cedafa85a88cdab6446fdb8a9a40d527f1c8 Mon Sep 17 00:00:00 2001
+From 4e0d87e9d7fddee858747a75432111bae54c0669 Mon Sep 17 00:00:00 2001
 From: David Clear <dac2@pensando.io>
 Date: Mon, 14 Feb 2022 10:28:43 -0800
-Subject: [PATCH 14/29] soc: pensando: Add Reset Cause driver
+Subject: [PATCH 14/30] soc: pensando: Add Reset Cause driver
 
 The reset cause driver exposes sysfs nodes under
 /sys/pensando/firmware/rstcause that report the reason for the last

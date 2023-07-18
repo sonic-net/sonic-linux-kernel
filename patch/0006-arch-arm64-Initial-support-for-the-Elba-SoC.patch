@@ -1,7 +1,7 @@
-From 117acbe5184dc50ae2f207abfcfdad33d3cdd0d4 Mon Sep 17 00:00:00 2001
+From cef4a1e203318d65c72b9317ebaa7958e44501cf Mon Sep 17 00:00:00 2001
 From: David Clear <dac2@pensando.io>
 Date: Tue, 15 Feb 2022 20:33:03 -0800
-Subject: [PATCH 06/29] arch/arm64: Initial support for the Elba SoC
+Subject: [PATCH 06/30] arch/arm64: Initial support for the Elba SoC
 
 This patch adds initial support for Elba that allows a kernel to boot,
 along with an initial device-tree that is compatible

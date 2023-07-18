@@ -1,7 +1,7 @@
-From 19479299be6080c31d10568890bcab53d75218d7 Mon Sep 17 00:00:00 2001
+From 3bf7c43738cc14da4e0d8328cf3dbcd066888116 Mon Sep 17 00:00:00 2001
 From: Ashwin H <Ashwin.H@amd.com>
 Date: Wed, 5 Jul 2023 09:15:24 +0000
-Subject: [PATCH 20/29] reset: elba: Add mmc hw reset driver
+Subject: [PATCH 20/30] reset: elba: Add mmc hw reset driver
 
 Add multi-function driver with sub-device reset driver to
 execute emmc hardware reset.

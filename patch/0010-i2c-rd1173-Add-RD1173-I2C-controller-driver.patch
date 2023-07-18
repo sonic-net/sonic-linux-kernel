@@ -1,7 +1,7 @@
-From 3dc0aa1486845bf3317e41a84472909a02ff94da Mon Sep 17 00:00:00 2001
+From 3434e9cee38d34e2653a0469e1187748bbb2ae03 Mon Sep 17 00:00:00 2001
 From: David Clear <dac2@pensando.io>
 Date: Fri, 28 Jan 2022 19:13:06 -0800
-Subject: [PATCH 10/29] i2c: rd1173: Add RD1173 I2C controller driver
+Subject: [PATCH 10/30] i2c: rd1173: Add RD1173 I2C controller driver
 
 The Lattice RD1173 is a pair of I2C controllers
 accesed via a SPI interface.

@@ -1,7 +1,7 @@
-From b002d14a88e137650a365326d46296c5e8ca4bad Mon Sep 17 00:00:00 2001
+From 669e318c2bf6660b731a205ed4d29f941085ce76 Mon Sep 17 00:00:00 2001
 From: Hiren Mehta <hiren@pensando.io>
 Date: Thu, 16 Feb 2023 22:15:22 -0800
-Subject: [PATCH 25/29] arm64: dts: pensando: psci support
+Subject: [PATCH 25/30] arm64: dts: pensando: psci support
 
 Change CPU enable-method from 'spin-table' to 'psci'.
 Update flash obfl partition.

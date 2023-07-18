@@ -1,10 +1,15 @@
-From ed42959f4c1eb561b10a79872799a1699537ee7c Mon Sep 17 00:00:00 2001
+From 50faae33dc34255e317c606628da6904fdf5567d Mon Sep 17 00:00:00 2001
 From: Hiren Mehta <hiren@pensando.io>
 Date: Tue, 17 Jan 2023 17:25:34 -0800
-Subject: [PATCH 18/29] soc: pensando: Add kpcimgr driver
+Subject: [PATCH 18/30] soc: pensando: Add kpcimgr driver
 
 kpcimgr driver enables the relocation of the module code to handle
 Elba indirect PCIe transactions.
+The purpose is to allow code to persist and run during a kexec reboot.
+The loaded code runs in physical mode during arm64_relocate_new_kernel
+and also during the early boot phase before traditional driver code
+can run. This is all to provide extremely low latency response to
+indirect transactions, which must be serviced within 200ms.
 
 Signed-off-by: Hiren Mehta <hiren@pensando.io>
 Signed-off-by: Ashwin H <Ashwin.H@amd.com>

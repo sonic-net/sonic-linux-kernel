@@ -1,10 +1,13 @@
-From 114519cad4149ded87d2eb664823a9b65f9a1666 Mon Sep 17 00:00:00 2001
+From b2e225166585c511bc92eddb6261cfe9bb91aa04 Mon Sep 17 00:00:00 2001
 From: Hiren Mehta <hiren@pensando.io>
 Date: Fri, 13 Jan 2023 16:45:09 -0800
-Subject: [PATCH 22/29] soc:pensando: Add boot_count to sysfs
+Subject: [PATCH 22/30] soc:pensando: Add boot_count to sysfs
 
-Augment the kdump timestamp with
-the boot_count number. Also, adjust the kdump timestamp.
+At each boot userspace stores boot count in non volatile storage.
+The boot count is incremented at each reboot and the current boot count
+is set to sysfs entry /sys/kernel/reboot/boot_count.
+Augment the kdump timestamp with the boot_count number.
+Also, adjust the kdump timestamp.
 
 Signed-off-by: Hiren Mehta <hiren@pensando.io>
 Signed-off-by: Ashwin H <Ashwin.H@amd.com>

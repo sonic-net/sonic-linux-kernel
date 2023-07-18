@@ -1,7 +1,7 @@
-From ac9b98ced5bf6460a00526674032b8edb75dce58 Mon Sep 17 00:00:00 2001
+From b4958689ffaafbe3302d16137bc05e3ac15860df Mon Sep 17 00:00:00 2001
 From: David Clear <dac2@pensando.io>
 Date: Mon, 14 Feb 2022 10:16:54 -0800
-Subject: [PATCH 08/29] soc: pensando: Add capmem driver
+Subject: [PATCH 08/30] soc: pensando: Add capmem driver
 
 The capmem driver provides an controlled interface for applications
 to map memory (in preference to /dev/mem).

@@ -1,7 +1,7 @@
-From b99bf6dab8a05b8c304150b710521c6e16a63531 Mon Sep 17 00:00:00 2001
+From 0db82ef00e84b3d16800d65d9f9170be9b8d15a1 Mon Sep 17 00:00:00 2001
 From: Ashwin H <Ashwin.H@amd.com>
 Date: Wed, 5 Jul 2023 07:39:56 +0000
-Subject: [PATCH 28/29] EDAC/elba: Add Elba EDAC support
+Subject: [PATCH 28/30] EDAC/elba: Add Elba EDAC support
 
 The edac driver reports correctable and uncorrectable errors from the
 DDR controller.  The driver relies on device-tree nodes installed

@@ -1,7 +1,7 @@
-From 735cdb8c653b63213aae3c6d9c58073376b8f849 Mon Sep 17 00:00:00 2001
+From 3405bf6f7413dfafa5d25f0b8f92f93160f382b4 Mon Sep 17 00:00:00 2001
 From: Ashwin H <Ashwin.H@amd.com>
 Date: Wed, 5 Jul 2023 07:04:49 +0000
-Subject: [PATCH 27/29] hwmon: (pmbus/tps53679) Add support for TI TPS53659
+Subject: [PATCH 27/30] hwmon: (pmbus/tps53679) Add support for TI TPS53659
 
 Add support for TI TPS53659 controller to the tps53679 pmbus driver
 

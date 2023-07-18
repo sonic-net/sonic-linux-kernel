@@ -1,7 +1,7 @@
-From 74faecb245fce1ff7f5dad3bfa6eeec3a75d204c Mon Sep 17 00:00:00 2001
+From 7b0348208cd8d3e0dd62dc87032ed9a54a8236f5 Mon Sep 17 00:00:00 2001
 From: Ashwin H <Ashwin.H@amd.com>
 Date: Tue, 4 Jul 2023 16:41:11 +0000
-Subject: [PATCH 19/29] mmc: sdhci-cadence: Support mmc hardware reset
+Subject: [PATCH 19/30] mmc: sdhci-cadence: Support mmc hardware reset
 
 [Upstream commit aad53d4]
 

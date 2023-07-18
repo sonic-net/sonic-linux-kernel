@@ -1,7 +1,7 @@
-From ca1ffb9bea1e9bf844ea7e035861b326bc2a3db6 Mon Sep 17 00:00:00 2001
+From ad7fdaf1efa32891a05422eda50c3210050f7ac4 Mon Sep 17 00:00:00 2001
 From: Ashwin H <Ashwin.H@amd.com>
 Date: Wed, 5 Jul 2023 09:20:03 +0000
-Subject: [PATCH 24/29] soc: pensando: Add penfw driver
+Subject: [PATCH 24/30] soc: pensando: Add penfw driver
 
 penfw driver provides sysfs and ioctl interface for the userspace
 to communicate to the bl31 secure monitor

@@ -1,7 +1,7 @@
-From c1a3c28d5cb02f460ea7ae29da49e7ff2853947f Mon Sep 17 00:00:00 2001
+From 750cafe56e2316b0975fcbf049bf36d7e3ed03ae Mon Sep 17 00:00:00 2001
 From: Hiren Mehta <hiren@pensando.io>
 Date: Tue, 17 Jan 2023 17:41:47 -0800
-Subject: [PATCH 17/29] soc: pensando: refactor pciep_regrd32 for kpcimgr
+Subject: [PATCH 17/30] soc: pensando: refactor pciep_regrd32 for kpcimgr
 
 Renamed pciep_regrd to pciep_regrd32 and modified to
 take physical address and size as arguments.

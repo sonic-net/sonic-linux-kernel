@@ -1,7 +1,7 @@
-From c8899fac0a23b775d9b2cad7db44f4c1205e5645 Mon Sep 17 00:00:00 2001
+From 216abceed3a68c3208058bc88ad66ff712dbf487 Mon Sep 17 00:00:00 2001
 From: Hiren Mehta <hiren@pensando.io>
 Date: Fri, 13 Jan 2023 16:47:59 -0800
-Subject: [PATCH 23/29] i2c: rd1173: Reset RD1173 master when i2c_busy set
+Subject: [PATCH 23/30] i2c: rd1173: Reset RD1173 master when i2c_busy set
 
 Reset RD1173 when busy condition is detected even after transfer
 completion timeout. Also, enable sysfs access to RD1173 master
