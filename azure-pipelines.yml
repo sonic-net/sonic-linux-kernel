@@ -32,4 +32,11 @@ stages:
       sonic_slave: sonic-slave-bullseye-armhf
       artifact_name: sonic-linux-kernel.armhf
 
+  - template: .azure-pipelines/build-template.yml
+    parameters:
+      arch: arm64
+      platform: pensando
+      pool: sonicbld-arm64
+      sonic_slave: sonic-slave-bullseye-arm64
+      artifact_name: sonic-linux-kernel.pensando.arm64
 
