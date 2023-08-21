@@ -41,14 +41,14 @@ index 4c97ad0bd..6cf17031a 100644
  obj-$(CONFIG_SENSORS_MAX34440)	+= max34440.o
 +obj-$(CONFIG_SENSORS_DNI_DPS460) += dni_dps460.o
  obj-$(CONFIG_SENSORS_MAX8688)	+= max8688.o
+ obj-$(CONFIG_SENSORS_MP2888)	+= mp2888.o
  obj-$(CONFIG_SENSORS_MP2975)	+= mp2975.o
- obj-$(CONFIG_SENSORS_PXE1610)	+= pxe1610.o
 diff --git a/drivers/hwmon/pmbus/dni_dps460.c b/drivers/hwmon/pmbus/dni_dps460.c
 new file mode 100644
 index 000000000..ddd4aae54
 --- /dev/null
 +++ b/drivers/hwmon/pmbus/dni_dps460.c
-@@ -0,0 +1,253 @@
+@@ -0,0 +1,252 @@
 +/*
 + * Hardware monitoring driver for Delta DPS460
 + *
@@ -271,7 +271,7 @@ index 000000000..ddd4aae54
 +	return ret;
 +}
 +
-+static int dni_dps460_remove(struct i2c_client *client)
++static void dni_dps460_remove(struct i2c_client *client)
 +{
 +	struct pmbus_data *data = i2c_get_clientdata(client);
 +
@@ -279,7 +279,6 @@ index 000000000..ddd4aae54
 +	if (data->info)
 +		kfree(data->info);
 +	pmbus_do_remove(client);
-+	return 0;
 +}
 +
 +static const struct i2c_device_id dni_dps460_id[] = {

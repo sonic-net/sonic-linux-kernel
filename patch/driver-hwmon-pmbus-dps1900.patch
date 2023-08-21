@@ -34,9 +34,9 @@ index 6cf17031a..925f4901b 100644
 --- a/drivers/hwmon/pmbus/Makefile
 +++ b/drivers/hwmon/pmbus/Makefile
 @@ -33,3 +33,4 @@ obj-$(CONFIG_SENSORS_UCD9000)	+= ucd9000.o
- obj-$(CONFIG_SENSORS_UCD9200)	+= ucd9200.o
- obj-$(CONFIG_SENSORS_XDPE122)	+= xdpe12284.o
+ obj-$(CONFIG_SENSORS_XDPE152)	+= xdpe152c4.o
  obj-$(CONFIG_SENSORS_ZL6100)	+= zl6100.o
+ obj-$(CONFIG_SENSORS_PIM4328)	+= pim4328.o
 +obj-$(CONFIG_SENSORS_DPS1900)	+= dps1900.o
 diff --git a/drivers/hwmon/pmbus/dps1900.c b/drivers/hwmon/pmbus/dps1900.c
 new file mode 100644

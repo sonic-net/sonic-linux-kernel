@@ -71,12 +71,12 @@ index 0b6bf312e..f5627bf85 100644
  							(page ? "Upper" : "Lower"), (page ? (page-1) : page), page_offset, page_len, ret);
  			}
  		}
-@@ -780,15 +777,13 @@ static ssize_t sff_8436_macc_write(struct memory_accessor *macc, const char *buf
+@@ -780,18 +777,15 @@ static ssize_t sff_8436_macc_write(struct memory_accessor *macc, const char *buf
  
  /*-------------------------------------------------------------------------*/
  
 -static int __devexit sff_8436_remove(struct i2c_client *client)
-+static int sff_8436_remove(struct i2c_client *client)
++static void sff_8436_remove(struct i2c_client *client)
  {
  	struct sff_8436_data *sff_8436;
  
@@ -87,7 +87,10 @@ index 0b6bf312e..f5627bf85 100644
 -
  	kfree(sff_8436->writebuf);
  	kfree(sff_8436);
- 	return 0;
+-	return 0;
+ }
+ static int sff_8436_eeprom_probe(struct i2c_client *client,
+ 			const struct i2c_device_id *id)
 @@ -821,7 +816,6 @@ static int sff_8436_eeprom_probe(struct i2c_client *client,
  
  		chip.setup = NULL;
