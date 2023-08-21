@@ -16,14 +16,14 @@ driver-sff-8436-use-nvmem-framework.patch
 driver-sff-8436-use-nvmem_device_read.patch
 driver-support-sff-8436-read-write-fix.patch
 driver-i2c-bus-intel-ismt-add-delay-param.patch
-kernel-add-kexec-reboot-string.patch
-hwmon-Add-Maxim-MAX6620-hardware-monitoring-driver.patch
+#kernel-add-kexec-reboot-string.patch # Upstreamed
+#hwmon-Add-Maxim-MAX6620-hardware-monitoring-driver.patch # Upstreamed
 #driver-hwmon-max6658-fix-write-convrate.patch # TODO: update for current version
-driver-hwmon-pmbus-dni_dps460.patch
-driver-hwmon-pmbus-dni_dps460-update-pmbus-core.patch
-driver-hwmon-pmbus-dni_dps460-add-status-attributes.patch
-driver-hwmon-pmbus-dps1900.patch
-driver-hwmon-pmbus-dps200.patch
+#driver-hwmon-pmbus-dni_dps460.patch # TODO: build failure
+#driver-hwmon-pmbus-dni_dps460-update-pmbus-core.patch # TODO: disabling for dependency
+#driver-hwmon-pmbus-dni_dps460-add-status-attributes.patch # TODO: disabling for depedency
+#driver-hwmon-pmbus-dps1900.patch # TODO: build failure
+#driver-hwmon-pmbus-dps200.patch # TODO: disabling for dependency
 driver-support-optoe.patch
 driver-support-optoe-EOF_fix.patch
 driver-support-optoe-chunk-offset-fix.patch
@@ -31,27 +31,28 @@ driver-support-optoe-QSFP_DD.patch
 driver-support-optoe-write-max.patch
 driver-support-optoe-twoaddr-a2h-access.patch
 driver-support-optoe-oneaddr-pageable.patch
+driver-support-optoe-update-to-linux-6.1.patch
 driver-net-tg3-add-param-short-preamble-and-reset.patch
 0004-dt-bindings-hwmon-Add-missing-documentation-for-lm75.patch
 0005-dt-bindings-hwmon-Add-tmp75b-to-lm75.txt.patch
 0006-device-tree-bindinds-add-NXP-PCT2075-as-compatible-d.patch
-Support-for-fullcone-nat.patch
-driver-ixgbe-external-phy.patch
-kernel-compat-always-include-linux-compat.h-from-net-compat.patch
+#Support-for-fullcone-nat.patch # TODO: update for current version
+#driver-ixgbe-external-phy.patch # Upstreamed
+#kernel-compat-always-include-linux-compat.h-from-net-compat.patch # Upstreamed
 #net-sch_generic-fix-the-missing-new-qdisc-assignment.patch # Functionality is present
 
 # Backport from 5.15
-0001-x86-platform-Increase-maximum-GPIO-number-for-X86_64.patch
+#0001-x86-platform-Increase-maximum-GPIO-number-for-X86_64.patch
 
 # Backport from 5.16
-0001-net-arp-introduce-arp_evict_nocarrier-sysctl-paramet.patch
+#0001-net-arp-introduce-arp_evict_nocarrier-sysctl-paramet.patch
 
 # Backport from 5.19
-0001-net-ipv6-Introduce-accept_unsolicited_na-knob-to-imp.patch
-0002-net-ipv6-Expand-and-rename-accept_unsolicited_na-to-.patch
+#0001-net-ipv6-Introduce-accept_unsolicited_na-knob-to-imp.patch
+#0002-net-ipv6-Expand-and-rename-accept_unsolicited_na-to-.patch
 
 # Backport from 5.12
-0001-net-allow-user-to-set-metric-on-default-route-learne.patch
+#0001-net-allow-user-to-set-metric-on-default-route-learne.patch
 
 #
 # This series applies on GIT commit 1451b36b2b0d62178e42f648d8a18131af18f7d8
@@ -67,121 +68,120 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 
 # Mellanox patches for 5.10
 ###-> mellanox_sdk-start
-0001-psample-Encapsulate-packet-metadata-in-a-struct.patch
-0002-psample-Add-additional-metadata-attributes.patch
-0003-psample-define-the-macro-PSAMPLE_MD_EXTENDED_ATTR.patch
-0004-drop_monitor-Extend-WJH-buffer-linux-channel.patch
+# 0003-psample-define-the-macro-PSAMPLE_MD_EXTENDED_ATTR.patch
+# 0004-drop_monitor-Extend-WJH-buffer-linux-channel.patch
 ###-> mellanox_sdk-end
 
+#TODO
 ###-> mellanox_hw_mgmt-start
-0001-i2c-mlxcpld-Update-module-license.patch
-0002-i2c-mlxcpld-Decrease-polling-time-for-performance-im.patch
-0003-i2c-mlxcpld-Add-support-for-I2C-bus-frequency-settin.patch
-0004-i2c-mux-mlxcpld-Update-module-license.patch
-0005-i2c-mux-mlxcpld-Move-header-file-out-of-x86-realm.patch
-0006-i2c-mux-mlxcpld-Convert-driver-to-platform-driver.patch
-0007-i2c-mux-mlxcpld-Prepare-mux-selection-infrastructure.patch
-0008-i2c-mux-mlxcpld-Get-rid-of-adapter-numbers-enforceme.patch
-0009-i2c-mux-mlxcpld-Extend-driver-to-support-word-addres.patch
-0010-i2c-mux-mlxcpld-Extend-supported-mux-number.patch
-0011-i2c-mux-mlxcpld-Add-callback-to-notify-mux-creation-.patch
-0012-hwmon-mlxreg-fan-Add-support-for-fan-drawers-capabil.patch
-0013-hwmon-pmbus-shrink-code-and-remove-pmbus_do_remove.patch
-0015-mlxsw-core-Remove-critical-trip-points-from-thermal-.patch
-0016-net-don-t-include-ethtool.h-from-netdevice.h.patch
-0017-mlxsw-reg-Extend-MTMP-register-with-new-threshold-fi.patch
-0018-mlxsw-thermal-Add-function-for-reading-module-temper.patch
-0019-mlxsw-thermal-Read-module-temperature-thresholds-usi.patch
-0020-mlxsw-thermal-Fix-null-dereference-of-NULL-temperatu.patch
-0021-mlxsw-reg-Add-bank-number-to-MCIA-register.patch
-0022-mlxsw-reg-Document-possible-MCIA-status-values.patch
-0023-ethtool-Allow-network-drivers-to-dump-arbitrary-EEPR.patch
-0024-net-ethtool-Export-helpers-for-getting-EEPROM-info.patch
-0025-ethtool-Add-fallback-to-get_module_eeprom-from-netli.patch
-0026-mlxsw-core-Add-support-for-module-EEPROM-read-by-pag.patch
-0027-ethtool-Decrease-size-of-module-EEPROM-get-policy-ar.patch
-0028-ethtool-Use-kernel-data-types-for-internal-EEPROM-st.patch
-0029-ethtool-Validate-module-EEPROM-length-as-part-of-pol.patch
-0030-ethtool-Validate-module-EEPROM-offset-as-part-of-pol.patch
-0031-mlxsw-core_env-Read-module-temperature-thresholds-us.patch
-0032-mlxsw-core_env-Avoid-unnecessary-memcpy-s.patch
-0035-hwmon-pmbus-Increase-maximum-number-of-phases-per-pa.patch
-0036-hwmon-pmbus-Add-support-for-MPS-Multi-phase-mp2888-c.patch
-0037-dt-bindings-Add-MP2888-voltage-regulator-device.patch
-0038-ethtool-wire-in-generic-SFP-module-access.patch
-0039-ethtool-Fix-NULL-pointer-dereference-during-module-E.patch
-0040-phy-sfp-add-netlink-SFP-support-to-generic-SFP-code.patch
-0042-ethtool-support-FEC-settings-over-netlink.patch
-0045-i2c-mlxcpld-Fix-criteria-for-frequency-setting.patch
-0046-i2c-mlxcpld-Reduce-polling-time-for-performance-impr.patch
-0047-i2c-mlxcpld-Allow-flexible-polling-time-setting-for-.patch
-0053-mlxsw-core-Avoid-creation-virtual-hwmon-objects-by-t.patch
-0054-mlxsw-minimal-Simplify-method-of-modules-number-dete.patch
-0055-platform_data-mlxreg-Add-new-type-to-support-modular.patch
-0056-platform-x86-mlx-platform-Add-initial-support-for-ne.patch
-0057-platform-mellanox-mlxreg-hotplug-Extend-logic-for-ho.patch
-0058-platform-x86-mlx-platform-Configure-notifier-callbac.patch
-0059-platform-mellanox-mlxreg-io-Extend-number-of-hwmon-a.patch
-0060-platform_data-mlxreg-Add-new-field-for-secured-acces.patch
-0061-platform-mellanox-mlxreg-lc-Add-initial-support-for-.patch
-0062-Documentation-ABI-Add-new-attributes-for-mlxreg-io-s.patch
-0063-Documentation-ABI-Add-new-line-card-attributes-for-m.patch
-0064-hwmon-mlxreg-fan-Extend-the-maximum-number-of-tachom.patch
-0065-platform-x86-mlx-platform-Extend-FAN-and-LED-config-.patch
-0066-platform-x86-mlx-platform-Add-new-attributes-for-Cof.patch
-0067-platform-mellanox-Add-dedicated-match-for-system-typ.patch
-0068-mlxsw-core-Initialize-switch-driver-last.patch
-0069-mlxsw-core-Remove-mlxsw_core_is_initialized.patch
-0070-mlxsw-core_env-Defer-handling-of-module-temperature-.patch
-0071-mlxsw-core_env-Convert-module_info_lock-to-a-mutex.patch
-0072-mlxsw-Track-per-module-port-status.patch
-0073-mlxsw-reg-Add-fields-to-PMAOS-register.patch
-0074-mlxsw-Make-PMAOS-pack-function-more-generic.patch
-0075-mlxsw-Add-support-for-transceiver-modules-reset.patch
-0076-ethtool-Add-ability-to-control-transceiver-modules-p.patch
-0077-mlxsw-reg-Add-Port-Module-Memory-Map-Properties-regi.patch
-0078-mlxsw-reg-Add-Management-Cable-IO-and-Notifications-.patch
-0079-mlxsw-Add-ability-to-control-transceiver-modules-pow.patch
-0080-ethtool-Add-transceiver-module-extended-states.patch
-0081-platform-x86-mlx-platform-Add-support-for-multiply-c.patch
-0082-mlxsw-core-Extend-external-cooling-device-whitelist-.patch
-0083-platform_data-mlxreg-Add-field-for-notification-call.patch
-0084-i2c-mlxcpld-Add-callback-to-notify-probing-completio.patch
-0085-hwmon-powr1220-Upgrade-driver-to-support-hwmon-info-.patch
-0086-hwmon-powr1220-Add-support-for-Lattice-s-POWR1014-po.patch
-0087-hwmon-Add-support-for-EMC2305-RPM-based-PWM-Fan-Spee.patch
-0089-platform-mellanox-Add-support-for-new-SN2201-system.patch
-0090-Documentation-ABI-Add-new-attributes-for-mlxreg-io-s.patch
-0091-platform-x86-mlx-platform-Add-support-for-new-system.patch
-0092-platform-mellanox-mlxreg-lc-fix-error-code-in-mlxreg.patch
-0093-hwmon-mlxreg-fan-Extend-driver-to-support-multiply-P.patch
-0094-hwmon-mlxreg-fan-Extend-driver-to-support-multiply-c.patch
-0095-hwmon-mlxreg-fan-Fix-out-of-bounds-read-on-array-fan.patch
-0096-hwmon-mlxreg-fan-Modify-PWM-connectivity-validation.patch
-0097-hwmon-mlxreg-fan-Support-distinctive-names-per-diffe.patch
-0097-1-mlxsw-Use-u16-for-local_port-field.patch
-0097-2-mlxsw-i2c-Fix-chunk-size-setting.patch
-0097-3-mlxsw-core_hwmon-Adjust-module-label-names.patch
-0152-mlxsw-i2c-Prevent-transaction-execution-for-spec.patch
-0157-platform-x86-mlx-platform-Make-activation-of-some-dr.patch
-0158-platform-x86-mlx-platform-Add-cosmetic-changes-for-a.patch
-0159-mlx-platform-Add-support-for-systems-equipped-with-t.patch
-0160-platform-mellanox-Introduce-support-for-COMe-managem.patch
-0161-platform-x86-mlx-platform-Add-support-for-new-system.patch
-0162-platform-mellanox-Add-COME-board-revision-register.patch
-0163-platform-mellanox-Introduce-support-for-rack-manager.patch
-0164-hwmon-jc42-Add-support-for-Seiko-Instruments-S-34TS0.patch
-0165-platform-mellanox-mlxreg-io-Add-locking-for-io-opera.patch
-0166-DS-leds-leds-mlxreg-Send-udev-event-from-leds-mlxreg.patch
-0170-i2c-mlxcpld-Fix-register-setting-for-400KHz-frequenc.patch
-0173-mlxsw-core-Add-support-for-OSFP-transceiver-modules.patch
-0175-hwmon-pmbus-Add-support-for-Infineon-Digital-Multi-p.patch
-0176-platform-mellanox-fix-reset_pwr_converter_fail-attri.patch
-0177-Documentation-ABI-fix-description-of-fix-reset_pwr_c.patch
-0178-platform-mellanox-Introduce-support-for-next-generat.patch
-0180-hwmon-pmbus-Fix-sensors-readouts-for-MPS-Multi-phase.patch
-0186-platform-mellanox-mlxreg-hotplug-Allow-more-flexible.patch
-0285-platform-mellanox-nvsw-sn2201-change-fans-i2c-busses.patch
+#0001-i2c-mlxcpld-Update-module-license.patch
+#0002-i2c-mlxcpld-Decrease-polling-time-for-performance-im.patch
+#0003-i2c-mlxcpld-Add-support-for-I2C-bus-frequency-settin.patch
+#0004-i2c-mux-mlxcpld-Update-module-license.patch
+#0005-i2c-mux-mlxcpld-Move-header-file-out-of-x86-realm.patch
+#0006-i2c-mux-mlxcpld-Convert-driver-to-platform-driver.patch
+#0007-i2c-mux-mlxcpld-Prepare-mux-selection-infrastructure.patch
+#0008-i2c-mux-mlxcpld-Get-rid-of-adapter-numbers-enforceme.patch
+#0009-i2c-mux-mlxcpld-Extend-driver-to-support-word-addres.patch
+#0010-i2c-mux-mlxcpld-Extend-supported-mux-number.patch
+#0011-i2c-mux-mlxcpld-Add-callback-to-notify-mux-creation-.patch
+#0012-hwmon-mlxreg-fan-Add-support-for-fan-drawers-capabil.patch
+#0013-hwmon-pmbus-shrink-code-and-remove-pmbus_do_remove.patch
+#0015-mlxsw-core-Remove-critical-trip-points-from-thermal-.patch
+#0016-net-don-t-include-ethtool.h-from-netdevice.h.patch
+#0017-mlxsw-reg-Extend-MTMP-register-with-new-threshold-fi.patch
+#0018-mlxsw-thermal-Add-function-for-reading-module-temper.patch
+#0019-mlxsw-thermal-Read-module-temperature-thresholds-usi.patch
+#0020-mlxsw-thermal-Fix-null-dereference-of-NULL-temperatu.patch
+#0021-mlxsw-reg-Add-bank-number-to-MCIA-register.patch
+#0022-mlxsw-reg-Document-possible-MCIA-status-values.patch
+#0023-ethtool-Allow-network-drivers-to-dump-arbitrary-EEPR.patch
+#0024-net-ethtool-Export-helpers-for-getting-EEPROM-info.patch
+#0025-ethtool-Add-fallback-to-get_module_eeprom-from-netli.patch
+#0026-mlxsw-core-Add-support-for-module-EEPROM-read-by-pag.patch
+#0027-ethtool-Decrease-size-of-module-EEPROM-get-policy-ar.patch
+#0028-ethtool-Use-kernel-data-types-for-internal-EEPROM-st.patch
+#0029-ethtool-Validate-module-EEPROM-length-as-part-of-pol.patch
+#0030-ethtool-Validate-module-EEPROM-offset-as-part-of-pol.patch
+#0031-mlxsw-core_env-Read-module-temperature-thresholds-us.patch
+#0032-mlxsw-core_env-Avoid-unnecessary-memcpy-s.patch
+#0035-hwmon-pmbus-Increase-maximum-number-of-phases-per-pa.patch
+#0036-hwmon-pmbus-Add-support-for-MPS-Multi-phase-mp2888-c.patch
+#0037-dt-bindings-Add-MP2888-voltage-regulator-device.patch
+#0038-ethtool-wire-in-generic-SFP-module-access.patch
+#0039-ethtool-Fix-NULL-pointer-dereference-during-module-E.patch
+#0040-phy-sfp-add-netlink-SFP-support-to-generic-SFP-code.patch
+#0042-ethtool-support-FEC-settings-over-netlink.patch
+#0045-i2c-mlxcpld-Fix-criteria-for-frequency-setting.patch
+#0046-i2c-mlxcpld-Reduce-polling-time-for-performance-impr.patch
+#0047-i2c-mlxcpld-Allow-flexible-polling-time-setting-for-.patch
+#0053-mlxsw-core-Avoid-creation-virtual-hwmon-objects-by-t.patch
+#0054-mlxsw-minimal-Simplify-method-of-modules-number-dete.patch
+#0055-platform_data-mlxreg-Add-new-type-to-support-modular.patch
+#0056-platform-x86-mlx-platform-Add-initial-support-for-ne.patch
+#0057-platform-mellanox-mlxreg-hotplug-Extend-logic-for-ho.patch
+#0058-platform-x86-mlx-platform-Configure-notifier-callbac.patch
+#0059-platform-mellanox-mlxreg-io-Extend-number-of-hwmon-a.patch
+#0060-platform_data-mlxreg-Add-new-field-for-secured-acces.patch
+#0061-platform-mellanox-mlxreg-lc-Add-initial-support-for-.patch
+#0062-Documentation-ABI-Add-new-attributes-for-mlxreg-io-s.patch
+#0063-Documentation-ABI-Add-new-line-card-attributes-for-m.patch
+#0064-hwmon-mlxreg-fan-Extend-the-maximum-number-of-tachom.patch
+#0065-platform-x86-mlx-platform-Extend-FAN-and-LED-config-.patch
+#0066-platform-x86-mlx-platform-Add-new-attributes-for-Cof.patch
+#0067-platform-mellanox-Add-dedicated-match-for-system-typ.patch
+#0068-mlxsw-core-Initialize-switch-driver-last.patch
+#0069-mlxsw-core-Remove-mlxsw_core_is_initialized.patch
+#0070-mlxsw-core_env-Defer-handling-of-module-temperature-.patch
+#0071-mlxsw-core_env-Convert-module_info_lock-to-a-mutex.patch
+#0072-mlxsw-Track-per-module-port-status.patch
+#0073-mlxsw-reg-Add-fields-to-PMAOS-register.patch
+#0074-mlxsw-Make-PMAOS-pack-function-more-generic.patch
+#0075-mlxsw-Add-support-for-transceiver-modules-reset.patch
+#0076-ethtool-Add-ability-to-control-transceiver-modules-p.patch
+#0077-mlxsw-reg-Add-Port-Module-Memory-Map-Properties-regi.patch
+#0078-mlxsw-reg-Add-Management-Cable-IO-and-Notifications-.patch
+#0079-mlxsw-Add-ability-to-control-transceiver-modules-pow.patch
+#0080-ethtool-Add-transceiver-module-extended-states.patch
+#0081-platform-x86-mlx-platform-Add-support-for-multiply-c.patch
+#0082-mlxsw-core-Extend-external-cooling-device-whitelist-.patch
+#0083-platform_data-mlxreg-Add-field-for-notification-call.patch
+#0084-i2c-mlxcpld-Add-callback-to-notify-probing-completio.patch
+#0085-hwmon-powr1220-Upgrade-driver-to-support-hwmon-info-.patch
+#0086-hwmon-powr1220-Add-support-for-Lattice-s-POWR1014-po.patch
+#0087-hwmon-Add-support-for-EMC2305-RPM-based-PWM-Fan-Spee.patch
+#0089-platform-mellanox-Add-support-for-new-SN2201-system.patch
+#0090-Documentation-ABI-Add-new-attributes-for-mlxreg-io-s.patch
+#0091-platform-x86-mlx-platform-Add-support-for-new-system.patch
+#0092-platform-mellanox-mlxreg-lc-fix-error-code-in-mlxreg.patch
+#0093-hwmon-mlxreg-fan-Extend-driver-to-support-multiply-P.patch
+#0094-hwmon-mlxreg-fan-Extend-driver-to-support-multiply-c.patch
+#0095-hwmon-mlxreg-fan-Fix-out-of-bounds-read-on-array-fan.patch
+#0096-hwmon-mlxreg-fan-Modify-PWM-connectivity-validation.patch
+#0097-hwmon-mlxreg-fan-Support-distinctive-names-per-diffe.patch
+#0097-1-mlxsw-Use-u16-for-local_port-field.patch
+#0097-2-mlxsw-i2c-Fix-chunk-size-setting.patch
+#0097-3-mlxsw-core_hwmon-Adjust-module-label-names.patch
+#0152-mlxsw-i2c-Prevent-transaction-execution-for-spec.patch
+#0157-platform-x86-mlx-platform-Make-activation-of-some-dr.patch
+#0158-platform-x86-mlx-platform-Add-cosmetic-changes-for-a.patch
+#0159-mlx-platform-Add-support-for-systems-equipped-with-t.patch
+#0160-platform-mellanox-Introduce-support-for-COMe-managem.patch
+#0161-platform-x86-mlx-platform-Add-support-for-new-system.patch
+#0162-platform-mellanox-Add-COME-board-revision-register.patch
+#0163-platform-mellanox-Introduce-support-for-rack-manager.patch
+#0164-hwmon-jc42-Add-support-for-Seiko-Instruments-S-34TS0.patch
+#0165-platform-mellanox-mlxreg-io-Add-locking-for-io-opera.patch
+#0166-DS-leds-leds-mlxreg-Send-udev-event-from-leds-mlxreg.patch
+#0170-i2c-mlxcpld-Fix-register-setting-for-400KHz-frequenc.patch
+#0173-mlxsw-core-Add-support-for-OSFP-transceiver-modules.patch
+#0175-hwmon-pmbus-Add-support-for-Infineon-Digital-Multi-p.patch
+#0176-platform-mellanox-fix-reset_pwr_converter_fail-attri.patch
+#0177-Documentation-ABI-fix-description-of-fix-reset_pwr_c.patch
+#0178-platform-mellanox-Introduce-support-for-next-generat.patch
+#0180-hwmon-pmbus-Fix-sensors-readouts-for-MPS-Multi-phase.patch
+#0186-platform-mellanox-mlxreg-hotplug-Allow-more-flexible.patch
+#0285-platform-mellanox-nvsw-sn2201-change-fans-i2c-busses.patch
 ###-> mellanox_hw_mgmt-end
 
 # Cisco patches for 5.10 kernel
@@ -191,70 +191,72 @@ cisco-x86-gpio-config.patch
 cisco-acpi-spi-nor.patch
 cisco-Enable-static-memory-reservation-for-OIRable-PCIe-de.patch
 cisco-npu-disable-other-bars.patch
-cisco-hwmon-pmbus_core-pec-support-check.patch
+#cisco-hwmon-pmbus_core-pec-support-check.patch # Upstreamed
 
 # Nokia patches for 5.10 kernel
-0001-hwmon-emc2305-Fix-unable-to-probe-emc2301-2-3.patch
+#0001-hwmon-emc2305-Fix-unable-to-probe-emc2301-2-3.patch # Upstreamed
 
 #
 # Marvell platform patches for 5.10
 armhf_secondary_boot_online.patch
-0001-dt-bindings-marvell-Document-the-AC5-AC5X-compatible.patch
-0002-dt-bindings-net-mvneta-Add-marvell-armada-ac5-neta.patch
-0003-arm64-dts-marvell-Add-Armada-98DX2530-SoC-and-RD-AC5.patch
-0004-arm64-dts-marvell-Add-UART1-3-for-AC5-AC5X.patch
-0005-arm64-dts-marvell-98dx25xx-Fix-i2c-gpios-property.patch
+#0001-dt-bindings-marvell-Document-the-AC5-AC5X-compatible.patch # Upstreamed
+#0002-dt-bindings-net-mvneta-Add-marvell-armada-ac5-neta.patch # Upstreamed
+#0003-arm64-dts-marvell-Add-Armada-98DX2530-SoC-and-RD-AC5.patch # Upstreamed
+#0004-arm64-dts-marvell-Add-UART1-3-for-AC5-AC5X.patch # Upstreamed
+#0005-arm64-dts-marvell-98dx25xx-Fix-i2c-gpios-property.patch # Upstreamed
 0006-arm64-dts-Update-cache-properties-for-marvell.patch
-0007-arm64-dts-marvell-AC5-AC5X-Fix-address-for-UART1.patch
-0008-mtd-rawnand-marvell-Add-missing-layouts.patch
-0009-pinctrl-mvebu-Add-driver-for-98DX2530-SoC.patch
-0010-arm64-marvell-Enable-the-98DX2530-pinctrl-driver.patch
-0011-net-mvneta-Add-support-for-98DX2530-Ethernet-port.patch
-0012-spi-a3700-Support-big-endianness-for-AC5-SPI-driver.patch
-0013-dt-bindings-ac5-Add-mmc-and-usb-properties.patch
+#0007-arm64-dts-marvell-AC5-AC5X-Fix-address-for-UART1.patch # Upstreamed
+#0008-mtd-rawnand-marvell-Add-missing-layouts.patch # Upstreamed
+#0009-pinctrl-mvebu-Add-driver-for-98DX2530-SoC.patch # Upstreamed
+#0010-arm64-marvell-Enable-the-98DX2530-pinctrl-driver.patch # Upstreamed
+#0011-net-mvneta-Add-support-for-98DX2530-Ethernet-port.patch # Upstreamed
+#0012-spi-a3700-Support-big-endianness-for-AC5-SPI-driver.patch # Upstreamed
+#0013-dt-bindings-ac5-Add-mmc-and-usb-properties.patch # TODO
 0014-dts-ac5-marvell-Add-switching-mmc-watchdog-node.patch
 0015-ac5-marvell-Add-watchdog-support.patch
-0016-ac5-marvell-Add-support-for-emmc.patch
+#0016-ac5-marvell-Add-support-for-emmc.patch # TODO
 0017-usb-ehci-Add-support-for-ac5.patch
-0018-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch
+#0018-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch # TODO
 0019-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
-0020-dts-marvell-Add-support-for-7020-comexpress.patch
-0021-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch
+#0020-dts-marvell-Add-support-for-7020-comexpress.patch # TODO
+#0021-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch # TODO
 
 # amd-pensando elba support
-0001-hwmon-ltc2978-Add-support-for-LTC3888.patch
-0002-i2c-designware-Recover-from-a-stuck-SDA-line.patch
-0003-mmc-sdhci-cadence-Add-AMD-Pensando-Elba-SoC-support.patch
-0004-spi-dw-Add-support-for-AMD-Pensando-Elba-SoC.patch
-0005-spi-spidev-Add-pensando-cpld-compat-entry.patch
-0006-arch-arm64-Initial-support-for-the-Elba-SoC.patch
-0007-arm64-dts-pensando-Elba-flash-partitions.patch
-0008-soc-pensando-Add-capmem-driver.patch
-0009-irqchip-pensando-Interrupt-domain-controllers.patch
-0010-i2c-rd1173-Add-RD1173-I2C-controller-driver.patch
-0011-uio-pensando-UIO-drivers-for-Elba.patch
-0012-soc-pensando-Add-Boot-State-Machine.patch
-0013-soc-pensando-Add-crash-dump-driver.patch
-0014-soc-pensando-Add-Reset-Cause-driver.patch
-0015-soc-pensando-Add-pcie-driver.patch
-0016-arm64-dts-pensando-add-mnet-mcrypt-devices.patch
-0017-soc-pensando-refactor-pciep_regrd32-for-kpcimgr.patch
-0018-soc-pensando-Add-kpcimgr-driver.patch
-0019-mmc-sdhci-cadence-Support-mmc-hardware-reset.patch
-0020-reset-elba-Add-mmc-hw-reset-driver.patch
-0021-soc-pensando-Add-sbus-driver.patch
-0022-soc-pensando-Add-boot_count-to-sysfs.patch
-0023-i2c-rd1173-Reset-RD1173-master-when-i2c_busy-set.patch
-0024-soc-pensando-Add-penfw-driver.patch
-0025-arm64-dts-pensando-psci-support.patch
-0026-i2c-rd1173-Fix-Lattice-RD1173-interrupt-handling.patch
-0027-hwmon-pmbus-tps53679-Add-support-for-TI-TPS53659.patch
-0028-EDAC-elba-Add-Elba-EDAC-support.patch
-0029-arm64-traps-Handle-SError-interrupt.patch
-0030-quirks-for-the-Pensando-qspi-controller.patch
+# TODO
+#0001-hwmon-ltc2978-Add-support-for-LTC3888.patch
+#0002-i2c-designware-Recover-from-a-stuck-SDA-line.patch
+#0003-mmc-sdhci-cadence-Add-AMD-Pensando-Elba-SoC-support.patch
+#0004-spi-dw-Add-support-for-AMD-Pensando-Elba-SoC.patch
+#0005-spi-spidev-Add-pensando-cpld-compat-entry.patch
+#0006-arch-arm64-Initial-support-for-the-Elba-SoC.patch
+#0007-arm64-dts-pensando-Elba-flash-partitions.patch
+#0008-soc-pensando-Add-capmem-driver.patch
+#0009-irqchip-pensando-Interrupt-domain-controllers.patch
+#0010-i2c-rd1173-Add-RD1173-I2C-controller-driver.patch
+#0011-uio-pensando-UIO-drivers-for-Elba.patch
+#0012-soc-pensando-Add-Boot-State-Machine.patch
+#0013-soc-pensando-Add-crash-dump-driver.patch
+#0014-soc-pensando-Add-Reset-Cause-driver.patch
+#0015-soc-pensando-Add-pcie-driver.patch
+#0016-arm64-dts-pensando-add-mnet-mcrypt-devices.patch
+#0017-soc-pensando-refactor-pciep_regrd32-for-kpcimgr.patch
+#0018-soc-pensando-Add-kpcimgr-driver.patch
+#0019-mmc-sdhci-cadence-Support-mmc-hardware-reset.patch
+#0020-reset-elba-Add-mmc-hw-reset-driver.patch
+#0021-soc-pensando-Add-sbus-driver.patch
+#0022-soc-pensando-Add-boot_count-to-sysfs.patch
+#0023-i2c-rd1173-Reset-RD1173-master-when-i2c_busy-set.patch
+#0024-soc-pensando-Add-penfw-driver.patch
+#0025-arm64-dts-pensando-psci-support.patch
+#0026-i2c-rd1173-Fix-Lattice-RD1173-interrupt-handling.patch
+#0027-hwmon-pmbus-tps53679-Add-support-for-TI-TPS53659.patch
+#0028-EDAC-elba-Add-Elba-EDAC-support.patch
+#0029-arm64-traps-Handle-SError-interrupt.patch
+#0030-quirks-for-the-Pensando-qspi-controller.patch
 
 # Security patch
-0001-Change-the-system.map-file-permission-only-readable-.patch
+# TODO: update for bookworm
+#0001-Change-the-system.map-file-permission-only-readable-.patch
 
 #
 #
