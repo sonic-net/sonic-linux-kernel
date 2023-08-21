@@ -133,7 +133,7 @@ function process_inclusion_exclusion_files(){
                     fi
                 fi
             done <<< ${inclusion_opts};
-            if [ ! $ret = 2 ]; then
+            if [ $ret = 0 ]; then
                 echo "No error"
             fi
         fi
@@ -158,8 +158,8 @@ function process_inclusion_exclusion_files(){
 exclusion_file="../patch/kconfig-exclusions"
 inclusion_file="../patch/kconfig-inclusions"
 force_inclusion_file="../patch/kconfig-force-inclusions"
-ret_process_inc_ex=0
-ret_process_inc_ex=$(process_inclusion_exclusion_files > /dev/null; echo $?)
+process_inclusion_exclusion_files
+ret_process_inc_ex=$?
 
 #  Secure Boot support
 if [ $ret_process_inc_ex -eq 0 ]; then
