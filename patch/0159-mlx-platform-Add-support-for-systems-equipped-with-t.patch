@@ -1,8 +1,8 @@
-From a16c819d0896932ca52006fc0ba1c977bd2ad7f6 Mon Sep 17 00:00:00 2001
+From b04a280dbab5d36d0e3ee87f99ef21906a9238c5 Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Wed, 26 Jan 2022 17:16:26 +0200
-Subject: [PATCH platform backport v5.10 03/10] mlx-platform: Add support for
- systems equipped with two ASICs
+Subject: [PATCH backport 5.10 159/182] mlx-platform: Add support for systems
+ equipped with two ASICs
 
 Motivation is to support new systems equipped with two ASICs.
 
@@ -18,7 +18,7 @@ Reviewed-by: Oleksandr Shamray <oleksandrs@nvidia.com>
  1 file changed, 51 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
-index a74fcd9d1..cbe9eab34 100644
+index a74fcd9d184d..cbe9eab3467f 100644
 --- a/drivers/platform/x86/mlx-platform.c
 +++ b/drivers/platform/x86/mlx-platform.c
 @@ -34,6 +34,7 @@

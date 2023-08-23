@@ -1,8 +1,8 @@
-From 7ea34bd6ec1453e21f9f1d9442ea662a92423f32 Mon Sep 17 00:00:00 2001
+From 7fbd7c25c4010e8e5fbbc0d8741cff9c69bcea05 Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Thu, 7 Oct 2021 19:30:05 +0000
-Subject: [PATCH backport 5.10/Alligator 1/9] mlxsw: core: Extend external
- cooling device whitelist for thermal zone binding
+Subject: [PATCH backport 5.10 082/182] mlxsw: core: Extend external cooling
+ device whitelist for thermal zone binding
 
 Allow thermal zone binding to an external cooling device of type
 "emc2305".
@@ -17,10 +17,10 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  1 file changed, 1 insertion(+)
 
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
-index f9c9ebf68..cc4cddbdb 100644
+index e1a760519097..91abc7a3f7ea 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
-@@ -38,6 +38,7 @@
+@@ -30,6 +30,7 @@
  /* External cooling devices, allowed for binding to mlxsw thermal zones. */
  static char * const mlxsw_thermal_external_allowed_cdev[] = {
  	"mlxreg_fan",

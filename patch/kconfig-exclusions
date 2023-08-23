@@ -11,7 +11,6 @@ CONFIG_CGROUP_NET_PRIO
 # Unset X86_PAT according to Broadcom's requirement
 CONFIG_X86_PAT
 CONFIG_MLXSW_PCI
-CONFIG_THERMAL_STATISTICS
 
 [arm64]
 

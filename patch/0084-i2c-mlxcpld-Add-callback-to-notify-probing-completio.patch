@@ -1,8 +1,8 @@
-From 81abceea27623640f0d69d1526cb6d11d964025d Mon Sep 17 00:00:00 2001
+From eea982a68f01f3e5e63e88d147f581b5c751dc81 Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Thu, 7 Oct 2021 19:04:25 +0000
-Subject: [PATCH backport 5.10/Alligator 3/9] i2c: mlxcpld: Add callback to
- notify probing completion
+Subject: [PATCH backport 5.10 084/182] i2c: mlxcpld: Add callback to notify
+ probing completion
 
 Add notification to inform caller that driver probing has been
 completed. It allows to user, invoked platform device registration for
@@ -15,7 +15,7 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  1 file changed, 4 insertions(+)
 
 diff --git a/drivers/i2c/busses/i2c-mlxcpld.c b/drivers/i2c/busses/i2c-mlxcpld.c
-index 56aa424fd..fb451d42a 100644
+index 56aa424fd71d..363ea9fd66c4 100644
 --- a/drivers/i2c/busses/i2c-mlxcpld.c
 +++ b/drivers/i2c/busses/i2c-mlxcpld.c
 @@ -560,6 +560,10 @@ static int mlxcpld_i2c_probe(struct platform_device *pdev)

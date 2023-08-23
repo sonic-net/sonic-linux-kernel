@@ -1,8 +1,8 @@
-From b384a287a5732f7ea3b6e0b13b1aa6ba0d70c440 Mon Sep 17 00:00:00 2001
+From 3124aea618244c17aee9b523f55c500ca3badf15 Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Mon, 14 Feb 2022 09:46:16 +0200
-Subject: [PATCH platform-next 1/8] platform/x86: mlx-platform: Make activation
- of some drivers conditional
+Subject: [PATCH backport 5.10 157/182] platform/x86: mlx-platform: Make
+ activation of some drivers conditional
 
 Current assumption in driver that any system is capable of LED,
 hotplug or watchdog support. It could be not true for some new coming
@@ -16,7 +16,7 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  1 file changed, 35 insertions(+), 27 deletions(-)
 
 diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
-index fac4b6dcf..e0a35412f 100644
+index fac4b6dcfdc7..e0a35412fa77 100644
 --- a/drivers/platform/x86/mlx-platform.c
 +++ b/drivers/platform/x86/mlx-platform.c
 @@ -5206,16 +5206,18 @@ static int __init mlxplat_init(void)

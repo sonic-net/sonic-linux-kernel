@@ -1,6 +1,8 @@
+From 4c2b8360a04b6462f180b9b6793d9f511c08a808 Mon Sep 17 00:00:00 2001
 From: Ido Schimmel <idosch@nvidia.com>
 Date: Sun, 15 Aug 2021 14:30:14 +0300
-Subject: 0069 mlxsw: core: Remove mlxsw_core_is_initialized()
+Subject: [PATCH backport 5.10 069/182] mlxsw: core: Remove
+ mlxsw_core_is_initialized()
 
 After the previous patch, the switch driver is always initialized last,
 making this function redundant.
@@ -84,5 +86,5 @@ index 3713c45cfa1e..27e721f96b3b 100644
  		return -EINVAL;
  
 -- 
-2.17.1
+2.20.1
 

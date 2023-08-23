@@ -1,7 +1,7 @@
-From 9665518f7ec26d85930b57343b68da8f7524119e Mon Sep 17 00:00:00 2001
+From d439a8e75600c9919c8f1380c18a5141d271412a Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Sat, 9 Oct 2021 08:49:14 +0000
-Subject: [PATCH backport 5.10/Alligator 6/9] hwmon: Add support for EMC2305
+Subject: [PATCH backport 5.10 087/182] hwmon: Add support for EMC2305
  RPM-based PWM Fan Speed Controller
 
 Introduce EMC2305 RPM-based PWM Fan Speed Controller
@@ -22,12 +22,12 @@ Signed-off-by: Michael Shych <michaelsh@nvidia.com>
 ---
  drivers/hwmon/Kconfig   |  12 +
  drivers/hwmon/Makefile  |   1 +
- drivers/hwmon/emc2305.c | 518 ++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 531 insertions(+)
+ drivers/hwmon/emc2305.c | 522 ++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 535 insertions(+)
  create mode 100644 drivers/hwmon/emc2305.c
 
 diff --git a/drivers/hwmon/Kconfig b/drivers/hwmon/Kconfig
-index a850e4f0e..6512c0c5b 100644
+index f741c7492ee4..93d0313aa210 100644
 --- a/drivers/hwmon/Kconfig
 +++ b/drivers/hwmon/Kconfig
 @@ -1601,6 +1601,18 @@ config SENSORS_EMC2103
@@ -50,7 +50,7 @@ index a850e4f0e..6512c0c5b 100644
  	tristate "SMSC EMC6W201"
  	depends on I2C
 diff --git a/drivers/hwmon/Makefile b/drivers/hwmon/Makefile
-index 9db2903b6..644a7e6ee 100644
+index 9db2903b61e5..644a7e6eeae6 100644
 --- a/drivers/hwmon/Makefile
 +++ b/drivers/hwmon/Makefile
 @@ -66,6 +66,7 @@ obj-$(CONFIG_SENSORS_DS620)	+= ds620.o
@@ -63,10 +63,10 @@ index 9db2903b6..644a7e6ee 100644
  obj-$(CONFIG_SENSORS_F71882FG)	+= f71882fg.o
 diff --git a/drivers/hwmon/emc2305.c b/drivers/hwmon/emc2305.c
 new file mode 100644
-index 000000000..3f98bdcd2
+index 000000000000..04bc9f658d85
 --- /dev/null
 +++ b/drivers/hwmon/emc2305.c
-@@ -0,0 +1,523 @@
+@@ -0,0 +1,522 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Hardware monitoring driver for EMC2305 fan controller
@@ -589,7 +589,6 @@ index 000000000..3f98bdcd2
 +MODULE_AUTHOR("Claud Chang <claud.chang@deltaww.com>");
 +MODULE_DESCRIPTION("SMSC EMC2305 fan controller driver");
 +MODULE_LICENSE("GPL");
-+
---
+-- 
 2.20.1
 

@@ -1,8 +1,8 @@
-From 0daa4a8f50be59f0549bbda2d06ad5b74d5134bd Mon Sep 17 00:00:00 2001
+From de8198c01c722ac99814d7eaa81d4b63044684e6 Mon Sep 17 00:00:00 2001
 From: "Greg.Schwendimann@infineon.com" <Greg.Schwendimann@infineon.com>
 Date: Wed, 27 Apr 2022 18:40:12 +0000
-Subject: [PATCH hwmon backport v5.10 1/1] hwmon: (pmbus) Add support for
- Infineon Digital Multi-phase xdp152 family controllers
+Subject: [PATCH backport 5.10 175/182] hwmon: (pmbus) Add support for Infineon
+ Digital Multi-phase xdp152 family controllers
 
 Add support for devices XDPE152C4, XDPE12584.
 

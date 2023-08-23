@@ -1,8 +1,8 @@
-From cd26dadb7e9c5eedb4e24cd60d4de1cda0e8f889 Mon Sep 17 00:00:00 2001
+From 90e92c0d97686b0592415dba845a57362d78d122 Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Mon, 14 Feb 2022 10:07:11 +0200
-Subject: [PATCH platform-next 2/8] platform/x86: mlx-platform: Add cosmetic
- changes for alignment
+Subject: [PATCH backport 5.10 158/182] platform/x86: mlx-platform: Add
+ cosmetic changes for alignment
 
 Align the first argument with open parenthesis for
 platform_device_register_resndata() calls.
@@ -13,7 +13,7 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  1 file changed, 16 insertions(+), 20 deletions(-)
 
 diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
-index e0a35412f..a74fcd9d1 100644
+index e0a35412fa77..a74fcd9d184d 100644
 --- a/drivers/platform/x86/mlx-platform.c
 +++ b/drivers/platform/x86/mlx-platform.c
 @@ -5183,22 +5183,20 @@ static int __init mlxplat_init(void)

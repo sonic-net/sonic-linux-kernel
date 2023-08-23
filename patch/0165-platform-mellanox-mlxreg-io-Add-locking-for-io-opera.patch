@@ -1,8 +1,8 @@
-From 77e8886b6019a37335c66dceb39429c33eb87f28 Mon Sep 17 00:00:00 2001
+From 736f644255c56d2adf32b694d0fd83e2ab6d2d77 Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Mon, 7 Feb 2022 21:22:04 +0200
-Subject: [PATCH platform-next 02/10] platform/mellanox: mlxreg-io: Add locking
- for io operations
+Subject: [PATCH backport 5.10 165/182] platform/mellanox: mlxreg-io: Add
+ locking for io operations
 
 Add lock to protect user read/write access to the registers.
 
@@ -12,7 +12,7 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  1 file changed, 23 insertions(+)
 
 diff --git a/drivers/platform/mellanox/mlxreg-io.c b/drivers/platform/mellanox/mlxreg-io.c
-index 2c2686d5c..ddc08abf3 100644
+index 2c2686d5c2fc..ddc08abf398c 100644
 --- a/drivers/platform/mellanox/mlxreg-io.c
 +++ b/drivers/platform/mellanox/mlxreg-io.c
 @@ -31,6 +31,7 @@

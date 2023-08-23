@@ -1,7 +1,7 @@
-From 01cec35c2103e425d9f66f35f9cb91db7e9d9267 Mon Sep 17 00:00:00 2001
+From 267f4ad4ee5f52ecb3a7d3631d9f5a08a3adecef Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Wed, 6 Jul 2022 17:26:41 +0300
-Subject: [PATCH backport 5.10 03/17] platform: mellanox: Add COME board
+Subject: [PATCH backport 5.10 162/182] platform: mellanox: Add COME board
  revision register
 
 Add to CPLD COME board configuration register for getting a board
@@ -15,7 +15,7 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  1 file changed, 21 insertions(+)
 
 diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
-index 2b1441a87..1d0c13c65 100644
+index 2b1441a8786f..1d0c13c653b3 100644
 --- a/drivers/platform/x86/mlx-platform.c
 +++ b/drivers/platform/x86/mlx-platform.c
 @@ -150,6 +150,7 @@

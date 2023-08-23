@@ -1,6 +1,8 @@
+From f2b51f5d52f45a147feb6a5a8d05695849d19d46 Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Thu, 8 Jul 2021 06:46:53 +0000
-Subject: 0042 ethtool: support FEC settings over netlink
+Subject: [PATCH backport 5.10 042/182] ethtool: support FEC settings over
+ netlink
 
 Backport from upstream commit 1e5d1f69d9fb8ea0679f9e85915e8e7fdacfbe7a
 Added in order to align UAPI interface for 'ethtool' (need for
@@ -58,5 +60,5 @@ index 7dda2cee919b..8ac5c7e64314 100644
  
  	/* add new constants above here */
 -- 
-2.17.1
+2.20.1
 

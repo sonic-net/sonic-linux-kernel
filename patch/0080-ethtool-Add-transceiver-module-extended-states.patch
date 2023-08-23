@@ -1,6 +1,8 @@
+From 3c154bac56bbf44419a17a431e931706550082a2 Mon Sep 17 00:00:00 2001
 From: Ido Schimmel <idosch@nvidia.com>
 Date: Wed, 18 Aug 2021 10:13:47 +0300
-Subject: 0080 ethtool: Add transceiver module extended states
+Subject: [PATCH backport 5.10 080/182] ethtool: Add transceiver module
+ extended states
 
 Add an extended state and two extended sub-states to describe link
 issues related to transceiver modules.
@@ -86,5 +88,5 @@ index d49bad6446f9..970f1446eaf7 100644
  
  /**
 -- 
-2.17.1
+2.20.1
 

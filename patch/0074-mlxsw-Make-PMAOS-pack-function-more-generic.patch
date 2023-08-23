@@ -1,6 +1,8 @@
+From a09c5705bfca34abe259f3ed4d7ae262700c44f3 Mon Sep 17 00:00:00 2001
 From: Ido Schimmel <idosch@nvidia.com>
 Date: Mon, 2 Aug 2021 10:12:31 +0300
-Subject: 0074 mlxsw: Make PMAOS pack function more generic
+Subject: [PATCH backport 5.10 074/182] mlxsw: Make PMAOS pack function more
+ generic
 
 The PMAOS register has enable bits (e.g., PMAOS.ee) that allow changing
 only a subset of the fields, which is exactly what subsequent patches
@@ -53,5 +55,5 @@ index dd72443c295f..0e18806b5834 100644
  
  /* PPLR - Port Physical Loopback Register
 -- 
-2.17.1
+2.20.1
 

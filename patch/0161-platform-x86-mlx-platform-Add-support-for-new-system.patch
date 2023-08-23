@@ -1,7 +1,7 @@
-From 993337e78b0f9b88dba2a37eba37ae69828632e1 Mon Sep 17 00:00:00 2001
+From a38f9cb27bde5616bc71899841db733e305bf6c3 Mon Sep 17 00:00:00 2001
 From: Felix Radensky <fradensky@nvidia.com>
 Date: Sun, 24 Oct 2021 16:26:40 +0000
-Subject: [PATCH backport 5.10 02/17] platform/x86: mlx-platform: Add support
+Subject: [PATCH backport 5.10 161/182] platform/x86: mlx-platform: Add support
  for new system XH3000
 
 Add support for new system type XH3000, which is a water cooling
@@ -17,7 +17,7 @@ Reviewed-by: Vadim Pasternak <vadimp@nvidia.com>
  1 file changed, 51 insertions(+)
 
 diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
-index e06fd1725..2b1441a87 100644
+index e06fd1725beb..2b1441a8786f 100644
 --- a/drivers/platform/x86/mlx-platform.c
 +++ b/drivers/platform/x86/mlx-platform.c
 @@ -2262,6 +2262,25 @@ static struct mlxreg_core_platform_data mlxplat_default_led_wc_data = {
@@ -79,7 +79,7 @@ index e06fd1725..2b1441a87 100644
  {
  	int i;
 @@ -5277,6 +5321,13 @@ static const struct dmi_system_id mlxplat_dmi_table[] __initconst = {
- 			DMI_MATCH(DMI_PRODUCT_NAME, "MQM87"),
+ 			DMI_MATCH(DMI_PRODUCT_NAME, "MQM8700"),
  		},
  	},
 +	{

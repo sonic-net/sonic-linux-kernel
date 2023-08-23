@@ -1,6 +1,8 @@
+From 1af02ef69c43c4ed19fee10181957fae8b3b3bd2 Mon Sep 17 00:00:00 2001
 From: Ido Schimmel <idosch@nvidia.com>
 Date: Thu, 29 Jul 2021 15:15:23 +0300
-Subject: 0073 mlxsw: reg: Add fields to PMAOS register
+Subject: [PATCH backport 5.10 073/182] mlxsw: reg: Add fields to PMAOS
+ register
 
 The Ports Module Administrative and Operational Status (PMAOS) register
 configures and retrieves the per-module status. Extend it with fields
@@ -59,5 +61,5 @@ index 04f0c96c8068..dd72443c295f 100644
   * Admin state update enable.
   * If this bit is set, admin state will be updated based on admin_state field.
 -- 
-2.17.1
+2.20.1
 

@@ -1,8 +1,8 @@
-From 915d4664b7158d8d0f44da810186742c69300f02 Mon Sep 17 00:00:00 2001
+From 8a3f701439798d55a93bba1f56d2a2aab4921293 Mon Sep 17 00:00:00 2001
 From: Michael Shych <michaelsh@nvidia.com>
 Date: Tue, 18 Jan 2022 09:56:10 +0200
-Subject: [PATCH] hwmon: (powr1220) Upgrade driver to support hwmon info
- infrastructure
+Subject: [PATCH backport 5.10 085/182] hwmon: (powr1220) Upgrade driver to
+ support hwmon info infrastructure
 
 Reduce code by using devm_hwmon_device_register_with_groups() API by
 devm_hwmon_device_register_with_info() API.
@@ -14,14 +14,14 @@ Reviewed-by: Vadim Pasternak <vadimp@nvidia.com>
 Link: https://lore.kernel.org/r/20220118075611.10665-3-michaelsh@nvidia.com
 Signed-off-by: Guenter Roeck <linux@roeck-us.net>
 ---
- drivers/hwmon/powr1220.c | 207 +++++++++++++++++++++--------------------------
- 1 file changed, 92 insertions(+), 115 deletions(-)
+ drivers/hwmon/powr1220.c | 213 +++++++++++++++++----------------------
+ 1 file changed, 95 insertions(+), 118 deletions(-)
 
 diff --git a/drivers/hwmon/powr1220.c b/drivers/hwmon/powr1220.c
-index 542e4a7b0234..0fa1a136eec8 100644
+index 9e086338dcba..0fa1a136eec8 100644
 --- a/drivers/hwmon/powr1220.c
 +++ b/drivers/hwmon/powr1220.c
-@@ -111,7 +111,7 @@
+@@ -111,7 +111,7 @@ static int powr1220_read_adc(struct device *dev, int ch_num)
  	mutex_lock(&data->update_lock);
  
  	if (time_after(jiffies, data->adc_last_updated[ch_num] + HZ) ||
@@ -30,7 +30,7 @@ index 542e4a7b0234..0fa1a136eec8 100644
  		/*
  		 * figure out if we need to use the attenuator for
  		 * high inputs or inputs that we don't yet have a measurement
-@@ -119,12 +119,12 @@
+@@ -119,12 +119,12 @@ static int powr1220_read_adc(struct device *dev, int ch_num)
  		 * max reading.
  		 */
  		if (data->adc_maxes[ch_num] > ADC_MAX_LOW_MEASUREMENT_MV ||
@@ -45,7 +45,7 @@ index 542e4a7b0234..0fa1a136eec8 100644
  		if (result)
  			goto exit;
  
-@@ -167,135 +167,109 @@
+@@ -167,135 +167,109 @@ static int powr1220_read_adc(struct device *dev, int ch_num)
  	return result;
  }
  
@@ -119,8 +119,7 @@ index 542e4a7b0234..0fa1a136eec8 100644
 -	struct sensor_device_attribute *attr = to_sensor_dev_attr(dev_attr);
 +	struct powr1220_data *data = dev_get_drvdata(dev);
 +	int ret;
- 
--	return sprintf(buf, "%s\n", input_names[attr->index]);
++
 +	switch (type) {
 +	case hwmon_in:
 +		switch (attr) {
@@ -139,6 +138,10 @@ index 542e4a7b0234..0fa1a136eec8 100644
 +		break;
 +	default:
 +		return -EOPNOTSUPP;
++}
+ 
+-	return sprintf(buf, "%s\n", input_names[attr->index]);
++	return 0;
  }
  
 -static SENSOR_DEVICE_ATTR_RO(in0_input, powr1220_voltage, VMON1);
@@ -231,9 +234,6 @@ index 542e4a7b0234..0fa1a136eec8 100644
 -	&sensor_dev_attr_in11_label.dev_attr.attr,
 -	&sensor_dev_attr_in12_label.dev_attr.attr,
 -	&sensor_dev_attr_in13_label.dev_attr.attr,
-+	return 0;
-+}
-+
 +static const struct hwmon_channel_info *powr1220_info[] = {
 +	HWMON_CHANNEL_INFO(in,
 +			   HWMON_I_INPUT | HWMON_I_HIGHEST | HWMON_I_LABEL,
@@ -268,7 +268,7 @@ index 542e4a7b0234..0fa1a136eec8 100644
  
  static int powr1220_probe(struct i2c_client *client)
  {
-@@ -312,8 +286,11 @@
+@@ -312,8 +286,11 @@ static int powr1220_probe(struct i2c_client *client)
  	mutex_init(&data->update_lock);
  	data->client = client;
  
@@ -282,3 +282,6 @@ index 542e4a7b0234..0fa1a136eec8 100644
  
  	return PTR_ERR_OR_ZERO(hwmon_dev);
  }
+-- 
+2.20.1
+

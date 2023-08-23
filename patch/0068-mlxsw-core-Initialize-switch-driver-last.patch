@@ -1,6 +1,8 @@
+From 1d25ce2427827b1c61924b0ed8e937118aaa0258 Mon Sep 17 00:00:00 2001
 From: Ido Schimmel <idosch@nvidia.com>
 Date: Sun, 15 Aug 2021 14:09:51 +0300
-Subject: 0068 mlxsw: core: Initialize switch driver last
+Subject: [PATCH backport 5.10 068/182] mlxsw: core: Initialize switch driver
+ last
 
 Commit 961cf99a074f ("mlxsw: core: Re-order initialization sequence")
 changed the initialization sequence so that the switch driver (e.g.,
@@ -87,5 +89,5 @@ index 1a86535c4968..b52bbd6b2fe4 100644
  	if (!reload)
  		mlxsw_core_params_unregister(mlxsw_core);
 -- 
-2.17.1
+2.20.1
 

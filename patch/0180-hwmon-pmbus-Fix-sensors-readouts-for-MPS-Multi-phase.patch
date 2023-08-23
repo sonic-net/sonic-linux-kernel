@@ -1,8 +1,8 @@
-From ae1a79f21b9a91e1a8bf42586bd7a5c2afbb432a Mon Sep 17 00:00:00 2001
+From c5fe53f12090a49223c057b793b3aa411dabdd7a Mon Sep 17 00:00:00 2001
 From: Oleksandr Shamray <oleksandrs@nvidia.com>
 Date: Mon, 19 Sep 2022 14:55:22 +0300
-Subject: [PATCH hwmon 1/1] hwmon: (pmbus) Fix sensors readouts for MPS
- Multi-phase mp2888 controller
+Subject: [PATCH backport 5.10 180/182] hwmon: (pmbus) Fix sensors readouts for
+ MPS Multi-phase mp2888 controller
 
 Fix scale factors for reading MPS Multi-phase mp2888 controller.
 Fixed sensors:
@@ -17,7 +17,7 @@ Reviewed-by: Vadim Pasternak <vadimp@nvidia.com>
  1 file changed, 5 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/hwmon/pmbus/mp2888.c b/drivers/hwmon/pmbus/mp2888.c
-index 8ecd4ad..529eb3c 100644
+index 8ecd4adfef40..529eb3c95bb6 100644
 --- a/drivers/hwmon/pmbus/mp2888.c
 +++ b/drivers/hwmon/pmbus/mp2888.c
 @@ -109,7 +109,7 @@ mp2888_read_phase(struct i2c_client *client, struct mp2888_data *data, int page,
@@ -61,5 +61,5 @@ index 8ecd4ad..529eb3c 100644
  	/*
  	 * The below registers are not implemented by device or implemented not according to the
 -- 
-2.8.4
+2.20.1
 

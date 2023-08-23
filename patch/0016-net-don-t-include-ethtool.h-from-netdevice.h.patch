@@ -1,6 +1,8 @@
+From e8c1cb7fb9d5ab0cfcf496efa208dae75d25a789 Mon Sep 17 00:00:00 2001
 From: Jakub Kicinski <kuba@kernel.org>
 Date: Fri, 20 Nov 2020 14:50:52 -0800
-Subject: 0016 net: don't include ethtool.h from netdevice.h
+Subject: [PATCH backport 5.10 016/182] net: don't include ethtool.h from
+ netdevice.h
 
 linux/netdevice.h is included in very many places, touching any
 of its dependecies causes large incremental builds.
@@ -99,7 +101,7 @@ index fd5c9cbe45b1..56d34be5e797 100644
  #include <net/net_namespace.h>
  #include <net/netns/generic.h>
 diff --git a/drivers/net/can/usb/gs_usb.c b/drivers/net/can/usb/gs_usb.c
-index 3f759fae81fe..76d6cee81981 100644
+index a879200eaab0..5503eb028902 100644
 --- a/drivers/net/can/usb/gs_usb.c
 +++ b/drivers/net/can/usb/gs_usb.c
 @@ -9,6 +9,7 @@
@@ -123,7 +125,7 @@ index 3b2cd28f962d..6cdd9efe8df3 100644
  
  #include "ena_netdev.h"
 diff --git a/drivers/net/ethernet/aquantia/atlantic/aq_nic.h b/drivers/net/ethernet/aquantia/atlantic/aq_nic.h
-index 926cca9a0c83..1a7148041e3d 100644
+index 6da3efa289a3..b7f7d6f66633 100644
 --- a/drivers/net/ethernet/aquantia/atlantic/aq_nic.h
 +++ b/drivers/net/ethernet/aquantia/atlantic/aq_nic.h
 @@ -10,6 +10,8 @@
@@ -136,7 +138,7 @@ index 926cca9a0c83..1a7148041e3d 100644
  #include "aq_rss.h"
  #include "aq_hw.h"
 diff --git a/drivers/net/ethernet/broadcom/bnxt/bnxt.h b/drivers/net/ethernet/broadcom/bnxt/bnxt.h
-index 92f9f7f5240b..91d45a83b67a 100644
+index 34affd1de91d..b74884e6b8c6 100644
 --- a/drivers/net/ethernet/broadcom/bnxt/bnxt.h
 +++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.h
 @@ -20,6 +20,7 @@
@@ -148,7 +150,7 @@ index 92f9f7f5240b..91d45a83b67a 100644
  #include <linux/rhashtable.h>
  #include <linux/crash_dump.h>
 diff --git a/drivers/net/ethernet/broadcom/bnxt/bnxt_sriov.c b/drivers/net/ethernet/broadcom/bnxt/bnxt_sriov.c
-index 23b80aa171dd..a217316228f4 100644
+index 819f9df9425c..883905db21a3 100644
 --- a/drivers/net/ethernet/broadcom/bnxt/bnxt_sriov.c
 +++ b/drivers/net/ethernet/broadcom/bnxt/bnxt_sriov.c
 @@ -8,6 +8,7 @@
@@ -208,7 +210,7 @@ index cd8f9a481d73..d546993bda09 100644
  
  #include "t4vf_common.h"
 diff --git a/drivers/net/ethernet/google/gve/gve_ethtool.c b/drivers/net/ethernet/google/gve/gve_ethtool.c
-index 7b44769bd87c..2fb197fd3daf 100644
+index c53a04313944..458e79b8d625 100644
 --- a/drivers/net/ethernet/google/gve/gve_ethtool.c
 +++ b/drivers/net/ethernet/google/gve/gve_ethtool.c
 @@ -4,6 +4,7 @@
@@ -318,7 +320,7 @@ index 28bfe1ea9d94..131b2a53d261 100644
  #include <linux/slab.h>
  #include <linux/device.h>
 diff --git a/drivers/net/ethernet/pensando/ionic/ionic_lif.c b/drivers/net/ethernet/pensando/ionic/ionic_lif.c
-index e95c09dc2c30..81b22520ba78 100644
+index cb12d0171517..209ebe3f2569 100644
 --- a/drivers/net/ethernet/pensando/ionic/ionic_lif.c
 +++ b/drivers/net/ethernet/pensando/ionic/ionic_lif.c
 @@ -1,6 +1,7 @@
@@ -354,7 +356,7 @@ index 2adcf24848a4..ab1e0fcccabb 100644
  #include <net/pkt_sched.h>
  #include "rmnet_config.h"
 diff --git a/drivers/net/geneve.c b/drivers/net/geneve.c
-index 5ddb2dbb8572..e2e58493e115 100644
+index 081939cb420b..c339cf5339da 100644
 --- a/drivers/net/geneve.c
 +++ b/drivers/net/geneve.c
 @@ -7,6 +7,7 @@
@@ -366,7 +368,7 @@ index 5ddb2dbb8572..e2e58493e115 100644
  #include <linux/module.h>
  #include <linux/etherdevice.h>
 diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
-index 261e6e55a907..d17bbc75f5e7 100644
+index f2020be43cfe..2548a40dc5d2 100644
 --- a/drivers/net/hyperv/netvsc_drv.c
 +++ b/drivers/net/hyperv/netvsc_drv.c
 @@ -10,6 +10,7 @@
@@ -413,7 +415,7 @@ index afb119f38325..5e19a6839dea 100644
  #include <linux/kernel.h>
  #include <linux/netdevice.h>
 diff --git a/drivers/net/team/team.c b/drivers/net/team/team.c
-index 615f3776b4be..6d308183c25f 100644
+index 7117d559a32e..af1977e6c307 100644
 --- a/drivers/net/team/team.c
 +++ b/drivers/net/team/team.c
 @@ -4,6 +4,7 @@
@@ -497,7 +499,7 @@ index ace4a6d28562..ad55cd738847 100644
  
  static struct {
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 861f2480c457..71fea53dacc9 100644
+index ef75567efd27..c70027ea28a2 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
 @@ -34,7 +34,6 @@
@@ -565,7 +567,7 @@ index ac6ffa561884..48c4503c16de 100644
  #include <linux/device.h>
  #include <linux/dma-mapping.h>
 diff --git a/net/packet/af_packet.c b/net/packet/af_packet.c
-index a31334b92be7..2a3ade22d34b 100644
+index eaa030e2ad55..d8816ae47015 100644
 --- a/net/packet/af_packet.c
 +++ b/net/packet/af_packet.c
 @@ -46,6 +46,7 @@
@@ -589,7 +591,7 @@ index 2eaac2ff380f..459cc240eda9 100644
  #include <linux/types.h>
  #include <linux/kernel.h>
 diff --git a/net/sched/sch_taprio.c b/net/sched/sch_taprio.c
-index 806babdd838d..9d4d9e8ecfdd 100644
+index 7f33b31c7b8b..360e24afd9b1 100644
 --- a/net/sched/sch_taprio.c
 +++ b/net/sched/sch_taprio.c
 @@ -6,6 +6,7 @@
@@ -601,7 +603,7 @@ index 806babdd838d..9d4d9e8ecfdd 100644
  #include <linux/slab.h>
  #include <linux/kernel.h>
 diff --git a/net/socket.c b/net/socket.c
-index d52c265ad449..6415983cf5b6 100644
+index 8657112a687a..eceffde4e0f1 100644
 --- a/net/socket.c
 +++ b/net/socket.c
 @@ -52,6 +52,7 @@
@@ -613,5 +615,5 @@ index d52c265ad449..6415983cf5b6 100644
  #include <linux/socket.h>
  #include <linux/file.h>
 -- 
-2.17.1
+2.20.1
 
