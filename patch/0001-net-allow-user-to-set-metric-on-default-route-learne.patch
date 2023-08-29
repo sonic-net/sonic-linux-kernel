@@ -1,0 +1,262 @@
+From 23d559efa7ddfccb29dfe2df772217e55402cd71 Mon Sep 17 00:00:00 2001
+From: Praveen Chaudhary <praveen5582@gmail.com>
+Date: Mon, 25 Jan 2021 13:44:30 -0800
+Subject: [PATCH] net: allow user to set metric on default route learned via
+ Router Advertisement
+
+For IPv4, default route is learned via DHCPv4 and user is allowed to change
+metric using config etc/network/interfaces. But for IPv6, default route can
+be learned via RA, for which, currently a fixed metric value 1024 is used.
+
+Ideally, user should be able to configure metric on default route for IPv6
+similar to IPv4. This patch adds sysctl for the same.
+
+Logs:
+
+For IPv4:
+
+Config in etc/network/interfaces:
+auto eth0
+iface eth0 inet dhcp
+    metric 4261413864
+
+IPv4 Kernel Route Table:
+$ ip route list
+default via 172.21.47.1 dev eth0 metric 4261413864
+
+FRR Table, if a static route is configured:
+[In real scenario, it is useful to prefer BGP learned default route over DHCPv4 default route.]
+Codes: K - kernel route, C - connected, S - static, R - RIP,
+       O - OSPF, I - IS-IS, B - BGP, P - PIM, E - EIGRP, N - NHRP,
+       T - Table, v - VNC, V - VNC-Direct, A - Babel, D - SHARP,
+       > - selected route, * - FIB route
+
+S>* 0.0.0.0/0 [20/0] is directly connected, eth0, 00:00:03
+K   0.0.0.0/0 [254/1000] via 172.21.47.1, eth0, 6d08h51m
+
+i.e. User can prefer Default Router learned via Routing Protocol in IPv4.
+Similar behavior is not possible for IPv6, without this fix.
+
+After fix [for IPv6]:
+sudo sysctl -w net.ipv6.conf.eth0.net.ipv6.conf.eth0.ra_defrtr_metric=1996489705
+
+IP monitor: [When IPv6 RA is received]
+default via fe80::xx16:xxxx:feb3:ce8e dev eth0 proto ra metric 1996489705  pref high
+
+Kernel IPv6 routing table
+$ ip -6 route list
+default via fe80::be16:65ff:feb3:ce8e dev eth0 proto ra metric 1996489705 expires 21sec hoplimit 64 pref high
+
+FRR Table, if a static route is configured:
+[In real scenario, it is useful to prefer BGP learned default route over IPv6 RA default route.]
+Codes: K - kernel route, C - connected, S - static, R - RIPng,
+       O - OSPFv3, I - IS-IS, B - BGP, N - NHRP, T - Table,
+       v - VNC, V - VNC-Direct, A - Babel, D - SHARP,
+       > - selected route, * - FIB route
+
+S>* ::/0 [20/0] is directly connected, eth0, 00:00:06
+K   ::/0 [119/1001] via fe80::xx16:xxxx:feb3:ce8e, eth0, 6d07h43m
+
+If the metric is changed later, the effect will be seen only when next IPv6
+RA is received, because the default route must be fully controlled by RA msg.
+Below metric is changed from 1996489705 to 1996489704.
+
+$ sudo sysctl -w net.ipv6.conf.eth0.ra_defrtr_metric=1996489704
+net.ipv6.conf.eth0.ra_defrtr_metric = 1996489704
+
+IP monitor:
+[On next IPv6 RA msg, Kernel deletes prev route and installs new route with updated metric]
+
+Deleted default via fe80::xx16:xxxx:feb3:ce8e dev eth0 proto ra metric 1996489705 expires 3sec hoplimit 64 pref high
+default via fe80::xx16:xxxx:feb3:ce8e dev eth0 proto ra metric 1996489704 pref high
+
+Signed-off-by: Praveen Chaudhary <pchaudhary@linkedin.com>
+Signed-off-by: Zhenggen Xu <zxu@linkedin.com>
+Reviewed-by: David Ahern <dsahern@kernel.org>
+Link: https://lore.kernel.org/r/20210125214430.24079-1-pchaudhary@linkedin.com
+Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+---
+ Documentation/networking/ip-sysctl.rst | 10 ++++++++++
+ include/linux/ipv6.h                   |  1 +
+ include/net/ip6_route.h                |  3 ++-
+ include/uapi/linux/ipv6.h              |  1 +
+ include/uapi/linux/sysctl.h            |  1 +
+ net/ipv6/addrconf.c                    | 11 +++++++++++
+ net/ipv6/ndisc.c                       | 12 ++++++++----
+ net/ipv6/route.c                       |  5 +++--
+ 8 files changed, 37 insertions(+), 7 deletions(-)
+
+diff --git a/Documentation/networking/ip-sysctl.rst b/Documentation/networking/ip-sysctl.rst
+index bf1f0ec9740b..e4e1216e6a7d 100644
+--- a/Documentation/networking/ip-sysctl.rst
++++ b/Documentation/networking/ip-sysctl.rst
+@@ -1876,6 +1876,16 @@ accept_ra_defrtr - BOOLEAN
+ 		- enabled if accept_ra is enabled.
+ 		- disabled if accept_ra is disabled.
+ 
++ra_defrtr_metric - UNSIGNED INTEGER
++	Route metric for default route learned in Router Advertisement. This value
++	will be assigned as metric for the default route learned via IPv6 Router
++	Advertisement. Takes affect only if accept_ra_defrtr is enabled.
++
++	Possible values:
++		1 to 0xFFFFFFFF
++
++		Default: IP6_RT_PRIO_USER i.e. 1024.
++
+ accept_ra_from_local - BOOLEAN
+ 	Accept RA with source-address that is found on local machine
+ 	if the RA is otherwise proper and able to be accepted.
+diff --git a/include/linux/ipv6.h b/include/linux/ipv6.h
+index 7a918daa3b19..88641e3b1cc4 100644
+--- a/include/linux/ipv6.h
++++ b/include/linux/ipv6.h
+@@ -31,6 +31,7 @@ struct ipv6_devconf {
+ 	__s32		max_desync_factor;
+ 	__s32		max_addresses;
+ 	__s32		accept_ra_defrtr;
++	__u32		ra_defrtr_metric;
+ 	__s32		accept_ra_min_hop_limit;
+ 	__s32		accept_ra_pinfo;
+ 	__s32		ignore_routes_with_linkdown;
+diff --git a/include/net/ip6_route.h b/include/net/ip6_route.h
+index 44969d03debf..0bf09a9bca4e 100644
+--- a/include/net/ip6_route.h
++++ b/include/net/ip6_route.h
+@@ -174,7 +174,8 @@ struct fib6_info *rt6_get_dflt_router(struct net *net,
+ 				     struct net_device *dev);
+ struct fib6_info *rt6_add_dflt_router(struct net *net,
+ 				     const struct in6_addr *gwaddr,
+-				     struct net_device *dev, unsigned int pref);
++				     struct net_device *dev, unsigned int pref,
++				     u32 defrtr_usr_metric);
+ 
+ void rt6_purge_dflt_routers(struct net *net);
+ 
+diff --git a/include/uapi/linux/ipv6.h b/include/uapi/linux/ipv6.h
+index 9cdbc5b04855..a5e93062315b 100644
+--- a/include/uapi/linux/ipv6.h
++++ b/include/uapi/linux/ipv6.h
+@@ -190,6 +190,7 @@ enum {
+ 	DEVCONF_NDISC_TCLASS,
+ 	DEVCONF_RPL_SEG_ENABLED,
+ 	DEVCONF_ACCEPT_UNTRACKED_NA,
++	DEVCONF_RA_DEFRTR_METRIC,
+ 	DEVCONF_MAX
+ };
+ 
+diff --git a/include/uapi/linux/sysctl.h b/include/uapi/linux/sysctl.h
+index 09dabb76a113..6a3b194c50fe 100644
+--- a/include/uapi/linux/sysctl.h
++++ b/include/uapi/linux/sysctl.h
+@@ -572,6 +572,7 @@ enum {
+ 	NET_IPV6_ACCEPT_SOURCE_ROUTE=25,
+ 	NET_IPV6_ACCEPT_RA_FROM_LOCAL=26,
+ 	NET_IPV6_ACCEPT_RA_RT_INFO_MIN_PLEN=27,
++	NET_IPV6_RA_DEFRTR_METRIC=28,
+ 	__NET_IPV6_MAX
+ };
+ 
+diff --git a/net/ipv6/addrconf.c b/net/ipv6/addrconf.c
+index 038708de6ef9..cac1e63dac54 100644
+--- a/net/ipv6/addrconf.c
++++ b/net/ipv6/addrconf.c
+@@ -205,6 +205,7 @@ static struct ipv6_devconf ipv6_devconf __read_mostly = {
+ 	.max_desync_factor	= MAX_DESYNC_FACTOR,
+ 	.max_addresses		= IPV6_MAX_ADDRESSES,
+ 	.accept_ra_defrtr	= 1,
++	.ra_defrtr_metric	= IP6_RT_PRIO_USER,
+ 	.accept_ra_from_local	= 0,
+ 	.accept_ra_min_hop_limit= 1,
+ 	.accept_ra_pinfo	= 1,
+@@ -260,6 +261,7 @@ static struct ipv6_devconf ipv6_devconf_dflt __read_mostly = {
+ 	.max_desync_factor	= MAX_DESYNC_FACTOR,
+ 	.max_addresses		= IPV6_MAX_ADDRESSES,
+ 	.accept_ra_defrtr	= 1,
++	.ra_defrtr_metric	= IP6_RT_PRIO_USER,
+ 	.accept_ra_from_local	= 0,
+ 	.accept_ra_min_hop_limit= 1,
+ 	.accept_ra_pinfo	= 1,
+@@ -5512,6 +5514,7 @@ static inline void ipv6_store_devconf(struct ipv6_devconf *cnf,
+ 	array[DEVCONF_MAX_DESYNC_FACTOR] = cnf->max_desync_factor;
+ 	array[DEVCONF_MAX_ADDRESSES] = cnf->max_addresses;
+ 	array[DEVCONF_ACCEPT_RA_DEFRTR] = cnf->accept_ra_defrtr;
++	array[DEVCONF_RA_DEFRTR_METRIC] = cnf->ra_defrtr_metric;
+ 	array[DEVCONF_ACCEPT_RA_MIN_HOP_LIMIT] = cnf->accept_ra_min_hop_limit;
+ 	array[DEVCONF_ACCEPT_RA_PINFO] = cnf->accept_ra_pinfo;
+ #ifdef CONFIG_IPV6_ROUTER_PREF
+@@ -6705,6 +6708,14 @@ static const struct ctl_table addrconf_sysctl[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec,
+ 	},
++	{
++		.procname	= "ra_defrtr_metric",
++		.data		= &ipv6_devconf.ra_defrtr_metric,
++		.maxlen		= sizeof(u32),
++		.mode		= 0644,
++		.proc_handler	= proc_douintvec_minmax,
++		.extra1		= (void *)SYSCTL_ONE,
++	},
+ 	{
+ 		.procname	= "accept_ra_min_hop_limit",
+ 		.data		= &ipv6_devconf.accept_ra_min_hop_limit,
+diff --git a/net/ipv6/ndisc.c b/net/ipv6/ndisc.c
+index f236ed938efd..85cd34710a04 100644
+--- a/net/ipv6/ndisc.c
++++ b/net/ipv6/ndisc.c
+@@ -1199,6 +1199,7 @@ static void ndisc_router_discovery(struct sk_buff *skb)
+ 	struct neighbour *neigh = NULL;
+ 	struct inet6_dev *in6_dev;
+ 	struct fib6_info *rt = NULL;
++	u32 defrtr_usr_metric;
+ 	struct net *net;
+ 	int lifetime;
+ 	struct ndisc_options ndopts;
+@@ -1329,18 +1330,21 @@ static void ndisc_router_discovery(struct sk_buff *skb)
+ 			return;
+ 		}
+ 	}
+-	if (rt && lifetime == 0) {
++	/* Set default route metric as specified by user */
++	defrtr_usr_metric = in6_dev->cnf.ra_defrtr_metric;
++	/* delete the route if lifetime is 0 or if metric needs change */
++	if (rt && (lifetime == 0 || rt->fib6_metric != defrtr_usr_metric)) {
+ 		ip6_del_rt(net, rt, false);
+ 		rt = NULL;
+ 	}
+ 
+-	ND_PRINTK(3, info, "RA: rt: %p  lifetime: %d, for dev: %s\n",
+-		  rt, lifetime, skb->dev->name);
++	ND_PRINTK(3, info, "RA: rt: %p  lifetime: %d, metric: %d, for dev: %s\n",
++		  rt, lifetime, defrtr_usr_metric, skb->dev->name);
+ 	if (!rt && lifetime) {
+ 		ND_PRINTK(3, info, "RA: adding default router\n");
+ 
+ 		rt = rt6_add_dflt_router(net, &ipv6_hdr(skb)->saddr,
+-					 skb->dev, pref);
++					 skb->dev, pref, defrtr_usr_metric);
+ 		if (!rt) {
+ 			ND_PRINTK(0, err,
+ 				  "RA: %s failed to add default route\n",
+diff --git a/net/ipv6/route.c b/net/ipv6/route.c
+index cdf215442d37..2a32cc7db014 100644
+--- a/net/ipv6/route.c
++++ b/net/ipv6/route.c
+@@ -4269,11 +4269,12 @@ struct fib6_info *rt6_get_dflt_router(struct net *net,
+ struct fib6_info *rt6_add_dflt_router(struct net *net,
+ 				     const struct in6_addr *gwaddr,
+ 				     struct net_device *dev,
+-				     unsigned int pref)
++				     unsigned int pref,
++				     u32 defrtr_usr_metric)
+ {
+ 	struct fib6_config cfg = {
+ 		.fc_table	= l3mdev_fib_table(dev) ? : RT6_TABLE_DFLT,
+-		.fc_metric	= IP6_RT_PRIO_USER,
++		.fc_metric	= defrtr_usr_metric,
+ 		.fc_ifindex	= dev->ifindex,
+ 		.fc_flags	= RTF_GATEWAY | RTF_ADDRCONF | RTF_DEFAULT |
+ 				  RTF_UP | RTF_EXPIRES | RTF_PREF(pref),
+-- 
+2.25.1
+
