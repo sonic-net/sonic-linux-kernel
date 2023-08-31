@@ -4,11 +4,27 @@ Date: Sun, 7 Feb 2021 22:59:53 +0200
 Subject: [PATCH backport 5.10 067/182] platform/mellanox: Add dedicated match
  for system type QMB8700 (downstream)
 
-Use dedicated match function for QMB8700 system in order to work-around
+Use dedicated match function for QMB8700 system in order to work around
 wrong CPLD register map.
 
 Note this is downstream kernel patch, no intention to upstream this
 code.
+
+Additional notes:
+System QMB8700 is not used by Sonic and not used by our up-stream
+customers.
+It has some hardware bug in CPLD and this was the reason to add
+dedicated patch to WA this bug.
+
+The problem that after this patch many other patches have been added
+to 'mlx-platform' driver and removing this patch will create conflicts
+of applying later patches.
+Thus, this patch is held to avoid such conflicts.
+
+In kernel v6.1 this patch is to be placed on top of all other patches
+to avoid such sort of conflicts.
+However in v5.10 it is very hard now to rebase all the patches for
+moving this one to the top.
 
 Signed-off-by: Oleksandr Shamray <oleksandrs@nvidia.com>
 Reviewed-by: Vadim Pasternak <vadimp@nvidia.com>
