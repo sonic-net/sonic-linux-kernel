@@ -129,15 +129,15 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 0079-mlxsw-Add-ability-to-control-transceiver-module.patch
 0080-ethtool-Add-transceiver-module-extended-states.patch
 0081-platform-x86-mlx-platform-Add-support-for-multi.patch
-0082-mlxsw-core-Extend-external-cooling-device-whitelist-.patch  
-0083-platform_data-mlxreg-Add-field-for-notification-call.patch  
-0084-i2c-mlxcpld-Add-callback-to-notify-probing-completio.patch  
-0085-hwmon-powr1220-Upgrade-driver-to-support-hwmon-info-.patch  
-0086-hwmon-powr1220-Add-support-for-Lattice-s-POWR1014-po.patch  
-0087-hwmon-Add-support-for-EMC2305-RPM-based-PWM-Fan-Spee.patch  
-0088-dt-bindings-Add-description-for-EMC2305-for-RPM-base.patch  
-0089-platform-mellanox-Add-support-for-new-SN2201-system.patch   
-0090-Documentation-ABI-Add-new-attributes-for-mlxreg-io-s.patch 
+0082-mlxsw-core-Extend-external-cooling-device-whitelist-.patch
+0083-platform_data-mlxreg-Add-field-for-notification-call.patch
+0084-i2c-mlxcpld-Add-callback-to-notify-probing-completio.patch
+0085-hwmon-powr1220-Upgrade-driver-to-support-hwmon-info-.patch
+0086-hwmon-powr1220-Add-support-for-Lattice-s-POWR1014-po.patch
+0087-hwmon-Add-support-for-EMC2305-RPM-based-PWM-Fan-Spee.patch
+0088-dt-bindings-Add-description-for-EMC2305-for-RPM-base.patch
+0089-platform-mellanox-Add-support-for-new-SN2201-system.patch
+0090-Documentation-ABI-Add-new-attributes-for-mlxreg-io-s.patch
 0091-platform-x86-mlx-platform-Add-support-for-new-s.patch
 0092-platform-mellanox-mlxreg-lc-fix-error-code-in-m.patch
 0093-hwmon-mlxreg-fan-Extend-driver-to-support-multi.patch
@@ -160,7 +160,11 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 0171-platform-mellanox-mlxreg-lc-Fix-cleanup-on-failure-a.patch
 0173-core-Add-support-for-OSFP-transceiver-modules.patch
 0175-hwmon-pmbus-Add-support-for-Infineon-Digital-Multi-p.patch
+0176-platform-mellanox-fix-reset_pwr_converter_fail-attri.patch
+0177-Documentation-ABI-fix-description-of-fix-reset_pwr_c.patch
+0178-platform-mellanox-Introduce-support-for-next-generat.patch
 0180-hwmon-pmbus-Fix-sensors-readouts-for-MPS-Multi-phase.patch
+
 
 # Cisco patches for 5.10 kernel
 cisco-mtd-part.patch
