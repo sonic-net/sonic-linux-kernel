@@ -1,0 +1,159 @@
+From b2e225166585c511bc92eddb6261cfe9bb91aa04 Mon Sep 17 00:00:00 2001
+From: Hiren Mehta <hiren@pensando.io>
+Date: Fri, 13 Jan 2023 16:45:09 -0800
+Subject: [PATCH 22/30] soc:pensando: Add boot_count to sysfs
+
+At each boot userspace stores boot count in non volatile storage.
+The boot count is incremented at each reboot and the current boot count
+is set to sysfs entry /sys/kernel/reboot/boot_count.
+Augment the kdump timestamp with the boot_count number.
+Also, adjust the kdump timestamp.
+
+Signed-off-by: Hiren Mehta <hiren@pensando.io>
+Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+---
+ drivers/soc/pensando/cap_crash.c  | 16 ++++++++-------
+ drivers/soc/pensando/cap_reboot.c | 34 +++++++++++++++++++++++++++++--
+ drivers/soc/pensando/cap_reboot.h |  3 ++-
+ 3 files changed, 43 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/soc/pensando/cap_crash.c b/drivers/soc/pensando/cap_crash.c
+index b2291c8a3..dc2f931b7 100644
+--- a/drivers/soc/pensando/cap_crash.c
++++ b/drivers/soc/pensando/cap_crash.c
+@@ -1,6 +1,6 @@
+ // SPDX-License-Identifier: GPL-2.0
+ /*
+- * Copyright (c) 2019-2021, Pensando Systems Inc.
++ * Copyright (c) 2019-2022, Pensando Systems Inc.
+  */
+ 
+ #include <linux/io.h>
+@@ -10,6 +10,7 @@
+ #include <linux/time.h>
+ #include <linux/platform_device.h>
+ #include <linux/of.h>
++#include "cap_reboot.h"
+ 
+ #define PCRASH_NAME	"pensando-crash"
+ 
+@@ -60,14 +61,15 @@ static int cap_panic_callback(struct notifier_block *nb,
+ 			       unsigned long reason, void *arg)
+ {
+ 	struct timespec64 ts;
+-	struct tm broken;
++	struct tm tm;
+ 
+ 	ktime_get_real_ts64(&ts);
+-	time64_to_tm(ts.tv_sec, 0, &broken);
+-	pr_info("Panic on %d/%d/%ld::%d:%d:%d:%03ld\n",
+-	       broken.tm_mon + 1, broken.tm_mday, broken.tm_year + 1900,
+-	       broken.tm_hour, broken.tm_min, broken.tm_sec,
+-	       ts.tv_nsec / 1000);
++	time64_to_tm(ts.tv_sec, 0, &tm);
++	pr_info("Panic at Boot #%lu %04ld-%02d-%02d %02d:%02d:%02d.%06ld\n",
++		cap_boot_count(),
++		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
++		tm.tm_hour, tm.tm_min, tm.tm_sec,
++		ts.tv_nsec / 1000);
+ 	return NOTIFY_DONE;
+ }
+ 
+diff --git a/drivers/soc/pensando/cap_reboot.c b/drivers/soc/pensando/cap_reboot.c
+index c57e58fcb..6bc8632c8 100644
+--- a/drivers/soc/pensando/cap_reboot.c
++++ b/drivers/soc/pensando/cap_reboot.c
+@@ -2,7 +2,7 @@
+ /*
+  * Pensando reboot control via sysfs
+  *
+- * Copyright (c) 2020-2021, Pensando Systems Inc.
++ * Copyright (c) 2020-2022, Pensando Systems Inc.
+  */
+ 
+ #include <linux/kobject.h>
+@@ -10,6 +10,7 @@
+ #include <linux/sysfs.h>
+ #include <linux/module.h>
+ #include <linux/init.h>
++#include "cap_reboot.h"
+ 
+ /*
+  * This module provides userspace control of reboot behavior
+@@ -18,6 +19,9 @@
+  */
+ static int panic_reboot;	/* default=0, no reboot */
+ 
++/* value of system "boot_count" for panic logging */
++static unsigned long boot_count;
++
+ bool cap_panic_reboot(void)
+ {
+ 	if (panic_reboot)
+@@ -25,6 +29,11 @@ bool cap_panic_reboot(void)
+ 	return false;
+ }
+ 
++unsigned long cap_boot_count(void)
++{
++	return boot_count;
++}
++
+ struct kobject *reboot_kobj;
+ 
+ static ssize_t panic_reboot_show(struct kobject *kobj,
+@@ -44,11 +53,32 @@ static ssize_t panic_reboot_store(struct kobject *kobj,
+ 	return count;
+ }
+ 
++static ssize_t boot_count_show(struct kobject *kobj,
++			       struct kobj_attribute *attr, char *buf)
++{
++	return sprintf(buf, "%lu\n", boot_count);
++}
++
++static ssize_t boot_count_store(struct kobject *kobj,
++				struct kobj_attribute *attr,
++				const char *buf, size_t count)
++{
++	int ret;
++
++	ret = kstrtoul(buf, 0, &boot_count);
++	if (ret)
++		return ret;
++	return count;
++}
++
+ static struct kobj_attribute panic_reboot_attribute =
+-	__ATTR(panic_reboot, 0664, panic_reboot_show, panic_reboot_store);
++	__ATTR(panic_reboot, 0644, panic_reboot_show, panic_reboot_store);
++static struct kobj_attribute boot_count_attribute =
++	__ATTR(boot_count, 0644, boot_count_show, boot_count_store);
+ 
+ static struct attribute *attrs[] = {
+ 	&panic_reboot_attribute.attr,
++	&boot_count_attribute.attr,
+ 	NULL,
+ };
+ 
+diff --git a/drivers/soc/pensando/cap_reboot.h b/drivers/soc/pensando/cap_reboot.h
+index 8718fff85..e4bd89afe 100644
+--- a/drivers/soc/pensando/cap_reboot.h
++++ b/drivers/soc/pensando/cap_reboot.h
+@@ -1,11 +1,12 @@
+ /* SPDX-License-Identifier: GPL-2.0 */
+ /*
+- * Copyright (c) 2020-2021, Pensando Systems Inc.
++ * Copyright (c) 2020-2022, Pensando Systems Inc.
+  */
+ 
+ #ifndef __CAP_REBOOT_H__
+ #define __CAP_REBOOT_H__
+ 
+ bool cap_panic_reboot(void);
++unsigned long cap_boot_count(void);
+ 
+ #endif
+-- 
+2.17.1
+

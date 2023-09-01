@@ -6,6 +6,13 @@ parameters:
   - armhf
   - arm64
 
+- name: platform
+  type: string
+  values:
+  - vs
+  - pensando
+  default: vs
+
 - name: pool
   type: string
   values:
@@ -28,7 +35,7 @@ parameters:
 jobs:
 - job:
   pool: ${{ parameters.pool }}
-  displayName: ${{ parameters.arch }}
+  displayName: ${{ parameters.platform }}-${{ parameters.arch }}
   timeoutInMinutes: ${{ parameters.timeout }}
 
   container:
@@ -43,7 +50,7 @@ jobs:
       git config --global user.name "Guohan Lu"
       export kernel_procure_method=build
       cat /proc/cpuinfo
-      CONFIGURED_ARCH=${{ parameters.arch }} make
+      CONFIGURED_ARCH=${{ parameters.arch }} CONFIGURED_PLATFORM=${{ parameters.platform }} make
     displayName: "Compile sonic kernel"
   - publish: $(System.DefaultWorkingDirectory)/
     artifact: ${{ parameters.artifact_name }}
