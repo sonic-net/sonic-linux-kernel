@@ -1,2 +1,3 @@
 packaging-update-abiname.patch
 disable-building-linux-source-deb-package.patch
+Change-the-system.map-file-permission-only-readable.patch
