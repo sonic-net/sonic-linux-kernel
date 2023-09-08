@@ -1,0 +1,25 @@
+From 01e598f75f4ab650555b01116ceec4e5c8f2899b Mon Sep 17 00:00:00 2001
+From: xumia <xumia@contoso.com>
+Date: Thu, 7 Sep 2023 02:53:49 +0000
+Subject: [PATCH] Change the system.map file permission only readable by root
+
+---
+ debian/rules.real | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/debian/rules.real b/debian/rules.real
+index 3304579ad..908258789 100644
+--- a/debian/rules.real
++++ b/debian/rules.real
+@@ -505,7 +505,7 @@ install-image-dbg_$(ARCH)_$(FEATURESET)_$(FLAVOUR): $(STAMPS_DIR)/build_$(ARCH)_
+ 	dh_installdirs usr/lib/debug usr/lib/debug/boot usr/share/lintian/overrides/
+ 	dh_lintian
+ 	install -m644 $(DIR)/vmlinux $(DEBUG_DIR)/boot/vmlinux-$(REAL_VERSION)
+-	install -m644 $(DIR)/System.map $(DEBUG_DIR)/boot/System.map-$(REAL_VERSION)
++	install -m600 $(DIR)/System.map $(DEBUG_DIR)/boot/System.map-$(REAL_VERSION)
+ 	+$(MAKE_CLEAN) -C $(DIR) modules_install DEPMOD='$(CURDIR)/debian/bin/no-depmod' INSTALL_MOD_PATH='$(CURDIR)'/$(DEBUG_DIR)
+ 	find $(DEBUG_DIR)/lib/modules/$(REAL_VERSION)/ -mindepth 1 -maxdepth 1 \! -name kernel -exec rm {} \+
+ 	rm $(DEBUG_DIR)/lib/firmware -rf
+-- 
+2.30.2
+
