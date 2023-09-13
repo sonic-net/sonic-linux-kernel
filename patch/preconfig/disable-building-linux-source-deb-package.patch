@@ -1,7 +1,7 @@
 Don't build the linux source package. We don't use it.
 
 diff --git a/debian/config/defines b/debian/config/defines
-index fea89d3b2..7c1d06ad2 100644
+index 55d7e51a7..d0bd92833 100644
 --- a/debian/config/defines
 +++ b/debian/config/defines
 @@ -171,3 +171,6 @@ gcc-10: gcc-10 <!stage1 !cross !pkg.linux.nokernel>, gcc-10-@gnu-type-package@ <
@@ -12,15 +12,15 @@ index fea89d3b2..7c1d06ad2 100644
 +[packages]
 +source: false
 diff --git a/debian/control.md5sum b/debian/control.md5sum
-index b6dae911b..50787e0e6 100644
+index 7d4eabf04..30b3c66a3 100644
 --- a/debian/control.md5sum
 +++ b/debian/control.md5sum
 @@ -38,7 +38,7 @@ afb508873a44a1f196c2a525fec4b415  debian/templates/image.prerm.in
  381bc892fd36ef7ea5327f649b99cb98  debian/templates/sourcebin.meta.maintscript.in
  814dda166c7e3ef02e6e259e805ac66a  debian/templates/tests-control.image.in
  33d71bfd398d2f9b3bc5c0193b67d17e  debian/templates/tests-control.main.in
--8d7d8384c63c762538f8a76b60f6ca01  debian/config/defines
-+d2c3e206c4cfe309bacbea8692b9acae  debian/config/defines
+-4f47bd3f3f88986bd6cb2bd9c006d6aa  debian/config/defines
++c133f81fd44189940d8a695508ae2221  debian/config/defines
  59a811890d2e7129bec940075850f11f  debian/config/alpha/defines
  026ce5cdad7814c28f4fd87589786719  debian/config/amd64/defines
  44bff3917069a99eeb20ceff24609dda  debian/config/arm64/defines
