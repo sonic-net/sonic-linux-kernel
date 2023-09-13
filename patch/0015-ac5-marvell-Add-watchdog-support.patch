@@ -12,8 +12,8 @@ Signed-off-by: Noam Liron <lnoam@marvell.com>
 ---
  drivers/watchdog/Kconfig   |  16 ++
  drivers/watchdog/Makefile  |   1 +
- drivers/watchdog/ac5_gwd.c | 458 +++++++++++++++++++++++++++++++++++++
- 3 files changed, 475 insertions(+)
+ drivers/watchdog/ac5_gwd.c | 459 +++++++++++++++++++++++++++++++++++++
+ 3 files changed, 476 insertions(+)
  create mode 100644 drivers/watchdog/ac5_gwd.c
 
 diff --git a/drivers/watchdog/Kconfig b/drivers/watchdog/Kconfig
@@ -57,10 +57,10 @@ index 071a2e50b..acf3df558 100644
  obj-$(CONFIG_AT91SAM9X_WATCHDOG) += at91sam9_wdt.o
 diff --git a/drivers/watchdog/ac5_gwd.c b/drivers/watchdog/ac5_gwd.c
 new file mode 100644
-index 000000000..5ba877b9b
+index 000000000..994d1a2db
 --- /dev/null
 +++ b/drivers/watchdog/ac5_gwd.c
-@@ -0,0 +1,458 @@
+@@ -0,0 +1,459 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * AC5 Watchdog driver
@@ -244,6 +244,7 @@ index 000000000..5ba877b9b
 +	low = smc_readl(addr);
 +	high = smc_readl(addr + 4);
 +	low = smc_readl(addr); /* read twice, as a workaround to HW limitation */
++	high = smc_readl(addr + 4); /* read twice, as a workaround to HW limitation */
 +
 +	return low + ((u64)high << 32);
 +}
