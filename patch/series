@@ -177,12 +177,6 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 0178-platform-mellanox-Introduce-support-for-next-generat.patch
 0180-hwmon-pmbus-Fix-sensors-readouts-for-MPS-Multi-phase.patch
 0186-platform-mellanox-mlxreg-hotplug-Allow-more-flexible.patch
-0195-platform-x86-MLX_PLATFORM-select-REGMAP-instead-of-d.patch
-0201-i2c-mlxbf-incorrect-base-address-passed-during-io-wr.patch
-0202-i2c-mlxbf-prevent-stack-overflow-in-mlxbf_i2c_smbus_.patch
-0204-i2c-mlxbf-Fix-frequency-calculation.patch
-0205-i2c-mlxbf-support-lock-mechanism.patch
-0265-hwmon-mlxreg-fan-Return-zero-speed-for-broken-fan.patch
 0285-platform-mellanox-nvsw-sn2201-change-fans-i2c-busses.patch
 ###-> mellanox_hw_mgmt-end
 

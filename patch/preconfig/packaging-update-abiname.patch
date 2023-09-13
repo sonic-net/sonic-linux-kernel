@@ -9,26 +9,26 @@ From: Olivier Singla <olivier.singla@broadcom.com>
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/debian/config/defines b/debian/config/defines
-index cd4938ecc..e54c10256 100644
+index 983625720..55d7e51a7 100644
 --- a/debian/config/defines
 +++ b/debian/config/defines
 @@ -1,5 +1,5 @@
  [abi]
--abiname: 18
-+abiname: 18-2
+-abiname: 23
++abiname: 23-2
  ignore-changes:
   __cpuhp_*
   __udp_gso_segment
 diff --git a/debian/control.md5sum b/debian/control.md5sum
-index e86f5f1db..caddd5360 100644
+index b3ce4f58d..7d4eabf04 100644
 --- a/debian/control.md5sum
 +++ b/debian/control.md5sum
 @@ -38,7 +38,7 @@ afb508873a44a1f196c2a525fec4b415  debian/templates/image.prerm.in
  381bc892fd36ef7ea5327f649b99cb98  debian/templates/sourcebin.meta.maintscript.in
  814dda166c7e3ef02e6e259e805ac66a  debian/templates/tests-control.image.in
  33d71bfd398d2f9b3bc5c0193b67d17e  debian/templates/tests-control.main.in
--eb1d16e5a614c12118ccc36e18c54a69  debian/config/defines
-+8d7d8384c63c762538f8a76b60f6ca01  debian/config/defines
+-a488ddf3e8386253351268ac9218622f  debian/config/defines
++4f47bd3f3f88986bd6cb2bd9c006d6aa  debian/config/defines
  59a811890d2e7129bec940075850f11f  debian/config/alpha/defines
  026ce5cdad7814c28f4fd87589786719  debian/config/amd64/defines
  44bff3917069a99eeb20ceff24609dda  debian/config/arm64/defines
