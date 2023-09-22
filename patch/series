@@ -164,7 +164,7 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 0177-Documentation-ABI-fix-description-of-fix-reset_pwr_c.patch
 0178-platform-mellanox-Introduce-support-for-next-generat.patch
 0180-hwmon-pmbus-Fix-sensors-readouts-for-MPS-Multi-phase.patch
-
+0285-platform-mellanox-nvsw-sn2201-change-fans-i2c-busses.patch
 
 # Cisco patches for 5.10 kernel
 cisco-mtd-part.patch
