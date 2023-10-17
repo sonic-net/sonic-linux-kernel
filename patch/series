@@ -200,29 +200,18 @@ cisco-npu-disable-other-bars.patch
 0003-psample-define-the-macro-PSAMPLE_MD_EXTENDED_ATTR.patch
 
 #
-# Marvell platform patches for 5.10
-armhf_secondary_boot_online.patch
-#0001-dt-bindings-marvell-Document-the-AC5-AC5X-compatible.patch # Upstreamed
-#0002-dt-bindings-net-mvneta-Add-marvell-armada-ac5-neta.patch # Upstreamed
-#0003-arm64-dts-marvell-Add-Armada-98DX2530-SoC-and-RD-AC5.patch # Upstreamed
-#0004-arm64-dts-marvell-Add-UART1-3-for-AC5-AC5X.patch # Upstreamed
-#0005-arm64-dts-marvell-98dx25xx-Fix-i2c-gpios-property.patch # Upstreamed
-0006-arm64-dts-Update-cache-properties-for-marvell.patch
-#0007-arm64-dts-marvell-AC5-AC5X-Fix-address-for-UART1.patch # Upstreamed
-#0008-mtd-rawnand-marvell-Add-missing-layouts.patch # Upstreamed
-#0009-pinctrl-mvebu-Add-driver-for-98DX2530-SoC.patch # Upstreamed
-#0010-arm64-marvell-Enable-the-98DX2530-pinctrl-driver.patch # Upstreamed
-#0011-net-mvneta-Add-support-for-98DX2530-Ethernet-port.patch # Upstreamed
-#0012-spi-a3700-Support-big-endianness-for-AC5-SPI-driver.patch # Upstreamed
-#0013-dt-bindings-ac5-Add-mmc-and-usb-properties.patch # TODO
-0014-dts-ac5-marvell-Add-switching-mmc-watchdog-node.patch
-0015-ac5-marvell-Add-watchdog-support.patch
-#0016-ac5-marvell-Add-support-for-emmc.patch # TODO
-0017-usb-ehci-Add-support-for-ac5.patch
-#0018-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch # TODO
-0019-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
-#0020-dts-marvell-Add-support-for-7020-comexpress.patch # TODO
-#0021-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch # TODO
+# Marvell platform patches for 6.1 kernel
+0001-armhf_secondary_boot_online.patch
+0002-arm64-dts-Update-cache-properties-for-marvell.patch
+0003-dt-bindings-ac5-Add-mmc-and-usb-properties.patch
+0004-dts-ac5-marvell-Add-switching-mmc-watchdog-node.patch
+0005-ac5-marvell-Add-watchdog-support.patch
+0006-ac5-marvell-Add-support-for-emmc.patch
+0007-usb-ehci-Add-support-for-ac5.patch
+0008-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch
+0009-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
+0010-dts-marvell-Add-support-for-7020-comexpress.patch
+0011-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch
 
 # amd-pensando elba support
 # TODO

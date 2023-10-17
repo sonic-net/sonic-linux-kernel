@@ -1,6 +1,7 @@
-From: Pavan Naregundi <pnaregundi@marvell.com>
-Date: Fri, 10 Mar 2023 00:41:54 +0000
-mv6xxx: Fix i2c lock due to arb-loss
+From 1c7573db2c31e4b30662554d230325ffcbb884e1 Mon Sep 17 00:00:00 2001
+From: Keshav Gupta <keshavg@marvell.com>
+Date: Mon, 16 Oct 2023 15:14:03 +0000
+Subject: [PATCH] mv6xxx: Fix i2c lock due to arb-loss
 
 Some i2c slaves, mainly SFPs, might cause the bus to lost arbitration
 while slave is in the middle of responding.
@@ -12,11 +13,11 @@ Tested-by: Raz Adashi <raza@marvell.com>
 Reviewed-by: Raz Adashi <raza@marvell.com>
 Signed-off-by: Noam Liron <lnoam@marvell.com>
 ---
- drivers/i2c/busses/i2c-mv64xxx.c | 82 ++++++++++++++++++++++++++++++++
- 1 file changed, 82 insertions(+)
+ drivers/i2c/busses/i2c-mv64xxx.c | 81 ++++++++++++++++++++++++++++++++
+ 1 file changed, 81 insertions(+)
 
 diff --git a/drivers/i2c/busses/i2c-mv64xxx.c b/drivers/i2c/busses/i2c-mv64xxx.c
-index e0e45fc19..804cd227b 100644
+index 878c076eb..180c32cf9 100644
 --- a/drivers/i2c/busses/i2c-mv64xxx.c
 +++ b/drivers/i2c/busses/i2c-mv64xxx.c
 @@ -9,6 +9,8 @@
@@ -28,7 +29,7 @@ index e0e45fc19..804cd227b 100644
  #include <linux/kernel.h>
  #include <linux/slab.h>
  #include <linux/module.h>
-@@ -25,6 +27,7 @@
+@@ -27,6 +29,7 @@
  #include <linux/clk.h>
  #include <linux/err.h>
  #include <linux/delay.h>
@@ -36,7 +37,7 @@ index e0e45fc19..804cd227b 100644
  
  #define MV64XXX_I2C_ADDR_ADDR(val)			((val & 0x7f) << 1)
  #define MV64XXX_I2C_BAUD_DIV_N(val)			(val & 0x7)
-@@ -103,6 +106,7 @@ enum {
+@@ -105,6 +108,7 @@ enum {
  	MV64XXX_I2C_ACTION_RCV_DATA,
  	MV64XXX_I2C_ACTION_RCV_DATA_STOP,
  	MV64XXX_I2C_ACTION_SEND_STOP,
@@ -44,11 +45,10 @@ index e0e45fc19..804cd227b 100644
  };
  
  struct mv64xxx_i2c_regs {
-@@ -147,6 +151,12 @@ struct mv64xxx_i2c_data {
- 	bool			irq_clear_inverted;
- 	/* Clk div is 2 to the power n, not 2 to the power n + 1 */
+@@ -151,6 +155,11 @@ struct mv64xxx_i2c_data {
  	bool			clk_n_base_0;
-+
+ 	struct i2c_bus_recovery_info	rinfo;
+ 	bool			atomic;
 +	/* I2C mpp states & gpios needed for ARB lost recovery */
 +	int			scl_gpio, sda_gpio;
 +	bool			arb_lost_reovery_ena;
@@ -57,7 +57,7 @@ index e0e45fc19..804cd227b 100644
  };
  
  static struct mv64xxx_i2c_regs mv64xxx_i2c_regs_mv64xxx = {
-@@ -308,6 +318,11 @@ mv64xxx_i2c_fsm(struct mv64xxx_i2c_data *drv_data, u32 status)
+@@ -319,6 +328,11 @@ mv64xxx_i2c_fsm(struct mv64xxx_i2c_data *drv_data, u32 status)
  		drv_data->state = MV64XXX_I2C_STATE_IDLE;
  		break;
  
@@ -69,7 +69,7 @@ index e0e45fc19..804cd227b 100644
  	case MV64XXX_I2C_STATUS_MAST_WR_ADDR_NO_ACK: /* 0x20 */
  	case MV64XXX_I2C_STATUS_MAST_WR_NO_ACK: /* 30 */
  	case MV64XXX_I2C_STATUS_MAST_RD_ADDR_NO_ACK: /* 48 */
-@@ -345,6 +360,9 @@ static void mv64xxx_i2c_send_start(struct mv64xxx_i2c_data *drv_data)
+@@ -357,6 +371,9 @@ static void mv64xxx_i2c_send_start(struct mv64xxx_i2c_data *drv_data)
  static void
  mv64xxx_i2c_do_action(struct mv64xxx_i2c_data *drv_data)
  {
@@ -79,7 +79,7 @@ index e0e45fc19..804cd227b 100644
  	switch(drv_data->action) {
  	case MV64XXX_I2C_ACTION_SEND_RESTART:
  		/* We should only get here if we have further messages */
-@@ -398,6 +416,46 @@ mv64xxx_i2c_do_action(struct mv64xxx_i2c_data *drv_data)
+@@ -410,6 +427,46 @@ mv64xxx_i2c_do_action(struct mv64xxx_i2c_data *drv_data)
  			drv_data->reg_base + drv_data->reg_offsets.control);
  		break;
  
@@ -108,9 +108,9 @@ index e0e45fc19..804cd227b 100644
 +					gpio_set_value(drv_data->scl_gpio, 0);
 +				};
 +
-+				devm_gpio_free(drv_data->adapter.dev.parent,
++				devm_gpiod_put(drv_data->adapter.dev.parent,
 +					drv_data->scl_gpio);
-+				devm_gpio_free(drv_data->adapter.dev.parent,
++				devm_gpiod_put(drv_data->adapter.dev.parent,
 +					drv_data->sda_gpio);
 +			}
 +
@@ -126,7 +126,7 @@ index e0e45fc19..804cd227b 100644
  	case MV64XXX_I2C_ACTION_RCV_DATA_STOP:
  		drv_data->msg->buf[drv_data->byte_posn++] =
  			readl(drv_data->reg_base + drv_data->reg_offsets.data);
-@@ -875,6 +933,7 @@ mv64xxx_i2c_probe(struct platform_device *pd)
+@@ -986,6 +1043,7 @@ mv64xxx_i2c_probe(struct platform_device *pd)
  {
  	struct mv64xxx_i2c_data		*drv_data;
  	struct mv64xxx_i2c_pdata	*pdata = dev_get_platdata(&pd->dev);
@@ -134,9 +134,9 @@ index e0e45fc19..804cd227b 100644
  	int	rc;
  
  	if ((!pdata && !pd->dev.of_node))
-@@ -926,6 +985,29 @@ mv64xxx_i2c_probe(struct platform_device *pd)
- 		goto exit_reset;
- 	}
+@@ -1041,6 +1099,29 @@ mv64xxx_i2c_probe(struct platform_device *pd)
+ 	if (rc == -EPROBE_DEFER)
+ 		return rc;
  
 +	drv_data->arb_lost_reovery_ena = false;
 +	pc = devm_pinctrl_get(&pd->dev);

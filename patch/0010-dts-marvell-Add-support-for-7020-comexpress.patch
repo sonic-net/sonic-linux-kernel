@@ -1,8 +1,8 @@
-From: Pavan Naregundi <pnaregundi@marvell.com>
-Date: Tue, 7 Mar 2023 15:18:44 +0000
-dts: marvell: Add support for 7020 comexpress
+From: Keshav Gupta <keshavg@marvell.com>
+Date: Wed, 4 Oct 2023 06:46:29 +0000
+Subject: [PATCH] dts: marvell: Add support for 7020 comexpress
 
-This change adds device tree file for Marvell Armada 7020 ComExpress 
+This change adds device tree file for Marvell Armada 7020 ComExpress
 development board.
 
 The Armada 7020(7K family) composed of:
@@ -26,12 +26,12 @@ Reviewed-by: Raz Adashi <raza@marvell.com>
  create mode 100644 arch/arm64/boot/dts/marvell/armada-7020-comexpress.dts
 
 diff --git a/arch/arm64/boot/dts/marvell/Makefile b/arch/arm64/boot/dts/marvell/Makefile
-index 5e9c34d1e..6873ad448 100644
+index 058237681..49f274add 100644
 --- a/arch/arm64/boot/dts/marvell/Makefile
 +++ b/arch/arm64/boot/dts/marvell/Makefile
-@@ -17,3 +17,4 @@ dtb-$(CONFIG_ARCH_MVEBU) += cn9130-db.dtb
- dtb-$(CONFIG_ARCH_MVEBU) += cn9131-db.dtb
- dtb-$(CONFIG_ARCH_MVEBU) += cn9132-db.dtb
+@@ -26,3 +26,4 @@ dtb-$(CONFIG_ARCH_MVEBU) += cn9132-db-B.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += cn9130-crb-A.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += cn9130-crb-B.dtb
  dtb-$(CONFIG_ARCH_MVEBU) += ac5-98dx35xx-rd.dtb
 +dtb-$(CONFIG_ARCH_MVEBU) += armada-7020-comexpress.dtb
 diff --git a/arch/arm64/boot/dts/marvell/armada-7020-comexpress.dts b/arch/arm64/boot/dts/marvell/armada-7020-comexpress.dts
