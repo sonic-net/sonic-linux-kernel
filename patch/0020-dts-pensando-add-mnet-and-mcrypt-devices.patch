@@ -1,14 +1,16 @@
-From f2f6c712019f6e9109d3c682c7431a11d6ce2054 Mon Sep 17 00:00:00 2001
-From: David Clear <dac2@pensando.io>
-Date: Thu, 10 Feb 2022 12:54:41 -0800
-Subject: [PATCH 16/30] arm64: dts: pensando: add mnet mcrypt devices
+From 9a2b1c7104bfe0ca2584a41d06f9cbb11161dff4 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 10:27:02 +0000
+Subject: [PATCH] dts/pensando: add mnet and mcrypt devices, with reserved dma
+ memory
 
 This patch adds the mnet and mcrypt devices to the device-tree, along
-with a reserved memory region for use by the mnet instances.  This avoids
+with a reserved memory region for use by the mnet instances.  This
+avoids
 memory allocation failure due to wider system memory fragmentation.
 
-Signed-off-by: David Clear <dac2@pensando.io>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
  .../boot/dts/pensando/elba-asic-memory.dtsi   | 16 +++++
  arch/arm64/boot/dts/pensando/elba-asic.dts    |  2 +
@@ -43,7 +45,7 @@ diff --git a/arch/arm64/boot/dts/pensando/elba-asic.dts b/arch/arm64/boot/dts/pe
 index 8c482bd87..70d0dbd38 100644
 --- a/arch/arm64/boot/dts/pensando/elba-asic.dts
 +++ b/arch/arm64/boot/dts/pensando/elba-asic.dts
-@@ -22,3 +22,5 @@
+@@ -22,3 +22,5 @@ chosen {
  #include "elba-16core-spin-table.dtsi"
  #include "elba-asic-common.dtsi"
  #include "elba-flash-parts.dtsi"
@@ -127,5 +129,5 @@ index 000000000..a728a7625
 +	};
 +};
 -- 
-2.17.1
+2.39.2
 

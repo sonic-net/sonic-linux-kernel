@@ -1,29 +1,30 @@
-From 07d6fc782dd86ad386e9cc5eb13cbeec20a46db9 Mon Sep 17 00:00:00 2001
-From: Ashwin H <Ashwin.H@amd.com>
-Date: Tue, 27 Jun 2023 11:13:05 +0000
-Subject: [PATCH 02/30] i2c: designware: Recover from a stuck SDA line
+From f3c0cb78c3982c60e9a5e2705c9939f1eef84002 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 08:36:35 +0000
+Subject: [PATCH] i2c-designware: Support stuck SDA line recovery
 
 This patch supports the Designware I2C stuck bus recovery feature.
-The procedure for stuck SDA recovery involves a polling loop in interrupt
+The procedure for stuck SDA recovery involves a polling loop in
+interrupt
 mode. This should last just long enough for transmission of 9 bits,
 after which the hardware should indicate that the recovery attempt is
 complete. There have been examples where this fails, so there is also
 a hard maximum on time in the recovery loop.
 
-Signed-off-by: David Clear <dac2@pensando.io>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
  drivers/i2c/busses/i2c-designware-common.c  |  2 +
- drivers/i2c/busses/i2c-designware-core.h    | 10 +++
+ drivers/i2c/busses/i2c-designware-core.h    | 11 +++
  drivers/i2c/busses/i2c-designware-master.c  | 87 ++++++++++++++++++++-
  drivers/i2c/busses/i2c-designware-platdrv.c |  3 +
- 4 files changed, 100 insertions(+), 2 deletions(-)
+ 4 files changed, 101 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/i2c/busses/i2c-designware-common.c b/drivers/i2c/busses/i2c-designware-common.c
-index 9468c6c89..95b082361 100644
+index 6fdb25a5f..8ac32dd41 100644
 --- a/drivers/i2c/busses/i2c-designware-common.c
 +++ b/drivers/i2c/busses/i2c-designware-common.c
-@@ -56,6 +56,8 @@ static char *abort_sources[] = {
+@@ -57,6 +57,8 @@ static char *abort_sources[] = {
  		"slave lost the bus while transmitting data to a remote master",
  	[ABRT_SLAVE_RD_INTX] =
  		"incorrect slave-transmitter mode configuration",
@@ -33,18 +34,18 @@ index 9468c6c89..95b082361 100644
  
  static int dw_reg_read(void *context, unsigned int reg, unsigned int *val)
 diff --git a/drivers/i2c/busses/i2c-designware-core.h b/drivers/i2c/busses/i2c-designware-core.h
-index eb5ef4d0f..f0be70e3e 100644
+index 56a029da4..54e6c44e6 100644
 --- a/drivers/i2c/busses/i2c-designware-core.h
 +++ b/drivers/i2c/busses/i2c-designware-core.h
 @@ -37,6 +37,7 @@
- #define DW_IC_CON_STOP_DET_IFADDRESSED		0x80
- #define DW_IC_CON_TX_EMPTY_CTRL		0x100
- #define DW_IC_CON_RX_FIFO_FULL_HLD_CTRL		0x200
-+#define DW_IC_CON_BUS_CLEAR_FEATURE_CTL	0x800
+ #define DW_IC_CON_STOP_DET_IFADDRESSED		BIT(7)
+ #define DW_IC_CON_TX_EMPTY_CTRL			BIT(8)
+ #define DW_IC_CON_RX_FIFO_FULL_HLD_CTRL		BIT(9)
++#define DW_IC_CON_BUS_CLEAR_FEATURE_CTL		BIT(11)
  
- /*
-  * Registers offset
-@@ -75,6 +76,8 @@
+ #define DW_IC_DATA_CMD_DAT			GENMASK(7, 0)
+ 
+@@ -77,6 +78,8 @@
  #define DW_IC_TX_ABRT_SOURCE	0x80
  #define DW_IC_ENABLE_STATUS	0x9c
  #define DW_IC_CLR_RESTART_DET	0xa8
@@ -53,45 +54,50 @@ index eb5ef4d0f..f0be70e3e 100644
  #define DW_IC_COMP_PARAM_1	0xf4
  #define DW_IC_COMP_VERSION	0xf8
  #define DW_IC_SDA_HOLD_MIN_VERS	0x3131312A
-@@ -94,6 +97,7 @@
- #define DW_IC_INTR_START_DET	0x400
- #define DW_IC_INTR_GEN_CALL	0x800
- #define DW_IC_INTR_RESTART_DET	0x1000
-+#define DW_IC_INTR_SCL_STUCK_AT_LOW 0x4000
+@@ -96,6 +99,7 @@
+ #define DW_IC_INTR_START_DET	BIT(10)
+ #define DW_IC_INTR_GEN_CALL	BIT(11)
+ #define DW_IC_INTR_RESTART_DET	BIT(12)
++#define DW_IC_INTR_SCL_STUCK_AT_LOW	BIT(14)
  
  #define DW_IC_INTR_DEFAULT_MASK		(DW_IC_INTR_RX_FULL | \
  					 DW_IC_INTR_TX_ABRT | \
-@@ -105,10 +109,13 @@
+@@ -107,14 +111,18 @@
  					 DW_IC_INTR_RX_UNDER | \
  					 DW_IC_INTR_RD_REQ)
  
-+#define DW_IC_SDA_STUCK_RECOVERY_ENABLE	0x8
++#define DW_IC_SDA_STUCK_RECOVERY_ENABLE	BIT(3)
 +
- #define DW_IC_STATUS_ACTIVITY		0x1
+ #define DW_IC_STATUS_ACTIVITY		BIT(0)
  #define DW_IC_STATUS_TFE		BIT(2)
  #define DW_IC_STATUS_MASTER_ACTIVITY	BIT(5)
  #define DW_IC_STATUS_SLAVE_ACTIVITY	BIT(6)
 +#define DW_IC_STATUS_SDA_STUCK_NOT_RECOVERED	BIT(11)
  
  #define DW_IC_SDA_HOLD_RX_SHIFT		16
- #define DW_IC_SDA_HOLD_RX_MASK		GENMASK(23, DW_IC_SDA_HOLD_RX_SHIFT)
-@@ -153,6 +160,7 @@
+ #define DW_IC_SDA_HOLD_RX_MASK		GENMASK(23, 16)
+ 
++
+ #define DW_IC_ERR_TX_ABRT	0x1
+ 
+ #define DW_IC_TAR_10BITADDR_MASTER	BIT(12)
+@@ -156,6 +164,7 @@
  #define ABRT_SLAVE_FLUSH_TXFIFO	13
  #define ABRT_SLAVE_ARBLOST	14
  #define ABRT_SLAVE_RD_INTX	15
 +#define ABRT_SDA_STUCK_AT_LOW	17
  
- #define DW_IC_TX_ABRT_7B_ADDR_NOACK	(1UL << ABRT_7B_ADDR_NOACK)
- #define DW_IC_TX_ABRT_10ADDR1_NOACK	(1UL << ABRT_10ADDR1_NOACK)
-@@ -165,6 +173,7 @@
- #define DW_IC_TX_ABRT_10B_RD_NORSTRT	(1UL << ABRT_10B_RD_NORSTRT)
- #define DW_IC_TX_ABRT_MASTER_DIS	(1UL << ABRT_MASTER_DIS)
- #define DW_IC_TX_ARB_LOST		(1UL << ARB_LOST)
-+#define DW_IC_TX_ABRT_SDA_STUCK_AT_LOW	(1UL << ABRT_SDA_STUCK_AT_LOW)
- #define DW_IC_RX_ABRT_SLAVE_RD_INTX	(1UL << ABRT_SLAVE_RD_INTX)
- #define DW_IC_RX_ABRT_SLAVE_ARBLOST	(1UL << ABRT_SLAVE_ARBLOST)
- #define DW_IC_RX_ABRT_SLAVE_FLUSH_TXFIFO	(1UL << ABRT_SLAVE_FLUSH_TXFIFO)
-@@ -268,6 +277,7 @@ struct dw_i2c_dev {
+ #define DW_IC_TX_ABRT_7B_ADDR_NOACK		BIT(ABRT_7B_ADDR_NOACK)
+ #define DW_IC_TX_ABRT_10ADDR1_NOACK		BIT(ABRT_10ADDR1_NOACK)
+@@ -168,6 +177,7 @@
+ #define DW_IC_TX_ABRT_10B_RD_NORSTRT		BIT(ABRT_10B_RD_NORSTRT)
+ #define DW_IC_TX_ABRT_MASTER_DIS		BIT(ABRT_MASTER_DIS)
+ #define DW_IC_TX_ARB_LOST			BIT(ARB_LOST)
++#define DW_IC_TX_ABRT_SDA_STUCK_AT_LOW		BIT(ABRT_SDA_STUCK_AT_LOW)
+ #define DW_IC_RX_ABRT_SLAVE_RD_INTX		BIT(ABRT_SLAVE_RD_INTX)
+ #define DW_IC_RX_ABRT_SLAVE_ARBLOST		BIT(ABRT_SLAVE_ARBLOST)
+ #define DW_IC_RX_ABRT_SLAVE_FLUSH_TXFIFO	BIT(ABRT_SLAVE_FLUSH_TXFIFO)
+@@ -277,6 +287,7 @@ struct dw_i2c_dev {
  	int			rx_outstanding;
  	struct i2c_timings	timings;
  	u32			sda_hold_time;
@@ -100,10 +106,10 @@ index eb5ef4d0f..f0be70e3e 100644
  	u16			ss_lcnt;
  	u16			fs_hcnt;
 diff --git a/drivers/i2c/busses/i2c-designware-master.c b/drivers/i2c/busses/i2c-designware-master.c
-index 2871cf2ee..d678b5ab2 100644
+index dc3c5a15a..9834137a0 100644
 --- a/drivers/i2c/busses/i2c-designware-master.c
 +++ b/drivers/i2c/busses/i2c-designware-master.c
-@@ -33,6 +33,45 @@ static void i2c_dw_configure_fifo_master(struct dw_i2c_dev *dev)
+@@ -37,6 +37,45 @@ static void i2c_dw_configure_fifo_master(struct dw_i2c_dev *dev)
  	regmap_write(dev->map, DW_IC_CON, dev->master_cfg);
  }
  
@@ -148,8 +154,8 @@ index 2871cf2ee..d678b5ab2 100644
 +
  static int i2c_dw_set_timings_master(struct dw_i2c_dev *dev)
  {
- 	const char *mode_str, *fp_str = "";
-@@ -500,6 +539,14 @@ i2c_dw_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
+ 	u32 comp_param1;
+@@ -599,6 +638,14 @@ i2c_dw_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
  		goto done;
  	}
  
@@ -164,7 +170,7 @@ index 2871cf2ee..d678b5ab2 100644
  	/*
  	 * We must disable the adapter before returning and signaling the end
  	 * of the current transfer. Otherwise the hardware might continue
-@@ -711,6 +758,39 @@ static void i2c_dw_unprepare_recovery(struct i2c_adapter *adap)
+@@ -826,6 +873,39 @@ static void i2c_dw_unprepare_recovery(struct i2c_adapter *adap)
  	i2c_dw_init_master(dev);
  }
  
@@ -204,7 +210,7 @@ index 2871cf2ee..d678b5ab2 100644
  static int i2c_dw_init_recovery_info(struct dw_i2c_dev *dev)
  {
  	struct i2c_bus_recovery_info *rinfo = &dev->rinfo;
-@@ -718,8 +798,11 @@ static int i2c_dw_init_recovery_info(struct dw_i2c_dev *dev)
+@@ -833,8 +913,11 @@ static int i2c_dw_init_recovery_info(struct dw_i2c_dev *dev)
  	struct gpio_desc *gpio;
  
  	gpio = devm_gpiod_get_optional(dev->dev, "scl", GPIOD_OUT_HIGH);
@@ -219,10 +225,10 @@ index 2871cf2ee..d678b5ab2 100644
  	rinfo->scl_gpiod = gpio;
  
 diff --git a/drivers/i2c/busses/i2c-designware-platdrv.c b/drivers/i2c/busses/i2c-designware-platdrv.c
-index ad91c7c0f..d7a6cbd99 100644
+index 74182db03..7466d748b 100644
 --- a/drivers/i2c/busses/i2c-designware-platdrv.c
 +++ b/drivers/i2c/busses/i2c-designware-platdrv.c
-@@ -135,6 +135,9 @@ static int dw_i2c_of_configure(struct platform_device *pdev)
+@@ -136,6 +136,9 @@ static int dw_i2c_of_configure(struct platform_device *pdev)
  {
  	struct dw_i2c_dev *dev = platform_get_drvdata(pdev);
  
@@ -233,5 +239,5 @@ index ad91c7c0f..d7a6cbd99 100644
  	case MODEL_MSCC_OCELOT:
  		dev->ext = devm_platform_ioremap_resource(pdev, 1);
 -- 
-2.17.1
+2.39.2
 

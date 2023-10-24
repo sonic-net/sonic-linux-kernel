@@ -1,19 +1,21 @@
-From 7096c2c942eb2294e42b279f6fd60d780fb13db5 Mon Sep 17 00:00:00 2001
-From: Ashwin H <Ashwin.H@amd.com>
-Date: Tue, 27 Jun 2023 06:32:53 +0000
-Subject: [PATCH 01/30] hwmon: (ltc2978) Add support for LTC3888
+From 8d398701b1062464c2618b95aed5798dc749a941 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 08:29:14 +0000
+Subject: [PATCH] Adding support LTC3888
 
-Add support for LTC3888 and LTC3888-1 driver
-Add LTC3888 IOUT support.
+This patch adds support for the LTC3888 VRM.
 
-Signed-off-by: David Clear <dac2@pensando.io>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+Datasheet:
+https://www.analog.com/media/en/technical-documentation/data-sheets/ltc3888-3888-1-3888-2.pdf
+
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
  drivers/hwmon/pmbus/ltc2978.c | 43 ++++++++++++++++++++++++++++++++++-
  1 file changed, 42 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/hwmon/pmbus/ltc2978.c b/drivers/hwmon/pmbus/ltc2978.c
-index 9a024cf70..34129f053 100644
+index 6d2592731..057278736 100644
 --- a/drivers/hwmon/pmbus/ltc2978.c
 +++ b/drivers/hwmon/pmbus/ltc2978.c
 @@ -23,7 +23,8 @@ enum chips {
@@ -44,7 +46,7 @@ index 9a024cf70..34129f053 100644
  #define LTM2987_ID_A			0x8010	/* A/B for two die IDs */
  #define LTM2987_ID_B			0x8020
  #define LTC3889_ID			0x4900
-@@ -456,6 +461,26 @@ static int ltc3883_read_word_data(struct i2c_client *client, int page,
+@@ -467,6 +472,26 @@ static int ltc3883_read_word_data(struct i2c_client *client, int page,
  	return ret;
  }
  
@@ -71,7 +73,7 @@ index 9a024cf70..34129f053 100644
  static int ltc2978_clear_peaks(struct ltc2978_data *data,
  			       struct i2c_client *client, int page)
  {
-@@ -535,6 +560,7 @@ static const struct i2c_device_id ltc2978_id[] = {
+@@ -546,6 +571,7 @@ static const struct i2c_device_id ltc2978_id[] = {
  	{"ltc3884", ltc3884},
  	{"ltc3886", ltc3886},
  	{"ltc3887", ltc3887},
@@ -79,7 +81,7 @@ index 9a024cf70..34129f053 100644
  	{"ltc3889", ltc3889},
  	{"ltc7880", ltc7880},
  	{"ltm2987", ltm2987},
-@@ -621,6 +647,8 @@ static int ltc2978_get_id(struct i2c_client *client)
+@@ -649,6 +675,8 @@ static int ltc2978_get_id(struct i2c_client *client)
  		return ltc3886;
  	else if (chip_id == LTC3887_ID)
  		return ltc3887;
@@ -88,7 +90,7 @@ index 9a024cf70..34129f053 100644
  	else if (chip_id == LTC3889_ID)
  		return ltc3889;
  	else if (chip_id == LTC7880_ID)
-@@ -821,6 +849,18 @@ static int ltc2978_probe(struct i2c_client *client)
+@@ -850,6 +878,18 @@ static int ltc2978_probe(struct i2c_client *client)
  		  | PMBUS_HAVE_POUT
  		  | PMBUS_HAVE_TEMP | PMBUS_HAVE_STATUS_TEMP;
  		break;
@@ -107,7 +109,7 @@ index 9a024cf70..34129f053 100644
  	default:
  		return -ENODEV;
  	}
-@@ -853,6 +893,7 @@ static const struct of_device_id ltc2978_of_match[] = {
+@@ -901,6 +941,7 @@ static const struct of_device_id ltc2978_of_match[] = {
  	{ .compatible = "lltc,ltc3884" },
  	{ .compatible = "lltc,ltc3886" },
  	{ .compatible = "lltc,ltc3887" },
@@ -116,5 +118,5 @@ index 9a024cf70..34129f053 100644
  	{ .compatible = "lltc,ltc7880" },
  	{ .compatible = "lltc,ltm2987" },
 -- 
-2.17.1
+2.39.2
 

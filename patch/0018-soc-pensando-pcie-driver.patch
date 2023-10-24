@@ -1,38 +1,36 @@
-From e1de79e7a8c066816567a22d46641d90ce9aa78c Mon Sep 17 00:00:00 2001
-From: David Clear <dac2@pensando.io>
-Date: Mon, 14 Feb 2022 10:31:52 -0800
-Subject: [PATCH 15/30] soc: pensando: Add pcie driver
+From 07de412931de30c8966adbd9d38784c920192ab5 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 10:15:28 +0000
+Subject: [PATCH] soc/pensando: pcie driver
 
 pcie driver provides these services on elba
 1) panic blink handler runs after panic, restart when host restarts
 2) sysfs panic_reboot node to restart immediately on panic
 3) /dev/penpcie controlled access to pcie clock domain registers
 
-Signed-off-by: David Clear <dac2@pensando.io>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
  arch/arm64/boot/dts/pensando/elba.dtsi |   7 +
  drivers/soc/pensando/Kconfig           |   7 +
  drivers/soc/pensando/Makefile          |   1 +
- drivers/soc/pensando/cap_pcie.c        | 427 +++++++++++++++++++++++++
- drivers/soc/pensando/cap_pcie_common.h |  52 +++
- drivers/soc/pensando/cap_pcie_elba.h   |  13 +
- drivers/soc/pensando/cap_reboot.c      |  80 +++++
+ drivers/soc/pensando/cap_pcie.c        | 437 +++++++++++++++++++++++++
+ drivers/soc/pensando/cap_pcie_elba.h   |  54 +++
+ drivers/soc/pensando/cap_reboot.c      |  85 +++++
  drivers/soc/pensando/cap_reboot.h      |  11 +
- drivers/soc/pensando/penpcie_dev.h     |  24 ++
- 9 files changed, 622 insertions(+)
+ drivers/soc/pensando/penpcie_dev.h     |  26 ++
+ 8 files changed, 628 insertions(+)
  create mode 100644 drivers/soc/pensando/cap_pcie.c
- create mode 100644 drivers/soc/pensando/cap_pcie_common.h
  create mode 100644 drivers/soc/pensando/cap_pcie_elba.h
  create mode 100644 drivers/soc/pensando/cap_reboot.c
  create mode 100644 drivers/soc/pensando/cap_reboot.h
  create mode 100644 drivers/soc/pensando/penpcie_dev.h
 
 diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
-index e6582655f..e123819d4 100644
+index 6be705650..ec59d762b 100644
 --- a/arch/arm64/boot/dts/pensando/elba.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba.dtsi
-@@ -261,5 +261,12 @@
+@@ -269,5 +269,12 @@ bsm@307c2080 {
  			compatible = "pensando,bsm";
  			reg = <0x0 0x307c2080 0x0 0x4>;
  		};
@@ -46,12 +44,12 @@ index e6582655f..e123819d4 100644
  	};
  };
 diff --git a/drivers/soc/pensando/Kconfig b/drivers/soc/pensando/Kconfig
-index f3e45da48..49850f830 100644
+index 59c1fa4c6..be2d3dbfa 100644
 --- a/drivers/soc/pensando/Kconfig
 +++ b/drivers/soc/pensando/Kconfig
-@@ -22,6 +22,13 @@ config PENSANDO_SOC_CAPMEM_HUGEPAGE
+@@ -15,6 +15,13 @@ config PENSANDO_SOC_CAPMEM
  	help
- 	  Support for Huge pages in Pensando SoC memory driver
+ 	  Support for the Pensando SoC memory driver
  
 +config PENSANDO_SOC_PCIE
 +	tristate "PCIe driver for Pensando SoCs"
@@ -77,13 +75,13 @@ index ea5062fd7..675e84d1f 100644
  obj-$(CONFIG_PENSANDO_SOC_BSM) += cap_bsm.o
 diff --git a/drivers/soc/pensando/cap_pcie.c b/drivers/soc/pensando/cap_pcie.c
 new file mode 100644
-index 000000000..1a8ae97d5
+index 000000000..3c43f56d3
 --- /dev/null
 +++ b/drivers/soc/pensando/cap_pcie.c
-@@ -0,0 +1,427 @@
+@@ -0,0 +1,437 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
-+ * Copyright (c) 2019-2021, Pensando Systems Inc.
++ * Copyright (c) 2019-2022, Pensando Systems Inc.
 + */
 +
 +#include <linux/types.h>
@@ -191,23 +189,25 @@ index 000000000..1a8ae97d5
 +{
 +	struct pciedev_info *pi = &pciedev_info;
 +
++	if (pi->pciep_access_error) {
++		pr_info_ratelimited("pcie access serror: address 0x%llx\n",
++				    pi->pciep_access_address);
++	}
 +	pi->pciep_access_address = 0;
 +	return pi->pciep_access_error;
 +}
 +
-+static int pciep_valid_rw(struct pcie_rw *rw)
++static int pciep_valid_pa(const uint64_t pciepa, const uint32_t size)
 +{
 +	struct pciedev_info *pi = &pciedev_info;
 +
 +	if (!pi->pcieva)
 +		return -ENXIO;
-+	if (rw->pciepa < pi->pcie_base ||
-+	    rw->pciepa > pi->pcie_base + pi->pcie_size ||
-+	    rw->size > pi->pcie_size ||
-+	    rw->pciepa + rw->size > pi->pcie_base + pi->pcie_size)
++	if (pciepa < pi->pcie_base ||
++	    pciepa > pi->pcie_base + pi->pcie_size ||
++	    size > pi->pcie_size ||
++	    pciepa + size > pi->pcie_base + pi->pcie_size)
 +		return -ERANGE;
-+	if (rw->size != sizeof(u32))
-+		return -EINVAL;
 +	return 0;
 +}
 +
@@ -224,44 +224,52 @@ index 000000000..1a8ae97d5
 + * event during our pcie register access and return failure to the
 + * caller, but the system continues.
 + */
-+static long pciep_regrd(struct pcie_rw *rw)
++int pciep_regrd32(const uint64_t pciepa, uint32_t *val)
 +{
 +	struct pciedev_info *pi = &pciedev_info;
-+	uint32_t v;
 +	int r;
++	unsigned long flags;
 +
-+	r = pciep_valid_rw(rw);
++	r = pciep_valid_pa(pciepa, sizeof(u32));
 +	if (r)
 +		return r;
 +
-+	spin_lock(&pi->pciep_access_lock);
-+	pciep_access_begin(rw->pciepa);
++	spin_lock_irqsave(&pi->pciep_access_lock, flags);
++	pciep_access_begin(pciepa);
 +
-+	v = pcie_readl(rw->pciepa);
++	*val = pcie_readl(pciepa);
 +	asm volatile("msr daifclr, #4" ::: "memory"); /* unmask async SError */
 +	dsb(sy);		/* sync in-flight ld/st */
 +	isb();
 +
 +	r = pciep_access_end();
-+	spin_unlock(&pi->pciep_access_lock);
++	spin_unlock_irqrestore(&pi->pciep_access_lock, flags);
 +	if (r)
 +		return -EIO;
 +
-+	return copy_to_user(rw->rdvalp, &v, sizeof(v));
++	return 0;
 +}
++EXPORT_SYMBOL_GPL(pciep_regrd32);
 +
 +static long pcie_unlocked_ioctl(struct file *file,
 +		unsigned int cmd, unsigned long arg)
 +{
 +	void __user *p = (void __user *)arg;
 +	struct pcie_rw rw;
++	uint32_t val;
++	int r;
 +
 +	switch (cmd) {
 +
 +	case PCIE_PCIEP_REGRD:
 +		if (copy_from_user(&rw, p, sizeof(rw)))
 +			return -EFAULT;
-+		return pciep_regrd(&rw);
++		if (rw.size != sizeof(u32))
++			return -EINVAL;
++		r = pciep_regrd32(rw.pciepa, &val);
++		if (r)
++			return r;
++		return copy_to_user(rw.rdvalp, &val, sizeof(val));
 +
 +	default:
 +		return -ENOTTY;
@@ -508,19 +516,21 @@ index 000000000..1a8ae97d5
 +	},
 +};
 +module_platform_driver(pcie_driver);
-diff --git a/drivers/soc/pensando/cap_pcie_common.h b/drivers/soc/pensando/cap_pcie_common.h
+diff --git a/drivers/soc/pensando/cap_pcie_elba.h b/drivers/soc/pensando/cap_pcie_elba.h
 new file mode 100644
-index 000000000..e54a0fdcf
+index 000000000..b79046ae9
 --- /dev/null
-+++ b/drivers/soc/pensando/cap_pcie_common.h
-@@ -0,0 +1,52 @@
++++ b/drivers/soc/pensando/cap_pcie_elba.h
+@@ -0,0 +1,54 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
-+ * Copyright (c) 2022, Pensando Systems Inc.
++ * Copyright (c) 2021, Pensando Systems Inc.
 + */
 +
-+#ifndef __CAP_PCIE_COMMON_H__
-+#define __CAP_PCIE_COMMON_H__
++#ifndef __CAP_PCIE_ELBA_H__
++#define __CAP_PCIE_ELBA_H__
++
++#define PCIEPORT_NPORTS		8
 +
 +#define ELB_ADDR_BASE_PP_PXC_0_OFFSET 0x20100000
 +#define ELB_ADDR_BASE_PP_PXC_0_SIZE 0x40000
@@ -565,32 +575,13 @@ index 000000000..e54a0fdcf
 +
 +#define WDT_KICK_VAL    0x76
 +
-+#endif /* __CAP_PCIE_COMMON_H__ */
-diff --git a/drivers/soc/pensando/cap_pcie_elba.h b/drivers/soc/pensando/cap_pcie_elba.h
-new file mode 100644
-index 000000000..e23ca250d
---- /dev/null
-+++ b/drivers/soc/pensando/cap_pcie_elba.h
-@@ -0,0 +1,13 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * Copyright (c) 2021-2022, Pensando Systems Inc.
-+ */
-+
-+#ifndef __CAP_PCIE_ELBA_H__
-+#define __CAP_PCIE_ELBA_H__
-+
-+#include "cap_pcie_common.h"
-+
-+#define PCIEPORT_NPORTS		8
-+
 +#endif /* __CAP_PCIE_ELBA_H__ */
 diff --git a/drivers/soc/pensando/cap_reboot.c b/drivers/soc/pensando/cap_reboot.c
 new file mode 100644
-index 000000000..c57e58fcb
+index 000000000..42d87f242
 --- /dev/null
 +++ b/drivers/soc/pensando/cap_reboot.c
-@@ -0,0 +1,80 @@
+@@ -0,0 +1,85 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Pensando reboot control via sysfs
@@ -598,11 +589,11 @@ index 000000000..c57e58fcb
 + * Copyright (c) 2020-2021, Pensando Systems Inc.
 + */
 +
-+#include <linux/kobject.h>
 +#include <linux/string.h>
 +#include <linux/sysfs.h>
 +#include <linux/module.h>
 +#include <linux/init.h>
++#include "cap_reboot.h"
 +
 +/*
 + * This module provides userspace control of reboot behavior
@@ -618,6 +609,7 @@ index 000000000..c57e58fcb
 +	return false;
 +}
 +
++extern struct kobject *pensando_fw_kobj_get(void);
 +struct kobject *reboot_kobj;
 +
 +static ssize_t panic_reboot_show(struct kobject *kobj,
@@ -652,9 +644,13 @@ index 000000000..c57e58fcb
 +
 +static int __init capri_reboot_init(void)
 +{
++	struct kobject *pensando_kobj;
 +	int ret;
 +
-+	reboot_kobj = kobject_create_and_add("reboot", kernel_kobj);
++	pensando_kobj = pensando_fw_kobj_get();
++	if (!pensando_kobj)
++		return -ENOMEM;
++	reboot_kobj = kobject_create_and_add("reboot", pensando_kobj);
 +	if (!reboot_kobj)
 +		return -ENOMEM;
 +
@@ -690,13 +686,13 @@ index 000000000..8718fff85
 +#endif
 diff --git a/drivers/soc/pensando/penpcie_dev.h b/drivers/soc/pensando/penpcie_dev.h
 new file mode 100644
-index 000000000..aba906adb
+index 000000000..5426d2edf
 --- /dev/null
 +++ b/drivers/soc/pensando/penpcie_dev.h
-@@ -0,0 +1,24 @@
+@@ -0,0 +1,26 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
-+ * Copyright (c) 2020-2021, Pensando Systems Inc.
++ * Copyright (c) 2020-2022, Pensando Systems Inc.
 + */
 +
 +#ifndef __PENPCIE_DEV_H__
@@ -717,7 +713,9 @@ index 000000000..aba906adb
 +#define PCIE_IOCTL_NUM		'P'
 +#define PCIE_PCIEP_REGRD	_IOWR(PCIE_IOCTL_NUM, 1, struct pcie_rw)
 +
++int pciep_regrd32(const uint64_t pciepa, uint32_t *val);
++
 +#endif
 -- 
-2.17.1
+2.39.2
 

@@ -1,22 +1,22 @@
-From 811f25a495fc0bba53d45164a4fb1e69220232bd Mon Sep 17 00:00:00 2001
-From: Brad Larson <blarson@amd.com>
-Date: Mon, 10 Apr 2023 11:45:21 -0700
-Subject: [PATCH 04/30] spi: dw: Add support for AMD Pensando Elba SoC
+From fb2619c40159fc53c0a2c54d54247a8a8b3c9f87 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 09:01:31 +0000
+Subject: [PATCH] spi-dw: Support Pensando Elba custom chip-select
 
-The AMD Pensando Elba SoC includes a DW apb_ssi v4 controller
-with device specific chip-select control.  The Elba SoC
-provides four chip-selects where the native DW IP supports
-two chip-selects.  The Elba DW_SPI instance has two native
-CS signals that are always overridden.
+Use a custom chip-select handler for Elba to ensure that a valid
+Designware intrinsic chip-select is still activated even when using
+GPIOs.
 
-Signed-off-by: Brad Larson <blarson@amd.com>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+Specify "pensando,elba-spi" in the device-tree to pick up this change.
+
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
- drivers/spi/spi-dw-mmio.c | 90 ++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 89 insertions(+), 1 deletion(-)
+ drivers/spi/spi-dw-mmio.c | 88 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 88 insertions(+)
 
 diff --git a/drivers/spi/spi-dw-mmio.c b/drivers/spi/spi-dw-mmio.c
-index d0cc5bf4f..ae3d46046 100644
+index 26c40ea6d..4f91e3e7f 100644
 --- a/drivers/spi/spi-dw-mmio.c
 +++ b/drivers/spi/spi-dw-mmio.c
 @@ -16,6 +16,7 @@
@@ -27,7 +27,7 @@ index d0cc5bf4f..ae3d46046 100644
  #include <linux/acpi.h>
  #include <linux/property.h>
  #include <linux/regmap.h>
-@@ -53,10 +54,28 @@ struct dw_spi_mscc {
+@@ -53,6 +54,24 @@ struct dw_spi_mscc {
  	void __iomem        *spi_mst; /* Not sparx5 */
  };
  
@@ -52,12 +52,7 @@ index d0cc5bf4f..ae3d46046 100644
  /*
   * The Designware SPI controller (referred to as master in the documentation)
   * automatically deasserts chip select when the tx fifo is empty. The chip
-- * selects then needs to be either driven as GPIOs or, for the first 4 using the
-+ * selects then needs to be either driven as GPIOs or, for the first 4 using
-  * the SPI boot controller registers. the final chip select is an OR gate
-  * between the Designware SPI controller and the SPI boot controller.
-  */
-@@ -222,6 +241,74 @@ static int dw_spi_keembay_init(struct platform_device *pdev,
+@@ -237,6 +256,74 @@ static int dw_spi_canaan_k210_init(struct platform_device *pdev,
  	return 0;
  }
  
@@ -132,14 +127,14 @@ index d0cc5bf4f..ae3d46046 100644
  static int dw_spi_mmio_probe(struct platform_device *pdev)
  {
  	int (*init_func)(struct platform_device *pdev,
-@@ -335,6 +422,7 @@ static const struct of_device_id dw_spi_mmio_of_match[] = {
- 	{ .compatible = "snps,dwc-ssi-1.01a", .data = dw_spi_dwc_ssi_init},
- 	{ .compatible = "intel,keembay-ssi", .data = dw_spi_keembay_init},
+@@ -352,6 +439,7 @@ static const struct of_device_id dw_spi_mmio_of_match[] = {
+ 	{ .compatible = "intel,thunderbay-ssi", .data = dw_spi_intel_init},
  	{ .compatible = "microchip,sparx5-spi", dw_spi_mscc_sparx5_init},
+ 	{ .compatible = "canaan,k210-spi", dw_spi_canaan_k210_init},
 +	{ .compatible = "pensando,elba-spi", .data = dw_spi_elba_init },
  	{ /* end of table */}
  };
  MODULE_DEVICE_TABLE(of, dw_spi_mmio_of_match);
 -- 
-2.17.1
+2.39.2
 

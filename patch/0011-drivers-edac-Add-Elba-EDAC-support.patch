@@ -1,7 +1,7 @@
-From 0db82ef00e84b3d16800d65d9f9170be9b8d15a1 Mon Sep 17 00:00:00 2001
-From: Ashwin H <Ashwin.H@amd.com>
-Date: Wed, 5 Jul 2023 07:39:56 +0000
-Subject: [PATCH 28/30] EDAC/elba: Add Elba EDAC support
+From 7533d099c70dc4672c23d6dab26a8891b29efd66 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 09:36:04 +0000
+Subject: [PATCH] drivers/edac: Add Elba EDAC support
 
 The edac driver reports correctable and uncorrectable errors from the
 DDR controller.  The driver relies on device-tree nodes installed
@@ -13,38 +13,38 @@ The active DDR channels tell the driver which channels to monitor.
 The hashes allow the driver to reverse the memory address hashing so
 that the reports can provide a real system address for the fault.
 
-Signed-off-by: David Clear <dac2@pensando.io>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
  .../boot/dts/pensando/elba-asic-common.dtsi   |   4 +
  arch/arm64/boot/dts/pensando/elba.dtsi        |   6 +
  drivers/edac/Kconfig                          |   7 +
  drivers/edac/Makefile                         |   1 +
- drivers/edac/elba_edac.c                      | 548 ++++++++++++++++++
- 5 files changed, 566 insertions(+)
+ drivers/edac/elba_edac.c                      | 539 ++++++++++++++++++
+ 5 files changed, 557 insertions(+)
  create mode 100644 drivers/edac/elba_edac.c
 
 diff --git a/arch/arm64/boot/dts/pensando/elba-asic-common.dtsi b/arch/arm64/boot/dts/pensando/elba-asic-common.dtsi
-index 622a22310..0cab86a58 100644
+index b41ca863b..79d25c77d 100644
 --- a/arch/arm64/boot/dts/pensando/elba-asic-common.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba-asic-common.dtsi
-@@ -46,6 +46,10 @@
+@@ -46,6 +46,10 @@ &emmc {
  	status = "ok";
  };
  
 +&edac {
-+    status = "okay";
++	status = "okay";
 +};
 +
  &wdt0 {
  	status = "okay";
  };
 diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
-index b68a3aebc..2bf4208ce 100644
+index e4644dcb3..6e0248c30 100644
 --- a/arch/arm64/boot/dts/pensando/elba.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba.dtsi
-@@ -243,6 +243,12 @@
- 			enable_mask = <(1 << 0)>;
+@@ -183,6 +183,12 @@ its: interrupt-controller@820000 {
+ 			};
  		};
  
 +		edac: edac@30500000 {
@@ -53,49 +53,50 @@ index b68a3aebc..2bf4208ce 100644
 +			status = "disabled"; /* not available on HAPS */
 +		};
 +
- 		stmmac_axi_setup: stmmac-axi-config {
- 			snps,wr_osr_lmt = <0xf>;
- 			snps,rd_osr_lmt = <0xf>;
+ 		emmc: mmc@30440000 {
+ 			compatible = "pensando,elba-emmc", "cdns,sd4hc";
+ 			clocks = <&emmc_clk>;
 diff --git a/drivers/edac/Kconfig b/drivers/edac/Kconfig
-index 7a47680d6..c9363b530 100644
+index 456602d37..01b3f5482 100644
 --- a/drivers/edac/Kconfig
 +++ b/drivers/edac/Kconfig
-@@ -537,4 +537,11 @@ config EDAC_DMC520
+@@ -541,4 +541,11 @@ config EDAC_DMC520
  	  Support for error detection and correction on the
  	  SoCs with ARM DMC-520 DRAM controller.
  
 +config EDAC_ELBA
 +	tristate "Pensando Elba Memory ECC"
-+	depends on ARCH_PENSANDO_ELBA_SOC || ARCH_PENSANDO_GIGLIO_SOC
++	depends on ARCH_PENSANDO_ELBA_SOC
 +	help
 +	  Support for error detection and correction on the
 +	  Pensando Elba SoC.
 +
  endif # EDAC
 diff --git a/drivers/edac/Makefile b/drivers/edac/Makefile
-index 3a8491687..31064ed33 100644
+index 2d1641a27..df16c4c4f 100644
 --- a/drivers/edac/Makefile
 +++ b/drivers/edac/Makefile
-@@ -89,3 +89,4 @@ obj-$(CONFIG_EDAC_QCOM)			+= qcom_edac.o
+@@ -84,3 +84,4 @@ obj-$(CONFIG_EDAC_QCOM)			+= qcom_edac.o
  obj-$(CONFIG_EDAC_ASPEED)		+= aspeed_edac.o
  obj-$(CONFIG_EDAC_BLUEFIELD)		+= bluefield_edac.o
  obj-$(CONFIG_EDAC_DMC520)		+= dmc520_edac.o
-+obj-$(CONFIG_EDAC_ELBA)         += elba_edac.o
++obj-$(CONFIG_EDAC_ELBA)			+= elba_edac.o
 diff --git a/drivers/edac/elba_edac.c b/drivers/edac/elba_edac.c
 new file mode 100644
-index 000000000..7afb50dad
+index 000000000..e41aed513
 --- /dev/null
 +++ b/drivers/edac/elba_edac.c
-@@ -0,0 +1,548 @@
+@@ -0,0 +1,539 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
-+ * AMD Pensando Elba/Giglio Memory Controller EDAC Driver
++ * AMD Pensando Elba Memory Controller EDAC Driver
 + *
 + * Copyright (c) 2022, Advanced Micro Devices Inc.
 + */
 +
 +#include <linux/edac.h>
 +#include <linux/platform_device.h>
++#include <linux/panic_notifier.h>
 +#include <linux/notifier.h>
 +#include <linux/of.h>
 +#include <linux/of_device.h>
@@ -143,7 +144,7 @@ index 000000000..7afb50dad
 +	void __iomem *base;		// memory controller registers
 +	const struct mc_edac_regs *edac_regs;	// EDAC registers
 +	struct ddr_map_func llc_map;	// ddr to bus address map for LLC
-+	struct ddr_map_func ddrb_map; 	// ddr to bus address map for bypass
++	struct ddr_map_func ddrb_map;	// ddr to bus address map for bypass
 +	u64 byp_start;			// bypass region start
 +	u64 byp_size;			// bypass region size
 +	u32 chanmask;			// channel mask (b01, b10, or b11)
@@ -171,16 +172,6 @@ index 000000000..7afb50dad
 +	.ecc_id = 285,
 +	.int_stat_ecc = 377,
 +	.int_ack_ecc = 384,
-+};
-+
-+static const struct mc_edac_regs giglio_mc_edac_regs = {
-+	.ecc_u_addr = 282,
-+	.ecc_u_synd = 283,
-+	.ecc_c_addr = 286,
-+	.ecc_c_synd = 287,
-+	.ecc_id = 290,
-+	.int_stat_ecc = 399,
-+	.int_ack_ecc = 408,
 +};
 +
 +static inline u32 elba_mc_read(struct elba_mcdata *mcp, int chan, int subchan,
@@ -225,6 +216,7 @@ index 000000000..7afb50dad
 +static void elba_ddr_addr_expand(u64 addr, u64 *mask, u64 *res)
 +{
 +	u64 addr_o;
++
 +	addr_o = ((addr & mask[1]) << 2) |
 +		 ((addr & mask[0]) << 1) |
 +		 (addr & ~(mask[0] | mask[1]));
@@ -410,7 +402,7 @@ index 000000000..7afb50dad
 +			if (elba_edac_mc_u_poll(mcp, chan, subchan, int_stat,
 +						&res)) {
 +				if (mcp->is_ddr5)
-+					printk(KERN_CRIT "EDAC MC0: %u UE %s "
++					pr_crit("EDAC MC0: %u UE %s "
 +						"on unknown memory (channel:%u "
 +						"slot:%u page:0x%llx "
 +						"offset:0x%llx "
@@ -421,7 +413,7 @@ index 000000000..7afb50dad
 +						res.bus_addr & ~PAGE_MASK,
 +						res.synd);
 +				else
-+					printk(KERN_CRIT "EDAC MC0: %u UE %s "
++					pr_crit("EDAC MC0: %u UE %s "
 +						"on unknown memory (channel:%u "
 +						"page:0x%llx "
 +						"offset:0x%llx "
@@ -618,7 +610,6 @@ index 000000000..7afb50dad
 +
 +static const struct of_device_id elba_edac_mc_of_match[] = {
 +	{ .compatible = "pensando,elba-edac-mc", .data = &elba_mc_edac_regs },
-+	{ .compatible = "pensando,giglio-edac-mc", .data = &giglio_mc_edac_regs },
 +	{ },
 +};
 +
@@ -632,9 +623,9 @@ index 000000000..7afb50dad
 +};
 +module_platform_driver(elba_edac_mc_driver);
 +
-+MODULE_DESCRIPTION("AMD Pensando Elba/Giglio platform EDAC memory controller driver");
++MODULE_DESCRIPTION("AMD Pensando Elba platform EDAC memory controller driver");
 +MODULE_AUTHOR("Advanced Micro Devices, Inc.");
 +MODULE_LICENSE("GPL v2");
 -- 
-2.17.1
+2.39.2
 

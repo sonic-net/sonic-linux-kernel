@@ -225,37 +225,31 @@ armhf_secondary_boot_online.patch
 #0021-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch # TODO
 
 # amd-pensando elba support
-# TODO
-#0001-hwmon-ltc2978-Add-support-for-LTC3888.patch
-#0002-i2c-designware-Recover-from-a-stuck-SDA-line.patch
-#0003-mmc-sdhci-cadence-Add-AMD-Pensando-Elba-SoC-support.patch
-#0004-spi-dw-Add-support-for-AMD-Pensando-Elba-SoC.patch
-#0005-spi-spidev-Add-pensando-cpld-compat-entry.patch
-#0006-arch-arm64-Initial-support-for-the-Elba-SoC.patch
-#0007-arm64-dts-pensando-Elba-flash-partitions.patch
-#0008-soc-pensando-Add-capmem-driver.patch
-#0009-irqchip-pensando-Interrupt-domain-controllers.patch
-#0010-i2c-rd1173-Add-RD1173-I2C-controller-driver.patch
-#0011-uio-pensando-UIO-drivers-for-Elba.patch
-#0012-soc-pensando-Add-Boot-State-Machine.patch
-#0013-soc-pensando-Add-crash-dump-driver.patch
-#0014-soc-pensando-Add-Reset-Cause-driver.patch
-#0015-soc-pensando-Add-pcie-driver.patch
-#0016-arm64-dts-pensando-add-mnet-mcrypt-devices.patch
-#0017-soc-pensando-refactor-pciep_regrd32-for-kpcimgr.patch
-#0018-soc-pensando-Add-kpcimgr-driver.patch
-#0019-mmc-sdhci-cadence-Support-mmc-hardware-reset.patch
-#0020-reset-elba-Add-mmc-hw-reset-driver.patch
-#0021-soc-pensando-Add-sbus-driver.patch
-#0022-soc-pensando-Add-boot_count-to-sysfs.patch
-#0023-i2c-rd1173-Reset-RD1173-master-when-i2c_busy-set.patch
-#0024-soc-pensando-Add-penfw-driver.patch
-#0025-arm64-dts-pensando-psci-support.patch
-#0026-i2c-rd1173-Fix-Lattice-RD1173-interrupt-handling.patch
-#0027-hwmon-pmbus-tps53679-Add-support-for-TI-TPS53659.patch
-#0028-EDAC-elba-Add-Elba-EDAC-support.patch
-#0029-arm64-traps-Handle-SError-interrupt.patch
-#0030-quirks-for-the-Pensando-qspi-controller.patch
+0000-Add-support-for-the-TI-TPS53659.patch
+0001-Adding-support-LTC3888.patch
+0002-i2c-designware-Support-stuck-SDA-line-recovery.patch
+0003-i2c-Add-Lattice-RD1173-I2C-controller-driver.patch
+0004-arm64-traps-Call-platform-handler-for-do_serror.patch
+0005-add-quirks-for-the-Pensando-controller.patch
+0006-Pensando-Elba-support-in-the-Cadence-EMMC-host-contr.patch
+0007-spi-dw-Support-Pensando-Elba-custom-chip-select.patch
+0008-Initial-support-for-the-Pensando-Elba-SoC.patch
+0009-drivers-reset-Add-emmc-hardware-reset.patch
+0010-dts-pensnado-Elba-flash-partitions.patch
+0011-drivers-edac-Add-Elba-EDAC-support.patch
+0012-drivers-soc-pensando-dev-capmem-driver.patch
+0013-Interrupt-domain-controllers-for-Elba-ASIC.patch
+0014-drivers-uio-UIO-drivers-for-Elba.patch
+0015-drivers-pensando-soc-Boot-State-Machine-integrtion.patch
+0016-drivers-soc-pensando-crash-dump-driver.patch
+0017-drivers-soc-pensando-Add-the-Reset-Cause-driver.patch
+0018-soc-pensando-pcie-driver.patch
+0019-drivers-soc-pensando-kpcimgr-driver.patch
+0020-dts-pensando-add-mnet-and-mcrypt-devices.patch
+0021-drivers-soc-pensando-sbus-driver.patch
+0022-drivers-soc-pensando-boot_count-to-sysfs-for-kdump.patch
+0023-arch-arm64-boot-dts-psci-support.patch
+0024-drivers-soc-pensando-penfw-driver.patch
 
 # Security patch
 # TODO: update for bookworm
