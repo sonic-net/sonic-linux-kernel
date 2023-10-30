@@ -1,23 +1,25 @@
-From ad7fdaf1efa32891a05422eda50c3210050f7ac4 Mon Sep 17 00:00:00 2001
-From: Ashwin H <Ashwin.H@amd.com>
-Date: Wed, 5 Jul 2023 09:20:03 +0000
-Subject: [PATCH 24/30] soc: pensando: Add penfw driver
+From dd384929d02b47f97f1b347484469e2ad9ab3481 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 10:37:48 +0000
+Subject: [PATCH] drivers/soc/pensando: penfw driver
 
 penfw driver provides sysfs and ioctl interface for the userspace
 to communicate to the bl31 secure monitor
 
-Signed-off-by: Hiren Mehta <hiren@pensando.io>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+This driver is only used with Secure Boot.
+
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
  arch/arm64/boot/dts/pensando/elba-asic.dts |   8 +
  drivers/soc/pensando/Kconfig               |   6 +
  drivers/soc/pensando/Makefile              |   1 +
- drivers/soc/pensando/penfw.h               |  35 ++
+ drivers/soc/pensando/penfw.h               |  36 ++
  drivers/soc/pensando/penfw_drv.c           | 145 +++++++
- drivers/soc/pensando/penfw_smc.c           |  63 ++++
- drivers/soc/pensando/penfw_sysfs.c         | 420 +++++++++++++++++++++
+ drivers/soc/pensando/penfw_smc.c           |  63 +++
+ drivers/soc/pensando/penfw_sysfs.c         | 438 +++++++++++++++++++++
  drivers/soc/pensando/penfw_sysfs.h         |  11 +
- 8 files changed, 689 insertions(+)
+ 8 files changed, 708 insertions(+)
  create mode 100644 drivers/soc/pensando/penfw.h
  create mode 100644 drivers/soc/pensando/penfw_drv.c
  create mode 100644 drivers/soc/pensando/penfw_smc.c
@@ -25,53 +27,54 @@ Signed-off-by: Ashwin H <Ashwin.H@amd.com>
  create mode 100644 drivers/soc/pensando/penfw_sysfs.h
 
 diff --git a/arch/arm64/boot/dts/pensando/elba-asic.dts b/arch/arm64/boot/dts/pensando/elba-asic.dts
-index 70d0dbd38..a1ba7b245 100644
+index dfa6deaa0..27a105764 100644
 --- a/arch/arm64/boot/dts/pensando/elba-asic.dts
 +++ b/arch/arm64/boot/dts/pensando/elba-asic.dts
-@@ -24,3 +24,11 @@
+@@ -24,3 +24,11 @@ chosen {
  #include "elba-flash-parts.dtsi"
  #include "elba-asic-memory.dtsi"
  #include "elba-mdev.dtsi"
 +
 +/ {
-+       firmware {
-+               penfw {
-+                       compatible = "pensando,penfw";
-+               };
-+       };
++	firmware {
++		penfw {
++			compatible = "pensando,penfw";
++		};
++	};
 +};
 diff --git a/drivers/soc/pensando/Kconfig b/drivers/soc/pensando/Kconfig
-index bf7a4aede..2f5c3d320 100644
+index fd290aac8..766924c57 100644
 --- a/drivers/soc/pensando/Kconfig
 +++ b/drivers/soc/pensando/Kconfig
-@@ -63,6 +63,12 @@ config PENSANDO_SOC_SBUS
+@@ -49,6 +49,12 @@ config PENSANDO_SOC_BSM_ENABLE
  	help
- 	  Support for the Pensando SoC sbus read/write driver
+ 	  Re-enable the BSM on kernel startup
  
 +config PENSANDO_SOC_PENFW
-+       bool "Pensando penfw driver"
-+       default n
-+       help
-+         Driver module to interface secure boot config
++	bool "Pensando penfw driver"
++	default n
++	help
++	  Driver module to interface secure boot config
 +
- endmenu
- 
- endif
+ config PENSANDO_SOC_SBUS
+ 	tristate "Pensando sbus read/write driver"
+ 	depends on OF
 diff --git a/drivers/soc/pensando/Makefile b/drivers/soc/pensando/Makefile
-index 555438a4c..605118cb0 100644
+index 555438a4c..95689d347 100644
 --- a/drivers/soc/pensando/Makefile
 +++ b/drivers/soc/pensando/Makefile
-@@ -13,3 +13,4 @@ obj-$(CONFIG_PENSANDO_SOC_RSTCAUSE) += cap_rstcause.o
+@@ -12,4 +12,5 @@ obj-$(CONFIG_PENSANDO_SOC_PCIE) += kpcimgr.o kpcimgr_sysfs.o
+ obj-$(CONFIG_PENSANDO_SOC_RSTCAUSE) += cap_rstcause.o
  obj-$(CONFIG_PENSANDO_SOC_CRASH) += cap_crash.o
  obj-$(CONFIG_PENSANDO_SOC_BSM) += cap_bsm.o
- obj-$(CONFIG_PENSANDO_SOC_SBUS) += sbus.o
 +obj-$(CONFIG_PENSANDO_SOC_PENFW) += penfw_smc.o penfw_sysfs.o penfw_drv.o
+ obj-$(CONFIG_PENSANDO_SOC_SBUS) += sbus.o
 diff --git a/drivers/soc/pensando/penfw.h b/drivers/soc/pensando/penfw.h
 new file mode 100644
-index 000000000..429f80d3d
+index 000000000..37ee4c0a8
 --- /dev/null
 +++ b/drivers/soc/pensando/penfw.h
-@@ -0,0 +1,35 @@
+@@ -0,0 +1,36 @@
 +/*
 + * Copyright (c) 2021, Pensando Systems Inc.
 + */
@@ -91,6 +94,7 @@ index 000000000..429f80d3d
 +	PENFW_OP_GET_BOOT_LCS,
 +	PENFW_OP_GET_NEXT_LCS,
 +	PENFW_OP_COMMIT_LCS_PROD,
++	PENFW_OP_GET_PENTRUST_VERSION,
 +	PENFW_OPCODE_MAX,
 +};
 +
@@ -109,7 +113,7 @@ index 000000000..429f80d3d
 +#endif /* __PENFW_H__ */
 diff --git a/drivers/soc/pensando/penfw_drv.c b/drivers/soc/pensando/penfw_drv.c
 new file mode 100644
-index 000000000..9be326ecd
+index 000000000..e626ab950
 --- /dev/null
 +++ b/drivers/soc/pensando/penfw_drv.c
 @@ -0,0 +1,145 @@
@@ -126,8 +130,8 @@ index 000000000..9be326ecd
 +#include <linux/types.h>
 +#include <linux/mutex.h>
 +#include <linux/platform_device.h>
-+#include <linux/arm-smccc.h>
 +#include <linux/of.h>
++#include <linux/arm-smccc.h>
 +
 +#include "penfw.h"
 +#include "penfw_sysfs.h"
@@ -180,7 +184,7 @@ index 000000000..9be326ecd
 +	return ret;
 +}
 +
-+static struct file_operations fops = {
++static const struct file_operations fops = {
 +	.open = penfw_open,
 +	.unlocked_ioctl = penfw_ioctl
 +};
@@ -189,24 +193,24 @@ index 000000000..9be326ecd
 +{
 +	int ret;
 +
-+	printk(KERN_INFO "penfw: initializing the device\n");
++	pr_info("penfw: initializing the device\n");
 +	mutex_init(&penfw_mutex);
 +	majorNumber = register_chrdev(0, DEVICE_NAME, &fops);
 +	if (majorNumber < 0) {
-+		printk(KERN_ERR "penfw: failed to register a major number\n");
++		pr_err("penfw: failed to register a major number\n");
 +		return majorNumber;
 +	}
-+	printk(KERN_INFO "penfw: registered correctly with major number %d\n",
++	pr_info("penfw: registered correctly with major number %d\n",
 +			 majorNumber);
 +
 +	// register the device class
 +	penfw_class = class_create(THIS_MODULE, CLASS_NAME);
 +	if (IS_ERR(penfw_class)) {
 +		unregister_chrdev(majorNumber, DEVICE_NAME);
-+		printk(KERN_ERR "penfw: failed to register device class\n");
++		pr_err("penfw: failed to register device class\n");
 +		return PTR_ERR(penfw_class);
 +	}
-+	printk(KERN_INFO "penfw: device class registered correctly\n");
++	pr_info("penfw: device class registered correctly\n");
 +
 +	// register the device driver
 +	penfw_dev = device_create(penfw_class, NULL, MKDEV(majorNumber, 0),
@@ -237,12 +241,12 @@ index 000000000..9be326ecd
 +	class_destroy(penfw_class);
 +	unregister_chrdev(majorNumber, DEVICE_NAME);
 +	penfw_sysfs_deinit();
-+	printk(KERN_INFO "penfw: Exiting!\n");
++	pr_info("penfw: Exiting!\n");
 +
 +	return 0;
 +}
 +
-+static struct of_device_id penfw_of_match[] = {
++static const struct of_device_id penfw_of_match[] = {
 +	{ .compatible = "pensando,penfw" },
 +	{ /* end of table */ }
 +};
@@ -260,7 +264,7 @@ index 000000000..9be326ecd
 +module_platform_driver(penfw_driver);
 diff --git a/drivers/soc/pensando/penfw_smc.c b/drivers/soc/pensando/penfw_smc.c
 new file mode 100644
-index 000000000..a95abf451
+index 000000000..94f10eab9
 --- /dev/null
 +++ b/drivers/soc/pensando/penfw_smc.c
 @@ -0,0 +1,63 @@
@@ -277,9 +281,9 @@ index 000000000..a95abf451
 +
 +#define PENFW_CALL_FID			    0xC2000002
 +
-+static const char* _opcode_to_str(uint8_t opcode)
++static const char *_opcode_to_str(uint8_t opcode)
 +{
-+	 switch (opcode) {
++	switch (opcode) {
 +	case PENFW_OP_GET_API_VER:
 +		return "PENFW_OP_GET_API_VER";
 +	case PENFW_OP_GET_PENTRUST_STA:
@@ -311,7 +315,7 @@ index 000000000..a95abf451
 +{
 +	struct arm_smccc_res res = {0};
 +
-+	printk(KERN_DEBUG "penfw: smc call for fn: %s\n",
++	pr_debug("penfw: smc call for fn: %s\n",
 +		_opcode_to_str(args->a1));
 +
 +	arm_smccc_smc(PENFW_CALL_FID, args->a1, args->a2, args->a3, 0, 0,
@@ -323,16 +327,16 @@ index 000000000..a95abf451
 +	args->a2 = res.a2;
 +	args->a3 = res.a3;
 +
-+	printk(KERN_DEBUG "penfw: smc return a0: 0x%llx a1: 0x%llx "\
++	pr_debug("penfw: smc return a0: 0x%llx a1: 0x%llx "
 +		"a2: 0x%llx a3: 0x%llx\n", args->a0, args->a1,
 +					   args->a2, args->a3);
 +}
 diff --git a/drivers/soc/pensando/penfw_sysfs.c b/drivers/soc/pensando/penfw_sysfs.c
 new file mode 100644
-index 000000000..92ac65af5
+index 000000000..1745c9047
 --- /dev/null
 +++ b/drivers/soc/pensando/penfw_sysfs.c
-@@ -0,0 +1,420 @@
+@@ -0,0 +1,438 @@
 +/*
 + * Copyright (c) 2021, Pensando Systems Inc.
 + */
@@ -366,19 +370,43 @@ index 000000000..92ac65af5
 +	args.a1 = PENFW_OP_GET_PENTRUST_STA;
 +	penfw_smc(&args);
 +
-+	if (args.a0 < 0) {
++	if (args.a0 < 0)
 +		return sprintf(buf, "Error\n");
-+	}
 +
-+	if (!strcmp(attr->attr.name, "version")) {
++	if (!strcmp(attr->attr.name, "version"))
 +		return sprintf(buf, "%llu\n", (args.a0 & 0xffffffff));
-+	} else if (!strcmp(attr->attr.name, "upgrade")) {
++	else if (!strcmp(attr->attr.name, "upgrade"))
 +		return sprintf(buf, "%llu\n", (args.a1 >> 1) & 1);
-+	} else if (!strcmp(attr->attr.name, "image_slot")) {
++	else if (!strcmp(attr->attr.name, "image_slot"))
 +		return sprintf(buf, "%llu\n", (args.a1 & 1));
-+	} else {
++	else
 +		return sprintf(buf, "\n");
-+	}
++}
++
++static ssize_t pentrust_show_version(struct kobject *kobj, struct kobj_attribute *attr,
++			     char *buf)
++{
++	struct penfw_call_args args = {0};
++	int major, minor1, minor2;
++
++	args.a1 = PENFW_OP_GET_PENTRUST_VERSION;
++	penfw_smc(&args);
++
++	if (args.a0 < 0)
++		return sprintf(buf, "Error\n");
++
++	if (!strcmp(attr->attr.name, "sw_version")) {
++		major = args.a1 >> 32;
++		minor1 = (args.a1 & 0xffff0000) >> 16;
++		minor2 = args.a1 & 0xffff;
++		return sprintf(buf, "%d.%d.%d\n", major, minor1, minor2);
++	} else if (!strcmp(attr->attr.name, "crypto_version")) {
++		major = args.a2 >> 32;
++		minor1 = (args.a2 & 0xffff0000) >> 16;
++		minor2 = args.a2 & 0xffff;
++		return sprintf(buf, "%d.%d.%d\n", major, minor1, minor2);
++	} else
++		return sprintf(buf, "\n");
 +}
 +
 +static ssize_t pentrust_store(struct kobject *kobj, struct kobj_attribute *attr,
@@ -386,14 +414,12 @@ index 000000000..92ac65af5
 +{
 +	struct penfw_call_args args = {0};
 +
-+	if (strcmp(attr->attr.name, "upgrade") != 0) {
++	if (strcmp(attr->attr.name, "upgrade") != 0)
 +		return -1;
-+	}
 +	args.a1 = PENFW_OP_SET_PENTRUST_UPG;
 +	penfw_smc(&args);
-+	if (args.a0 < 0) {
++	if (args.a0 < 0)
 +		return -EIO;
-+	}
 +
 +	return count;
 +}
@@ -406,21 +432,19 @@ index 000000000..92ac65af5
 +	args.a1 = PENFW_OP_GET_BL1_STA;
 +	penfw_smc(&args);
 +
-+	if (args.a0 < 0) {
++	if (args.a0 < 0)
 +		return sprintf(buf, "Error\n");
-+	}
 +
-+	if (!strcmp(attr->attr.name, "version")) {
++	if (!strcmp(attr->attr.name, "version"))
 +		return sprintf(buf, "%llu\n", (args.a0 & 0xffffffff));
-+	} else if (!strcmp(attr->attr.name, "ar_version")) {
++	else if (!strcmp(attr->attr.name, "ar_version"))
 +		return sprintf(buf, "%llu\n", ((args.a0 >> 32) & 0xff));
-+	} else if (!strcmp(attr->attr.name, "upgrade")) {
++	else if (!strcmp(attr->attr.name, "upgrade"))
 +		return sprintf(buf, "%llu\n", (args.a1 >> 1) & 1);
-+	} else if (!strcmp(attr->attr.name, "image_slot")) {
++	else if (!strcmp(attr->attr.name, "image_slot"))
 +		return sprintf(buf, "%llu\n", (args.a1 & 1));
-+	} else {
++	else
 +		return sprintf(buf, "\n");
-+	}
 +}
 +
 +static ssize_t bl1_ar_nvcntr_show(struct kobject *kobj,
@@ -431,15 +455,13 @@ index 000000000..92ac65af5
 +	args.a1 = PENFW_OP_GET_BL1_AR_NVCNTR;
 +	penfw_smc(&args);
 +
-+	if (args.a0 < 0) {
++	if (args.a0 < 0)
 +		return sprintf(buf, "Error\n");
-+	}
 +
-+	if (!strcmp(attr->attr.name, "ar_nv_cntr")) {
++	if (!strcmp(attr->attr.name, "ar_nv_cntr"))
 +		return sprintf(buf, "%llu\n", (args.a0 & 0xffffffff));
-+	} else {
++	else
 +		return sprintf(buf, "\n");
-+	}
 +}
 +
 +static ssize_t bl1_store(struct kobject *kobj, struct kobj_attribute *attr,
@@ -447,14 +469,12 @@ index 000000000..92ac65af5
 +{
 +	struct penfw_call_args args = {0};
 +
-+	if (strcmp(attr->attr.name, "upgrade") != 0) {
++	if (strcmp(attr->attr.name, "upgrade") != 0)
 +		return -1;
-+	}
 +	args.a1 = PENFW_OP_SET_BL1_UPG;
 +	penfw_smc(&args);
-+	if (args.a0 < 0) {
++	if (args.a0 < 0)
 +		return -EIO;
-+	}
 +
 +	return count;
 +}
@@ -470,9 +490,8 @@ index 000000000..92ac65af5
 +	args.a1 = PENFW_OP_GET_BL31_SW_VER;
 +	penfw_smc(&args);
 +
-+	if (args.a0 < 0) {
++	if (args.a0 < 0)
 +		return -EIO;
-+	}
 +
 +	for (byte = 0; byte < 256 - 1; byte++) {
 +		if ((byte / 8) == 0)
@@ -520,15 +539,13 @@ index 000000000..92ac65af5
 +	args.a1 = PENFW_OP_GET_BOOT_LCS;
 +	penfw_smc(&args);
 +
-+	if (args.a0 < 0) {
++	if (args.a0 < 0)
 +		return sprintf(buf, "Error\n");
-+	}
 +
-+	if (!strcmp(attr->attr.name, "boot_state")) {
++	if (!strcmp(attr->attr.name, "boot_state"))
 +		return sprintf(buf, "%s\n", _lcs_to_str(args.a0));
-+	} else {
++	else
 +		return sprintf(buf, "\n");
-+	}
 +}
 +
 +static ssize_t next_lcs_show(struct kobject *kobj, struct kobj_attribute *attr,
@@ -539,15 +556,13 @@ index 000000000..92ac65af5
 +	args.a1 = PENFW_OP_GET_NEXT_LCS;
 +	penfw_smc(&args);
 +
-+	if (args.a0 < 0) {
++	if (args.a0 < 0)
 +		return sprintf(buf, "Error\n");
-+	}
 +
-+	if (!strcmp(attr->attr.name, "next_state")) {
++	if (!strcmp(attr->attr.name, "next_state"))
 +		return sprintf(buf, "%s\n", _lcs_to_str(args.a0));
-+	} else {
++	else
 +		return sprintf(buf, "\n");
-+	}
 +}
 +
 +// pentrust attributes
@@ -559,11 +574,18 @@ index 000000000..92ac65af5
 +static struct kobj_attribute pentrust_attr_upg = __ATTR(upgrade, 0600,
 +							pentrust_show,
 +							pentrust_store);
++static struct kobj_attribute pentrust_attr_sw_ver = __ATTR(sw_version, 0400,
++							pentrust_show_version, NULL);
++
++static struct kobj_attribute pentrust_attr_crypto_ver = __ATTR(crypto_version, 0400,
++							pentrust_show_version, NULL);
 +
 +static struct attribute *pentrust_attrs[] = {
 +	&pentrust_attr_ver.attr,
 +	&pentrust_attr_img_slot.attr,
 +	&pentrust_attr_upg.attr,
++	&pentrust_attr_sw_ver.attr,
++	&pentrust_attr_crypto_ver.attr,
 +	NULL
 +};
 +
@@ -663,7 +685,7 @@ index 000000000..92ac65af5
 +	}
 +
 +	if (sysfs_create_group(pentrust_kobject, &pentrust_attr_group)) {
-+		dev_err(penfwDevice, "Unable to create pentrust atrributes "
++		dev_err(penfwDevice, "Unable to create pentrust attributes "
 +				     "group\n");
 +		ret = -1;
 +		goto bl1_err;
@@ -679,7 +701,7 @@ index 000000000..92ac65af5
 +	}
 +
 +	if (sysfs_create_group(bl1_kobject, &bl1_attr_group)) {
-+		dev_err(penfwDevice, "Unable to create bl1 atrributes group\n");
++		dev_err(penfwDevice, "Unable to create bl1 attributes group\n");
 +		ret = -1;
 +		goto bl31_err;
 +	}
@@ -695,7 +717,7 @@ index 000000000..92ac65af5
 +	}
 +
 +	if (sysfs_create_group(bl31_kobject, &bl31_attr_group)) {
-+		dev_err(penfwDevice, "Unable to create bl31 atrributes "
++		dev_err(penfwDevice, "Unable to create bl31 attributes "
 +				     "group\n");
 +		ret = -1;
 +		goto lifecycle_err;
@@ -712,7 +734,7 @@ index 000000000..92ac65af5
 +	}
 +
 +	if (sysfs_create_group(lifecycle_kobject, &lifecycle_attr_group)) {
-+		dev_err(penfwDevice, "Unable to create lifecycle atrributes "
++		dev_err(penfwDevice, "Unable to create lifecycle attributes "
 +				     "group\n");
 +		ret = -1;
 +		goto lifecycle_attr_err;
@@ -755,21 +777,21 @@ index 000000000..92ac65af5
 +}
 diff --git a/drivers/soc/pensando/penfw_sysfs.h b/drivers/soc/pensando/penfw_sysfs.h
 new file mode 100644
-index 000000000..8f1ccf028
+index 000000000..46eb64425
 --- /dev/null
 +++ b/drivers/soc/pensando/penfw_sysfs.h
 @@ -0,0 +1,11 @@
 +/*
-+* Copyright (c) 2021, Pensando Systems Inc.
-+*/
++ * Copyright (c) 2021, Pensando Systems Inc.
++ */
 +
 +#ifndef __PENFW_SYSFS_H__
 +#define __PENFW_SYSFS_H__
 +
-+int penfw_sysfs_init(struct device* penfwDevice);
++int penfw_sysfs_init(struct device *penfwDevice);
 +int penfw_sysfs_deinit(void);
 +
 +#endif /* __PENFW_SYSFS_H__ */
 -- 
-2.17.1
+2.39.2
 

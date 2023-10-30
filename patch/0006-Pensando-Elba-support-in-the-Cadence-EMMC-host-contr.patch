@@ -1,26 +1,24 @@
-From 7a9ab6cfc0d21e310e3a39b47b74ab336ce8fd74 Mon Sep 17 00:00:00 2001
-From: Ashwin H <Ashwin.H@amd.com>
-Date: Tue, 27 Jun 2023 06:26:12 +0000
-Subject: [PATCH 03/30] mmc: sdhci-cadence: Add AMD Pensando Elba SoC support
+From bf53503104fb2d713523666adfad2dbb708762ed Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 08:57:52 +0000
+Subject: [PATCH] Pensando Elba support in the Cadence EMMC host controller
 
-[ Upstream commit b5dbcf1f1d1a7349ca731c22dda7d429151956ac ]
+This patch adds Elba SoC support to the Cadence EMMC controller.
+The Elba SoC has particular accessor requirements for non-word-size
+registers.
 
-Select MMC_SDHCI_IO_ACCESSORS for MMC_SDHCI_CADENCE which
-allows Elba SoC sdhci_elba_ops to overwrite the SDHCI
-IO memory accessors
-
-Signed-off-by: Brad Larson <blarson@amd.com>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
  drivers/mmc/host/Kconfig         |   1 +
  drivers/mmc/host/sdhci-cadence.c | 154 +++++++++++++++++++++++++++----
  2 files changed, 139 insertions(+), 16 deletions(-)
 
 diff --git a/drivers/mmc/host/Kconfig b/drivers/mmc/host/Kconfig
-index 30ff42fd1..6aa5d1cf2 100644
+index fb1062a63..233ab2f23 100644
 --- a/drivers/mmc/host/Kconfig
 +++ b/drivers/mmc/host/Kconfig
-@@ -229,6 +229,7 @@ config MMC_SDHCI_CADENCE
+@@ -246,6 +246,7 @@ config MMC_SDHCI_CADENCE
  	tristate "SDHCI support for the Cadence SD/SDIO/eMMC controller"
  	depends on MMC_SDHCI_PLTFM
  	depends on OF
@@ -287,5 +285,5 @@ index 6f2de54a5..072cb82ea 100644
  	{ .compatible = "cdns,sd4hc" },
  	{ /* sentinel */ }
 -- 
-2.17.1
+2.39.2
 

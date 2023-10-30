@@ -1,0 +1,52 @@
+From 7915f3d766f58398382e8615e987bf45f47db4f8 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 08:48:56 +0000
+Subject: [PATCH] arm64/traps: Call platform handler for do_serror
+
+When taking a bad_mode exception, give platform code an opportunity
+to decide whether the error the event can be ignored or not.
+
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
+---
+ arch/arm64/include/asm/traps.h | 1 +
+ arch/arm64/kernel/traps.c      | 9 +++++++++
+ 2 files changed, 10 insertions(+)
+
+diff --git a/arch/arm64/include/asm/traps.h b/arch/arm64/include/asm/traps.h
+index 6e5826470..bf9f99994 100644
+--- a/arch/arm64/include/asm/traps.h
++++ b/arch/arm64/include/asm/traps.h
+@@ -29,6 +29,7 @@ void arm64_notify_segfault(unsigned long addr);
+ void arm64_force_sig_fault(int signo, int code, unsigned long far, const char *str);
+ void arm64_force_sig_mceerr(int code, unsigned long far, short lsb, const char *str);
+ void arm64_force_sig_ptrace_errno_trap(int errno, unsigned long far, const char *str);
++int platform_serror(struct pt_regs *regs, unsigned int esr);
+ 
+ /*
+  * Move regs->pc to next instruction and do necessary setup before it
+diff --git a/arch/arm64/kernel/traps.c b/arch/arm64/kernel/traps.c
+index 23d281ed7..6dac34ab3 100644
+--- a/arch/arm64/kernel/traps.c
++++ b/arch/arm64/kernel/traps.c
+@@ -956,8 +956,17 @@ bool arm64_is_fatal_ras_serror(struct pt_regs *regs, unsigned long esr)
+ 	}
+ }
+ 
++int __weak platform_serror(struct pt_regs *regs, unsigned int esr)
++{
++	return 0;
++}
++
+ void do_serror(struct pt_regs *regs, unsigned long esr)
+ {
++	/* give the platform a chance to ignore the event */
++	if (platform_serror(regs, esr))
++		return;
++
+ 	/* non-RAS errors are not containable */
+ 	if (!arm64_is_ras_serror(esr) || arm64_is_fatal_ras_serror(regs, esr))
+ 		arm64_serror_panic(regs, esr);
+-- 
+2.39.2
+

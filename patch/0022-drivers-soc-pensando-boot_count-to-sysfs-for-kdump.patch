@@ -1,66 +1,43 @@
-From b2e225166585c511bc92eddb6261cfe9bb91aa04 Mon Sep 17 00:00:00 2001
-From: Hiren Mehta <hiren@pensando.io>
-Date: Fri, 13 Jan 2023 16:45:09 -0800
-Subject: [PATCH 22/30] soc:pensando: Add boot_count to sysfs
+From d4756c034d6215f5abcf5d6c9d8c7da1a392a313 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 10:31:58 +0000
+Subject: [PATCH] drivers/soc/pensando:boot_count to sysfs for kdump log
 
-At each boot userspace stores boot count in non volatile storage.
-The boot count is incremented at each reboot and the current boot count
-is set to sysfs entry /sys/kernel/reboot/boot_count.
-Augment the kdump timestamp with the boot_count number.
-Also, adjust the kdump timestamp.
+Add boot_count to sysfs. Augment the kdump timestamp with
+the boot_count number. Also, adjust the kdump timestamp.
 
-Signed-off-by: Hiren Mehta <hiren@pensando.io>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
- drivers/soc/pensando/cap_crash.c  | 16 ++++++++-------
- drivers/soc/pensando/cap_reboot.c | 34 +++++++++++++++++++++++++++++--
+ drivers/soc/pensando/cap_crash.c  |  4 +++-
+ drivers/soc/pensando/cap_reboot.c | 35 +++++++++++++++++++++++++++++--
  drivers/soc/pensando/cap_reboot.h |  3 ++-
- 3 files changed, 43 insertions(+), 10 deletions(-)
+ 3 files changed, 38 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/soc/pensando/cap_crash.c b/drivers/soc/pensando/cap_crash.c
-index b2291c8a3..dc2f931b7 100644
+index dbe8344d7..c8d2852ea 100644
 --- a/drivers/soc/pensando/cap_crash.c
 +++ b/drivers/soc/pensando/cap_crash.c
-@@ -1,6 +1,6 @@
- // SPDX-License-Identifier: GPL-2.0
- /*
-- * Copyright (c) 2019-2021, Pensando Systems Inc.
-+ * Copyright (c) 2019-2022, Pensando Systems Inc.
-  */
- 
- #include <linux/io.h>
-@@ -10,6 +10,7 @@
- #include <linux/time.h>
- #include <linux/platform_device.h>
+@@ -12,6 +12,7 @@
+ #include <linux/panic_notifier.h>
  #include <linux/of.h>
+ #include <linux/of_address.h>
 +#include "cap_reboot.h"
  
  #define PCRASH_NAME	"pensando-crash"
  
-@@ -60,14 +61,15 @@ static int cap_panic_callback(struct notifier_block *nb,
- 			       unsigned long reason, void *arg)
- {
- 	struct timespec64 ts;
--	struct tm broken;
-+	struct tm tm;
+@@ -114,7 +115,8 @@ static int cap_panic_callback(struct notifier_block *nb,
  
  	ktime_get_real_ts64(&ts);
--	time64_to_tm(ts.tv_sec, 0, &broken);
--	pr_info("Panic on %d/%d/%ld::%d:%d:%d:%03ld\n",
--	       broken.tm_mon + 1, broken.tm_mday, broken.tm_year + 1900,
--	       broken.tm_hour, broken.tm_min, broken.tm_sec,
--	       ts.tv_nsec / 1000);
-+	time64_to_tm(ts.tv_sec, 0, &tm);
+ 	time64_to_tm(ts.tv_sec, 0, &tm);
+-	pr_info("Panic on %04ld-%02d-%02d %02d:%02d:%02d.%06ld\n",
 +	pr_info("Panic at Boot #%lu %04ld-%02d-%02d %02d:%02d:%02d.%06ld\n",
 +		cap_boot_count(),
-+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-+		tm.tm_hour, tm.tm_min, tm.tm_sec,
-+		ts.tv_nsec / 1000);
- 	return NOTIFY_DONE;
- }
- 
+ 		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+ 		tm.tm_hour, tm.tm_min, tm.tm_sec,
+ 		ts.tv_nsec / 1000);
 diff --git a/drivers/soc/pensando/cap_reboot.c b/drivers/soc/pensando/cap_reboot.c
-index c57e58fcb..6bc8632c8 100644
+index 42d87f242..d2e1ebf91 100644
 --- a/drivers/soc/pensando/cap_reboot.c
 +++ b/drivers/soc/pensando/cap_reboot.c
 @@ -2,7 +2,7 @@
@@ -71,16 +48,8 @@ index c57e58fcb..6bc8632c8 100644
 + * Copyright (c) 2020-2022, Pensando Systems Inc.
   */
  
- #include <linux/kobject.h>
-@@ -10,6 +10,7 @@
- #include <linux/sysfs.h>
- #include <linux/module.h>
- #include <linux/init.h>
-+#include "cap_reboot.h"
- 
- /*
-  * This module provides userspace control of reboot behavior
-@@ -18,6 +19,9 @@
+ #include <linux/string.h>
+@@ -18,12 +18,22 @@
   */
  static int panic_reboot;	/* default=0, no reboot */
  
@@ -90,19 +59,20 @@ index c57e58fcb..6bc8632c8 100644
  bool cap_panic_reboot(void)
  {
  	if (panic_reboot)
-@@ -25,6 +29,11 @@ bool cap_panic_reboot(void)
+ 		return true;
  	return false;
  }
- 
++EXPORT_SYMBOL_GPL(cap_panic_reboot);
++
 +unsigned long cap_boot_count(void)
 +{
 +	return boot_count;
 +}
-+
- struct kobject *reboot_kobj;
++EXPORT_SYMBOL_GPL(cap_boot_count);
  
- static ssize_t panic_reboot_show(struct kobject *kobj,
-@@ -44,11 +53,32 @@ static ssize_t panic_reboot_store(struct kobject *kobj,
+ extern struct kobject *pensando_fw_kobj_get(void);
+ struct kobject *reboot_kobj;
+@@ -45,11 +55,32 @@ static ssize_t panic_reboot_store(struct kobject *kobj,
  	return count;
  }
  
@@ -155,5 +125,5 @@ index 8718fff85..e4bd89afe 100644
  
  #endif
 -- 
-2.17.1
+2.39.2
 

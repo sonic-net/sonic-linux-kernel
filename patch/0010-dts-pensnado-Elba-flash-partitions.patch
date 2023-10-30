@@ -1,34 +1,34 @@
-From 158d5f2e5d2efd3e6a243d57f0898ea111329f56 Mon Sep 17 00:00:00 2001
-From: David Clear <dac2@pensando.io>
-Date: Fri, 28 Jan 2022 23:00:53 -0800
-Subject: [PATCH 07/30] arm64: dts: pensando: Elba flash partitions
+From ecc6b6ff78512097874c6eea66a1f117d1130e26 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 09:32:50 +0000
+Subject: [PATCH] dts/pensnado: Elba flash partitions
 
 Pensando Elba-based PCIE cards have a common flash layout.
 This patch adds the partitions to the dts files.
 
-Signed-off-by: David Clear <dac2@pensando.io>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
  arch/arm64/boot/dts/pensando/elba-asic.dts    |   1 +
- .../boot/dts/pensando/elba-flash-parts.dtsi   | 103 ++++++++++++++++++
- 2 files changed, 104 insertions(+)
+ .../boot/dts/pensando/elba-flash-parts.dtsi   | 108 ++++++++++++++++++
+ 2 files changed, 109 insertions(+)
  create mode 100644 arch/arm64/boot/dts/pensando/elba-flash-parts.dtsi
 
 diff --git a/arch/arm64/boot/dts/pensando/elba-asic.dts b/arch/arm64/boot/dts/pensando/elba-asic.dts
 index 382b89ef9..8c482bd87 100644
 --- a/arch/arm64/boot/dts/pensando/elba-asic.dts
 +++ b/arch/arm64/boot/dts/pensando/elba-asic.dts
-@@ -21,3 +21,4 @@
+@@ -21,3 +21,4 @@ chosen {
  #include "elba-16core.dtsi"
  #include "elba-16core-spin-table.dtsi"
  #include "elba-asic-common.dtsi"
 +#include "elba-flash-parts.dtsi"
 diff --git a/arch/arm64/boot/dts/pensando/elba-flash-parts.dtsi b/arch/arm64/boot/dts/pensando/elba-flash-parts.dtsi
 new file mode 100644
-index 000000000..e69734c2c
+index 000000000..a9c5d25da
 --- /dev/null
 +++ b/arch/arm64/boot/dts/pensando/elba-flash-parts.dtsi
-@@ -0,0 +1,103 @@
+@@ -0,0 +1,108 @@
 +// SPDX-License-Identifier: GPL-2.0
 +
 +&flash0 {
@@ -121,6 +121,11 @@ index 000000000..e69734c2c
 +			reg = <0x6a00000 0x400000>;
 +		};
 +
++		partition@6e00000 {
++			label = "flashobfl";
++			reg = <0x6e00000 0x1200000>;
++		};
++
 +		partition@8000000 {
 +			label = "diagfw";
 +			reg = <0x8000000 0x7fe0000>;
@@ -133,5 +138,5 @@ index 000000000..e69734c2c
 +	};
 +};
 -- 
-2.17.1
+2.39.2
 

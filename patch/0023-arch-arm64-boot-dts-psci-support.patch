@@ -1,0 +1,94 @@
+From 9eb1b9c1a16013165649fb6331f102569fa67a12 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 10:34:55 +0000
+Subject: [PATCH] arch/arm64/boot/dts: psci support
+
+Change CPU enable-method from 'spin-table' to 'psci'.
+
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
+---
+ .../boot/dts/pensando/elba-16core-psci.dtsi   | 57 +++++++++++++++++++
+ arch/arm64/boot/dts/pensando/elba-asic.dts    |  2 +-
+ 2 files changed, 58 insertions(+), 1 deletion(-)
+ create mode 100644 arch/arm64/boot/dts/pensando/elba-16core-psci.dtsi
+
+diff --git a/arch/arm64/boot/dts/pensando/elba-16core-psci.dtsi b/arch/arm64/boot/dts/pensando/elba-16core-psci.dtsi
+new file mode 100644
+index 000000000..099bfaec8
+--- /dev/null
++++ b/arch/arm64/boot/dts/pensando/elba-16core-psci.dtsi
+@@ -0,0 +1,57 @@
++// SPDX-License-Identifier: GPL-2.0
++
++&cpu0 {
++	enable-method = "psci";
++};
++&cpu1 {
++	enable-method = "psci";
++};
++&cpu2 {
++	enable-method = "psci";
++};
++&cpu3 {
++	enable-method = "psci";
++};
++&cpu4 {
++	enable-method = "psci";
++};
++&cpu5 {
++	enable-method = "psci";
++};
++&cpu6 {
++	enable-method = "psci";
++};
++&cpu7 {
++	enable-method = "psci";
++};
++&cpu8 {
++	enable-method = "psci";
++};
++&cpu9 {
++	enable-method = "psci";
++};
++&cpu10 {
++	enable-method = "psci";
++};
++&cpu11 {
++	enable-method = "psci";
++};
++&cpu12 {
++	enable-method = "psci";
++};
++&cpu13 {
++	enable-method = "psci";
++};
++&cpu14 {
++	enable-method = "psci";
++};
++&cpu15 {
++	enable-method = "psci";
++};
++
++/ {
++	psci {
++		compatible = "arm,psci-0.2";
++		method = "smc";
++	};
++};
+diff --git a/arch/arm64/boot/dts/pensando/elba-asic.dts b/arch/arm64/boot/dts/pensando/elba-asic.dts
+index 70d0dbd38..dfa6deaa0 100644
+--- a/arch/arm64/boot/dts/pensando/elba-asic.dts
++++ b/arch/arm64/boot/dts/pensando/elba-asic.dts
+@@ -19,7 +19,7 @@ chosen {
+ 
+ #include "elba.dtsi"
+ #include "elba-16core.dtsi"
+-#include "elba-16core-spin-table.dtsi"
++#include "elba-16core-psci.dtsi"
+ #include "elba-asic-common.dtsi"
+ #include "elba-flash-parts.dtsi"
+ #include "elba-asic-memory.dtsi"
+-- 
+2.39.2
+

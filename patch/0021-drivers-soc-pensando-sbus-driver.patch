@@ -1,29 +1,30 @@
-From 3e790869fc52fb6a87a5eeddb8ce2698af2faa85 Mon Sep 17 00:00:00 2001
-From: Hiren Mehta <hiren@pensando.io>
-Date: Wed, 11 Jan 2023 17:15:54 -0800
-Subject: [PATCH 21/30] soc: pensando: Add sbus driver
+From 6cdc67e96a043c0fe82666c0902c3389541c219f Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 10:29:44 +0000
+Subject: [PATCH] drivers/soc/pensando sbus driver
 
 sbus driver provides read/write capability to the devices
 on the sbus rings using ioctl interface to /dev/sbus<n> device.
 
-Signed-off-by: Hiren Mehta <hiren@pensando.io>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
- arch/arm64/boot/dts/pensando/elba.dtsi |  23 ++
+ arch/arm64/boot/dts/pensando/elba.dtsi |  24 ++
  drivers/soc/pensando/Kconfig           |   7 +
  drivers/soc/pensando/Makefile          |   1 +
  drivers/soc/pensando/sbus.c            | 303 +++++++++++++++++++++++++
- 4 files changed, 334 insertions(+)
+ 4 files changed, 335 insertions(+)
  create mode 100644 drivers/soc/pensando/sbus.c
 
 diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
-index 4a4ef6968..8354aff97 100644
+index 9f0d7879a..9f8e35c41 100644
 --- a/arch/arm64/boot/dts/pensando/elba.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba.dtsi
-@@ -279,5 +279,28 @@
- 			       0x0 0x1400 0x0 0x10		/* WDT0 */
- 			       0x0 0x20000000 0x0 0x380000>;	/* PXB Base */
+@@ -287,5 +287,29 @@ kpcimgr@20000000 {
+ 				0x0 0xc4000000 0x0 0x01000000   /* HWMEM */
+ 				0x0 0x0        0x0 0x02000000>; /* SHMEM */
  		};
++
 +		sbus@307c24a8 {
 +			compatible = "pensando,sbus";
 +			sbus-ring-num = <0>;
@@ -50,10 +51,10 @@ index 4a4ef6968..8354aff97 100644
  	};
  };
 diff --git a/drivers/soc/pensando/Kconfig b/drivers/soc/pensando/Kconfig
-index 49850f830..bf7a4aede 100644
+index be2d3dbfa..fd290aac8 100644
 --- a/drivers/soc/pensando/Kconfig
 +++ b/drivers/soc/pensando/Kconfig
-@@ -56,6 +56,13 @@ config PENSANDO_SOC_BSM_ENABLE
+@@ -49,6 +49,13 @@ config PENSANDO_SOC_BSM_ENABLE
  	help
  	  Re-enable the BSM on kernel startup
  
@@ -386,5 +387,5 @@ index 000000000..2940f8c68
 +
 +module_platform_driver(sbus_driver);
 -- 
-2.17.1
+2.39.2
 
