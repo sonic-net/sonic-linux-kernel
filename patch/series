@@ -67,6 +67,10 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 
 # Mellanox patches for 5.10
 ###-> mellanox_sdk-start
+0001-psample-Encapsulate-packet-metadata-in-a-struct.patch
+0002-psample-Add-additional-metadata-attributes.patch
+0003-psample-define-the-macro-PSAMPLE_MD_EXTENDED_ATTR.patch
+0004-drop_monitor-Extend-WJH-buffer-linux-channel.patch
 ###-> mellanox_sdk-end
 
 ###-> mellanox_hw_mgmt-start
@@ -191,11 +195,6 @@ cisco-hwmon-pmbus_core-pec-support-check.patch
 
 # Nokia patches for 5.10 kernel
 0001-hwmon-emc2305-Fix-unable-to-probe-emc2301-2-3.patch
-
-# sFlow + dropmon support
-0001-psample-Encapsulate-packet-metadata-in-a-struct.patch
-0002-psample-Add-additional-metadata-attributes.patch
-0003-psample-define-the-macro-PSAMPLE_MD_EXTENDED_ATTR.patch
 
 #
 # Marvell platform patches for 5.10
