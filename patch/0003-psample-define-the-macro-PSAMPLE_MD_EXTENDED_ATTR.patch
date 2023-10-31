@@ -1,7 +1,7 @@
 From 7dbf2689eb841c51dca4dad51b0941c06aa09e26 Mon Sep 17 00:00:00 2001
 From: Vadym Hlushko <vadymh@nvidia.com>
 Date: Mon, 11 Apr 2022 15:41:46 +0000
-Subject: [PATCH 3/3] psample: Add Nvidia-specific wrapper function for the psample driver
+Subject: psample: Add Nvidia-specific wrapper function for the psample driver
 
 Add a variable to notify the psample driver to use a wrapper function,
 which does preprocess before sending the sample packet to the userspace application.
@@ -12,17 +12,15 @@ Signed-off-by: Vadym Hlushko <vadymh@nvidia.com>
  1 file changed, 2 insertions(+)
 
 diff --git a/include/net/psample.h b/include/net/psample.h
-index e328c5127..b7c79f634 100644
+index e328c51..1c4d70c 100644
 --- a/include/net/psample.h
 +++ b/include/net/psample.h
 @@ -14,6 +14,8 @@ struct psample_group {
  	struct rcu_head rcu;
  };
-
-+#define PSAMPLE_MD_EXTENDED_ATTR   1
+ 
++#define PSAMPLE_MD_EXTENDED_ATTR 1
 +
  struct psample_metadata {
  	u32 trunc_size;
  	int in_ifindex;
--- 
-2.17.1

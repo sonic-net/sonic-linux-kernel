@@ -1,11 +1,7 @@
-# Description: Add kconfig options that has to be included in the kernel
-# Note: Markers should start with "###->"
-#       Header should end with .*-start eg: any_description-start
-#       Footer must end with .*-end eg: any_description-end
-#       Markers should not be nested
-
 [common]
 CONFIG_LOG_BUF_SHIFT=20
+###-> mellanox_common-start
+###-> mellanox_common-end
 
 [amd64]
 # For Arista
@@ -37,7 +33,7 @@ CONFIG_SENSORS_MAX31790=m
 # For optoe
 CONFIG_EEPROM_OPTOE=m
 
-###-> mellanox-start
+###-> mellanox_amd64-start
 CONFIG_OF=y
 CONFIG_THERMAL_OF=y
 CONFIG_CPU_THERMAL=y
@@ -138,7 +134,7 @@ CONFIG_I2C_I801=m
 CONFIG_PINCTRL=y
 CONFIG_PINCTRL_INTEL=y
 CONFIG_SPI_PXA2XX=m
-###-> mellanox-end
+###-> mellanox_amd64-end
 
 # For Cisco 8000
 CONFIG_PHYLIB=m
@@ -169,6 +165,8 @@ CONFIG_MTD_RAW_NAND=m
 CONFIG_MTD_NAND_ECC_SW_BCH=y
 CONFIG_MTD_NAND_MARVELL=m
 CONFIG_SENSORS_EMC2305=m
+CONFIG_PHY_MVEBU_CP110_COMPHY=y
+CONFIG_SPI_ORION=m
 # For pensando
 CONFIG_CRYPTO_MANAGER_DISABLE_TESTS=y
 CONFIG_DEVTMPFS_MOUNT=y
@@ -196,6 +194,7 @@ CONFIG_SPI_DW_MMIO=m
 CONFIG_SQUASHFS_DECOMP_MULTI=y
 CONFIG_PREEMPTIRQ_TRACEPOINTS=y
 CONFIG_RING_BUFFER_ALLOW_SWAP=y
+CONFIG_KEXEC_FILE=y
 
 [marvell-arm64]
 CONFIG_MARVELL_AC5_WATCHDOG=m
@@ -232,3 +231,5 @@ CONFIG_I2C_MUX_GPIO=m
 [marvell-armhf]
 CONFIG_MTD_CMDLINE_PARTS=y
 CONFIG_MTD_OF_PARTS=y
+
+[mellanox-arm64]

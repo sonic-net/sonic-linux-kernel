@@ -75,7 +75,7 @@ function process_inclusion_exclusion_files(){
 
         # Process any exclusions in the kernel
         if [ -f ${exclusion_file} ]; then
-            exclusion_opts=$(get_section_opts ${exclusion_file} "common" ${ARCH} ${PLATFORM})
+            exclusion_opts=$(get_section_opts ${exclusion_file} "common" ${ARCH} ${PLATFORM} ${PLATFORM}-${ARCH})
             while read -r opt; do
                 if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
                     scripts/config --file ${CONFIG_FILE} -d $opt
@@ -85,7 +85,7 @@ function process_inclusion_exclusion_files(){
 
         # Process any inclusions in the kernel
         if [ -f ${inclusion_file} ]; then
-            inclusion_opts=$(get_section_opts ${inclusion_file} "common" ${ARCH} ${PLATFORM})
+            inclusion_opts=$(get_section_opts ${inclusion_file} "common" ${ARCH} ${PLATFORM} ${PLATFORM}-${ARCH})
             while read -r opt; do
                 if [ ! -z "$opt" ] && [[ ! "$opt" =~ ^#.* ]]; then
                     n=${opt%=*}
@@ -133,7 +133,7 @@ function process_inclusion_exclusion_files(){
                     fi
                 fi
             done <<< ${inclusion_opts};
-            if [ ! $ret = 2 ]; then
+            if [ $ret = 0 ]; then
                 echo "No error"
             fi
         fi
@@ -158,8 +158,8 @@ function process_inclusion_exclusion_files(){
 exclusion_file="../patch/kconfig-exclusions"
 inclusion_file="../patch/kconfig-inclusions"
 force_inclusion_file="../patch/kconfig-force-inclusions"
-ret_process_inc_ex=0
-ret_process_inc_ex=$(process_inclusion_exclusion_files > /dev/null; echo $?)
+process_inclusion_exclusion_files
+ret_process_inc_ex=$?
 
 #  Secure Boot support
 if [ $ret_process_inc_ex -eq 0 ]; then
@@ -179,7 +179,8 @@ if [ $ret_process_inc_ex -eq 0 ]; then
         # save the new pub key in kernel
         sed -i "s|^CONFIG_SYSTEM_TRUSTED_KEYS=.*|CONFIG_SYSTEM_TRUSTED_KEYS=\"$SECURE_UPGRADE_SIGNING_CERT\"|g" ${inclusion_file}
 
-        ret_process_inc_ex=$(process_inclusion_exclusion_files > /dev/null; echo $?)
+        process_inclusion_exclusion_files
+        ret_process_inc_ex=$?
         echo "Secure Boot kernel configuration done."
     else
         echo "no Secure Boot Kernel configuration required."

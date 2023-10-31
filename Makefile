@@ -77,19 +77,15 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 		fi
 	fi
 
-	if [ -f "$(NON_UP_DIR)/series.patch" ]; then
-		echo "Patch the series file"
-		cat $(NON_UP_DIR)/series.patch
-		pushd patch
-		# clear any unstaged changes
-		git stash -- series
-		git apply $(NON_UP_DIR)/series.patch
-		popd
+	if [ -f "$(NON_UP_DIR)/external-changes.patch" ]; then
+		cat $(NON_UP_DIR)/external-changes.patch
+		git stash -- patch/
+		git apply $(NON_UP_DIR)/external-changes.patch
+	fi
 
-		if [ -d "$(NON_UP_DIR)/patches" ]; then
-			echo "Copy the non upstream patches"
-			cp $(NON_UP_DIR)/patches/*.patch patch/
-		fi
+	if [ -d "$(NON_UP_DIR)/patches" ]; then
+		echo "Copy the non upstream patches"
+		cp $(NON_UP_DIR)/patches/*.patch patch/
 	fi
 
 	# Obtaining the Debian kernel source

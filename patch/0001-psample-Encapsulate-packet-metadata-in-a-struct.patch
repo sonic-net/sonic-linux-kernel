@@ -1,10 +1,7 @@
-From ab65c38369aec72cbaac3e1c9d6731804edfc5b4 Mon Sep 17 00:00:00 2001
+From a03e99d39f1943ec88f6fd3b0b9f34c20663d401 Mon Sep 17 00:00:00 2001
 From: Ido Schimmel <idosch@nvidia.com>
 Date: Sun, 14 Mar 2021 14:19:30 +0200
-
-[backport of upstream commit a03e99d39f1943ec88f6fd3b0b9f34c20663d401]
-
-Subject: [PATCH 1/3] psample: Encapsulate packet metadata in a struct
+Subject: [PATCH] psample: Encapsulate packet metadata in a struct
 
 Currently, callers of psample_sample_packet() pass three metadata
 attributes: Ingress port, egress port and truncated size. Subsequent
@@ -25,10 +22,10 @@ Signed-off-by: David S. Miller <davem@davemloft.net>
  4 files changed, 23 insertions(+), 21 deletions(-)
 
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/spectrum.c b/drivers/net/ethernet/mellanox/mlxsw/spectrum.c
-index 1a9978f50..323857943 100644
+index 93b15b8c007e6d..3b15f8d728a37e 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/spectrum.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/spectrum.c
-@@ -2167,7 +2167,7 @@ void mlxsw_sp_sample_receive(struct mlxsw_sp *mlxsw_sp, struct sk_buff *skb,
+@@ -2217,7 +2217,7 @@ void mlxsw_sp_sample_receive(struct mlxsw_sp *mlxsw_sp, struct sk_buff *skb,
  {
  	struct mlxsw_sp_port *mlxsw_sp_port = mlxsw_sp->ports[local_port];
  	struct mlxsw_sp_port_sample *sample;
@@ -37,7 +34,7 @@ index 1a9978f50..323857943 100644
  
  	if (unlikely(!mlxsw_sp_port)) {
  		dev_warn_ratelimited(mlxsw_sp->bus_info->dev, "Port %d: sample skb received for non-existent port\n",
-@@ -2179,9 +2179,9 @@ void mlxsw_sp_sample_receive(struct mlxsw_sp *mlxsw_sp, struct sk_buff *skb,
+@@ -2229,9 +2229,9 @@ void mlxsw_sp_sample_receive(struct mlxsw_sp *mlxsw_sp, struct sk_buff *skb,
  	sample = rcu_dereference(mlxsw_sp_port->sample);
  	if (!sample)
  		goto out_unlock;
@@ -51,7 +48,7 @@ index 1a9978f50..323857943 100644
  	rcu_read_unlock();
  out:
 diff --git a/include/net/psample.h b/include/net/psample.h
-index 68ae16bb0..ac6dbfb38 100644
+index 68ae16bb0a4a85..ac6dbfb3870d94 100644
 --- a/include/net/psample.h
 +++ b/include/net/psample.h
 @@ -14,6 +14,12 @@ struct psample_group {
@@ -87,7 +84,7 @@ index 68ae16bb0..ac6dbfb38 100644
  }
  
 diff --git a/net/psample/psample.c b/net/psample/psample.c
-index 482c07f27..065bc887d 100644
+index 482c07f2766b18..065bc887d23936 100644
 --- a/net/psample/psample.c
 +++ b/net/psample/psample.c
 @@ -356,9 +356,11 @@ static int psample_tunnel_meta_len(struct ip_tunnel_info *tun_info)
@@ -105,7 +102,7 @@ index 482c07f27..065bc887d 100644
  	struct ip_tunnel_info *tun_info;
  #endif
 diff --git a/net/sched/act_sample.c b/net/sched/act_sample.c
-index 3ebf9ede3..2fece01f2 100644
+index db8ee9e5c8c229..6a0c16e4351d71 100644
 --- a/net/sched/act_sample.c
 +++ b/net/sched/act_sample.c
 @@ -158,10 +158,8 @@ static int tcf_sample_act(struct sk_buff *skb, const struct tc_action *a,
@@ -146,6 +143,3 @@ index 3ebf9ede3..2fece01f2 100644
  
  		if (skb_at_tc_ingress(skb) && tcf_sample_dev_ok_push(skb->dev))
  			skb_pull(skb, skb->mac_len);
--- 
-2.17.1
-
