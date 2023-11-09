@@ -1,4 +1,4 @@
-From 8c58a49bc15de476a0ed78efea9ef44315bb7813 Mon Sep 17 00:00:00 2001
+From d1dd893ddae49ca4dc55073449c37d5b97504c05 Mon Sep 17 00:00:00 2001
 From: Akhilesh Samineni <akhilesh.samineni@broadcom.com>
 Date: Mon, 6 Nov 2023 11:55:58 -0800
 Subject: [PATCH] Support fullcone NAT
@@ -33,11 +33,11 @@ Signed-off-by: Akhilesh Samineni <akhilesh.samineni@broadcom.com>
 ---
  include/net/netfilter/nf_conntrack.h      |   3 +
  include/uapi/linux/netfilter/nf_nat.h     |   3 +-
- net/netfilter/nf_nat_core.c               | 220 +++++++++++++++---
- 3 files changed, 195 insertions(+), 31 deletions(-)
+ net/netfilter/nf_nat_core.c               | 222 +++++++++++++++---
+ 3 files changed, 197 insertions(+), 31 deletions(-)
 
 diff --git a/include/net/netfilter/nf_conntrack.h b/include/net/netfilter/nf_conntrack.h
-index 6a2019a..191d636 100644
+index 6a2019aaa..191d6367c 100644
 --- a/include/net/netfilter/nf_conntrack.h
 +++ b/include/net/netfilter/nf_conntrack.h
 @@ -103,6 +103,9 @@ struct nf_conn {
@@ -51,7 +51,7 @@ index 6a2019a..191d636 100644
  	/* all members below initialized via memset */
  	struct { } __nfct_init_offset;
 diff --git a/include/uapi/linux/netfilter/nf_nat.h b/include/uapi/linux/netfilter/nf_nat.h
-index a64586e..d60f5a9 100644
+index a64586e77..d60f5a9c2 100644
 --- a/include/uapi/linux/netfilter/nf_nat.h
 +++ b/include/uapi/linux/netfilter/nf_nat.h
 @@ -12,6 +12,7 @@
@@ -72,7 +72,7 @@ index a64586e..d60f5a9 100644
  struct nf_nat_ipv4_range {
  	unsigned int			flags;
 diff --git a/net/netfilter/nf_nat_core.c b/net/netfilter/nf_nat_core.c
-index e29e4cc..ec6db39 100644
+index e29e4ccb5..678b50967 100644
 --- a/net/netfilter/nf_nat_core.c
 +++ b/net/netfilter/nf_nat_core.c
 @@ -33,6 +33,7 @@ static DEFINE_MUTEX(nf_nat_proto_mutex);
@@ -83,7 +83,7 @@ index e29e4cc..ec6db39 100644
  static unsigned int nf_nat_htable_size __read_mostly;
  static siphash_aligned_key_t nf_nat_hash_rnd;
  
-@@ -180,6 +181,48 @@ hash_by_src(const struct net *net,
+@@ -180,6 +181,50 @@ hash_by_src(const struct net *net,
  	return reciprocal_scale(hash, nf_nat_htable_size);
  }
  
@@ -94,8 +94,9 @@ index e29e4cc..ec6db39 100644
 +{
 +        unsigned int hash;
 +        struct {
-+                struct nf_conntrack_man dst;
++                union nf_inet_addr dst_addr;
 +                u32 net_mix;
++                u16 dport;
 +                u32 protonum;
 +                u32 zone;
 +        } __aligned(SIPHASH_ALIGNMENT) combined;
@@ -104,9 +105,10 @@ index e29e4cc..ec6db39 100644
 +
 +        memset(&combined, 0, sizeof(combined));
 +
-+        combined.dst = tuple->dst;
++        combined.dst_addr = tuple->dst.u3;
 +        combined.net_mix = net_hash_mix(net);
 +        combined.protonum = tuple->dst.protonum;
++	combined.dport = (__force __u16)tuple->dst.u.all;
 +
 +        /* Zone ID can be used provided its valid for both directions */
 +        if (zone->dir == NF_CT_DEFAULT_ZONE_DIR)
@@ -132,7 +134,7 @@ index e29e4cc..ec6db39 100644
  /* Is this tuple already taken? (not by us) */
  static int
  nf_nat_used_tuple(const struct nf_conntrack_tuple *tuple,
-@@ -197,6 +240,38 @@ nf_nat_used_tuple(const struct nf_conntrack_tuple *tuple,
+@@ -197,6 +242,38 @@ nf_nat_used_tuple(const struct nf_conntrack_tuple *tuple,
  	return nf_conntrack_tuple_taken(&reply, ignored_conntrack);
  }
  
@@ -154,7 +156,7 @@ index e29e4cc..ec6db39 100644
 +	zone = nf_ct_zone(ignored_conntrack);
 +
 +	/* The tuple passed here is the inverted reply (with translated source) */
-+	h = hash_by_src(net, tuple);
++	h = hash_by_src(net, zone, tuple);
 +	hlist_for_each_entry_rcu(ct, &nf_nat_by_manip_src[h], nat_by_manip_src) {
 +		struct nf_conntrack_tuple reply;
 +		nf_ct_invert_tuple(&reply, tuple);
@@ -171,7 +173,7 @@ index e29e4cc..ec6db39 100644
  static bool nf_nat_inet_in_range(const struct nf_conntrack_tuple *t,
  				 const struct nf_nat_range2 *range)
  {
-@@ -298,6 +373,33 @@ find_appropriate_src(struct net *net,
+@@ -298,6 +375,33 @@ find_appropriate_src(struct net *net,
  	return 0;
  }
  
@@ -205,7 +207,7 @@ index e29e4cc..ec6db39 100644
  /* For [FUTURE] fragmentation handling, we want the least-used
   * src-ip/dst-ip/proto triple.  Fairness doesn't come into it.  Thus
   * if the range specifies 1.2.3.4 ports 10000-10005 and 1.2.3.5 ports
-@@ -377,10 +479,10 @@ find_best_ips_proto(const struct nf_conntrack_zone *zone,
+@@ -377,10 +481,10 @@ find_best_ips_proto(const struct nf_conntrack_zone *zone,
   *
   * Per-protocol part of tuple is initialized to the incoming packet.
   */
@@ -220,7 +222,7 @@ index e29e4cc..ec6db39 100644
  {
  	unsigned int range_size, min, max, i, attempts;
  	__be16 *keyptr;
-@@ -406,7 +508,7 @@ static void nf_nat_l4proto_unique_tuple(struct nf_conntrack_tuple *tuple,
+@@ -406,7 +510,7 @@ static void nf_nat_l4proto_unique_tuple(struct nf_conntrack_tuple *tuple,
  		/* If there is no master conntrack we are not PPTP,
  		   do not change tuples */
  		if (!ct->master)
@@ -229,7 +231,7 @@ index e29e4cc..ec6db39 100644
  
  		if (maniptype == NF_NAT_MANIP_SRC)
  			keyptr = &tuple->src.u.gre.key;
-@@ -434,14 +536,14 @@ static void nf_nat_l4proto_unique_tuple(struct nf_conntrack_tuple *tuple,
+@@ -434,14 +538,14 @@ static void nf_nat_l4proto_unique_tuple(struct nf_conntrack_tuple *tuple,
  
  		break;
  	default:
@@ -246,7 +248,7 @@ index e29e4cc..ec6db39 100644
  
  		if (ntohs(*keyptr) < 1024) {
  			/* Loose convention: >> 512 is credential passing */
-@@ -483,12 +585,18 @@ static void nf_nat_l4proto_unique_tuple(struct nf_conntrack_tuple *tuple,
+@@ -483,12 +587,18 @@ static void nf_nat_l4proto_unique_tuple(struct nf_conntrack_tuple *tuple,
  another_round:
  	for (i = 0; i < attempts; i++, off++) {
  		*keyptr = htons(min + off % range_size);
@@ -268,7 +270,7 @@ index e29e4cc..ec6db39 100644
  	attempts /= 2;
  	off = get_random_u16();
  	goto another_round;
-@@ -497,10 +605,15 @@ static void nf_nat_l4proto_unique_tuple(struct nf_conntrack_tuple *tuple,
+@@ -497,10 +607,15 @@ static void nf_nat_l4proto_unique_tuple(struct nf_conntrack_tuple *tuple,
  /* Manipulate the tuple into the range given. For NF_INET_POST_ROUTING,
   * we change the source to map into the range. For NF_INET_PRE_ROUTING
   * and NF_INET_LOCAL_OUT, we change the destination to map into the
@@ -287,7 +289,7 @@ index e29e4cc..ec6db39 100644
  get_unique_tuple(struct nf_conntrack_tuple *tuple,
  		 const struct nf_conntrack_tuple *orig_tuple,
  		 const struct nf_nat_range2 *range,
-@@ -508,8 +621,11 @@ get_unique_tuple(struct nf_conntrack_tuple *tuple,
+@@ -508,8 +623,11 @@ get_unique_tuple(struct nf_conntrack_tuple *tuple,
  		 enum nf_nat_manip_type maniptype)
  {
  	const struct nf_conntrack_zone *zone;
@@ -299,12 +301,12 @@ index e29e4cc..ec6db39 100644
  	zone = nf_ct_zone(ct);
  
  	/* 1) If this srcip/proto/src-proto-part is currently mapped,
-@@ -521,46 +637,76 @@ get_unique_tuple(struct nf_conntrack_tuple *tuple,
+@@ -521,46 +639,76 @@ get_unique_tuple(struct nf_conntrack_tuple *tuple,
  	 * manips not an issue.
  	 */
  	if (maniptype == NF_NAT_MANIP_SRC &&
 -	    !(range->flags & NF_NAT_RANGE_PROTO_RANDOM_ALL)) {
-+	    !(nat_range->flags & NF_NAT_RANGE_PROTO_RANDOM_ALL)) {
++	    !(nat_range.flags & NF_NAT_RANGE_PROTO_RANDOM_ALL)) {
  		/* try the original tuple first */
 -		if (in_range(orig_tuple, range)) {
 +		if (in_range(orig_tuple, &nat_range)) {
@@ -392,7 +394,7 @@ index e29e4cc..ec6db39 100644
  }
  
  struct nf_conn_nat *nf_ct_nat_ext_add(struct nf_conn *ct)
-@@ -602,7 +748,9 @@ nf_nat_setup_info(struct nf_conn *ct,
+@@ -602,7 +750,9 @@ nf_nat_setup_info(struct nf_conn *ct,
  	nf_ct_invert_tuple(&curr_tuple,
  			   &ct->tuplehash[IP_CT_DIR_REPLY].tuple);
  
@@ -403,7 +405,7 @@ index e29e4cc..ec6db39 100644
  
  	if (!nf_ct_tuple_equal(&new_tuple, &curr_tuple)) {
  		struct nf_conntrack_tuple reply;
-@@ -624,12 +772,16 @@ nf_nat_setup_info(struct nf_conn *ct,
+@@ -624,12 +774,16 @@ nf_nat_setup_info(struct nf_conn *ct,
  
  	if (maniptype == NF_NAT_MANIP_SRC) {
  		unsigned int srchash;
@@ -420,7 +422,7 @@ index e29e4cc..ec6db39 100644
  		hlist_add_head_rcu(&ct->nat_bysource,
  				   &nf_nat_bysource[srchash]);
  		spin_unlock_bh(lock);
-@@ -808,6 +960,7 @@ static void nf_nat_cleanup_conntrack(struct nf_conn *ct)
+@@ -808,6 +962,7 @@ static void nf_nat_cleanup_conntrack(struct nf_conn *ct)
  	h = hash_by_src(nf_ct_net(ct), nf_ct_zone(ct), &ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple);
  	spin_lock_bh(&nf_nat_locks[h % CONNTRACK_LOCKS]);
  	hlist_del_rcu(&ct->nat_bysource);
@@ -428,7 +430,7 @@ index e29e4cc..ec6db39 100644
  	spin_unlock_bh(&nf_nat_locks[h % CONNTRACK_LOCKS]);
  }
  
-@@ -1138,12 +1291,17 @@ static int __init nf_nat_init(void)
+@@ -1138,12 +1293,17 @@ static int __init nf_nat_init(void)
  	if (!nf_nat_bysource)
  		return -ENOMEM;
  
@@ -446,7 +448,7 @@ index e29e4cc..ec6db39 100644
  		return ret;
  	}
  
-@@ -1159,6 +1317,7 @@ static int __init nf_nat_init(void)
+@@ -1159,6 +1319,7 @@ static int __init nf_nat_init(void)
  		synchronize_net();
  		unregister_pernet_subsys(&nat_net_ops);
  		kvfree(nf_nat_bysource);
@@ -454,7 +456,7 @@ index e29e4cc..ec6db39 100644
  	}
  
  	return ret;
-@@ -1175,6 +1334,7 @@ static void __exit nf_nat_cleanup(void)
+@@ -1175,6 +1336,7 @@ static void __exit nf_nat_cleanup(void)
  
  	synchronize_net();
  	kvfree(nf_nat_bysource);
