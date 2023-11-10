@@ -1,7 +1,7 @@
-From 4e0d87e9d7fddee858747a75432111bae54c0669 Mon Sep 17 00:00:00 2001
-From: David Clear <dac2@pensando.io>
-Date: Mon, 14 Feb 2022 10:28:43 -0800
-Subject: [PATCH 14/30] soc: pensando: Add Reset Cause driver
+From c61e591d37d5b3a6071ead5d209013893d398ccd Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 10:12:50 +0000
+Subject: [PATCH] drivers/soc/pensando: Add the Reset Cause driver
 
 The reset cause driver exposes sysfs nodes under
 /sys/pensando/firmware/rstcause that report the reason for the last
@@ -9,23 +9,23 @@ reboot and, for software affecting a new reboot, a file in which to
 write why the next reboot is occurring.  This is used by the Pensando
 platform userspace software.
 
-Signed-off-by: David Clear <dac2@pensando.io>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
  arch/arm64/boot/dts/pensando/elba.dtsi |   5 +
  drivers/soc/pensando/Kconfig           |   7 +
  drivers/soc/pensando/Makefile          |   1 +
- drivers/soc/pensando/cap_rstcause.c    | 217 +++++++++++++++++++++++++
+ drivers/soc/pensando/cap_rstcause.c    | 218 +++++++++++++++++++++++++
  drivers/soc/pensando/cap_rstcause.h    |  15 ++
- 5 files changed, 245 insertions(+)
+ 5 files changed, 246 insertions(+)
  create mode 100644 drivers/soc/pensando/cap_rstcause.c
  create mode 100644 drivers/soc/pensando/cap_rstcause.h
 
 diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
-index 3e51b46df..e6582655f 100644
+index e88c2302b..6be705650 100644
 --- a/arch/arm64/boot/dts/pensando/elba.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba.dtsi
-@@ -55,6 +55,11 @@
+@@ -55,6 +55,11 @@ uio_penmsi {
  		name = "uio_penmsi";
  	};
  
@@ -38,12 +38,12 @@ index 3e51b46df..e6582655f 100644
  		compatible = "pensando,capmem";
  	};
 diff --git a/drivers/soc/pensando/Kconfig b/drivers/soc/pensando/Kconfig
-index 244e7af13..f3e45da48 100644
+index 6f0b1a853..59c1fa4c6 100644
 --- a/drivers/soc/pensando/Kconfig
 +++ b/drivers/soc/pensando/Kconfig
-@@ -22,6 +22,13 @@ config PENSANDO_SOC_CAPMEM_HUGEPAGE
+@@ -15,6 +15,13 @@ config PENSANDO_SOC_CAPMEM
  	help
- 	  Support for Huge pages in Pensando SoC memory driver
+ 	  Support for the Pensando SoC memory driver
  
 +config PENSANDO_SOC_RSTCAUSE
 +	tristate "Pensando reset cause driver"
@@ -68,10 +68,10 @@ index 815ae4563..ea5062fd7 100644
  obj-$(CONFIG_PENSANDO_SOC_BSM) += cap_bsm.o
 diff --git a/drivers/soc/pensando/cap_rstcause.c b/drivers/soc/pensando/cap_rstcause.c
 new file mode 100644
-index 000000000..6b7ea1fd1
+index 000000000..9ef13609d
 --- /dev/null
 +++ b/drivers/soc/pensando/cap_rstcause.c
-@@ -0,0 +1,217 @@
+@@ -0,0 +1,218 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Pensando restart cause driver
@@ -86,6 +86,7 @@ index 000000000..6b7ea1fd1
 +#include <linux/export.h>
 +#include <linux/module.h>
 +#include <linux/platform_device.h>
++#include <linux/panic_notifier.h>
 +#include <linux/of.h>
 +#include <linux/init.h>
 +#include <linux/reboot.h>
@@ -311,5 +312,5 @@ index 000000000..12fe87164
 +
 +#endif
 -- 
-2.17.1
+2.39.2
 

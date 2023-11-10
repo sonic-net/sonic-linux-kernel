@@ -1,17 +1,16 @@
-From 77d1874b0f2775327fefbd9f3afc1f9b9e7a94fc Mon Sep 17 00:00:00 2001
-From: David Clear <dac2@pensando.io>
-Date: Mon, 14 Feb 2022 10:24:27 -0800
-Subject: [PATCH 12/30] soc: pensando: Add Boot State Machine
+From 4c968c1ea9f5b87733e0038b2f66a35f48232e6f Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 10:07:36 +0000
+Subject: [PATCH] drivers/pensando/soc:Boot State Machine integrtion
 
-The Pensando Boot State Machine (BSM) interacts with
-the boot firmware to provide a level
+The Pensando BSM interacts with the boot firmware to provide a level
 of recovery should a Linux image fail to start.  If the BSM is
 armed and a kernel panic + reset occur, then the boot firmware
 will consider the loaded image as bad and will select the alternate
 image to boot next.
 
-Signed-off-by: David Clear <dac2@pensando.io>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
  arch/arm64/boot/dts/pensando/elba.dtsi |   5 +
  drivers/soc/pensando/Kconfig           |  13 ++
@@ -25,10 +24,10 @@ Signed-off-by: Ashwin H <Ashwin.H@amd.com>
  create mode 100644 drivers/soc/pensando/cap_soc.c
 
 diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
-index aee157deb..3e51b46df 100644
+index 9182c93aa..e88c2302b 100644
 --- a/arch/arm64/boot/dts/pensando/elba.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba.dtsi
-@@ -251,5 +251,10 @@
+@@ -259,5 +259,10 @@ mssoc: mssoc@307c0000 {
  			compatible = "pensando,mssoc", "syscon";
  			reg = <0x0 0x307c0000 0x0 0x3000>;
  		};
@@ -40,12 +39,12 @@ index aee157deb..3e51b46df 100644
  	};
  };
 diff --git a/drivers/soc/pensando/Kconfig b/drivers/soc/pensando/Kconfig
-index 92c3a12d3..5afdbfd0c 100644
+index abe01eac6..eb1494e94 100644
 --- a/drivers/soc/pensando/Kconfig
 +++ b/drivers/soc/pensando/Kconfig
-@@ -22,6 +22,19 @@ config PENSANDO_SOC_CAPMEM_HUGEPAGE
+@@ -15,6 +15,19 @@ config PENSANDO_SOC_CAPMEM
  	help
- 	  Support for Huge pages in Pensando SoC memory driver
+ 	  Support for the Pensando SoC memory driver
  
 +config PENSANDO_SOC_BSM
 +	bool "Pensando SoC Boot State Machine"
@@ -304,5 +303,5 @@ index 000000000..9942c2034
 +}
 +EXPORT_SYMBOL_GPL(pensando_fw_kobj_get);
 -- 
-2.17.1
+2.39.2
 

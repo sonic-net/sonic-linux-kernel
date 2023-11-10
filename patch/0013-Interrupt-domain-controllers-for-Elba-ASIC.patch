@@ -1,29 +1,57 @@
-From b0bd501e59e0ed8dd90fa4902caa0459d3f4b841 Mon Sep 17 00:00:00 2001
-From: Ashwin H <Ashwin.H@amd.com>
-Date: Wed, 5 Jul 2023 08:59:53 +0000
-Subject: [PATCH 09/30] irqchip: pensando: Interrupt domain controllers
+From 4b3baeaadc0478e7623b7367d0532b9357f2a608 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 09:49:17 +0000
+Subject: [PATCH] Interrupt domain controllers for Elba ASIC
 
 This supports using ASIC registers as IRQ chips, one per domain. The
 result is a many level interrupt controller. There are actually three
 different register blocks, each of which has its own configuration of
 enable and disable mechanisms.
 
-Signed-off-by: David Clear <dac2@pensando.io>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
- drivers/irqchip/Kconfig              |  11 +
- drivers/irqchip/Makefile             |   1 +
- drivers/irqchip/irq-pensando.c       | 879 +++++++++++++++++++++++++++
- include/linux/irqchip/irq-pensando.h |  91 +++
- 4 files changed, 982 insertions(+)
+ arch/arm64/boot/dts/pensando/elba.dtsi |  16 +
+ drivers/irqchip/Kconfig                |  11 +
+ drivers/irqchip/Makefile               |   1 +
+ drivers/irqchip/irq-pensando.c         | 879 +++++++++++++++++++++++++
+ include/linux/irqchip/irq-pensando.h   |  91 +++
+ 5 files changed, 998 insertions(+)
  create mode 100644 drivers/irqchip/irq-pensando.c
  create mode 100644 include/linux/irqchip/irq-pensando.h
 
+diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
+index 9bc1a71af..c0954fc2b 100644
+--- a/arch/arm64/boot/dts/pensando/elba.dtsi
++++ b/arch/arm64/boot/dts/pensando/elba.dtsi
+@@ -187,6 +187,22 @@ its: interrupt-controller@820000 {
+ 			};
+ 		};
+ 
++		/*
++		 * Until we  know the interrupt domain following this, we
++		 * are forced to use this is the place where interrupts from
++		 * PCI converge. In the ideal case, we use one domain higher,
++		 * where the PCI-ness has been shed.
++		 */
++		pxc0_intr: interrupt-controller@20102200 {
++			compatible = "pensando,soc-ictlr-csrintr";
++			interrupt-controller;
++			reg = <0x0 0x20102200 0x0 0x4>;
++			#interrupt-cells = <3>;
++			interrupt-parent = <&gic>;
++			interrupts = <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "pxc0_intr";
++		};
++
+ 		edac: edac@30500000 {
+ 			compatible = "pensando,elba-edac-mc";
+ 			reg = <0x0 0x30500000 0x0 0x100000>;
 diff --git a/drivers/irqchip/Kconfig b/drivers/irqchip/Kconfig
-index 3c24bf452..21a9148f6 100644
+index a29a426e4..3311e9650 100644
 --- a/drivers/irqchip/Kconfig
 +++ b/drivers/irqchip/Kconfig
-@@ -190,6 +190,17 @@ config CLPS711X_IRQCHIP
+@@ -189,6 +189,17 @@ config CLPS711X_IRQCHIP
  	select SPARSE_IRQ
  	default y
  
@@ -42,17 +70,19 @@ index 3c24bf452..21a9148f6 100644
  	bool
  
 diff --git a/drivers/irqchip/Makefile b/drivers/irqchip/Makefile
-index 94c288588..6c280963a 100644
+index 87b49a109..316691dbb 100644
 --- a/drivers/irqchip/Makefile
 +++ b/drivers/irqchip/Makefile
-@@ -114,3 +114,4 @@ obj-$(CONFIG_LOONGSON_PCH_PIC)		+= irq-loongson-pch-pic.o
- obj-$(CONFIG_LOONGSON_PCH_MSI)		+= irq-loongson-pch-msi.o
- obj-$(CONFIG_MST_IRQ)			+= irq-mst-intc.o
- obj-$(CONFIG_SL28CPLD_INTC)		+= irq-sl28cpld.o
-+obj-$(CONFIG_IRQ_PENSANDO)      += irq-pensando.o
+@@ -119,5 +119,6 @@ obj-$(CONFIG_MACH_REALTEK_RTL)		+= irq-realtek-rtl.o
+ obj-$(CONFIG_WPCM450_AIC)		+= irq-wpcm450-aic.o
+ obj-$(CONFIG_IRQ_IDT3243X)		+= irq-idt3243x.o
+ obj-$(CONFIG_APPLE_AIC)			+= irq-apple-aic.o
++obj-$(CONFIG_IRQ_PENSANDO)		+= irq-pensando.o
+ obj-$(CONFIG_MCHP_EIC)			+= irq-mchp-eic.o
+ obj-$(CONFIG_SUNPLUS_SP7021_INTC)	+= irq-sp7021-intc.o
 diff --git a/drivers/irqchip/irq-pensando.c b/drivers/irqchip/irq-pensando.c
 new file mode 100644
-index 000000000..c7fcba03b
+index 000000000..5d72d191d
 --- /dev/null
 +++ b/drivers/irqchip/irq-pensando.c
 @@ -0,0 +1,879 @@
@@ -95,7 +125,7 @@ index 000000000..c7fcba03b
 +#define pr_fmt(fmt)	KBUILD_MODNAME	": " fmt
 +
 +#include <asm/stacktrace.h>
-+#include <asm-generic/bitops/find.h>
++#include <linux/find.h>
 +#include <linux/init.h>
 +#include <linux/slab.h>
 +#include <linux/module.h>
@@ -1033,5 +1063,5 @@ index 000000000..071691848
 +
 +#endif	/* _LINUX_IRQCHIP_IRQ_CAPRI_H_ */
 -- 
-2.17.1
+2.39.2
 

@@ -1,39 +1,35 @@
-From 50faae33dc34255e317c606628da6904fdf5567d Mon Sep 17 00:00:00 2001
-From: Hiren Mehta <hiren@pensando.io>
-Date: Tue, 17 Jan 2023 17:25:34 -0800
-Subject: [PATCH 18/30] soc: pensando: Add kpcimgr driver
+From b694a899c6eec8ab6ced01a8ff0558fe55f9b5ca Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 10:23:49 +0000
+Subject: [PATCH] drivers/soc/pensando: kpcimgr driver
 
 kpcimgr driver enables the relocation of the module code to handle
 Elba indirect PCIe transactions.
-The purpose is to allow code to persist and run during a kexec reboot.
-The loaded code runs in physical mode during arm64_relocate_new_kernel
-and also during the early boot phase before traditional driver code
-can run. This is all to provide extremely low latency response to
-indirect transactions, which must be serviced within 200ms.
 
-Signed-off-by: Hiren Mehta <hiren@pensando.io>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
  arch/arm64/boot/dts/pensando/elba.dtsi |  11 +
  drivers/soc/pensando/Makefile          |   2 +
  drivers/soc/pensando/kpci_constants.h  |  41 ++
- drivers/soc/pensando/kpcimgr.c         | 886 +++++++++++++++++++++++++
- drivers/soc/pensando/kpcimgr_api.h     | 172 +++++
+ drivers/soc/pensando/kpcimgr.c         | 900 +++++++++++++++++++++++++
+ drivers/soc/pensando/kpcimgr_api.h     | 173 +++++
  drivers/soc/pensando/kpcimgr_sysfs.c   | 277 ++++++++
- 6 files changed, 1389 insertions(+)
+ 6 files changed, 1404 insertions(+)
  create mode 100644 drivers/soc/pensando/kpci_constants.h
  create mode 100644 drivers/soc/pensando/kpcimgr.c
  create mode 100644 drivers/soc/pensando/kpcimgr_api.h
  create mode 100644 drivers/soc/pensando/kpcimgr_sysfs.c
 
 diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
-index e123819d4..4a4ef6968 100644
+index ec59d762b..9f0d7879a 100644
 --- a/arch/arm64/boot/dts/pensando/elba.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba.dtsi
-@@ -206,6 +206,17 @@
- 			};
+@@ -276,5 +276,16 @@ pcie@307c2480 {
+ 			       0x0 0x1400 0x0 0x10		/* WDT0 */
+ 			       0x0 0x20000000 0x0 0x380000>;	/* PXB Base */
  		};
- 
++
 +		kpcimgr@20000000 {
 +			compatible = "pensando,kpcimgr";
 +			msi-parent = <&its 0xf>;
@@ -42,12 +38,10 @@ index e123819d4..4a4ef6968 100644
 +			reg =  <0x0 0x20000000 0x0 0x00380000   /* PXB Base */
 +				0x0 0x61800000 0x0 0x00101000   /* Interrupts */
 +				0x0 0xc4000000 0x0 0x01000000   /* HWMEM */
-+				0x0 0x0        0x0 0x00f00000>; /* SHMEM */
++				0x0 0x0        0x0 0x02000000>; /* SHMEM */
 +		};
-+
- 		/*
- 		 * Until we  know the interrupt domain following this, we
- 		 * are forced to use this is the place where interrupts from
+ 	};
+ };
 diff --git a/drivers/soc/pensando/Makefile b/drivers/soc/pensando/Makefile
 index 675e84d1f..5c89a1576 100644
 --- a/drivers/soc/pensando/Makefile
@@ -113,10 +107,10 @@ index 000000000..602da16a0
 +#define MSI_NVECTORS		2
 diff --git a/drivers/soc/pensando/kpcimgr.c b/drivers/soc/pensando/kpcimgr.c
 new file mode 100644
-index 000000000..b7f559a7b
+index 000000000..e8ceb4263
 --- /dev/null
 +++ b/drivers/soc/pensando/kpcimgr.c
-@@ -0,0 +1,886 @@
+@@ -0,0 +1,900 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Kernel PCIE Manager Infrastructure
@@ -501,6 +495,7 @@ index 000000000..b7f559a7b
 +		}
 +		kpci_memcpy(ks->code_base, mod->core_layout.base,
 +			    mod->core_layout.size);
++		flush_icache_range((long)ks->code_base, (long)ks->code_base + mod->core_layout.size);
 +		set_memory_x((unsigned long)ks->code_base,
 +			     mod->core_layout.size >> PAGE_SHIFT);
 +	} else {
@@ -667,6 +662,7 @@ index 000000000..b7f559a7b
 +			}
 +			kpci_memcpy(ks->code_base, ks->persistent_base,
 +				    ks->code_size);
++			flush_icache_range((long)ks->code_base, (long)ks->code_base + KSTATE_CODE_SIZE);
 +			set_memory_x((unsigned long)ks->code_base,
 +				     ks->code_size >> PAGE_SHIFT);
 +		}
@@ -792,7 +788,7 @@ index 000000000..b7f559a7b
 +static void set_msi_msg(struct msi_desc *desc, struct msi_msg *msg)
 +{
 +	kstate_t *ks = get_kstate();
-+	struct msi_info *msi = &ks->msi[desc->platform.msi_index];
++	struct msi_info *msi = &ks->msi[desc->msi_index];
 +
 +	msi->msgaddr = ((u64)msg->address_hi << 32) | msg->address_lo;
 +	msi->msgdata = msg->data;
@@ -802,11 +798,13 @@ index 000000000..b7f559a7b
 +{
 +	kstate_t *ks = get_kstate();
 +	struct device *dev = &pfdev->dev;
-+	struct msi_desc *desc;
 +
++#if 0
 +	for_each_msi_entry(desc, dev)
 +		free_irq(desc->irq, (void *)ks);
-+
++#endif
++	free_irq(msi_get_virq(dev, MSI_INDIRECT_IDX), (void *)ks);
++	free_irq(msi_get_virq(dev, MSI_NOTIFY_IDX), (void *)ks);
 +	platform_msi_domain_free_irqs(&pfdev->dev);
 +}
 +
@@ -823,21 +821,31 @@ index 000000000..b7f559a7b
 +	irqreturn_t (*isr)(int irq, void *arg);
 +	struct device *dev = &pfdev->dev;
 +	kstate_t *ks = get_kstate();
-+	struct msi_desc *desc;
 +	char *name;
 +	int r;
 +
 +	r = platform_msi_domain_alloc_irqs(dev, MSI_NVECTORS, set_msi_msg);
 +	if (r)
 +		return r;
-+
++#if 0
 +	for_each_msi_entry(desc, dev) {
-+		isr = kpcimgr_irq_table[desc->platform.msi_index].isr;
-+		name = kpcimgr_irq_table[desc->platform.msi_index].name;
++		isr = kpcimgr_irq_table[desc->msi_index].isr;
++		name = kpcimgr_irq_table[desc->msi_index].name;
 +		r = devm_request_irq(dev, desc->irq, isr, 0, name, (void *)ks);
 +		if (r)
 +			goto err_out;
 +	}
++#endif
++	r = devm_request_irq(dev, msi_get_virq(dev, MSI_INDIRECT_IDX),
++			kpcimgr_irq_table[MSI_INDIRECT_IDX].isr, 0,
++			kpcimgr_irq_table[MSI_INDIRECT_IDX].name, (void *)ks);
++	if (r)
++		goto err_out;
++	r = devm_request_irq(dev, msi_get_virq(dev, MSI_NOTIFY_IDX),
++			kpcimgr_irq_table[MSI_NOTIFY_IDX].isr, 0,
++			kpcimgr_irq_table[MSI_NOTIFY_IDX].name, (void *)ks);
++	if (r)
++		goto err_out;
 +	return 0;
 +
 + err_out:
@@ -931,8 +939,8 @@ index 000000000..b7f559a7b
 +	}
 +
 +	ks->upcall = (void *)kpcimgr_upcall;
++	ks->mod = NULL;
 +	if (ks->valid == KSTATE_MAGIC && ks->running) {
-+		ks->mod = NULL;
 +		kpcimgr_start_running();
 +		kpcimgr_normal_poll();
 +		pr_err("KPCIMGR: initialized and running.\n");
@@ -1005,10 +1013,10 @@ index 000000000..b7f559a7b
 +}
 diff --git a/drivers/soc/pensando/kpcimgr_api.h b/drivers/soc/pensando/kpcimgr_api.h
 new file mode 100644
-index 000000000..8bfcda1cc
+index 000000000..07c821926
 --- /dev/null
 +++ b/drivers/soc/pensando/kpcimgr_api.h
-@@ -0,0 +1,172 @@
+@@ -0,0 +1,173 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
@@ -1032,6 +1040,7 @@ index 000000000..8bfcda1cc
 +#include <linux/kallsyms.h>
 +#include <linux/moduleloader.h>
 +#include <linux/set_memory.h>
++#include <asm/cacheflush.h>
 +#include <asm/insn.h>
 +#endif
 +
@@ -1465,5 +1474,5 @@ index 000000000..fcee544a4
 +	}
 +}
 -- 
-2.17.1
+2.39.2
 

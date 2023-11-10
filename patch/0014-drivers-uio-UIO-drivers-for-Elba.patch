@@ -1,23 +1,23 @@
-From a1c389f475e39497c4e6fd279a12f4d84dd238fd Mon Sep 17 00:00:00 2001
-From: Ashwin H <Ashwin.H@amd.com>
-Date: Wed, 5 Jul 2023 09:05:52 +0000
-Subject: [PATCH 11/30] uio: pensando: UIO drivers for Elba
+From e476a4ae5f2671ccb4488171888e4d76cc8d6a25 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 10:04:04 +0000
+Subject: [PATCH] drivers/uio: UIO drivers for Elba
 
-Support userspace interrupt drivers for Elba pcie events.
+Support userspace interrupt drivers for Elba. PCIE events.
 
-Signed-off-by: David Clear <dac2@pensando.io>
-Signed-off-by: Ashwin H <Ashwin.H@amd.com>
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
  arch/arm64/boot/dts/pensando/elba.dtsi |  30 ++
  drivers/uio/Kconfig                    |  33 ++
  drivers/uio/Makefile                   |   4 +
  drivers/uio/uio_pciemac.c              |  30 ++
- drivers/uio/uio_pengic.c               | 664 +++++++++++++++++++++++++
+ drivers/uio/uio_pengic.c               | 661 +++++++++++++++++++++++++
  drivers/uio/uio_pengic.h               |  18 +
- drivers/uio/uio_penmsi.c               | 568 +++++++++++++++++++++
+ drivers/uio/uio_penmsi.c               | 570 +++++++++++++++++++++
  drivers/uio/uio_penmsi.h               |  17 +
  drivers/uio/uio_penmsi1.c              |  32 ++
- 9 files changed, 1396 insertions(+)
+ 9 files changed, 1395 insertions(+)
  create mode 100644 drivers/uio/uio_pciemac.c
  create mode 100644 drivers/uio/uio_pengic.c
  create mode 100644 drivers/uio/uio_pengic.h
@@ -26,10 +26,10 @@ Signed-off-by: Ashwin H <Ashwin.H@amd.com>
  create mode 100644 drivers/uio/uio_penmsi1.c
 
 diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
-index 400eac0c0..aee157deb 100644
+index c0954fc2b..9182c93aa 100644
 --- a/arch/arm64/boot/dts/pensando/elba.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba.dtsi
-@@ -49,6 +49,12 @@
+@@ -49,6 +49,12 @@ pmu {
  				IRQ_TYPE_LEVEL_LOW)>;
  	};
  
@@ -42,7 +42,7 @@ index 400eac0c0..aee157deb 100644
  	capmem {
  		compatible = "pensando,capmem";
  	};
-@@ -166,6 +172,14 @@
+@@ -166,6 +172,14 @@ uart0: serial@4800 {
  			reg-io-width = <4>;
  		};
  
@@ -57,7 +57,7 @@ index 400eac0c0..aee157deb 100644
  		gic: interrupt-controller@800000 {
  			compatible = "arm,gic-v3";
  			#interrupt-cells = <3>;
-@@ -203,6 +217,22 @@
+@@ -203,6 +217,22 @@ pxc0_intr: interrupt-controller@20102200 {
  			interrupt-names = "pxc0_intr";
  		};
  
@@ -77,11 +77,11 @@ index 400eac0c0..aee157deb 100644
 +			enable_mask = <(1 << 0)>;
 +		};
 +
- 		emmc: mmc@30440000 {
- 			compatible = "pensando,elba-emmc", "cdns,sd4hc";
- 			clocks = <&emmc_clk>;
+ 		edac: edac@30500000 {
+ 			compatible = "pensando,elba-edac-mc";
+ 			reg = <0x0 0x30500000 0x0 0x100000>;
 diff --git a/drivers/uio/Kconfig b/drivers/uio/Kconfig
-index 202ee81cf..4c832a6fd 100644
+index 2e16c5338..7d2d292b9 100644
 --- a/drivers/uio/Kconfig
 +++ b/drivers/uio/Kconfig
 @@ -125,6 +125,39 @@ config UIO_FSL_ELBC_GPCM_NETX5152
@@ -125,10 +125,10 @@ index 202ee81cf..4c832a6fd 100644
  	tristate "Texas Instruments PRUSS driver"
  	select GENERIC_ALLOCATOR
 diff --git a/drivers/uio/Makefile b/drivers/uio/Makefile
-index c285dd2a4..a7f0f89cd 100644
+index f2f416a14..41d4267aa 100644
 --- a/drivers/uio/Makefile
 +++ b/drivers/uio/Makefile
-@@ -10,4 +10,8 @@ obj-$(CONFIG_UIO_NETX)	+= uio_netx.o
+@@ -10,5 +10,9 @@ obj-$(CONFIG_UIO_NETX)	+= uio_netx.o
  obj-$(CONFIG_UIO_PRUSS)         += uio_pruss.o
  obj-$(CONFIG_UIO_MF624)         += uio_mf624.o
  obj-$(CONFIG_UIO_FSL_ELBC_GPCM)	+= uio_fsl_elbc_gpcm.o
@@ -137,6 +137,7 @@ index c285dd2a4..a7f0f89cd 100644
 +obj-$(CONFIG_UIO_PENMSI)	+= uio_penmsi.o
 +obj-$(CONFIG_UIO_PENMSI1)	+= uio_penmsi1.o
  obj-$(CONFIG_UIO_HV_GENERIC)	+= uio_hv_generic.o
+ obj-$(CONFIG_UIO_DFL)	+= uio_dfl.o
 diff --git a/drivers/uio/uio_pciemac.c b/drivers/uio/uio_pciemac.c
 new file mode 100644
 index 000000000..b7d89c64a
@@ -175,10 +176,10 @@ index 000000000..b7d89c64a
 +MODULE_AUTHOR("David VomLehn");
 diff --git a/drivers/uio/uio_pengic.c b/drivers/uio/uio_pengic.c
 new file mode 100644
-index 000000000..352cfea37
+index 000000000..853b62536
 --- /dev/null
 +++ b/drivers/uio/uio_pengic.c
-@@ -0,0 +1,664 @@
+@@ -0,0 +1,661 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Copyright (c) 2020-2021, Pensando Systems Inc.
@@ -196,6 +197,7 @@ index 000000000..352cfea37
 +#include <linux/interrupt.h>
 +#include <linux/io.h>
 +#include <linux/irq.h>
++#include <linux/irqdesc.h>
 +#include <linux/module.h>
 +#include <linux/of.h>
 +#include <linux/of_address.h>
@@ -266,11 +268,9 @@ index 000000000..352cfea37
 +
 +static void pengic_enable_intr_nolock(struct pengic_platdata *platdata)
 +{
-+	struct irq_desc *desc;
 +	struct irq_data *irq_data;
 +
-+	desc = irq_to_desc(platdata->irq);
-+	irq_data = &desc->irq_data;
++	irq_data = irq_get_irq_data(platdata->irq);
 +
 +	switch (platdata->reg_type) {
 +	case REG_TYPE_CSR:
@@ -308,11 +308,9 @@ index 000000000..352cfea37
 +
 +static void pengic_disable_intr_nolock(struct pengic_platdata *platdata)
 +{
-+	struct irq_desc *desc;
 +	struct irq_data *irq_data;
 +
-+	desc = irq_to_desc(platdata->irq);
-+	irq_data = &desc->irq_data;
++	irq_data = irq_get_irq_data(platdata->irq);
 +
 +	/*
 +	 * If this is the first disable call, actually do the disable.
@@ -434,14 +432,14 @@ index 000000000..352cfea37
 +static irqreturn_t pengic_handler(int virq, struct uio_info *uioinfo)
 +{
 +	struct pengic_platdata *platdata;
-+	struct irq_desc *irq_desc;
++	struct irq_data *irq_data;
 +	u32 intr_status, enable_mask;
 +	irq_hw_number_t hwirq;
 +	unsigned int i;
 +
 +	platdata = uioinfo->priv;
-+	irq_desc = irq_to_desc(virq);
-+	hwirq = irq_desc->irq_data.hwirq;
++	irq_data = irq_get_irq_data(platdata->irq);
++	hwirq = irq_data->hwirq;
 +	enable_mask = 1 << hwirq;
 +
 +	for (i = 0; i < platdata->n_res; i++) {
@@ -869,10 +867,10 @@ index 000000000..6d1450b3b
 +#endif /* _UIO_PENGIC_H_ */
 diff --git a/drivers/uio/uio_penmsi.c b/drivers/uio/uio_penmsi.c
 new file mode 100644
-index 000000000..84e1e073c
+index 000000000..9bab4236d
 --- /dev/null
 +++ b/drivers/uio/uio_penmsi.c
-@@ -0,0 +1,568 @@
+@@ -0,0 +1,570 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Copyright (c) 2020-2021, Pensando Systems Inc.
@@ -1016,10 +1014,12 @@ index 000000000..84e1e073c
 +static struct msi_sysfs_entry msi_attribute =
 +	__ATTR(msi, 0600, msi_show, msi_store);
 +
-+static struct attribute *attrs[] = {
++static struct attribute *msi_attrs[] = {
 +	&msi_attribute.attr,
 +	NULL,	/* need to NULL terminate the list of attributes */
 +};
++
++ATTRIBUTE_GROUPS(msi);
 +
 +static void penmsi_rel(struct kobject *kobj)
 +{
@@ -1073,7 +1073,7 @@ index 000000000..84e1e073c
 +static struct kobj_type penmsi_attr_type = {
 +	.release	= penmsi_rel,
 +	.sysfs_ops	= &penmsi_sysfs_ops,
-+	.default_attrs	= attrs,
++	.default_groups = msi_groups,
 +};
 +
 +static int add_attr(struct devdata *devdata)
@@ -1214,7 +1214,7 @@ index 000000000..84e1e073c
 +	unsigned long flags;
 +
 +	platdata = init_platdata;
-+	devdata = &platdata->devdatas[desc->platform.msi_index];
++	devdata = &platdata->devdatas[desc->msi_index];
 +	devdata->msi_msg = *msg;
 +
 +	spin_lock_irqsave(&penmsi_lock, flags);
@@ -1382,10 +1382,10 @@ index 000000000..84e1e073c
 +		goto up_sem;
 +	}
 +
-+	for_each_msi_entry(desc, &pdev->dev) {
++	msi_for_each_desc(desc, &pdev->dev, MSI_DESC_ASSOCIATED) {
 +		unsigned long flags;
 +
-+		devdata = &platdata->devdatas[desc->platform.msi_index];
++		devdata = &platdata->devdatas[desc->msi_index];
 +		spin_lock_irqsave(&penmsi_lock, flags);
 +		devdata->have_msi_desc = true;
 +		if (devdata->have_msi_msg)
@@ -1503,5 +1503,5 @@ index 000000000..14aec074c
 +MODULE_DESCRIPTION("Support userspace I/O for Pensando MSI interrupts");
 +MODULE_AUTHOR("David VomLehn");
 -- 
-2.17.1
+2.25.1
 
