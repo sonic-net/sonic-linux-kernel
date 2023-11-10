@@ -1,0 +1,59 @@
+From aa410417368e3141e96e5331c1353b0e9dcf60fa Mon Sep 17 00:00:00 2001
+From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Date: Mon, 19 Dec 2022 14:42:33 +0200
+Subject: [PATCH backport 6.1.42 61/85] pinctrl: Introduce struct pinfunction
+ and PINCTRL_PINFUNCTION() macro
+
+BugLink: https://bugs.launchpad.net/bugs/2012743
+
+There are many pin control drivers define their own data type for
+pin function representation which is the same or embed the same data
+as newly introduced one. Provide the data type and convenient macro
+for all pin control drivers.
+
+Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Reviewed-by: Linus Walleij <linus.walleij@linaro.org>
+Acked-by: Mika Westerberg <mika.westerberg@linux.intel.com>
+(cherry picked from commit 443a0a0f0cf4f432c7af6654b7f2f920d411d379)
+Signed-off-by: Asmaa Mnebhi <asmaa@nvidia.com>
+Acked-by: Tim Gardner <tim.gardner@canonical.com>
+Acked-by: Bartlomiej Zolnierkiewicz <bartlomiej.zolnierkiewicz@canonical.com>
+Signed-off-by: Bartlomiej Zolnierkiewicz <bartlomiej.zolnierkiewicz@canonical.com>
+---
+ include/linux/pinctrl/pinctrl.h | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/include/linux/pinctrl/pinctrl.h b/include/linux/pinctrl/pinctrl.h
+index 487117ccb1bc..fb25085d0922 100644
+--- a/include/linux/pinctrl/pinctrl.h
++++ b/include/linux/pinctrl/pinctrl.h
+@@ -206,6 +206,26 @@ extern int pinctrl_get_group_pins(struct pinctrl_dev *pctldev,
+ 				const char *pin_group, const unsigned **pins,
+ 				unsigned *num_pins);
+ 
++/**
++ * struct pinfunction - Description about a function
++ * @name: Name of the function
++ * @groups: An array of groups for this function
++ * @ngroups: Number of groups in @groups
++ */
++struct pinfunction {
++	const char *name;
++	const char * const *groups;
++	size_t ngroups;
++};
++
++/* Convenience macro to define a single named pinfunction */
++#define PINCTRL_PINFUNCTION(_name, _groups, _ngroups)	\
++(struct pinfunction) {					\
++		.name = (_name),			\
++		.groups = (_groups),			\
++		.ngroups = (_ngroups),			\
++	}
++
+ #if IS_ENABLED(CONFIG_OF) && IS_ENABLED(CONFIG_PINCTRL)
+ extern struct pinctrl_dev *of_pinctrl_get(struct device_node *np);
+ #else
+-- 
+2.20.1
+
