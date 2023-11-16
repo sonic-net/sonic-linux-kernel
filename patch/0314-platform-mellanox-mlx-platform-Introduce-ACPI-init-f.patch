@@ -1,0 +1,48 @@
+From 0238552f7bb1c7c0ebf69ccf491c0405df74685b Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Mon, 24 Jul 2023 08:53:07 +0000
+Subject: [PATCH backport 5.10.179 22/26] platform: mellanox: mlx-platform:
+ Introduce ACPI init flow
+
+Introduce support for ACPI initialization flow - add ACPI match hook.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+Reviewed-by: Michael Shych <michaelsh@nvidia.com>
+---
+ drivers/platform/x86/mlx-platform.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
+index 4de1fe6a4..c5fffff0a 100644
+--- a/drivers/platform/x86/mlx-platform.c
++++ b/drivers/platform/x86/mlx-platform.c
+@@ -6814,6 +6814,9 @@ static int mlxplat_probe(struct platform_device *pdev)
+ 	struct mlxplat_priv *priv;
+ 	int i, err;
+ 
++	if (ACPI_COMPANION(&pdev->dev))
++		mlxplat_dev = pdev;
++
+ 	err = mlxplat_pre_init(&hotplug_resources, &hotplug_resources_size);
+ 	if (err)
+ 		return err;
+@@ -6891,9 +6894,16 @@ static int mlxplat_remove(struct platform_device *pdev)
+ 	return 0;
+ }
+ 
++static const struct acpi_device_id mlxplat_acpi_table[] = {
++	{ "MLNXBF49", 0 },
++	{}
++};
++MODULE_DEVICE_TABLE(acpi, mlxplat_acpi_table);
++
+ static struct platform_driver mlxplat_driver = {
+ 	.driver		= {
+ 		.name	= "mlxplat",
++		.acpi_match_table = ACPI_PTR(mlxplat_acpi_table),
+ 		.probe_type = PROBE_FORCE_SYNCHRONOUS,
+ 	},
+ 	.probe		= mlxplat_probe,
+-- 
+2.20.1
+

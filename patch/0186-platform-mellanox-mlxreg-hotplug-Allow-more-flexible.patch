@@ -7,8 +7,6 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-Upstream commit 26e118ea98cf
-
 Currently hotplug configuration in logic device assumes that all items
 are provided with no holes.
 Thus, any group of hotplug events, associated with the specific

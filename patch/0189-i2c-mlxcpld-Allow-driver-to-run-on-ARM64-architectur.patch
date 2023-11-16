@@ -1,0 +1,29 @@
+From d644dd584988f25f0029e513ff3ae85f2397dfec Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Mon, 7 Nov 2022 12:00:37 +0200
+Subject: [PATCH backport 5.10.179 01/26] i2c: mlxcpld: Allow driver to run on
+ ARM64 architecture
+
+Extend driver dependency by ARM64 architecture.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/i2c/busses/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/i2c/busses/Kconfig b/drivers/i2c/busses/Kconfig
+index ea474b16e..220655702 100644
+--- a/drivers/i2c/busses/Kconfig
++++ b/drivers/i2c/busses/Kconfig
+@@ -1328,7 +1328,7 @@ config I2C_ICY
+ 
+ config I2C_MLXCPLD
+ 	tristate "Mellanox I2C driver"
+-	depends on X86_64 || COMPILE_TEST
++	depends on X86_64 || ARM64 || COMPILE_TEST
+ 	help
+ 	  This exposes the Mellanox platform I2C busses to the linux I2C layer
+ 	  for X86 based systems.
+-- 
+2.20.1
+

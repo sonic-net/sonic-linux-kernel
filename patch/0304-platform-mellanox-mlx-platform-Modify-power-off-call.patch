@@ -1,0 +1,29 @@
+From 586705cd91fb55150a3a0b88ed179d0568df30ed Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Mon, 24 Jul 2023 06:22:13 +0000
+Subject: [PATCH backport 5.10.179 19/26] platform: mellanox: mlx-platform:
+ Modify power off callback
+
+Extend platform power off callback with kernel_halt() call.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+Reviewed-by: Michael Shych <michaelsh@nvidia.com>
+---
+ drivers/platform/x86/mlx-platform.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
+index d48f0eab8..26aefcb70 100644
+--- a/drivers/platform/x86/mlx-platform.c
++++ b/drivers/platform/x86/mlx-platform.c
+@@ -5872,6 +5872,7 @@ static void mlxplat_poweroff(void)
+ 	struct mlxplat_priv *priv = platform_get_drvdata(mlxplat_dev);
+ 
+ 	regmap_write(priv->regmap, MLXPLAT_CPLD_LPC_REG_GP1_OFFSET, MLXPLAT_CPLD_HALT_MASK);
++	kernel_halt();
+ }
+ 
+ static int __init mlxplat_dmi_default_matched(const struct dmi_system_id *dmi)
+-- 
+2.20.1
+

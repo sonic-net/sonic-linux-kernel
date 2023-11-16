@@ -1,0 +1,36 @@
+From 2eacf2e4412791f713be5e2b071ad2ea46e1a58f Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Mon, 24 Jul 2023 05:20:15 +0000
+Subject: [PATCH backport 5.10.179 17/26] platform: mellanox: mlx-platform: Add
+ reset cause attribute
+
+Extend IO registers description for some system types with reset cause
+attribute "reset_swb_dc_dc_pwr_fail" to indicate reset caused by switch
+board DC-DC power failure.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+Reviewed-by: Michael Shych <michaelsh@nvidia.com>
+---
+ drivers/platform/x86/mlx-platform.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
+index 976e12224..6206595db 100644
+--- a/drivers/platform/x86/mlx-platform.c
++++ b/drivers/platform/x86/mlx-platform.c
+@@ -3790,6 +3790,12 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_ng_regs_io_data[] = {
+ 		.mask = GENMASK(7, 0) & ~BIT(2),
+ 		.mode = 0444,
+ 	},
++	{
++		.label = "reset_swb_dc_dc_pwr_fail",
++		.reg = MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0444,
++	},
+ 	{
+ 		.label = "reset_from_asic",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET,
+-- 
+2.20.1
+
