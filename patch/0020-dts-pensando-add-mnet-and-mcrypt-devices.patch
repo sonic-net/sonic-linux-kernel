@@ -1,0 +1,133 @@
+From 9a2b1c7104bfe0ca2584a41d06f9cbb11161dff4 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 10:27:02 +0000
+Subject: [PATCH] dts/pensando: add mnet and mcrypt devices, with reserved dma
+ memory
+
+This patch adds the mnet and mcrypt devices to the device-tree, along
+with a reserved memory region for use by the mnet instances.  This
+avoids
+memory allocation failure due to wider system memory fragmentation.
+
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
+---
+ .../boot/dts/pensando/elba-asic-memory.dtsi   | 16 +++++
+ arch/arm64/boot/dts/pensando/elba-asic.dts    |  2 +
+ arch/arm64/boot/dts/pensando/elba-mdev.dtsi   | 71 +++++++++++++++++++
+ 3 files changed, 89 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/pensando/elba-asic-memory.dtsi
+ create mode 100644 arch/arm64/boot/dts/pensando/elba-mdev.dtsi
+
+diff --git a/arch/arm64/boot/dts/pensando/elba-asic-memory.dtsi b/arch/arm64/boot/dts/pensando/elba-asic-memory.dtsi
+new file mode 100644
+index 000000000..6652b42f1
+--- /dev/null
++++ b/arch/arm64/boot/dts/pensando/elba-asic-memory.dtsi
+@@ -0,0 +1,16 @@
++
++/ {
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++
++		ranges;
++
++		mnet_reserved: mnet_dma_region {
++			compatible = "shared-dma-pool";
++			no-map;
++			size = <0x0 0x6000000>;
++			alignment = <0x0 0x1000>;
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/pensando/elba-asic.dts b/arch/arm64/boot/dts/pensando/elba-asic.dts
+index 8c482bd87..70d0dbd38 100644
+--- a/arch/arm64/boot/dts/pensando/elba-asic.dts
++++ b/arch/arm64/boot/dts/pensando/elba-asic.dts
+@@ -22,3 +22,5 @@ chosen {
+ #include "elba-16core-spin-table.dtsi"
+ #include "elba-asic-common.dtsi"
+ #include "elba-flash-parts.dtsi"
++#include "elba-asic-memory.dtsi"
++#include "elba-mdev.dtsi"
+diff --git a/arch/arm64/boot/dts/pensando/elba-mdev.dtsi b/arch/arm64/boot/dts/pensando/elba-mdev.dtsi
+new file mode 100644
+index 000000000..a728a7625
+--- /dev/null
++++ b/arch/arm64/boot/dts/pensando/elba-mdev.dtsi
+@@ -0,0 +1,71 @@
++/ {
++	dma-coherent;
++
++	mnet0: mnet0 {
++		compatible = "pensando,mnet";
++		msi-parent = <&its 0x0>;
++		memory-region = <&mnet_reserved>;
++	};
++	mnet1: mnet1 {
++		compatible = "pensando,mnet";
++		msi-parent = <&its 0x1>;
++		memory-region = <&mnet_reserved>;
++	};
++	mnet2: mnet2 {
++		compatible = "pensando,mnet";
++		msi-parent = <&its 0x2>;
++		memory-region = <&mnet_reserved>;
++	};
++	mnet3: mnet3 {
++		compatible = "pensando,mnet";
++		msi-parent = <&its 0x3>;
++		memory-region = <&mnet_reserved>;
++	};
++	mnet4: mnet4 {
++		compatible = "pensando,mnet";
++		msi-parent = <&its 0x4>;
++		memory-region = <&mnet_reserved>;
++	};
++	mnet5: mnet5 {
++		compatible = "pensando,mnet";
++		msi-parent = <&its 0x5>;
++		memory-region = <&mnet_reserved>;
++	};
++	mnet6: mnet6 {
++		compatible = "pensando,mnet";
++		msi-parent = <&its 0x6>;
++		memory-region = <&mnet_reserved>;
++	};
++	mnet7: mnet7 {
++		compatible = "pensando,mnet";
++		msi-parent = <&its 0x7>;
++		memory-region = <&mnet_reserved>;
++	};
++	mnet8: mnet8 {
++		compatible = "pensando,mnet";
++		msi-parent = <&its 0x8>;
++		memory-region = <&mnet_reserved>;
++	};
++	mnet9: mnet9 {
++		compatible = "pensando,mnet";
++		msi-parent = <&its 0x9>;
++		memory-region = <&mnet_reserved>;
++	};
++
++	mcrypt0: mcrypt0 {
++		compatible = "pensando,mcrypt";
++		msi-parent = <&its 0xb>;
++	};
++	mcrypt1: mcrypt1 {
++		compatible = "pensando,mcrypt";
++		msi-parent = <&its 0xc>;
++	};
++	mcrypt2: mcrypt2 {
++		compatible = "pensando,mcrypt";
++		msi-parent = <&its 0xd>;
++	};
++	mcrypt3: mcrypt3 {
++		compatible = "pensando,mcrypt";
++		msi-parent = <&its 0xe>;
++	};
++};
+-- 
+2.39.2
+

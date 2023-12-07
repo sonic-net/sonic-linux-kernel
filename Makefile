@@ -3,10 +3,10 @@ SHELL = /bin/bash
 .SHELLFLAGS += -e
 
 KERNEL_ABI_MINOR_VERSION = 2
-KVERSION_SHORT ?= 5.10.0-23-$(KERNEL_ABI_MINOR_VERSION)
+KVERSION_SHORT ?= 6.1.0-11-$(KERNEL_ABI_MINOR_VERSION)
 KVERSION ?= $(KVERSION_SHORT)-amd64
-KERNEL_VERSION ?= 5.10.179
-KERNEL_SUBVERSION ?= 3
+KERNEL_VERSION ?= 6.1.38
+KERNEL_SUBVERSION ?= 4
 kernel_procure_method ?= build
 CONFIGURED_ARCH ?= amd64
 CONFIGURED_PLATFORM ?= vs
@@ -109,9 +109,9 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	debian/bin/gencontrol.py
 
 	# generate linux build file for amd64_none_amd64
-	fakeroot make -f debian/rules.gen DEB_HOST_ARCH=armhf setup_armhf_none_armmp
-	fakeroot make -f debian/rules.gen DEB_HOST_ARCH=arm64 setup_arm64_none_arm64
-	fakeroot make -f debian/rules.gen DEB_HOST_ARCH=amd64 setup_amd64_none_amd64
+	DEB_HOST_ARCH=armhf fakeroot make -f debian/rules.gen setup_armhf_none_armmp
+	DEB_HOST_ARCH=arm64 fakeroot make -f debian/rules.gen setup_arm64_none_arm64
+	DEB_HOST_ARCH=amd64 fakeroot make -f debian/rules.gen setup_amd64_none_amd64
 
 	# Applying patches and configuration changes
 	git add debian/build/build_armhf_none_armmp/.config -f

@@ -1,0 +1,86 @@
+From bc613fe5f09dfaacbd85bd5e2975ab4a31808325 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 08:54:10 +0000
+Subject: [PATCH] add quirks for the Pensando controller
+
+The Pensando SoC QSPI controller has a hazard between writes to the APB
+interface and writes to AHB that affects indirect writes.  A dummy
+APB register read is required between the APB write that starts an
+indirect write operation, and the first AHB write of data.
+
+We also want to disable DAC mode, for robustness.
+
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
+---
+ drivers/spi/spi-cadence-quadspi.c | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
+
+diff --git a/drivers/spi/spi-cadence-quadspi.c b/drivers/spi/spi-cadence-quadspi.c
+index b371e4eb4..9a362a923 100644
+--- a/drivers/spi/spi-cadence-quadspi.c
++++ b/drivers/spi/spi-cadence-quadspi.c
+@@ -40,6 +40,7 @@
+ #define CQSPI_SUPPORT_EXTERNAL_DMA	BIT(2)
+ #define CQSPI_NO_SUPPORT_WR_COMPLETION	BIT(3)
+ #define CQSPI_SLOW_SRAM		BIT(4)
++#define CQSPI_NEEDS_APB_AHB_HAZARD_WAR	BIT(2)
+ 
+ /* Capabilities */
+ #define CQSPI_SUPPORTS_OCTAL		BIT(0)
+@@ -77,6 +78,7 @@ struct cqspi_st {
+ 	int			current_cs;
+ 	unsigned long		master_ref_clk_hz;
+ 	bool			is_decoded_cs;
++	bool			apb_ahb_hazard;
+ 	u32			fifo_depth;
+ 	u32			fifo_width;
+ 	u32			num_chipselect;
+@@ -978,6 +980,13 @@ static int cqspi_indirect_write_execute(struct cqspi_flash_pdata *f_pdata,
+ 	if (cqspi->wr_delay)
+ 		ndelay(cqspi->wr_delay);
+ 
++	/*
++	 * If a hazard exists between the APB and AHB interfaces, perform a
++	 * dummy readback from the controller to ensure synchronization.
++	 */
++	if (cqspi->apb_ahb_hazard)
++		(void)readl(reg_base + CQSPI_REG_INDIRECTWR);
++
+ 	while (remaining > 0) {
+ 		size_t write_words, mod_bytes;
+ 
+@@ -1685,6 +1694,8 @@ static int cqspi_probe(struct platform_device *pdev)
+ 		if (ddata->quirks & CQSPI_NEEDS_WR_DELAY)
+ 			cqspi->wr_delay = 50 * DIV_ROUND_UP(NSEC_PER_SEC,
+ 						cqspi->master_ref_clk_hz);
++		if (ddata->quirks & CQSPI_NEEDS_APB_AHB_HAZARD_WAR)
++			cqspi->apb_ahb_hazard = true;
+ 		if (ddata->hwcaps_mask & CQSPI_SUPPORTS_OCTAL)
+ 			master->mode_bits |= SPI_RX_OCTAL | SPI_TX_OCTAL;
+ 		if (!(ddata->quirks & CQSPI_DISABLE_DAC_MODE))
+@@ -1827,6 +1838,10 @@ static const struct cqspi_driver_platdata versal_ospi = {
+ 	.get_dma_status = cqspi_get_versal_dma_status,
+ };
+ 
++static const struct cqspi_driver_platdata pen_cdns_qspi = {
++	.quirks = CQSPI_NEEDS_APB_AHB_HAZARD_WAR | CQSPI_DISABLE_DAC_MODE,
++};
++
+ static const struct of_device_id cqspi_dt_ids[] = {
+ 	{
+ 		.compatible = "cdns,qspi-nor",
+@@ -1852,6 +1867,10 @@ static const struct of_device_id cqspi_dt_ids[] = {
+ 		.compatible = "intel,socfpga-qspi",
+ 		.data = &socfpga_qspi,
+ 	},
++	{
++		.compatible = "pensando,elba-qspi",
++		.data = &pen_cdns_qspi,
++	},
+ 	{ /* end of table */ }
+ };
+ 
+-- 
+2.39.2
+

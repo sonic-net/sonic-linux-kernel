@@ -38,8 +38,8 @@ index 0c473d75e..3c157b30d 100644
 --- a/drivers/pci/Kconfig
 +++ b/drivers/pci/Kconfig
 @@ -252,6 +252,12 @@ config PCIE_BUS_PEER2PEER
- 
- endchoice
+ 	  Reserves space in the kernel to maintain resource locking for
+ 	  multiple GPUS.  The overhead for each GPU is very small.
  
 +config PCI_REASSIGN_PREF_MEM
 +	bool "PCI reassign prefetchable memory"
@@ -55,8 +55,8 @@ index 522d2b974..f866adb07 100644
 --- a/drivers/pci/Makefile
 +++ b/drivers/pci/Makefile
 @@ -31,6 +31,8 @@ obj-$(CONFIG_PCI_ECAM)		+= ecam.o
- obj-$(CONFIG_PCI_P2PDMA)	+= p2pdma.o
- obj-$(CONFIG_XEN_PCIDEV_FRONTEND) += xen-pcifront.o
+ obj-$(CONFIG_VGA_ARB)		+= vgaarb.o
+ obj-$(CONFIG_PCI_DOE)		+= doe.o
  
 +obj-$(CONFIG_PCI_REASSIGN_PREF_MEM) += setup-prefmem.o
 +
@@ -78,8 +78,8 @@ index d17f3bf36..7b87b7d9b 100644
 +		pci_assign_unassigned_bridge_resources(bridge);
 +	}
  	pcie_bus_configure_settings(parent);
- 	pci_bus_add_devices(parent);
  
+ 	/*
 diff --git a/drivers/pci/setup-prefmem.c b/drivers/pci/setup-prefmem.c
 new file mode 100644
 index 000000000..57cd08b35
