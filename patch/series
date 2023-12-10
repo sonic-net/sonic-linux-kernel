@@ -185,8 +185,7 @@ cisco-npu-disable-other-bars.patch
 0024-drivers-soc-pensando-penfw-driver.patch
 
 # Security patch
-# TODO: update for bookworm
-#0001-Change-the-system.map-file-permission-only-readable-.patch
+0001-Change-the-system.map-file-permission-only-readable-.patch
 
 #
 #
