@@ -1,0 +1,243 @@
+From f3c0cb78c3982c60e9a5e2705c9939f1eef84002 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 08:36:35 +0000
+Subject: [PATCH] i2c-designware: Support stuck SDA line recovery
+
+This patch supports the Designware I2C stuck bus recovery feature.
+The procedure for stuck SDA recovery involves a polling loop in
+interrupt
+mode. This should last just long enough for transmission of 9 bits,
+after which the hardware should indicate that the recovery attempt is
+complete. There have been examples where this fails, so there is also
+a hard maximum on time in the recovery loop.
+
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
+---
+ drivers/i2c/busses/i2c-designware-common.c  |  2 +
+ drivers/i2c/busses/i2c-designware-core.h    | 11 +++
+ drivers/i2c/busses/i2c-designware-master.c  | 87 ++++++++++++++++++++-
+ drivers/i2c/busses/i2c-designware-platdrv.c |  3 +
+ 4 files changed, 101 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-designware-common.c b/drivers/i2c/busses/i2c-designware-common.c
+index 6fdb25a5f..8ac32dd41 100644
+--- a/drivers/i2c/busses/i2c-designware-common.c
++++ b/drivers/i2c/busses/i2c-designware-common.c
+@@ -57,6 +57,8 @@ static char *abort_sources[] = {
+ 		"slave lost the bus while transmitting data to a remote master",
+ 	[ABRT_SLAVE_RD_INTX] =
+ 		"incorrect slave-transmitter mode configuration",
++	[ABRT_SDA_STUCK_AT_LOW] =
++		"sda line stuck low",
+ };
+ 
+ static int dw_reg_read(void *context, unsigned int reg, unsigned int *val)
+diff --git a/drivers/i2c/busses/i2c-designware-core.h b/drivers/i2c/busses/i2c-designware-core.h
+index 56a029da4..54e6c44e6 100644
+--- a/drivers/i2c/busses/i2c-designware-core.h
++++ b/drivers/i2c/busses/i2c-designware-core.h
+@@ -37,6 +37,7 @@
+ #define DW_IC_CON_STOP_DET_IFADDRESSED		BIT(7)
+ #define DW_IC_CON_TX_EMPTY_CTRL			BIT(8)
+ #define DW_IC_CON_RX_FIFO_FULL_HLD_CTRL		BIT(9)
++#define DW_IC_CON_BUS_CLEAR_FEATURE_CTL		BIT(11)
+ 
+ #define DW_IC_DATA_CMD_DAT			GENMASK(7, 0)
+ 
+@@ -77,6 +78,8 @@
+ #define DW_IC_TX_ABRT_SOURCE	0x80
+ #define DW_IC_ENABLE_STATUS	0x9c
+ #define DW_IC_CLR_RESTART_DET	0xa8
++#define DW_IC_SCL_STUCK_AT_LOW	0xac
++#define DW_IC_SDA_STUCK_AT_LOW	0xb0
+ #define DW_IC_COMP_PARAM_1	0xf4
+ #define DW_IC_COMP_VERSION	0xf8
+ #define DW_IC_SDA_HOLD_MIN_VERS	0x3131312A
+@@ -96,6 +99,7 @@
+ #define DW_IC_INTR_START_DET	BIT(10)
+ #define DW_IC_INTR_GEN_CALL	BIT(11)
+ #define DW_IC_INTR_RESTART_DET	BIT(12)
++#define DW_IC_INTR_SCL_STUCK_AT_LOW	BIT(14)
+ 
+ #define DW_IC_INTR_DEFAULT_MASK		(DW_IC_INTR_RX_FULL | \
+ 					 DW_IC_INTR_TX_ABRT | \
+@@ -107,14 +111,18 @@
+ 					 DW_IC_INTR_RX_UNDER | \
+ 					 DW_IC_INTR_RD_REQ)
+ 
++#define DW_IC_SDA_STUCK_RECOVERY_ENABLE	BIT(3)
++
+ #define DW_IC_STATUS_ACTIVITY		BIT(0)
+ #define DW_IC_STATUS_TFE		BIT(2)
+ #define DW_IC_STATUS_MASTER_ACTIVITY	BIT(5)
+ #define DW_IC_STATUS_SLAVE_ACTIVITY	BIT(6)
++#define DW_IC_STATUS_SDA_STUCK_NOT_RECOVERED	BIT(11)
+ 
+ #define DW_IC_SDA_HOLD_RX_SHIFT		16
+ #define DW_IC_SDA_HOLD_RX_MASK		GENMASK(23, 16)
+ 
++
+ #define DW_IC_ERR_TX_ABRT	0x1
+ 
+ #define DW_IC_TAR_10BITADDR_MASTER	BIT(12)
+@@ -156,6 +164,7 @@
+ #define ABRT_SLAVE_FLUSH_TXFIFO	13
+ #define ABRT_SLAVE_ARBLOST	14
+ #define ABRT_SLAVE_RD_INTX	15
++#define ABRT_SDA_STUCK_AT_LOW	17
+ 
+ #define DW_IC_TX_ABRT_7B_ADDR_NOACK		BIT(ABRT_7B_ADDR_NOACK)
+ #define DW_IC_TX_ABRT_10ADDR1_NOACK		BIT(ABRT_10ADDR1_NOACK)
+@@ -168,6 +177,7 @@
+ #define DW_IC_TX_ABRT_10B_RD_NORSTRT		BIT(ABRT_10B_RD_NORSTRT)
+ #define DW_IC_TX_ABRT_MASTER_DIS		BIT(ABRT_MASTER_DIS)
+ #define DW_IC_TX_ARB_LOST			BIT(ARB_LOST)
++#define DW_IC_TX_ABRT_SDA_STUCK_AT_LOW		BIT(ABRT_SDA_STUCK_AT_LOW)
+ #define DW_IC_RX_ABRT_SLAVE_RD_INTX		BIT(ABRT_SLAVE_RD_INTX)
+ #define DW_IC_RX_ABRT_SLAVE_ARBLOST		BIT(ABRT_SLAVE_ARBLOST)
+ #define DW_IC_RX_ABRT_SLAVE_FLUSH_TXFIFO	BIT(ABRT_SLAVE_FLUSH_TXFIFO)
+@@ -277,6 +287,7 @@ struct dw_i2c_dev {
+ 	int			rx_outstanding;
+ 	struct i2c_timings	timings;
+ 	u32			sda_hold_time;
++	u32			sda_timeout_ms;
+ 	u16			ss_hcnt;
+ 	u16			ss_lcnt;
+ 	u16			fs_hcnt;
+diff --git a/drivers/i2c/busses/i2c-designware-master.c b/drivers/i2c/busses/i2c-designware-master.c
+index dc3c5a15a..9834137a0 100644
+--- a/drivers/i2c/busses/i2c-designware-master.c
++++ b/drivers/i2c/busses/i2c-designware-master.c
+@@ -37,6 +37,45 @@ static void i2c_dw_configure_fifo_master(struct dw_i2c_dev *dev)
+ 	regmap_write(dev->map, DW_IC_CON, dev->master_cfg);
+ }
+ 
++static int i2c_dw_issue_bus_clear(struct dw_i2c_dev *dev)
++{
++	u32 ic_status, ic_enable;
++	unsigned long timeout;
++
++	dev_info(dev->dev, "sda stuck; trying to recover\n");
++	regmap_write(dev->map, DW_IC_INTR_MASK, 0);
++	regmap_read(dev->map, DW_IC_ENABLE, &ic_enable);
++	regmap_write(dev->map, DW_IC_ENABLE,
++			ic_enable | DW_IC_SDA_STUCK_RECOVERY_ENABLE);
++
++	/*
++	 * Poll, waiting for recovery to be done. This may take up to 9 SCL
++	 * clocks and a STOP bit, though presumably the device will signal
++	 * completion in less time if it recovers sooner. There are apparently
++	 * cases where the recovery doesn't finish, so we have a timeout
++	 * in the loop.
++	 */
++	timeout = jiffies + msecs_to_jiffies(50);
++	while (!time_after(jiffies, timeout)) {
++		regmap_read(dev->map, DW_IC_ENABLE, &ic_enable);
++		if (!(ic_enable & DW_IC_SDA_STUCK_RECOVERY_ENABLE))
++			break;
++		usleep_range(1000, 2000);
++	}
++	regmap_read(dev->map, DW_IC_ENABLE, &ic_enable);
++	if (ic_enable & DW_IC_SDA_STUCK_RECOVERY_ENABLE) {
++		dev_err(dev->dev, "sda stuck recovery timed out\n");
++		return -EIO;
++	}
++	regmap_read(dev->map, DW_IC_STATUS, &ic_status);
++	if ((ic_status & DW_IC_STATUS_SDA_STUCK_NOT_RECOVERED) != 0) {
++		dev_err(dev->dev, "sda stuck recovery failed\n");
++		return -EIO;
++	}
++	dev_info(dev->dev, "sda stuck recovery successful\n");
++	return -EAGAIN;		/* -EAGAIN to auto-retry */
++}
++
+ static int i2c_dw_set_timings_master(struct dw_i2c_dev *dev)
+ {
+ 	u32 comp_param1;
+@@ -599,6 +638,14 @@ i2c_dw_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
+ 		goto done;
+ 	}
+ 
++	/* Look for a stuck bus */
++	if (dev->cmd_err == DW_IC_ERR_TX_ABRT &&
++		(dev->abort_source & DW_IC_TX_ABRT_SDA_STUCK_AT_LOW)) {
++		ret = i2c_dw_issue_bus_clear(dev);
++		i2c_dw_init_master(dev);
++		goto done;
++	}
++
+ 	/*
+ 	 * We must disable the adapter before returning and signaling the end
+ 	 * of the current transfer. Otherwise the hardware might continue
+@@ -826,6 +873,39 @@ static void i2c_dw_unprepare_recovery(struct i2c_adapter *adap)
+ 	i2c_dw_init_master(dev);
+ }
+ 
++static int i2c_dw_probe_bus_clear_feature(struct dw_i2c_dev *dev)
++{
++	u32 con, timeout;
++	int ret;
++
++	/* only use controller bus_clear if the sda timeout is specified */
++	if (!dev->sda_timeout_ms)
++		return 0;
++
++	ret = i2c_dw_acquire_lock(dev);
++	if (ret)
++		return ret;
++
++	/*
++	 * Probe the availability of the BUS_CLEAR_FEATURE by setting the
++	 * bit in IC_CON.  If the bit reads back set, then the feature is
++	 * available, otherwise it is not.
++	 */
++	regmap_write(dev->map, DW_IC_CON, DW_IC_CON_BUS_CLEAR_FEATURE_CTL);
++	regmap_read(dev->map, DW_IC_CON, &con);
++	if (!(con & DW_IC_CON_BUS_CLEAR_FEATURE_CTL))
++		goto out;
++	dev_info(dev->dev, "running with controller bus clear recovery mode!");
++	timeout = i2c_dw_clk_rate(dev) * dev->sda_timeout_ms; /* clk in kHz */
++	regmap_write(dev->map, DW_IC_SDA_STUCK_AT_LOW, timeout);
++	dev->master_cfg |= DW_IC_CON_BUS_CLEAR_FEATURE_CTL;
++out:
++	regmap_write(dev->map, DW_IC_CON, dev->master_cfg);
++	i2c_dw_release_lock(dev);
++
++	return 0;
++}
++
+ static int i2c_dw_init_recovery_info(struct dw_i2c_dev *dev)
+ {
+ 	struct i2c_bus_recovery_info *rinfo = &dev->rinfo;
+@@ -833,8 +913,11 @@ static int i2c_dw_init_recovery_info(struct dw_i2c_dev *dev)
+ 	struct gpio_desc *gpio;
+ 
+ 	gpio = devm_gpiod_get_optional(dev->dev, "scl", GPIOD_OUT_HIGH);
+-	if (IS_ERR_OR_NULL(gpio))
+-		return PTR_ERR_OR_ZERO(gpio);
++	if (IS_ERR_OR_NULL(gpio)) {
++		if (IS_ERR(gpio))
++			return PTR_ERR(gpio);
++		return i2c_dw_probe_bus_clear_feature(dev);
++	}
+ 
+ 	rinfo->scl_gpiod = gpio;
+ 
+diff --git a/drivers/i2c/busses/i2c-designware-platdrv.c b/drivers/i2c/busses/i2c-designware-platdrv.c
+index 74182db03..7466d748b 100644
+--- a/drivers/i2c/busses/i2c-designware-platdrv.c
++++ b/drivers/i2c/busses/i2c-designware-platdrv.c
+@@ -136,6 +136,9 @@ static int dw_i2c_of_configure(struct platform_device *pdev)
+ {
+ 	struct dw_i2c_dev *dev = platform_get_drvdata(pdev);
+ 
++	device_property_read_u32(&pdev->dev, "snps,sda-timeout-ms",
++			&dev->sda_timeout_ms);
++
+ 	switch (dev->flags & MODEL_MASK) {
+ 	case MODEL_MSCC_OCELOT:
+ 		dev->ext = devm_platform_ioremap_resource(pdev, 1);
+-- 
+2.39.2
+

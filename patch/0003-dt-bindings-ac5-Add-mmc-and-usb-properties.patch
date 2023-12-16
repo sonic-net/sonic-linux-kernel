@@ -1,0 +1,62 @@
+From: Keshav Gupta <keshavg@marvell.com>
+Date: Thu, 5 Oct 2023 05:48:50 +0000
+Subject: [PATCH] dt-bindings: ac5: Add mmc and usb properties
+
+Describe compatible string in Marvell Xenon SDHCI Controller for mmc.
+Also documents compatible string for ac5 in ehci-orion.
+
+Signed-off-by: Noam Liron <lnoam@marvell.com>
+---
+ .../bindings/mmc/marvell,xenon-sdhci.yaml     | 19 +++++++++++++++++++
+ .../devicetree/bindings/usb/ehci-orion.txt    |  1 +
+ 2 files changed, 20 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/mmc/marvell,xenon-sdhci.yaml b/Documentation/devicetree/bindings/mmc/marvell,xenon-sdhci.yaml
+index 3ee758886..459a71c1c 100644
+--- a/Documentation/devicetree/bindings/mmc/marvell,xenon-sdhci.yaml
++++ b/Documentation/devicetree/bindings/mmc/marvell,xenon-sdhci.yaml
+@@ -33,6 +33,7 @@ properties:
+       - items:
+           - const: marvell,armada-3700-sdhci
+           - const: marvell,sdhci-xenon
++          - const: marvell,ac5-sdhci
+ 
+   reg:
+     minItems: 1
+@@ -275,3 +276,21 @@ examples:
+ 
+       marvell,pad-type = "sd";
+     };
++
++    //For eMMC with compatible "marvell,ac5-sdhci":
++    mmc@805c0000 {
++      compatible = "marvell,ac5-sdhci";
++      reg = <0x0 0x805c0000>;
++      reg-names = "ctrl";
++      interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;
++      clocks = <&core_clock>;
++      clock-names = "core";
++      status = "okay";
++      bus-width = <8>;
++      /*marvell,xenon-phy-slow-mode;*/
++      non-removable;
++      mmc-ddr-1_8v;
++      mmc-hs200-1_8v;
++      mmc-hs400-1_8v;
++    };
++
+diff --git a/Documentation/devicetree/bindings/usb/ehci-orion.txt b/Documentation/devicetree/bindings/usb/ehci-orion.txt
+index 2855bae79..83e4d8992 100644
+--- a/Documentation/devicetree/bindings/usb/ehci-orion.txt
++++ b/Documentation/devicetree/bindings/usb/ehci-orion.txt
+@@ -4,6 +4,7 @@ Required properties:
+ - compatible: must be one of the following
+ 	"marvell,orion-ehci"
+ 	"marvell,armada-3700-ehci"
++	"marvell,ac5-ehci"
+ - reg: physical base address of the controller and length of memory mapped
+   region.
+ - interrupts: The EHCI interrupt
+-- 
+2.25.1
+

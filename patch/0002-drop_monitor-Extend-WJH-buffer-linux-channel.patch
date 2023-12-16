@@ -1,0 +1,238 @@
+From 1eee33e3c2c47fe2ca9dbad0712c0686ecdbf60a Mon Sep 17 00:00:00 2001
+From: Zhengfeng Dou <zhengfengd@nvidia.com>
+Date: Thu, 29 Jun 2023 12:15:19 +0800
+Subject: [PATCH] drop_monitor: Extend WJH buffer linux channel
+
+SDK WJH-Libs is using following information for shared buffer drops:
+* egress_port
+* tc
+* egress_port_valid
+* original_occupancy
+* original_latency
+* drop_reason.id
+
+The above metadata is missing when using linux channel (drop monitor).
+This patch is to add the extended information also for linux channel.
+---
+ include/net/devlink.h            |  18 +++++
+ include/uapi/linux/net_dropmon.h |   5 ++
+ net/core/drop_monitor.c          | 111 +++++++++++++++++++++++++++++++
+ 3 files changed, 134 insertions(+)
+
+diff --git a/include/net/devlink.h b/include/net/devlink.h
+index ba6b8b0..214edcc 100644
+--- a/include/net/devlink.h
++++ b/include/net/devlink.h
+@@ -21,6 +21,10 @@
+ #include <linux/xarray.h>
+ #include <linux/firmware.h>
+ 
++#ifndef SX_EXTEND_WJH_BUFFER_LINUX_CHANNEL
++#define SX_EXTEND_WJH_BUFFER_LINUX_CHANNEL
++#endif
++
+ struct devlink;
+ struct devlink_linecard;
+ 
+@@ -711,6 +715,11 @@ struct devlink_health_reporter_ops {
+  * @dev_tracker: refcount tracker for @input_dev.
+  * @fa_cookie: Flow action user cookie.
+  * @trap_type: Trap type.
++ * @output_port_dev: Output port netdevice.
++ * @output_lag_dev: Output lag netdevice.
++ * @out_tc: Output port tclass.
++ * @out_tc_occ: Output port tclass buffer occupancy.
++ * @latency: End-to-end latency.
+  */
+ struct devlink_trap_metadata {
+ 	const char *trap_name;
+@@ -721,6 +730,15 @@ struct devlink_trap_metadata {
+ 
+ 	const struct flow_action_cookie *fa_cookie;
+ 	enum devlink_trap_type trap_type;
++	struct net_device *output_port_dev;
++	struct net_device *output_lag_dev;
++	u16 out_tc;
++	u64 out_tc_occ;
++	u64 latency;
++	u8 out_tc_valid:1,
++	   out_tc_occ_valid:1,
++	   latency_valid:1,
++	   unused:5;
+ };
+ 
+ /**
+diff --git a/include/uapi/linux/net_dropmon.h b/include/uapi/linux/net_dropmon.h
+index 84f622a..d6f6399 100644
+--- a/include/uapi/linux/net_dropmon.h
++++ b/include/uapi/linux/net_dropmon.h
+@@ -94,6 +94,11 @@ enum net_dm_attr {
+ 	NET_DM_ATTR_HW_DROPS,			/* flag */
+ 	NET_DM_ATTR_FLOW_ACTION_COOKIE,		/* binary */
+ 	NET_DM_ATTR_REASON,			/* string */
++	NET_DM_ATTR_OUT_PORT,			/* nested */
++	NET_DM_ATTR_OUT_LAG,			/* nested */
++	NET_DM_ATTR_OUT_TC,			/* u16 */
++	NET_DM_ATTR_OUT_TC_OCC,			/* u64 */
++	NET_DM_ATTR_LATENCY,			/* u64 */
+ 
+ 	__NET_DM_ATTR_MAX,
+ 	NET_DM_ATTR_MAX = __NET_DM_ATTR_MAX - 1
+diff --git a/net/core/drop_monitor.c b/net/core/drop_monitor.c
+index f084a4a..0405e10 100644
+--- a/net/core/drop_monitor.c
++++ b/net/core/drop_monitor.c
+@@ -606,6 +606,36 @@ nla_put_failure:
+ 	return -EMSGSIZE;
+ }
+ 
++static int net_dm_packet_report_out_port_put(struct sk_buff *msg, int ifindex,
++					    const char *name, bool is_lag)
++{
++	struct nlattr *attr;
++	int            attrtype = NET_DM_ATTR_OUT_PORT;
++
++	if (is_lag) {
++		attrtype = NET_DM_ATTR_OUT_LAG;
++	}
++
++	attr = nla_nest_start(msg, attrtype);
++	if (!attr)
++		return -EMSGSIZE;
++
++	if (ifindex &&
++	    nla_put_u32(msg, NET_DM_ATTR_PORT_NETDEV_IFINDEX, ifindex))
++		goto nla_put_failure;
++
++	if (name && nla_put_string(msg, NET_DM_ATTR_PORT_NETDEV_NAME, name))
++		goto nla_put_failure;
++
++	nla_nest_end(msg, attr);
++
++	return 0;
++
++nla_put_failure:
++	nla_nest_cancel(msg, attr);
++	return -EMSGSIZE;
++}
++
+ static int net_dm_packet_report_fill(struct sk_buff *msg, struct sk_buff *skb,
+ 				     size_t payload_len)
+ {
+@@ -731,6 +761,16 @@ net_dm_flow_action_cookie_size(const struct devlink_trap_metadata *hw_metadata)
+ 	       nla_total_size(hw_metadata->fa_cookie->cookie_len) : 0;
+ }
+ 
++static size_t net_dm_out_port_size(void)
++{
++	       /* NET_DM_ATTR_OUT_PORT nest */
++	return nla_total_size(0) +
++	       /* NET_DM_ATTR_PORT_NETDEV_IFINDEX */
++	       nla_total_size(sizeof(u32)) +
++	       /* NET_DM_ATTR_PORT_NETDEV_NAME */
++	       nla_total_size(IFNAMSIZ + 1);
++}
++
+ static size_t
+ net_dm_hw_packet_report_size(size_t payload_len,
+ 			     const struct devlink_trap_metadata *hw_metadata)
+@@ -756,6 +796,16 @@ net_dm_hw_packet_report_size(size_t payload_len,
+ 	       nla_total_size(sizeof(u32)) +
+ 	       /* NET_DM_ATTR_PROTO */
+ 	       nla_total_size(sizeof(u16)) +
++	       /* NET_DM_ATTR_OUT_PORT */
++	       net_dm_out_port_size() +
++	       /* NET_DM_ATTR_OUT_LAG */
++	       net_dm_out_port_size() +
++	       /* NET_DM_ATTR_OUT_TC */
++	       nla_total_size(sizeof(u16)) +
++	       /* NET_DM_ATTR_OUT_TC_OCC */
++	       nla_total_size(sizeof(u64)) +
++	       /* NET_DM_ATTR_LATENCY */
++	       nla_total_size(sizeof(u64)) +
+ 	       /* NET_DM_ATTR_PAYLOAD */
+ 	       nla_total_size(payload_len);
+ }
+@@ -801,6 +851,43 @@ static int net_dm_hw_packet_report_fill(struct sk_buff *msg,
+ 		    hw_metadata->fa_cookie->cookie))
+ 		goto nla_put_failure;
+ 
++	if (hw_metadata->output_port_dev) {
++		struct net_device *dev = hw_metadata->output_port_dev;
++		int rc;
++
++		rc = net_dm_packet_report_out_port_put(msg, dev->ifindex,
++						      dev->name, false);
++		if (rc)
++			goto nla_put_failure;
++	}
++
++	if (hw_metadata->output_lag_dev) {
++		struct net_device *dev = hw_metadata->output_lag_dev;
++		int rc;
++
++		rc = net_dm_packet_report_out_port_put(msg, dev->ifindex,
++						      dev->name, true);
++		if (rc)
++			goto nla_put_failure;
++	}
++
++	if (hw_metadata->out_tc_valid) {
++		if (nla_put_u16(msg, NET_DM_ATTR_OUT_TC, hw_metadata->out_tc))
++			goto nla_put_failure;
++	}
++
++	if (hw_metadata->out_tc_occ_valid) {
++		if (nla_put_u64_64bit(msg, NET_DM_ATTR_OUT_TC_OCC,
++		              hw_metadata->out_tc_occ, NET_DM_ATTR_PAD))
++			goto nla_put_failure;
++	}
++
++	if (hw_metadata->latency_valid) {
++		if (nla_put_u64_64bit(msg, NET_DM_ATTR_LATENCY,
++		              hw_metadata->latency, NET_DM_ATTR_PAD))
++			goto nla_put_failure;
++	}
++
+ 	if (nla_put_u64_64bit(msg, NET_DM_ATTR_TIMESTAMP,
+ 			      ktime_to_ns(skb->tstamp), NET_DM_ATTR_PAD))
+ 		goto nla_put_failure;
+@@ -867,6 +954,27 @@ net_dm_hw_metadata_copy(const struct devlink_trap_metadata *metadata)
+ 	netdev_hold(hw_metadata->input_dev, &hw_metadata->dev_tracker,
+ 		    GFP_ATOMIC);
+ 
++       hw_metadata->output_port_dev = metadata->output_port_dev;
++       if (hw_metadata->output_port_dev)
++               netdev_hold(hw_metadata->output_port_dev, &hw_metadata->dev_tracker, GFP_ATOMIC);
++
++       hw_metadata->output_lag_dev = metadata->output_lag_dev;
++       if (hw_metadata->output_lag_dev)
++               netdev_hold(hw_metadata->output_lag_dev, &hw_metadata->dev_tracker, GFP_ATOMIC);
++
++       hw_metadata->out_tc_valid = metadata->out_tc_valid;
++       if (hw_metadata->out_tc_valid)
++               hw_metadata->out_tc = metadata->out_tc;
++
++       hw_metadata->out_tc_occ_valid = metadata->out_tc_occ_valid;
++
++       if (hw_metadata->out_tc_occ_valid)
++               hw_metadata->out_tc_occ = metadata->out_tc_occ;
++
++       hw_metadata->latency_valid = metadata->latency_valid;
++       if (hw_metadata->latency_valid)
++               hw_metadata->latency = metadata->latency;
++
+ 	return hw_metadata;
+ 
+ free_trap_name:
+@@ -882,6 +990,10 @@ static void
+ net_dm_hw_metadata_free(struct devlink_trap_metadata *hw_metadata)
+ {
+ 	netdev_put(hw_metadata->input_dev, &hw_metadata->dev_tracker);
++       if (hw_metadata->output_port_dev)
++               netdev_put(hw_metadata->output_port_dev, &hw_metadata->dev_tracker);
++       if (hw_metadata->output_lag_dev)
++               netdev_put(hw_metadata->output_lag_dev, &hw_metadata->dev_tracker);
+ 	kfree(hw_metadata->fa_cookie);
+ 	kfree(hw_metadata->trap_name);
+ 	kfree(hw_metadata->trap_group_name);

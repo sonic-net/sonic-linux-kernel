@@ -3,14 +3,15 @@ SHELL = /bin/bash
 .SHELLFLAGS += -e
 
 KERNEL_ABI_MINOR_VERSION = 2
-KVERSION_SHORT ?= 5.10.0-18-$(KERNEL_ABI_MINOR_VERSION)
+KVERSION_SHORT ?= 6.1.0-11-$(KERNEL_ABI_MINOR_VERSION)
 KVERSION ?= $(KVERSION_SHORT)-amd64
-KERNEL_VERSION ?= 5.10.140
-KERNEL_SUBVERSION ?= 1
+KERNEL_VERSION ?= 6.1.38
+KERNEL_SUBVERSION ?= 4
 kernel_procure_method ?= build
 CONFIGURED_ARCH ?= amd64
+CONFIGURED_PLATFORM ?= vs
 SECURE_UPGRADE_MODE ?=
-SECURE_UPGRADE_SIGNING_CERT =?
+SECURE_UPGRADE_SIGNING_CERT ?=
 
 LINUX_HEADER_COMMON = linux-headers-$(KVERSION_SHORT)-common_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_all.deb
 LINUX_HEADER_AMD64 = linux-headers-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_$(CONFIGURED_ARCH).deb
@@ -76,19 +77,15 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 		fi
 	fi
 
-	if [ -f "$(NON_UP_DIR)/series.patch" ]; then
-		echo "Patch the series file"
-		cat $(NON_UP_DIR)/series.patch
-		pushd patch
-		# clear any unstaged changes
-		git stash -- series
-		git apply $(NON_UP_DIR)/series.patch
-		popd
+	if [ -f "$(NON_UP_DIR)/external-changes.patch" ]; then
+		cat $(NON_UP_DIR)/external-changes.patch
+		git stash -- patch/
+		git apply $(NON_UP_DIR)/external-changes.patch
+	fi
 
-		if [ -d "$(NON_UP_DIR)/patches" ]; then
-			echo "Copy the non upstream patches"
-			cp $(NON_UP_DIR)/patches/*.patch patch/
-		fi
+	if [ -d "$(NON_UP_DIR)/patches" ]; then
+		echo "Copy the non upstream patches"
+		cp $(NON_UP_DIR)/patches/*.patch patch/
 	fi
 
 	# Obtaining the Debian kernel source
@@ -112,9 +109,9 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	debian/bin/gencontrol.py
 
 	# generate linux build file for amd64_none_amd64
-	fakeroot make -f debian/rules.gen DEB_HOST_ARCH=armhf setup_armhf_none_armmp
-	fakeroot make -f debian/rules.gen DEB_HOST_ARCH=arm64 setup_arm64_none_arm64
-	fakeroot make -f debian/rules.gen DEB_HOST_ARCH=amd64 setup_amd64_none_amd64
+	DEB_HOST_ARCH=armhf fakeroot make -f debian/rules.gen setup_armhf_none_armmp
+	DEB_HOST_ARCH=arm64 fakeroot make -f debian/rules.gen setup_arm64_none_arm64
+	DEB_HOST_ARCH=amd64 fakeroot make -f debian/rules.gen setup_amd64_none_amd64
 
 	# Applying patches and configuration changes
 	git add debian/build/build_armhf_none_armmp/.config -f

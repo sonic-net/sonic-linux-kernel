@@ -1,0 +1,1507 @@
+From e476a4ae5f2671ccb4488171888e4d76cc8d6a25 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 10:04:04 +0000
+Subject: [PATCH] drivers/uio: UIO drivers for Elba
+
+Support userspace interrupt drivers for Elba. PCIE events.
+
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
+---
+ arch/arm64/boot/dts/pensando/elba.dtsi |  30 ++
+ drivers/uio/Kconfig                    |  33 ++
+ drivers/uio/Makefile                   |   4 +
+ drivers/uio/uio_pciemac.c              |  30 ++
+ drivers/uio/uio_pengic.c               | 661 +++++++++++++++++++++++++
+ drivers/uio/uio_pengic.h               |  18 +
+ drivers/uio/uio_penmsi.c               | 570 +++++++++++++++++++++
+ drivers/uio/uio_penmsi.h               |  17 +
+ drivers/uio/uio_penmsi1.c              |  32 ++
+ 9 files changed, 1395 insertions(+)
+ create mode 100644 drivers/uio/uio_pciemac.c
+ create mode 100644 drivers/uio/uio_pengic.c
+ create mode 100644 drivers/uio/uio_pengic.h
+ create mode 100644 drivers/uio/uio_penmsi.c
+ create mode 100644 drivers/uio/uio_penmsi.h
+ create mode 100644 drivers/uio/uio_penmsi1.c
+
+diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
+index c0954fc2b..9182c93aa 100644
+--- a/arch/arm64/boot/dts/pensando/elba.dtsi
++++ b/arch/arm64/boot/dts/pensando/elba.dtsi
+@@ -49,6 +49,12 @@ pmu {
+ 				IRQ_TYPE_LEVEL_LOW)>;
+ 	};
+ 
++	/* Common UIO device for MSI drivers */
++	uio_penmsi {
++		compatible = "pensando,uio_penmsi";
++		name = "uio_penmsi";
++	};
++
+ 	capmem {
+ 		compatible = "pensando,capmem";
+ 	};
+@@ -166,6 +172,14 @@ uart0: serial@4800 {
+ 			reg-io-width = <4>;
+ 		};
+ 
++		/* MSI UIO device 1 */
++		uio_penmsi1@520000 {
++			compatible = "pensando,uio_penmsi1";
++			reg = <0x0 0x520000 0x0 0x10000>;
++			msi-parent = <&its 0xa>;
++			num-interrupts = <16>;  /* # MSI interrupts to get */
++		};
++
+ 		gic: interrupt-controller@800000 {
+ 			compatible = "arm,gic-v3";
+ 			#interrupt-cells = <3>;
+@@ -203,6 +217,22 @@ pxc0_intr: interrupt-controller@20102200 {
+ 			interrupt-names = "pxc0_intr";
+ 		};
+ 
++		/* UIO device using interrupt line PCIEMAC */
++		pciemac@20102200 {
++			#address-cells = <2>;
++			#size-cells = <2>;
++			#interrupt-cells = <3>;
++
++			compatible = "pensando,uio_pciemac";
++			register-type = "csr-interrupt";
++			interrupt-parent = <&pxc0_intr>;
++			interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>;
++			reg = <0x0 0x20102200 0x0 0x10>; /* pxc0_intr */
++
++			enable_csr_paddr = <0x0 0x20102200 0x0 0x10>;
++			enable_mask = <(1 << 0)>;
++		};
++
+ 		edac: edac@30500000 {
+ 			compatible = "pensando,elba-edac-mc";
+ 			reg = <0x0 0x30500000 0x0 0x100000>;
+diff --git a/drivers/uio/Kconfig b/drivers/uio/Kconfig
+index 2e16c5338..7d2d292b9 100644
+--- a/drivers/uio/Kconfig
++++ b/drivers/uio/Kconfig
+@@ -125,6 +125,39 @@ config UIO_FSL_ELBC_GPCM_NETX5152
+ 	  Information about this hardware can be found at:
+ 	  http://www.hilscher.com/netx
+ 
++config UIO_PCIEMAC
++	tristate "Include PCI MAC status driver"
++	default "y"
++	select UIO_PENGIC
++	depends on ARCH_PENSANDO_ELBA_SOC
++	help
++	  Driver that allows handling of ring2 on Pensando Capri systems. It
++	  is useful for having a userspace driver that can handle GIC 17
++	  interrupts.
++
++	  If you compile this as a module, it will be called uio_pciemac.
++
++config UIO_PENMSI1
++	tristate "Driver 1 for MSI"
++	default "y"
++	select UIO_PENMSI
++	depends on ARCH_PENSANDO_ELBA_SOC
++	help
++	  Driver that allows obtaining MSI data and handling MSI interrupts
++	  in userspace.
++
++	  If you compile this as a module, it will be called uio_pengmsi1.
++
++config UIO_PENGIC
++	tristate
++	depends on ARCH_PENSANDO
++	default n
++
++config UIO_PENMSI
++	tristate
++	depends on ARCH_PENSANDO
++	default n
++
+ config UIO_PRUSS
+ 	tristate "Texas Instruments PRUSS driver"
+ 	select GENERIC_ALLOCATOR
+diff --git a/drivers/uio/Makefile b/drivers/uio/Makefile
+index f2f416a14..41d4267aa 100644
+--- a/drivers/uio/Makefile
++++ b/drivers/uio/Makefile
+@@ -10,5 +10,9 @@ obj-$(CONFIG_UIO_NETX)	+= uio_netx.o
+ obj-$(CONFIG_UIO_PRUSS)         += uio_pruss.o
+ obj-$(CONFIG_UIO_MF624)         += uio_mf624.o
+ obj-$(CONFIG_UIO_FSL_ELBC_GPCM)	+= uio_fsl_elbc_gpcm.o
++obj-$(CONFIG_UIO_PENGIC)	+= uio_pengic.o
++obj-$(CONFIG_UIO_PCIEMAC)	+= uio_pciemac.o
++obj-$(CONFIG_UIO_PENMSI)	+= uio_penmsi.o
++obj-$(CONFIG_UIO_PENMSI1)	+= uio_penmsi1.o
+ obj-$(CONFIG_UIO_HV_GENERIC)	+= uio_hv_generic.o
+ obj-$(CONFIG_UIO_DFL)	+= uio_dfl.o
+diff --git a/drivers/uio/uio_pciemac.c b/drivers/uio/uio_pciemac.c
+new file mode 100644
+index 000000000..b7d89c64a
+--- /dev/null
++++ b/drivers/uio/uio_pciemac.c
+@@ -0,0 +1,30 @@
++// SPDX-License-Identifier: GPL-2.0
++
++#include <linux/module.h>
++
++#include "uio_pengic.h"
++
++#define DRIVER_NAME_PCIEMAC	"uio_pciemac0"
++
++#ifdef CONFIG_OF
++static const struct of_device_id pengic_match[] = {
++	{ .compatible = "pensando,uio_pciemac" },
++	{ /* Mark the end of the list */ },
++};
++#endif
++
++static struct platform_driver uio_pciemac = {
++	.probe = pengic_probe_enable,
++	.remove = pengic_remove,
++	.driver = {
++		.name = DRIVER_NAME_PCIEMAC,
++		.pm = &pengic_pm_ops,
++		.of_match_table = of_match_ptr(pengic_match),
++	}
++};
++
++module_platform_driver(uio_pciemac);
++
++MODULE_LICENSE("GPL v2");
++MODULE_DESCRIPTION("Support PCIe MAC status reporting");
++MODULE_AUTHOR("David VomLehn");
+diff --git a/drivers/uio/uio_pengic.c b/drivers/uio/uio_pengic.c
+new file mode 100644
+index 000000000..853b62536
+--- /dev/null
++++ b/drivers/uio/uio_pengic.c
+@@ -0,0 +1,661 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (c) 2020-2021, Pensando Systems Inc.
++ *
++ * UIO driver for the device using the GIC interrupts for the Pensando
++ * Capri and Elba ASIC. This includes status/error registers.
++ *
++ * To do:
++ * o	Get enable_csr from the "reg" property
++ * o	Get enable_mask from the device nodes "interrupts" property
++ *
++ */
++
++#include <linux/dma-mapping.h>
++#include <linux/interrupt.h>
++#include <linux/io.h>
++#include <linux/irq.h>
++#include <linux/irqdesc.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/of_address.h>
++#include <linux/of_irq.h>
++#include <linux/platform_data/uio_dmem_genirq.h>
++#include <linux/platform_device.h>
++#include <linux/pm_runtime.h>
++#include <linux/slab.h>
++#include <linux/spinlock.h>
++#include <linux/uio_driver.h>
++#include <linux/atomic.h>
++#include <linux/irqchip/irq-pensando.h>
++
++/* Probably should be defined in irq.h, but isn't */
++#define NO_IRQ		0
++
++#define MAP_ERROR	(~0)		/* Invalid address */
++
++/*
++ * If set, will print a status message from the IRQ handler. This can be
++ * very helpful when trying to determine whether the device tree has the
++ * correct parent/child structure
++ */
++#undef PRINT_HANDLER_STATUS
++
++#ifdef PRINT_HANDLER_STATUS
++#define handler_status(fmt, ...) pr_err(fmt, ##__VA_ARGS__)
++#else
++#define handler_status(fmt, ...) do { } while (false)
++#endif
++
++/*
++ * pengic_platdata - platform data for one UIO device
++ * @name:		Name of the driver
++ * @reg_type:		Type of register block we're dealing with
++ * @flags:
++ * @pdev:		Pointer to struct platform_device
++ * @n_res:		Number of entries in @res[] used
++ * @res:		Struct resource that defines the address and size of
++ *			the CSR
++ * @node:		Pointer to the open firmware device node for this
++ *			device;
++ * @enable_mask:	Mask of bits to be set to enable the interrupt(s)
++ * @enable_csr:		Virtual address of the pen_ictlr_csr for this child
++ * @uio_info:		Pointer to the associated struct uio_info
++ * @dev:		Pointer to the struct device for this device
++ * @cmd:		Information for the command file
++ * @pengic_dir:		Pointer to information about the pengic directory
++ *			in which the command file lives
++ * @irq:		Kernel interrupt number
++ * @disables_lock:	Spin lock protecting the @disables member
++ * @disable:		Number of outstanding disables. Incremented for
++ *			each disable call, decremented for each enable call
++ */
++struct pengic_platdata {
++	const char		*name;
++	enum reg_type		reg_type;
++	unsigned long		flags;
++	unsigned int		n_res;
++	struct resource		res[MAX_UIO_MAPS];
++	struct device_node	*node;
++	u32			enable_mask;
++	struct pen_ictlr_csr	*enable_csr;
++	struct uio_info		*uio_info;
++	struct device		*dev;
++	unsigned int		irq;
++};
++
++static void pengic_enable_intr_nolock(struct pengic_platdata *platdata)
++{
++	struct irq_data *irq_data;
++
++	irq_data = irq_get_irq_data(platdata->irq);
++
++	switch (platdata->reg_type) {
++	case REG_TYPE_CSR:
++		pen_irq_unmask_enable_csr_one(irq_data);
++		break;
++
++	case REG_TYPE_GRP:
++		pen_irq_unmask_enable_grp_one(irq_data);
++		break;
++
++	case REG_TYPE_CSRINTR:
++		pen_irq_unmask_enable_csrintr_one(irq_data);
++		break;
++
++	default:
++		pr_err("%pOF: Unknown register type: %d\n",
++			platdata->node, platdata->reg_type);
++		break;
++	}
++
++}
++
++/*
++ * Enable the register in the bottom-most interrupt domain controller. We
++ * only call the real enable function when we have zero outstanding
++ * disables.
++ *
++ * It's ugly that this calls directly into functions for the interrupt
++ * domain controller but it's either that or duplicate code.
++ */
++static void pengic_enable_intr(struct pengic_platdata *platdata)
++{
++	pengic_enable_intr_nolock(platdata);
++}
++
++static void pengic_disable_intr_nolock(struct pengic_platdata *platdata)
++{
++	struct irq_data *irq_data;
++
++	irq_data = irq_get_irq_data(platdata->irq);
++
++	/*
++	 * If this is the first disable call, actually do the disable.
++	 * Otherwise, we are already disabled and skip the call
++	 */
++	switch (platdata->reg_type) {
++	case REG_TYPE_CSR:
++		pen_irq_mask_disable_csr_one(irq_data);
++		break;
++
++	case REG_TYPE_GRP:
++		pen_irq_mask_disable_grp_one(irq_data);
++		break;
++
++	case REG_TYPE_CSRINTR:
++		pen_irq_mask_disable_csrintr_one(irq_data);
++		break;
++
++	default:
++		pr_err("Unknown register type: %d\n",
++			platdata->reg_type);
++		break;
++	}
++}
++
++static void pengic_disable_intr(struct pengic_platdata *platdata)
++{
++	pengic_disable_intr_nolock(platdata);
++}
++
++static int pengic_open(struct uio_info *uioinfo, struct inode *inode)
++{
++	struct pengic_platdata *platdata;
++	int ret;
++
++	ret = 0;
++	platdata = uioinfo->priv;
++	pm_runtime_get_sync(platdata->dev);
++
++	return ret;
++}
++
++/*
++ * pengic_release - called when the device has no more open file descriptors
++ *	and it was enough to use end-of-interrupt handling
++ */
++static int pengic_release(struct uio_info *uioinfo, struct inode *inode)
++{
++	struct pengic_platdata *platdata;
++
++	platdata = uioinfo->priv;
++	pm_runtime_put_sync(platdata->dev);
++
++	return 0;
++}
++
++/*
++ * pengic_release_enable - called when the device has no more open file
++ *	descriptors when the interrupt had to be disabled in addition to
++ *	performing end-of-interrupt processing. This ensures that the
++ *	interrupt is enabled on exit.
++ */
++static int pengic_release_enable(struct uio_info *uioinfo, struct inode *inode)
++{
++	struct pengic_platdata *platdata;
++	int rc;
++
++	platdata = uioinfo->priv;
++
++#ifdef FORCE_ENABLE_ON_RELEASE
++	/*
++	 * If the interrupt chain is disabled, enable it
++	 *
++	 * No need to lock here, there is nobody else contending for this
++	 * data structure
++	 */
++	if (platdata->disables != 0)
++		pengic_enable_intr_nolock(platdata);
++#endif
++	rc = pengic_release(uioinfo, inode);
++
++	return rc;
++}
++
++/*
++ * Read the register where bits are set when interrupts happen. Note that
++ * an undefined reg_type will cause a zero to be returned, which will
++ * cause an IRQ_NONE to be returned to the caller of the IRQ handler.
++ */
++static uint32_t pengic_read_status(enum reg_type reg_type, void *p)
++{
++	uint32_t intr_status;
++
++	switch (reg_type) {
++	case REG_TYPE_CSR:
++		intr_status = readl(&((struct pen_ictlr_csr *)p)->intreg);
++		break;
++
++	case REG_TYPE_GRP:
++		intr_status = readl(&((struct pen_ictlr_grp *)p)->intreg);
++		break;
++
++	case REG_TYPE_CSRINTR:
++		intr_status = readl(&((struct pen_ictlr_csrintr *)p)->intr);
++		break;
++
++	default:
++		intr_status = 0;	/* Always causes IRQ_NONE */
++		break;
++	}
++
++	return intr_status;
++}
++
++/*
++ * Handle an IRQ assuming the default EOI processing is sufficient to
++ * renable the interrupt.
++ */
++static irqreturn_t pengic_handler(int virq, struct uio_info *uioinfo)
++{
++	struct pengic_platdata *platdata;
++	struct irq_data *irq_data;
++	u32 intr_status, enable_mask;
++	irq_hw_number_t hwirq;
++	unsigned int i;
++
++	platdata = uioinfo->priv;
++	irq_data = irq_get_irq_data(platdata->irq);
++	hwirq = irq_data->hwirq;
++	enable_mask = 1 << hwirq;
++
++	for (i = 0; i < platdata->n_res; i++) {
++		void *p;
++
++		p = uioinfo->mem[i].internal_addr + uioinfo->mem[i].offs;
++		intr_status = pengic_read_status(platdata->reg_type, p);
++		if ((intr_status & enable_mask) != 0)
++			return IRQ_HANDLED;	/* This is our interrupt */
++	}
++
++	return IRQ_NONE;
++}
++
++/*
++ * Handle an IRQ assuming the default EOI processing is insufficient to
++ * renable the interrupt. Instead, the interrupt is disabled here and enabled
++ * through the irqcontrol function invoked from userspace via write().
++ */
++static irqreturn_t pengic_handler_disable(int virq, struct uio_info *uioinfo)
++{
++	irqreturn_t rc;
++
++	rc = pengic_handler(virq, uioinfo);
++	if (rc == IRQ_HANDLED) {
++		struct pengic_platdata *platdata;
++
++		platdata = uioinfo->priv;
++		pengic_disable_intr(platdata);
++	}
++
++	return rc;
++}
++
++/* Unmap the first n elements */
++static void unmap_asic(struct uio_info *uioinfo, unsigned int n,
++		       struct device *dev)
++{
++	unsigned int i;
++
++	for (i = 0; uioinfo->mem[i].size != 0; i++) {
++		struct uio_mem *mem;
++
++		mem = &uioinfo->mem[i];
++
++		if (mem->internal_addr == NULL) {
++			dev_warn(dev,
++				"mem[%td].internal_addr is unexpectdly NULL\n",
++				mem - uioinfo->mem);
++		} else {
++			iounmap(mem->internal_addr);
++			mem->internal_addr = NULL;	/* paranoia */
++		}
++
++		if (mem->name == NULL) {
++			dev_warn(dev, "mem[%td].name is unexpectdly NULL\n",
++				mem - uioinfo->mem);
++		} else {
++			kfree(mem->name);
++			mem->name = NULL;		/* More paranoia */
++		}
++	}
++}
++
++/*
++ * Returns the number of resources on success, otherwise a negative errno
++ * value
++ */
++static int map_asic(struct uio_info *uio_info, struct device *dev,
++	struct device_node *node, struct resource *res, unsigned int n_res)
++{
++	unsigned int i;
++	int ret;
++
++	for (i = 0; i < n_res; i++) {
++		struct uio_mem *mem;
++		size_t unrounded_size;
++		size_t rounded_size;
++
++		ret = of_address_to_resource(node, i, &res[i]);
++		if (ret != 0)
++			break;
++
++		mem = &uio_info->mem[i];
++
++		/* Offset with the page in which the device registers reside */
++		mem->offs = res[i].start & ~PAGE_MASK;
++		/* Physical address, aligned on a page boundary */
++		mem->addr = res[i].start - mem->offs;
++		if (node->name != NULL)
++			mem->name = kstrdup(node->name, GFP_KERNEL);
++
++		/*
++		 * Size of an area completely containing the device registers
++		 * of interest. Must be multiple of the page size
++		 */
++		unrounded_size = mem->offs + resource_size(res);
++		rounded_size = (unrounded_size + (PAGE_SIZE - 1)) & PAGE_MASK;
++		mem->size = rounded_size;
++
++		/* Specify we have physical memory, then map it */
++		mem->memtype = UIO_MEM_PHYS;
++		mem->internal_addr = ioremap(mem->addr, mem->size);
++
++		if (mem->internal_addr == NULL)
++			break;
++	}
++
++	return i;
++}
++
++static int pengic_irqcontrol(struct uio_info *info, s32 irq_on)
++{
++	struct pengic_platdata *platdata;
++
++	platdata = info->priv;
++
++	switch (irq_on) {
++	case 0:
++		pengic_disable_intr(platdata);
++		break;
++
++	case 1:
++		pengic_enable_intr(platdata);
++		break;
++
++	default:
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static int set_uio_info(struct uio_info *uio_info,
++	struct device *dev, struct device_node *node,
++	irqreturn_t (*pengic_handler)(int irq, struct uio_info *uioinfo))
++{
++	const char *dt_name;
++	int irq;
++	int ret;
++
++	ret = of_property_read_string(node, "name", &dt_name);
++	if (ret != 0)
++		dt_name = "pengic";
++	uio_info->name = kstrdup(dt_name, GFP_KERNEL);
++	if (uio_info->name == NULL)
++		return -ENOMEM;
++	uio_info->version = "0.0.1";
++
++	irq = irq_of_parse_and_map(node, 0);
++	if (irq == 0) {
++		dev_warn(dev, "no interrupt found for %pOF\n", node);
++		uio_info->irq = UIO_IRQ_NONE;
++		return -ENXIO;
++	}
++
++	uio_info->irq = irq;
++	uio_info->irq_flags = IRQF_SHARED;
++	uio_info->handler = pengic_handler;
++	uio_info->irqcontrol = pengic_irqcontrol;
++
++	return 0;
++}
++
++static void free_uio_info(struct uio_info *uio_info, unsigned int n_res,
++			  struct device *dev)
++{
++	if (uio_info->name != NULL) {
++		kfree(uio_info->name);
++		uio_info->name = NULL;
++	}
++
++	uio_info->handler = NULL;
++	uio_info->irqcontrol = NULL;
++	unmap_asic(uio_info, n_res, dev);
++}
++
++static void free_platdata(struct pengic_platdata *platdata)
++{
++	kfree(platdata);
++}
++
++static enum reg_type get_reg_type(struct device_node *node)
++{
++	const char *reg_type_name;
++	int rc;
++
++	rc = of_property_read_string(node, "register-type", &reg_type_name);
++	if (rc != 0)
++		return REG_TYPE_UNKNOWN;
++	if (strcmp(reg_type_name, "csr") == 0)
++		return REG_TYPE_CSR;
++	if (strcmp(reg_type_name, "group") == 0)
++		return REG_TYPE_GRP;
++	if (strcmp(reg_type_name, "csr-interrupt") == 0)
++		return REG_TYPE_CSRINTR;
++
++	pr_warn("Unknown register type: %s\n", reg_type_name);
++	return REG_TYPE_UNKNOWN;
++}
++
++static int set_platdata(struct pengic_platdata *platdata,
++	const struct uio_info *uioinfo, struct platform_device *pdev)
++{
++	struct device_node *node;
++	int ret;
++	u32 fw_param;
++
++	/* Initialize the platform data */
++
++	platdata->node = pdev->dev.of_node;
++	platdata->dev = &pdev->dev;
++	platdata->name = uioinfo->name;
++
++	platdata->irq = uioinfo->irq;
++	node = platdata->node;
++
++	platdata->reg_type = get_reg_type(platdata->node);
++
++	ret = map_asic(platdata->uio_info, platdata->dev, node,
++		platdata->res, ARRAY_SIZE(platdata->res));
++	if (ret < 0) {
++		dev_err(platdata->dev, "can't map ASIC registers\n");
++		return ret;
++	}
++
++	platdata->n_res = ret;
++
++	/*
++	 * Get the interrupt number. This must be the first of a three
++	 * element irq_fwspec. Can check "#interrupt-cells" if necessary.
++	 */
++	ret = of_property_read_u32_index(platdata->node, "interrupts", 2,
++		&fw_param);
++	if (ret != 0)
++		return ret;
++	platdata->enable_mask = 1 << fw_param;
++
++	return 0;
++}
++
++/*
++ * pengic_probe - allocate and initialize state for device
++ * @pdev:	Pointer to the platform device
++ * @handler_fn:	Pointer to the IRQ handler
++ * @release_fn:	Pointer to the release function (called when the last file
++ *		descriptor is closed)
++ */
++static int pengic_probe_common(struct platform_device *pdev,
++	irqreturn_t (*handler_fn)(int irq, struct uio_info *uioinfo),
++	int (*release_fn)(struct uio_info *uioinfo, struct inode *inode))
++{
++	struct device_node *node;
++	struct pengic_platdata *platdata;
++	struct uio_info *uio_info;
++	unsigned int i;
++	int ret;
++
++	ret = -EINVAL;
++	node = pdev->dev.of_node;
++
++	/* Allocate space for the platform-specific data */
++	platdata = kzalloc(sizeof(*platdata), GFP_KERNEL);
++	if (platdata == NULL)
++		return -ENOMEM;
++
++	uio_info = kzalloc(sizeof(*uio_info), GFP_KERNEL);
++	if (uio_info == NULL) {
++		kfree(platdata);
++		return -ENOMEM;
++	}
++
++	uio_info->priv = platdata;
++	platdata->uio_info = uio_info;
++
++	ret = set_uio_info(uio_info, &pdev->dev, node, handler_fn);
++	if (ret != 0)
++		goto free_name;
++
++	ret = set_platdata(platdata, uio_info, pdev);
++	if (ret != 0)
++		goto free_uioinfo;
++
++	platform_set_drvdata(pdev, platdata);
++	uio_info->open = pengic_open;
++	uio_info->release = release_fn;
++	uio_info->priv = platdata;
++
++	/* Map the device */
++	if (dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(64)) != 0) {
++		dev_err(&pdev->dev, "no valid coherent DMA mask");
++		goto free_platdata;
++	}
++
++	pm_runtime_enable(&pdev->dev);
++
++	/* Ready to be a grown up UIO device now */
++	ret = uio_register_device(&pdev->dev, platdata->uio_info);
++	if (ret != 0) {
++		dev_err(&pdev->dev, "can't register UIO device: ret %d", ret);
++		pm_runtime_disable(&pdev->dev);
++		goto free_platdata;
++	}
++
++	/* Print mapping report */
++	for (i = 0; i < platdata->n_res; i++) {
++		dev_info(platdata->dev, "0x%llx->%p\n",
++			platdata->res[i].start,
++			uio_info->mem[i].internal_addr);
++	}
++
++	return 0;
++
++free_platdata:
++	free_platdata(platdata);
++
++free_uioinfo:
++	free_uio_info(uio_info, ARRAY_SIZE(platdata->res), platdata->dev);
++
++free_name:
++	kfree(uio_info->name);
++	uio_info->name = NULL;
++
++	dev_err(platdata->dev, "probe failed\n");
++	return ret;
++}
++
++/*
++ * pengic_probe - allocate and initialize state for device where normal EOI
++ *	processing is sufficient to process an interrupt
++ * @pdev:		Pointer to the platform device
++ */
++int pengic_probe(struct platform_device *pdev)
++{
++	return pengic_probe_common(pdev, pengic_handler, pengic_release);
++}
++EXPORT_SYMBOL(pengic_probe);
++
++/*
++ * pengic_probe_enable - allocate and initialize state for device where an
++ *	explicit call to irq_enable() is required to process an interrupt.
++ * @pdev:		Pointer to the platform device
++ */
++int pengic_probe_enable(struct platform_device *pdev)
++{
++	return pengic_probe_common(pdev, pengic_handler_disable,
++		pengic_release_enable);
++}
++EXPORT_SYMBOL(pengic_probe_enable);
++
++/*
++ * pengic_remove - free UIO-related data structures
++ *
++ * @pdev:	Pointer to the platform_device structure to remove
++ */
++int pengic_remove(struct platform_device *pdev)
++{
++	struct pengic_platdata *platdata;
++	struct uio_info *uio_info;
++	unsigned int n_res;
++
++	platdata = platform_get_drvdata(pdev);
++	uio_info = platdata->uio_info;
++	platdata->uio_info = NULL;
++	uio_info->priv = NULL;
++	n_res = platdata->n_res;
++
++	/* This should not be necessary but it's defensive programing in
++	 * case this driver gets called after it has been shutdown
++	 */
++	platform_set_drvdata(pdev, NULL);
++
++	free_platdata(platdata);
++	free_uio_info(uio_info, n_res, &pdev->dev);
++
++	pm_runtime_disable(&pdev->dev);
++
++	return 0;
++}
++EXPORT_SYMBOL(pengic_remove);
++
++/*
++ * pengic_pm_nop - Power management stub that just returns success
++ *
++ * We leave it to other drivers to handle the device power management
++ * operations, if any.
++ */
++static int pengic_pm_nop(struct device *dev)
++{
++	return 0;
++}
++
++const struct dev_pm_ops pengic_pm_ops = {
++	.runtime_suspend = pengic_pm_nop,
++	.runtime_resume = pengic_pm_nop,
++};
++EXPORT_SYMBOL(pengic_pm_ops);
++
++MODULE_LICENSE("GPL v2");
++MODULE_DESCRIPTION("Support userspace I/O for Pensando Ring interrupts");
++MODULE_AUTHOR("David VomLehn");
+diff --git a/drivers/uio/uio_pengic.h b/drivers/uio/uio_pengic.h
+new file mode 100644
+index 000000000..6d1450b3b
+--- /dev/null
++++ b/drivers/uio/uio_pengic.h
+@@ -0,0 +1,18 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (c) 2020-2021, Pensando Systems Inc.
++ */
++
++#ifndef _UIO_PENGIC_H_
++#define _UIO_PENGIC_H_
++
++#include <linux/of.h>
++#include <linux/platform_device.h>
++
++extern const struct dev_pm_ops pengic_pm_ops;
++
++int pengic_probe(struct platform_device *pdev);
++int pengic_probe_enable(struct platform_device *pdev);
++int pengic_remove(struct platform_device *pdev);
++
++#endif /* _UIO_PENGIC_H_ */
+diff --git a/drivers/uio/uio_penmsi.c b/drivers/uio/uio_penmsi.c
+new file mode 100644
+index 000000000..9bab4236d
+--- /dev/null
++++ b/drivers/uio/uio_penmsi.c
+@@ -0,0 +1,570 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (c) 2020-2021, Pensando Systems Inc.
++ *
++ * UIO common driver for MSIX interrupts for Pensando system.
++ *
++ * As you read this, remember that it is the common portion of what will
++ * generally be many drivers. As such, functions like the probe() function have
++ * to deal with contention, which code that is one-per-driver do not. This
++ * makes things a bit more complex.
++ *
++ * The second complexity is that we have an asynchronous callback from MSIX.
++ * Since we don't now the context of that call, we pre-allocate the
++ * needed data structures from a context known to be suitable for memory
++ * allocation. When the callback is called, it simply dequeues the memory
++ * and puts it on an "in use" list. When the probe() function needs to
++ * allocate its platform data, it just uses one of the structures on the
++ * in use list.
++ */
++
++#include <linux/platform_data/uio_dmem_genirq.h>
++#include <linux/platform_device.h>
++
++#include <linux/atomic.h>
++#include <linux/dma-mapping.h>
++#include <linux/io.h>
++#include <linux/irq.h>
++#include <linux/list.h>
++#include <linux/module.h>
++#include <linux/msi.h>
++#include <linux/of_address.h>
++#include <linux/of.h>
++#include <linux/of_irq.h>
++#include <linux/pm_runtime.h>
++#include <linux/slab.h>
++#include <linux/uio_driver.h>
++#include <linux/wait.h>
++
++/* Optionally add attributes */
++#define ADD_ATTRS
++#undef ENABLE_STORE
++
++#ifdef ADD_ATTRS
++#define to_penmsi_dir(kobjp) container_of(kobjp, struct penmsi_dir, kobj)
++#endif
++
++/*
++ * devdata - information for a UIO device
++ * @pdev:		Pointer to the struct platform_device
++ * @platdata:		Pointer to the containing struct platdata
++ * @have_msi_index:	Indicates that @msi_index is valid
++ * @msi_index:		Index used to match descriptors with data
++ * @open:		Flag indicating whether this device is open
++ * @msi_msg:		MSI address and data information
++ * @list		Item in a list of allocated devdata items;
++ * @penmsi_dir:		Pointer to information about the penmsi directory
++ *			in which the command file lives
++ */
++struct devdata {
++	struct uio_info		uio_info;
++	struct platdata		*platdata;
++	bool			have_msi_msg;
++	bool			have_msi_desc;
++	u16			msi_index;
++	bool			open;
++	struct msi_msg		msi_msg;
++#ifdef ADD_ATTRS
++	struct penmsi_dir	*penmsi_dir;
++#endif
++};
++
++/*
++ * Per platform device
++ * @pdev:		Associated platform device
++ * @n_pending:		Remaining number of devdata items we are waiting for
++ * @n_irqs:		Number of IRQs being supported
++ * @n_valid:		Number of struct devdata items initialized for use
++ * @devdata:		Array of struct devdata items
++ */
++struct platdata {
++	struct platform_device	*pdev;
++	unsigned int		n_pending;
++	size_t			n_irqs;
++	unsigned int		n_valid;
++	struct devdata		devdatas[];
++};
++/*
++ * @penmsi_sem:		Protects the @init_platdata pointer and allocation of
++ *			MSI IRQs
++ * @init_platdata:	Pointer to the platdata currently being initialized.
++ *			This is only valid while @penmsi_sem is held
++ */
++static DEFINE_SEMAPHORE(penmsi_sem);
++static DECLARE_WAIT_QUEUE_HEAD(penmsi_wq_head);
++static DEFINE_SPINLOCK(penmsi_lock);
++static struct platdata *init_platdata;
++static unsigned int num_uio_devs;
++
++#ifdef ADD_ATTRS
++struct penmsi_dir {
++	struct kobject	kobj;
++	struct msi_msg	*msi_msg;
++	size_t		msi_size;
++};
++
++struct msi {
++	int			counter;
++	struct penmsi_dir	*penmsi_dir;
++};
++
++static ssize_t msi_show(struct msi_msg *msi_msg, char *buf)
++{
++	memcpy(buf, msi_msg, sizeof(*msi_msg));
++	return sizeof(*msi_msg);
++}
++
++#ifdef ENABLE_STORE
++static ssize_t msi_store(struct msi_msg *msi_msg, const char *buf,
++			 size_t size)
++{
++	if (size != sizeof(*msi_msg))
++		return -EINVAL;
++
++	memcpy(msi_msg, buf, sizeof(*msi_msg));
++	return sizeof(*msi_msg);
++}
++#else
++static ssize_t msi_store(struct msi_msg *msi_msg, const char *buf,
++			 size_t size)
++{
++	return -EOPNOTSUPP;
++}
++#endif
++
++struct msi_sysfs_entry {
++	struct attribute attr;
++	ssize_t (*show)(struct msi_msg *msg, char *buf);
++	ssize_t (*store)(struct msi_msg *msg, const char *buf, size_t sz);
++};
++
++static struct msi_sysfs_entry msi_attribute =
++	__ATTR(msi, 0600, msi_show, msi_store);
++
++static struct attribute *msi_attrs[] = {
++	&msi_attribute.attr,
++	NULL,	/* need to NULL terminate the list of attributes */
++};
++
++ATTRIBUTE_GROUPS(msi);
++
++static void penmsi_rel(struct kobject *kobj)
++{
++	struct penmsi_dir *penmsi_dir = to_penmsi_dir(kobj);
++
++	kfree(penmsi_dir);
++}
++
++static ssize_t penmsi_show(struct kobject *kobj, struct attribute *attr,
++			     char *buf)
++{
++	struct penmsi_dir *penmsi_dir = to_penmsi_dir(kobj);
++	struct msi_msg *msi_msg = penmsi_dir->msi_msg;
++	struct msi_sysfs_entry *entry;
++
++	entry = container_of(attr, struct msi_sysfs_entry, attr);
++
++	if (entry->show == NULL)
++		return -EOPNOTSUPP;
++	return entry->show(msi_msg, buf);
++}
++
++#ifdef ENABLE_STORE
++static ssize_t penmsi_store(struct kobject *kobj, struct attribute *attr,
++	const char *buf, size_t size)
++{
++	struct penmsi_dir *penmsi_dir = to_penmsi_dir(kobj);
++	struct msi *msi = penmsi_dir->msi;
++	struct msi_sysfs_entry *entry;
++
++	entry = container_of(attr, struct msi_sysfs_entry, attr);
++
++	if (entry->show == NULL)
++		return -EOPNOTSUPP;
++
++	return entry->store(msi, buf, size);
++}
++#else
++static ssize_t penmsi_store(struct kobject *kobj, struct attribute *attr,
++	const char *buf, size_t size)
++{
++	return -EOPNOTSUPP;
++}
++#endif
++
++static const struct sysfs_ops penmsi_sysfs_ops = {
++	.show = penmsi_show,
++	.store = penmsi_store,
++};
++
++static struct kobj_type penmsi_attr_type = {
++	.release	= penmsi_rel,
++	.sysfs_ops	= &penmsi_sysfs_ops,
++	.default_groups = msi_groups,
++};
++
++static int add_attr(struct devdata *devdata)
++{
++	struct penmsi_dir *penmsi_dir;
++	struct uio_device *uio_dev;
++	int ret;
++
++	/*
++	 * Create a kobject for the directory in which the command interface
++	 * lives
++	 */
++	uio_dev = devdata->uio_info.uio_dev;
++
++	/* Allocate storage for the command file */
++	penmsi_dir = kzalloc(sizeof(*penmsi_dir), GFP_KERNEL);
++	if (penmsi_dir == NULL)
++		return -ENOMEM;
++	devdata->penmsi_dir = penmsi_dir;
++	devdata->penmsi_dir->msi_msg = &devdata->msi_msg;
++	devdata->penmsi_dir->msi_size = sizeof(devdata->msi_msg);
++	kobject_init(&devdata->penmsi_dir->kobj, &penmsi_attr_type);
++
++	ret = kobject_add(&devdata->penmsi_dir->kobj, &uio_dev->dev.kobj,
++		"pensando");
++	if (ret != 0)
++		goto remove_penmsi_dir;
++
++	ret = kobject_uevent(&devdata->penmsi_dir->kobj, KOBJ_ADD);
++	if (ret != 0)
++		goto remove_penmsi_dir;
++
++	return 0;
++
++remove_penmsi_dir:
++	kobject_put(&devdata->penmsi_dir->kobj);
++	kfree(devdata->penmsi_dir);
++	devdata->penmsi_dir = NULL;
++
++	dev_err(&uio_dev->dev, "error creating sysfiles (%d)\n", ret);
++	return -EIO;
++}
++
++static void del_attr(struct devdata *devdata)
++{
++	kobject_put(&devdata->penmsi_dir->kobj);
++	devdata->penmsi_dir = NULL;
++}
++
++static int adorn_with_attrs(struct devdata *devdata)
++{
++	int rc;
++
++	rc = add_attr(devdata);
++	if (rc != 0) {
++		dev_err(&devdata->platdata->pdev->dev, "%s failed: %d\n",
++			__func__, rc);
++		goto remove_attrs;
++	}
++
++	return 0;
++
++remove_attrs:
++	del_attr(devdata);
++	return rc;
++
++}
++
++static void del_attrs(struct platdata *platdata)
++{
++	unsigned int i;
++
++	for (i = 0; i < platdata->n_irqs; i++)
++		del_attr(&platdata->devdatas[i]);
++}
++#else
++static inline int add_attr(struct devdata *devdata) { return 0; }
++static inline void del_attr(struct devdata *devdata) { }
++static inline void del_attrs(struct platdata *platdata) { }
++#endif
++
++static int penmsi_open(struct uio_info *uio_info, struct inode *inode)
++{
++	struct platdata *platdata;
++	struct devdata *devdata;
++	int ret;
++
++	devdata = uio_info->priv;
++	if (devdata->open)
++		return -EBUSY;
++	devdata->open = true;
++	ret = 0;
++
++	platdata = devdata->platdata;
++	pm_runtime_get_sync(&platdata->pdev->dev);
++
++	return ret;
++}
++
++static int penmsi_release(struct uio_info *uio_info, struct inode *inode)
++{
++	struct devdata *devdata;
++
++	devdata = uio_info->priv;
++	devdata->open = false;
++	pm_runtime_put_sync(&devdata->platdata->pdev->dev);
++
++	return 0;
++}
++
++
++/*
++ * The interrupt is edge triggered, so if we don't do anything and just
++ * return, nothing bad will happen. Yes, this is a bit unusual but
++ * it's useful.
++ */
++static irqreturn_t penmsi_handler(int irq, struct uio_info *uio_info)
++{
++	return IRQ_HANDLED;
++}
++
++static void decrement_pending(struct platdata *platdata)
++{
++	platdata->n_pending--;
++	if (platdata->n_pending == 0)
++		up(&penmsi_sem);
++}
++
++/*
++ * MSI callback function.
++ * stores the information it was passed, and queues it on the inuse list.
++ *
++ */
++static void penmsi_callback(struct msi_desc *desc, struct msi_msg *msg)
++{
++	struct devdata *devdata;
++	struct platdata *platdata;
++	unsigned long flags;
++
++	platdata = init_platdata;
++	devdata = &platdata->devdatas[desc->msi_index];
++	devdata->msi_msg = *msg;
++
++	spin_lock_irqsave(&penmsi_lock, flags);
++	devdata->have_msi_msg = true;
++
++	if (devdata->have_msi_desc)
++		decrement_pending(platdata);
++	spin_unlock_irqrestore(&penmsi_lock, flags);
++}
++
++/*
++ * Remove the device completely
++ * @pdev:	Pointer to the struct platform_device we're using
++ */
++int penmsi_remove(struct platform_device *pdev)
++{
++	struct platdata *platdata;
++	unsigned int i;
++
++	platdata = platform_get_drvdata(pdev);
++	platform_msi_domain_free_irqs(&pdev->dev);
++	del_attrs(platdata);
++
++	// FIXME: this needs to use n_valid
++	for (i = 0; i < platdata->n_irqs; i++) {
++		struct devdata *devdata;
++		struct uio_info *uio_info;
++
++		devdata = &platdata->devdatas[i];
++		uio_info = &devdata->uio_info;
++		uio_unregister_device(uio_info);
++		kfree(uio_info->name);
++
++		/*
++		 * We're cheating with this, skip all the rest of the UIOs
++		 * so we don't free anything we shouldn't. This is going to
++		 * result in a memory leak.
++		 */
++		break;
++	}
++
++	kfree(platdata);
++
++	return 0;
++}
++EXPORT_SYMBOL(penmsi_remove);
++
++static int penmsi_probe_one(struct devdata *devdata,
++	struct platform_device *pdev, struct msi_desc *desc)
++{
++	struct uio_info *uio_info;
++	const char *dt_name;
++	char name_buf[32];
++	int rc;
++
++	uio_info = &devdata->uio_info;
++
++	rc = of_property_read_string(pdev->dev.of_node, "name", &dt_name);
++	if (rc != 0)
++		dt_name = "penmsiX";
++	snprintf(name_buf, sizeof(name_buf), "%s.%u", dt_name, num_uio_devs);
++	num_uio_devs++;
++	uio_info->name = kstrdup(name_buf, GFP_KERNEL);
++	if (uio_info->name == NULL)
++		return -ENOMEM;
++
++	/*
++	 * Only take one interrupt because UIO won't let us pass more than
++	 * that
++	 */
++	uio_info->priv = devdata;
++	uio_info->version = "0.1";
++	uio_info->open = penmsi_open;
++	uio_info->release = penmsi_release;
++	uio_info->handler = penmsi_handler;
++	uio_info->irq = desc->irq;
++	uio_info->irq_flags = IRQF_SHARED;
++
++	/* Ready to be a grown up UIO device now */
++	rc = uio_register_device(&pdev->dev, uio_info);
++	if (rc != 0) {
++		dev_err(&pdev->dev, "can't register UIO device");
++		goto free_name;
++	}
++
++	rc = adorn_with_attrs(devdata);
++	if (rc != 0)
++		goto unregister_uio;
++
++	return 0;
++
++unregister_uio:
++	uio_unregister_device(uio_info);
++
++free_name:
++	kfree(uio_info->name);
++	uio_info->name = NULL;
++
++	return rc;
++}
++
++/*
++ * Allocate a struct platdata with all of its devdata structures.
++ *
++ * Returns the a pointer to the allocated platdata on success, NULL otherwise
++ */
++static struct platdata *alloc_devdatas(unsigned int n)
++{
++	unsigned int i;
++	struct platdata *platdata;
++
++	platdata = kzalloc(offsetof(struct platdata, devdatas[n]), GFP_KERNEL);
++	if (platdata == NULL)
++		return platdata;
++
++	for (i = 0; i < n; i++)
++		platdata->devdatas[i].platdata = platdata;
++
++	platdata->n_pending = n;
++	platdata->n_irqs = n;
++
++	return platdata;
++}
++
++/*
++ * penmsi_probe - allocate and initialize state for device
++ */
++int penmsi_probe(struct platform_device *pdev)
++{
++	struct msi_desc *desc;
++	struct platdata *platdata;
++	struct devdata *devdata;
++	u32 num_interrupts;
++	int rc;
++
++	num_uio_devs = 0;
++	rc = of_property_read_u32(pdev->dev.of_node, "num-interrupts",
++		&num_interrupts);
++	if (rc != 0) {
++		dev_err(&pdev->dev, "num-interrupts property missing\n");
++		return rc;
++	}
++	if (num_interrupts == 0) {
++		dev_err(&pdev->dev, "num-interrupts property must be >0\n");
++		return -EINVAL;
++	}
++
++	platdata = alloc_devdatas(num_interrupts);
++	platform_set_drvdata(pdev, platdata);
++	platdata->n_irqs = num_interrupts;
++	platdata->pdev = pdev;
++
++	/* Due to the way MSI passes back information, we want to allocate
++	 * MSI IRQs one at a time.
++	 */
++	down(&penmsi_sem);
++	init_platdata = platdata;
++
++	/* Kick off work that should result in calling the callback */
++	rc = platform_msi_domain_alloc_irqs(&pdev->dev, num_interrupts,
++		penmsi_callback);
++	if (rc != 0) {
++		dev_err(&pdev->dev,
++			"platform_msi_domain_alloc_irqs failed: %d\n", rc);
++		goto up_sem;
++	}
++
++	msi_for_each_desc(desc, &pdev->dev, MSI_DESC_ASSOCIATED) {
++		unsigned long flags;
++
++		devdata = &platdata->devdatas[desc->msi_index];
++		spin_lock_irqsave(&penmsi_lock, flags);
++		devdata->have_msi_desc = true;
++		if (devdata->have_msi_msg)
++			decrement_pending(platdata);
++		spin_unlock_irqrestore(&penmsi_lock, flags);
++		rc = penmsi_probe_one(devdata, pdev, desc);
++		if (rc != 0)
++			goto free_msis;
++	}
++
++	init_platdata = NULL;		// Don't use this again
++	up(&penmsi_sem);
++
++	/* Map the device */
++	rc = dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(64));
++	if (rc != 0) {
++		dev_err(&pdev->dev, "no valid coherent DMA mask");
++		goto free_msis;
++	}
++
++	pm_runtime_enable(&pdev->dev);
++
++	return 0;
++
++free_msis:
++	platform_msi_domain_free_irqs(&pdev->dev);
++
++up_sem:
++	up(&penmsi_sem);
++	kfree(platdata);
++	return rc;
++
++}
++EXPORT_SYMBOL(penmsi_probe);
++
++/*
++ * penmsi_pm_nop - Power management stub that just returns success
++ *
++ * We leave it to other drivers to handle the device power management
++ * operations, if any.
++ */
++static int penmsi_pm_nop(struct device *dev)
++{
++	return 0;
++}
++
++const struct dev_pm_ops penmsi_pm_ops = {
++	.runtime_suspend = penmsi_pm_nop,
++	.runtime_resume = penmsi_pm_nop,
++};
++EXPORT_SYMBOL(penmsi_pm_ops);
++
++MODULE_LICENSE("GPL v2");
++MODULE_DESCRIPTION("Support userspace I/O for Pensando MSIX interrupts");
++MODULE_AUTHOR("David VomLehn");
+diff --git a/drivers/uio/uio_penmsi.h b/drivers/uio/uio_penmsi.h
+new file mode 100644
+index 000000000..6cbc4fb74
+--- /dev/null
++++ b/drivers/uio/uio_penmsi.h
+@@ -0,0 +1,17 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (c) 2020-2021, Pensando Systems Inc.
++ */
++
++#ifndef _UIO_PENMSI_H_
++#define _UIO_PENMSI_H_
++
++#include <linux/of.h>
++#include <linux/platform_device.h>
++
++extern const struct dev_pm_ops penmsi_pm_ops;
++
++int penmsi_probe(struct platform_device *pdev);
++int penmsi_remove(struct platform_device *pdev);
++
++#endif /* _UIO_PENMSI_H_ */
+diff --git a/drivers/uio/uio_penmsi1.c b/drivers/uio/uio_penmsi1.c
+new file mode 100644
+index 000000000..14aec074c
+--- /dev/null
++++ b/drivers/uio/uio_penmsi1.c
+@@ -0,0 +1,32 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (c) 2020-2021, Pensando Systems Inc.
++ */
++
++#include <linux/module.h>
++#include "uio_penmsi.h"
++
++#define DRIVER_NAME_MSIX1	"uio_penmsi1"
++
++#ifdef CONFIG_OF
++static const struct of_device_id penmsi_match[] = {
++	{ .compatible = "pensando,uio_penmsi1" },
++	{ /* Mark the end of the list */ },
++};
++#endif
++
++static struct platform_driver penmsi1 = {
++	.probe = penmsi_probe,
++	.remove = penmsi_remove,
++	.driver = {
++		.name = DRIVER_NAME_MSIX1,
++		.pm = &penmsi_pm_ops,
++		.of_match_table = of_match_ptr(penmsi_match),
++	}
++};
++
++module_platform_driver(penmsi1);
++
++MODULE_LICENSE("GPL v2");
++MODULE_DESCRIPTION("Support userspace I/O for Pensando MSI interrupts");
++MODULE_AUTHOR("David VomLehn");
+-- 
+2.25.1
+

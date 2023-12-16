@@ -1,0 +1,307 @@
+From 4c968c1ea9f5b87733e0038b2f66a35f48232e6f Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 10:07:36 +0000
+Subject: [PATCH] drivers/pensando/soc:Boot State Machine integrtion
+
+The Pensando BSM interacts with the boot firmware to provide a level
+of recovery should a Linux image fail to start.  If the BSM is
+armed and a kernel panic + reset occur, then the boot firmware
+will consider the loaded image as bad and will select the alternate
+image to boot next.
+
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
+---
+ arch/arm64/boot/dts/pensando/elba.dtsi |   5 +
+ drivers/soc/pensando/Kconfig           |  13 ++
+ drivers/soc/pensando/Makefile          |   3 +
+ drivers/soc/pensando/bsm_dev.h         |  24 ++++
+ drivers/soc/pensando/cap_bsm.c         | 159 +++++++++++++++++++++++++
+ drivers/soc/pensando/cap_soc.c         |  25 ++++
+ 6 files changed, 229 insertions(+)
+ create mode 100644 drivers/soc/pensando/bsm_dev.h
+ create mode 100644 drivers/soc/pensando/cap_bsm.c
+ create mode 100644 drivers/soc/pensando/cap_soc.c
+
+diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
+index 9182c93aa..e88c2302b 100644
+--- a/arch/arm64/boot/dts/pensando/elba.dtsi
++++ b/arch/arm64/boot/dts/pensando/elba.dtsi
+@@ -259,5 +259,10 @@ mssoc: mssoc@307c0000 {
+ 			compatible = "pensando,mssoc", "syscon";
+ 			reg = <0x0 0x307c0000 0x0 0x3000>;
+ 		};
++
++		bsm@307c2080 {
++			compatible = "pensando,bsm";
++			reg = <0x0 0x307c2080 0x0 0x4>;
++		};
+ 	};
+ };
+diff --git a/drivers/soc/pensando/Kconfig b/drivers/soc/pensando/Kconfig
+index abe01eac6..eb1494e94 100644
+--- a/drivers/soc/pensando/Kconfig
++++ b/drivers/soc/pensando/Kconfig
+@@ -15,6 +15,19 @@ config PENSANDO_SOC_CAPMEM
+ 	help
+ 	  Support for the Pensando SoC memory driver
+ 
++config PENSANDO_SOC_BSM
++	bool "Pensando SoC Boot State Machine"
++	depends on OF
++	default y
++	help
++	  Support for the Pensando SoC boot state machine driver
++
++config PENSANDO_SOC_BSM_ENABLE
++	bool "Enable the Boot State Machine in the kernel"
++        depends on PENSANDO_SOC_BSM
++	help
++	  Re-enable the BSM on kernel startup
++
+ endmenu
+ 
+ endif
+diff --git a/drivers/soc/pensando/Makefile b/drivers/soc/pensando/Makefile
+index fcfb67425..bf4f46fee 100644
+--- a/drivers/soc/pensando/Makefile
++++ b/drivers/soc/pensando/Makefile
+@@ -1,6 +1,9 @@
+ #
+ # Pensando SoC drivers
+ #
++obj-y += cap_soc.o
++
+ CFLAGS_cap_mem.o := -I$(src)
+ 
+ obj-$(CONFIG_PENSANDO_SOC_CAPMEM) += cap_mem.o
++obj-$(CONFIG_PENSANDO_SOC_BSM) += cap_bsm.o
+diff --git a/drivers/soc/pensando/bsm_dev.h b/drivers/soc/pensando/bsm_dev.h
+new file mode 100644
+index 000000000..7e31269e3
+--- /dev/null
++++ b/drivers/soc/pensando/bsm_dev.h
+@@ -0,0 +1,24 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (c) 2019-2021, Pensando Systems Inc.
++ */
++
++#ifndef _BSM_DEV_H_
++#define _BSM_DEV_H_
++
++#define BSM_WDT_LSB		10
++#define BSM_WDT_MASK		0x1
++#define BSM_FWID_LSB		8
++#define BSM_FWID_MASK		0x3
++#define BSM_ATTEMPT_LSB		6
++#define BSM_ATTEMPT_MASK	0x3
++#define BSM_TRACK_LSB		4
++#define BSM_TRACK_MASK		0x3
++#define BSM_STAGE_LSB		2
++#define BSM_STAGE_MASK		0x3
++#define BSM_RUNNING_LSB		1
++#define BSM_RUNNING_MASK	0x1
++#define BSM_AUTOBOOT_LSB	0
++#define BSM_AUTOBOOT_MASK	0x1
++
++#endif
+diff --git a/drivers/soc/pensando/cap_bsm.c b/drivers/soc/pensando/cap_bsm.c
+new file mode 100644
+index 000000000..a55039fbf
+--- /dev/null
++++ b/drivers/soc/pensando/cap_bsm.c
+@@ -0,0 +1,159 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (c) 2019-2021, Pensando Systems Inc.
++ */
++
++#include <linux/export.h>
++#include <linux/platform_device.h>
++#include <linux/of.h>
++#include <linux/of_address.h>
++#include <linux/io.h>
++#include "bsm_dev.h"
++
++extern struct kobject *pensando_fw_kobj_get(void);
++
++struct bsm {
++	void __iomem *base;
++	uint32_t val;
++};
++static struct bsm bsm;
++
++#define BSM_SHOW_INT(n, s) \
++	static ssize_t n##_show(struct device *dev,			\
++			struct device_attribute *attr, char *buf)	\
++	{								\
++		int val = (bsm.val >> BSM_##s##_LSB) & BSM_##s##_MASK;	\
++		return sprintf(buf, "%d\n", val);			\
++	}								\
++	static DEVICE_ATTR_RO(n);
++
++BSM_SHOW_INT(wdt,      WDT)
++BSM_SHOW_INT(attempt,  ATTEMPT)
++BSM_SHOW_INT(stage,    STAGE)
++BSM_SHOW_INT(running,  RUNNING)
++BSM_SHOW_INT(autoboot, AUTOBOOT)
++
++static const char *fwnames[4] = {
++	"mainfwa", "mainfwb", "goldfw", "diagfw"
++};
++
++#define BSM_SHOW_FWID(n, s) \
++	static ssize_t n##_show(struct device *dev,			\
++			struct device_attribute *attr, char *buf)	\
++	{								\
++		int val = (bsm.val >> BSM_##s##_LSB) & BSM_##s##_MASK;	\
++		return sprintf(buf, "%s\n", fwnames[val & 0x3]);	\
++	}								\
++	static DEVICE_ATTR_RO(n);
++
++BSM_SHOW_FWID(fwid,  FWID)
++BSM_SHOW_FWID(track, TRACK)
++
++static ssize_t success_store(struct device *dev,
++		struct device_attribute *attr, const char *buf, size_t count)
++{
++	long val;
++
++	if (kstrtoul(buf, 0, &val) < 0)
++		return -EINVAL;
++	if (val) {
++		bsm.val &= ~(1 << BSM_RUNNING_LSB);
++		writel(bsm.val, bsm.base);
++	}
++
++	return count;
++}
++static DEVICE_ATTR_WO(success);
++
++static const struct device_attribute *bsm_attrs[] = {
++	&dev_attr_wdt,
++	&dev_attr_fwid,
++	&dev_attr_attempt,
++	&dev_attr_track,
++	&dev_attr_stage,
++	&dev_attr_running,
++	&dev_attr_autoboot,
++	&dev_attr_success,
++};
++
++static int bsm_probe(struct platform_device *pdev)
++{
++	struct kobject *pensando_kobj;
++	int i, r = 0;
++
++	if (bsm.base == NULL) {
++		/* bsm not in device-tree */
++		return -ENODEV;
++	}
++	pensando_kobj = pensando_fw_kobj_get();
++	if (!pensando_kobj)
++		return -ENOMEM;
++	for (i = 0; i < ARRAY_SIZE(bsm_attrs); i++) {
++		r = device_create_file(&pdev->dev, bsm_attrs[i]);
++		if (r) {
++			pr_err("failed to create sysfs file\n");
++			return r;
++		}
++	}
++	r = sysfs_create_link(pensando_kobj, &pdev->dev.kobj, "bsm");
++	if (r) {
++		pr_err("failed to create sysfs symlink\n");
++		kobject_put(pensando_kobj);
++		return r;
++	}
++	return 0;
++}
++
++static const struct of_device_id bsm_of_match[] = {
++	{ .compatible = "pensando,bsm" },
++};
++
++static struct platform_driver bsm_driver = {
++	.driver = {
++		.name = "capri-bsm",
++		.of_match_table = bsm_of_match,
++		.suppress_bind_attrs = true,
++	},
++	.probe = bsm_probe,
++};
++builtin_platform_driver(bsm_driver);
++
++/*
++ * Boot State Machine init.
++ * If auto-booting, then set the BSM_RUNNING bit in the BSM register
++ * to continue BSM protection.	The bit will be cleared when userland comes up.
++ */
++static int __init cap_bsm_init(void)
++{
++	const struct of_device_id *match;
++	struct device_node *np;
++	struct resource res;
++
++	np = of_find_matching_node_and_match(NULL, bsm_of_match, &match);
++	if (!np) {
++		/* Not found in the device-tree.  Quietly resign */
++		return 0;
++	}
++	if (of_address_to_resource(np, 0, &res) < 0) {
++		pr_err("failed to get BSM registers\n");
++		of_node_put(np);
++		return -ENXIO;
++	}
++	of_node_put(np);
++
++	bsm.base = ioremap(res.start, resource_size(&res));
++	if (!bsm.base) {
++		pr_err("failed to map BSM register\n");
++		return -ENXIO;
++	}
++
++	bsm.val = readl(bsm.base);
++#ifdef CONFIG_PENSANDO_SOC_BSM_ENABLE
++	if (bsm.val & (1 << BSM_AUTOBOOT_LSB)) {
++		bsm.val |= 1 << BSM_RUNNING_LSB;
++		writel(bsm.val, bsm.base);
++	}
++#endif
++	return 0;
++}
++early_initcall(cap_bsm_init);
+diff --git a/drivers/soc/pensando/cap_soc.c b/drivers/soc/pensando/cap_soc.c
+new file mode 100644
+index 000000000..9942c2034
+--- /dev/null
++++ b/drivers/soc/pensando/cap_soc.c
+@@ -0,0 +1,25 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (c) 2021, Pensando Systems Inc.
++ */
++
++#include <linux/export.h>
++#include <linux/kobject.h>
++
++static struct kobject *pensando_fw_kobj;
++
++/*
++ * Creates a new pensando sysfs node if it does not exists. The kobj is
++ * returned after incrementing the refcnt, so a module should use kobject_put()
++ * when it is done using this koject.
++ */
++struct kobject *pensando_fw_kobj_get(void)
++{
++	if (!pensando_fw_kobj) {
++		pensando_fw_kobj = kobject_create_and_add("pensando", firmware_kobj);
++		if (!pensando_fw_kobj)
++			return NULL;
++	}
++	return kobject_get(pensando_fw_kobj);
++}
++EXPORT_SYMBOL_GPL(pensando_fw_kobj_get);
+-- 
+2.39.2
+

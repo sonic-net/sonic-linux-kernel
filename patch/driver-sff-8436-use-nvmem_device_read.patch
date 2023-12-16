@@ -49,7 +49,7 @@ index 9e6a7bf43..4688597eb 100644
 -
 -/*-------------------------------------------------------------------------*/
 -
- static int sff_8436_remove(struct i2c_client *client)
+ static void sff_8436_remove(struct i2c_client *client)
  {
  	struct sff_8436_data *sff_8436;
 @@ -861,8 +836,6 @@ static int sff_8436_eeprom_probe(struct i2c_client *client,

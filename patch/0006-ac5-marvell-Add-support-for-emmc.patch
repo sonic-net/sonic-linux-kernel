@@ -1,0 +1,76 @@
+From: Keshav Gupta <keshavg@marvell.com>
+Date: Tue, 10 Oct 2023 06:57:22 +0000
+Subject: [PATCH] ac5: marvell: Add support for emmc
+
+This patch adds ac5-sdhci compatible checks in Marvell Xenon SDHCI
+Controller for emmc support in 98DX25xx SoC.
+
+Tested-by: Raz Adashi <raza@marvell.com>
+Reviewed-by: Raz Adashi <raza@marvell.com>
+Signed-off-by: Noam Liron <lnoam@marvell.com>
+---
+ drivers/mmc/host/sdhci-xenon.c | 12 ++++++++++++
+ drivers/mmc/host/sdhci-xenon.h |  3 ++-
+ 2 files changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/mmc/host/sdhci-xenon.c b/drivers/mmc/host/sdhci-xenon.c
+index 08e838400..d885752dc 100644
+--- a/drivers/mmc/host/sdhci-xenon.c
++++ b/drivers/mmc/host/sdhci-xenon.c
+@@ -18,6 +18,7 @@
+ #include <linux/of.h>
+ #include <linux/pm.h>
+ #include <linux/pm_runtime.h>
++#include <linux/of_reserved_mem.h>
+ 
+ #include "sdhci-pltfm.h"
+ #include "sdhci-xenon.h"
+@@ -422,6 +423,8 @@ static int xenon_probe_params(struct platform_device *pdev)
+ 	struct xenon_priv *priv = sdhci_pltfm_priv(pltfm_host);
+ 	u32 sdhc_id, nr_sdhc;
+ 	u32 tuning_count;
++	struct sysinfo si;
++	struct device_node *np = pdev->dev.of_node;
+ 
+ 	/* Disable HS200 on Armada AP806 */
+ 	if (priv->hw_version == XENON_AP806)
+@@ -450,6 +453,14 @@ static int xenon_probe_params(struct platform_device *pdev)
+ 	}
+ 	priv->tuning_count = tuning_count;
+ 
++	si_meminfo(&si);
++	if (of_device_is_compatible(np, "marvell,ac5-sdhci") &&
++			((si.totalram * si.mem_unit) > 0x80000000 /*2G*/)) {
++		host->quirks |= SDHCI_QUIRK_BROKEN_DMA;
++		host->quirks |= SDHCI_QUIRK_BROKEN_ADMA;
++		dev_info(mmc_dev(mmc), "Disabling DMA because of 2GB DMA access limit.\n");
++	}
++
+ 	return xenon_phy_parse_params(dev, host);
+ }
+ 
+@@ -682,6 +693,7 @@ static const struct of_device_id sdhci_xenon_dt_ids[] = {
+ 	{ .compatible = "marvell,armada-ap807-sdhci", .data = (void *)XENON_AP807},
+ 	{ .compatible = "marvell,armada-cp110-sdhci", .data =  (void *)XENON_CP110},
+ 	{ .compatible = "marvell,armada-3700-sdhci", .data =  (void *)XENON_A3700},
++	{ .compatible = "marvell,ac5-sdhci", .data =  (void *)XENON_AC5},
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(of, sdhci_xenon_dt_ids);
+diff --git a/drivers/mmc/host/sdhci-xenon.h b/drivers/mmc/host/sdhci-xenon.h
+index 3e9c6c908..0460d97aa 100644
+--- a/drivers/mmc/host/sdhci-xenon.h
++++ b/drivers/mmc/host/sdhci-xenon.h
+@@ -57,7 +57,8 @@ enum xenon_variant {
+ 	XENON_A3700,
+ 	XENON_AP806,
+ 	XENON_AP807,
+-	XENON_CP110
++	XENON_CP110,
++	XENON_AC5
+ };
+ 
+ struct xenon_priv {
+-- 
+2.25.1
+
