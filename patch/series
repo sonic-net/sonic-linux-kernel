@@ -150,7 +150,6 @@ cisco-npu-disable-other-bars.patch
 0002-arm64-dts-Update-cache-properties-for-marvell.patch
 0003-dt-bindings-ac5-Add-mmc-and-usb-properties.patch
 0004-dts-ac5-marvell-Add-switching-mmc-watchdog-node.patch
-0005-ac5-marvell-Add-watchdog-support.patch
 0006-ac5-marvell-Add-support-for-emmc.patch
 0007-usb-ehci-Add-support-for-ac5.patch
 0008-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch
