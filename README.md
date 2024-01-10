@@ -50,3 +50,9 @@ If the files patch/kconfig-exclusions and patch/kconfig-inclusions exist, they w
 Also, the final kernel configuration will be checked to verify that:
 - all options asked to be excluded are effectively not present in the kernel,
 - and all options asked to be included are effectively present in the kernel, using the exact type (module or built-in) or string or number.
+
+## Kernel Configuration Difference during Upgrades
+
+During Kernel Upgrades, the maintainer must update the configuration diff in the wiki of this repo. This acts as a guide for keeping track of configuration changes between Kernel upgrades. Applies for minor version upgrades as well
+
+The diff is saved as kconfig-diff-{platform}-{arch}.rst under the artifacts of Azure.sonic-linux-kernel job runs.

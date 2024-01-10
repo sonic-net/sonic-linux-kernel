@@ -1,2 +1,3 @@
 **/*
 !*.deb
+!kconfig-diff-*.rst

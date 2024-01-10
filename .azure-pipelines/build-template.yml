@@ -32,6 +32,9 @@ parameters:
 - name: artifact_name
   type: string
 
+- name: linux_deb_pattern
+  type: string
+
 jobs:
 - job:
   pool: ${{ parameters.pool }}
@@ -44,7 +47,17 @@ jobs:
   steps:
   - checkout: self
     clean: true
-    displayName: 'Checkout code'
+    displayName: 'Checkout code'  
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: specific
+      project: build
+      pipelineId: 426041
+      artifact: ${{ parameters.artifact_name }}
+      runVersion: 'specific'
+      itemPattern: ${{ parameters.linux_deb_pattern }}
+      targetPath: $(Agent.TempDirectory)/
+    displayName: "Download the linux-image artifact from the last build with a different kernel version"
   - script: |
       git config --global user.email "lguohan@build.com"
       git config --global user.name "Guohan Lu"
@@ -52,6 +65,19 @@ jobs:
       cat /proc/cpuinfo
       CONFIGURED_ARCH=${{ parameters.arch }} CONFIGURED_PLATFORM=${{ parameters.platform }} make
     displayName: "Compile sonic kernel"
+  - script: |
+      dpkg-deb -x $(Agent.TempDirectory)/${{ parameters.linux_deb_pattern }} $(Agent.TempDirectory)/old
+      dpkg-deb -x $(System.DefaultWorkingDirectory)/${{ parameters.linux_deb_pattern }} $(Agent.TempDirectory)/new
+      pip3 install tabulate
+      python3 $(System.DefaultWorkingDirectory)/.azure-pipelines/kcfg-diff.py \
+              --buildid $(Build.BuildId) \
+              --ref_buildid 426041 \
+              --arch ${{ parameters.arch }} \
+              --old_kcfg $(Agent.TempDirectory)/old/boot/ \
+              --new_kcfg $(Agent.TempDirectory)/new/boot/ \
+              --output $(System.DefaultWorkingDirectory)/kconfig-diff-${{ parameters.platform }}-${{ parameters.arch }}.rst
+      cat $(System.DefaultWorkingDirectory)/kconfig-diff-${{ parameters.platform }}-${{ parameters.arch }}.rst
+    displayName: "Compute the kconfig diff"
   - publish: $(System.DefaultWorkingDirectory)/
     artifact: ${{ parameters.artifact_name }}
     displayName: "Archive sonic kernel debian packages"

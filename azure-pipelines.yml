@@ -17,6 +17,7 @@ stages:
       arch: amd64
       sonic_slave: sonic-slave-bookworm
       artifact_name: sonic-linux-kernel
+      linux_deb_pattern: linux-image-*-unsigned_*deb
 
   - template: .azure-pipelines/build-template.yml
     parameters:
@@ -24,6 +25,7 @@ stages:
       pool: sonicbld-arm64
       sonic_slave: sonic-slave-bookworm-arm64
       artifact_name: sonic-linux-kernel.arm64
+      linux_deb_pattern: linux-image-*-unsigned_*deb
 
   - template: .azure-pipelines/build-template.yml
     parameters:
@@ -31,6 +33,7 @@ stages:
       pool: sonicbld-armhf
       sonic_slave: sonic-slave-bookworm-armhf
       artifact_name: sonic-linux-kernel.armhf
+      linux_deb_pattern: linux-image-*-armmp_*deb
 
   - template: .azure-pipelines/build-template.yml
     parameters:
@@ -39,4 +42,5 @@ stages:
       pool: sonicbld-arm64
       sonic_slave: sonic-slave-bookworm-arm64
       artifact_name: sonic-linux-kernel.pensando.arm64
+      linux_deb_pattern: linux-image-*-unsigned_*deb
 
