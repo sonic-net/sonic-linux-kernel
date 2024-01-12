@@ -6,7 +6,7 @@ This patch adds following changes to 98DX25xx and 98DX35xx SoC,
 	- SDMA(Subsystem DMA engine) node for control path Rx/Tx.
 	- prestera node for interupt handing from switching ASIC.
 	- mmc node using Xenon SDHCI Controller.
-	- watchdog node.
+	- arm watchdog node.
 	- clock-frequency in timer node.
 	- ac5-ehci compatible string in usb.
 
@@ -14,12 +14,12 @@ Signed-off-by: Yuval Shaia <yshaia@marvell.com>
 Tested-by: Raz Adashi <raza@marvell.com>
 Reviewed-by: Raz Adashi <raza@marvell.com>
 ---
- arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi | 47 ++++++++++++++++++-
- .../boot/dts/marvell/ac5-98dx35xx-rd.dts      |  8 ++++
- 2 files changed, 54 insertions(+), 1 deletion(-)
+ arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi | 44 ++++++++++++++++++-
+ .../boot/dts/marvell/ac5-98dx35xx-rd.dts      | 10 ++++-
+ 2 files changed, 52 insertions(+), 2 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
-index 8bce64069..f1f96799b 100644
+index 8bce64069..b4ca6ba4d 100644
 --- a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
 +++ b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
 @@ -64,6 +64,7 @@ timer {
@@ -70,7 +70,7 @@ index 8bce64069..f1f96799b 100644
  				reg = <0x0 0x80000 0x0 0x500>;
  				interrupts = <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;
  				status = "disabled";
-@@ -296,6 +321,20 @@ spi1: spi@805a8000 {
+@@ -296,6 +321,17 @@ spi1: spi@805a8000 {
  			status = "disabled";
  		};
  
@@ -80,18 +80,15 @@ index 8bce64069..f1f96799b 100644
 +			status = "okay";
 +		};
 +
-+		watchdog@80216000 {
-+			compatible = "marvell,ac5-wd";
-+			reg = <0x0 0x80216000 0 0x1000>,
-+			      <0x0 0x80215000 0 0x1000>;
-+			interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>;
-+			timeout-sec = <30>;
++		wdog {
++			compatible = "arm,smc-wdt";
++			status = "okay";
 +		};
 +
  		gic: interrupt-controller@80600000 {
  			compatible = "arm,gic-v3";
  			#interrupt-cells = <3>;
-@@ -318,5 +357,11 @@ spi_clock: spi-clock {
+@@ -318,5 +354,11 @@ spi_clock: spi-clock {
  			#clock-cells = <0>;
  			clock-frequency = <200000000>;
  		};
@@ -104,9 +101,18 @@ index 8bce64069..f1f96799b 100644
  	};
  };
 diff --git a/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts b/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts
-index f0ebdb84e..45c305d46 100644
+index f0ebdb84e..4b31390c3 100644
 --- a/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts
 +++ b/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts
+@@ -29,7 +29,7 @@ aliases {
+ 
+ 	memory@0 {
+ 		device_type = "memory";
+-		reg = <0x2 0x00000000 0x0 0x40000000>;
++		reg = <0x2 0x00000000 0x1 0x00000000>;
+ 	};
+ 
+ 	usb1phy: usb-phy {
 @@ -99,3 +99,11 @@ parition@2 {
  		};
  	};
