@@ -156,6 +156,7 @@ cisco-npu-disable-other-bars.patch
 0009-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
 0010-dts-marvell-Add-support-for-7020-comexpress.patch
 0011-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch
+0012-net-mvpp2-clear-BM-pool-before-initialization.patch
 
 # amd-pensando elba support
 0000-Add-support-for-the-TI-TPS53659.patch
