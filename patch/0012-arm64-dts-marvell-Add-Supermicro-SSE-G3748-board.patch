@@ -1,8 +1,23 @@
+From 4b3be1646f59845bd3f81be94224eff13dca560f Mon Sep 17 00:00:00 2001
+From: SelvaSupermicro <selvarajr@supermicro.com>
+Date: Wed, 17 Jan 2024 18:09:27 -0800
+Subject: [PATCH] Add Supermicro SSE-G3748 board support
+
+---
+ arch/arm64/boot/dts/marvell/Makefile          |   1 +
+ arch/arm64/boot/dts/marvell/smc_sse-g3748.dts | 115 +++++
+ .../boot/dts/marvell/smc_sse-g3748_ac5.dtsi   | 397 ++++++++++++++++++
+ .../boot/dts/marvell/smc_sse-g3748_ac5x.dtsi  |  18 +
+ 4 files changed, 531 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/marvell/smc_sse-g3748.dts
+ create mode 100644 arch/arm64/boot/dts/marvell/smc_sse-g3748_ac5.dtsi
+ create mode 100644 arch/arm64/boot/dts/marvell/smc_sse-g3748_ac5x.dtsi
+
 diff --git a/arch/arm64/boot/dts/marvell/Makefile b/arch/arm64/boot/dts/marvell/Makefile
-index b53edc9b7..61c3d9b80 100644
+index 310b57e47..88cef592e 100644
 --- a/arch/arm64/boot/dts/marvell/Makefile
 +++ b/arch/arm64/boot/dts/marvell/Makefile
-@@ -19,3 +19,4 @@ dtb-$(CONFIG_ARCH_MVEBU) += cn9132-db.dtb
+@@ -28,3 +28,4 @@ dtb-$(CONFIG_ARCH_MVEBU) += cn9130-crb-B.dtb
  dtb-$(CONFIG_ARCH_MVEBU) += ac5-98dx35xx-rd.dtb
  dtb-$(CONFIG_ARCH_MVEBU) += armada-7020-comexpress.dtb
  dtb-$(CONFIG_ARCH_MVEBU) += 7215-ixs-a1.dtb
@@ -555,3 +570,6 @@ index 000000000..11f26230c
 +&cnm_clock {
 +	clock-frequency = <325000000>;
 +};
+-- 
+2.25.1
+
