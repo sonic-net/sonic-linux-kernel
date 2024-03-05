@@ -13,6 +13,8 @@ CONFIG_CGROUP_NET_PRIO
 # Unset X86_PAT according to Broadcom's requirement
 CONFIG_X86_PAT
 CONFIG_MLXSW_PCI
+# Unset to enable UBIFS on flash
+CONFIG_MTD_SPI_NOR_USE_4K_SECTORS
 ###-> mellanox_amd64-start
 ###-> mellanox_amd64-end
 
