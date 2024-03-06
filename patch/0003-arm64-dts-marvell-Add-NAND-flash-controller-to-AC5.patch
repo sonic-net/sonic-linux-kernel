@@ -1,0 +1,52 @@
+From 58fe732052196777112fdba536fb9db5cdd42ec6 Mon Sep 17 00:00:00 2001
+From: Chris Packham <chris.packham@alliedtelesis.co.nz>
+Date: Mon, 3 Jul 2023 15:50:43 +1200
+Subject: arm64: dts: marvell: Add NAND flash controller to AC5
+
+The AC5/AC5X SoC has a NAND flash controller (NFC). Add this to
+the base SoC dtsi file as a disabled node. The NFC integration
+on the AC5/AC5X only supports SDR timing modes up to 3 so requires a
+dedicated compatible property so this limitation can be enforced.
+
+Signed-off-by: Chris Packham <chris.packham@alliedtelesis.co.nz>
+Signed-off-by: Gregory CLEMENT <gregory.clement@bootlin.com>
+---
+ arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
+index 67c4688546b8..62d03ffa9485 100644
+--- a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
++++ b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
+@@ -297,6 +297,16 @@ spi1: spi@805a8000 {
+ 			status = "disabled";
+ 		};
+ 
++		nand: nand-controller@805b0000 {
++			compatible = "marvell,ac5-nand-controller";
++			reg =  <0x0 0x805b0000 0x0 0x00000054>;
++			#address-cells = <0x1>;
++			#size-cells = <0x0>;
++			interrupts = <GIC_SPI 89 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&nand_clock>;
++			status = "disabled";
++		};
++
+ 		gic: interrupt-controller@80600000 {
+ 			compatible = "arm,gic-v3";
+ 			#interrupt-cells = <3>;
+@@ -319,5 +329,11 @@ spi_clock: spi-clock {
+ 			#clock-cells = <0>;
+ 			clock-frequency = <200000000>;
+ 		};
++
++		nand_clock: nand-clock {
++			compatible = "fixed-clock";
++			#clock-cells = <0>;
++			clock-frequency = <400000000>;
++		};
+ 	};
+ };
+-- 
+2.25.1
+
