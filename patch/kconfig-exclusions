@@ -6,6 +6,8 @@ CONFIG_CGROUP_NET_CLASSID
 CONFIG_NET_CLS_CGROUP
 CONFIG_NETFILTER_XT_MATCH_CGROUP
 CONFIG_CGROUP_NET_PRIO
+# Unset to enable UBIFS on flash
+CONFIG_MTD_SPI_NOR_USE_4K_SECTORS
 ###-> mellanox_common-start
 ###-> mellanox_common-end
 
