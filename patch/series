@@ -148,15 +148,18 @@ cisco-npu-disable-other-bars.patch
 # Marvell platform patches for 6.1 kernel
 0001-armhf_secondary_boot_online.patch
 0002-arm64-dts-Update-cache-properties-for-marvell.patch
-0003-dt-bindings-ac5-Add-mmc-and-usb-properties.patch
-0004-dts-ac5-marvell-Add-switching-mmc-watchdog-node.patch
-0006-ac5-marvell-Add-support-for-emmc.patch
+0003-arm64-dts-marvell-Add-NAND-flash-controller-to-AC5.patch
+0004-arm64-dts-ac5-add-mmc-node-and-clock.patch
+0005-dts-ac5-marvell-Add-switching-watchdog-node.patch
+0006-mmc-xenon-Add-ac5-support-via-bounce-buffer.patch
 0007-usb-ehci-Add-support-for-ac5.patch
 0008-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch
 0009-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
 0010-dts-marvell-Add-support-for-7020-comexpress.patch
 0011-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch
 0012-net-mvpp2-clear-BM-pool-before-initialization.patch
+0013-mmc-sdhci-xenon-fix-PHY-init-clock-stability.patch
+0014-mmc-sdhci-xenon-add-timeout-for-PHY-init-complete.patch
 
 # amd-pensando elba support
 0000-Add-support-for-the-TI-TPS53659.patch
