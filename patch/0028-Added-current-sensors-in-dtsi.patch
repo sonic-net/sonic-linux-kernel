@@ -1,0 +1,38 @@
+From 6953e74c7cf345116ddd148c279ce5e562b78db9 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Mon, 11 Mar 2024 08:13:31 +0000
+Subject: [PATCH] Added current sensors in dtsi
+
+---
+ .../boot/dts/pensando/elba-asic-psci-mtfuji.dts   | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/pensando/elba-asic-psci-mtfuji.dts b/arch/arm64/boot/dts/pensando/elba-asic-psci-mtfuji.dts
+index 1d2e99d8c..10917168c 100644
+--- a/arch/arm64/boot/dts/pensando/elba-asic-psci-mtfuji.dts
++++ b/arch/arm64/boot/dts/pensando/elba-asic-psci-mtfuji.dts
+@@ -27,6 +27,21 @@ chosen {
+ 
+ &i2c0 {
+ 	/delete-node/ rtc@51;
++
++	ltc3882@44 {
++		compatible = "lltc,ltc3882";
++		reg = <0x44>;
++	};
++
++	ltc3882@55 {
++		compatible = "lltc,ltc3882";
++		reg = <0x55>;
++	};
++
++	ltc3882@66 {
++		compatible = "lltc,ltc3882";
++		reg = <0x66>;
++	};
+ };
+ 
+ &spi0_cs0 {
+-- 
+2.25.1
+

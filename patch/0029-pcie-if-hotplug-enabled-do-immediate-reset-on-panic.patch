@@ -1,0 +1,53 @@
+From 912731499464664bc16519131790610fa31caf1a Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Mon, 11 Mar 2024 14:12:44 +0000
+Subject: [PATCH] pcie: if hotplug enabled do immediate reset on panic
+
+Signed-off-by: Ganesan Ramalingam <gramalin@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
+---
+ drivers/soc/pensando/cap_pcie.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/soc/pensando/cap_pcie.c b/drivers/soc/pensando/cap_pcie.c
+index 3c43f56d3..91ecb0b12 100644
+--- a/drivers/soc/pensando/cap_pcie.c
++++ b/drivers/soc/pensando/cap_pcie.c
+@@ -41,6 +41,7 @@ struct pciedev_info {
+ 	int pciep_access_error;
+ 	spinlock_t pciep_access_lock;
+ 	long (*saved_panic_blink)(int state);
++	u32 hotplug_delaylnkup;
+ };
+ 
+ static struct pciedev_info pciedev_info;
+@@ -302,6 +303,8 @@ static void cap_reset(void)
+  *
+  * If we haven't yet initialized the link (ltssm_en=0) then the
+  * host side hasn't come up yet.  In that case just reset immediately.
++ *
++ * If hotplug enabled then reset immediately
+  */
+ static long pcie_panic_blink(int state)
+ {
+@@ -312,7 +315,7 @@ static long pcie_panic_blink(int state)
+ 		cap_reset();
+ 
+ 	port = pcie_get_ltssm_en();
+-	if (port >= 0) {
++	if (!pciedev_info.hotplug_delaylnkup && port >= 0) {
+ 		pr_info(PFX "port %d enabled\n", port);
+ 		pcie_set_crs(0);
+ 		while ((port = pcie_poll_for_hostdn()) < 0)
+@@ -389,6 +392,8 @@ static int pcie_probe(struct platform_device *pd)
+ 	pi->pcie_base = res.start;
+ 	pi->pcie_size = resource_size(&res);
+ 
++	of_property_read_u32(dn, "hotplug_delaylnkup", &pi->hotplug_delaylnkup);
++
+ 	err = misc_register(&pcie_dev);
+ 	if (err) {
+ 		pr_err(PFX "register pcie_dev failed: %d\n", err);
+-- 
+2.25.1
+
