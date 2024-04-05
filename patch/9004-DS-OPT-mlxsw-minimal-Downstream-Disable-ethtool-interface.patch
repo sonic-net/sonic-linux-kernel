@@ -1,0 +1,53 @@
+From f4e330eec87654fd6186b1289be2fec787f94107 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Mon, 25 Dec 2023 16:58:37 +0000
+Subject: [PATCH backport 5.10 1/1] mlxsw: minimal: Downstream: Disable ethtool
+ interface
+
+Disable 'ethtool' interface, since it is un-used and just created
+un-necessary 'netdevice' interfaces.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_env.c | 2 ++
+ drivers/net/ethernet/mellanox/mlxsw/minimal.c  | 4 ++++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_env.c b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+index f9c770eec..27b87dfa2 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_env.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+@@ -1273,6 +1273,8 @@ int mlxsw_env_init(struct mlxsw_core *mlxsw_core, struct mlxsw_env **p_env)
+ 	if (err)
+ 		goto err_linecards_register;
+ 
++	return 0;
++
+ 	err = mlxsw_env_temp_warn_event_register(mlxsw_core);
+ 	if (err)
+ 		goto err_temp_warn_event_register;
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/minimal.c b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+index 9f74ca704..16f482cfd 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/minimal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+@@ -361,6 +361,8 @@ static int mlxsw_m_ports_create(struct mlxsw_m *mlxsw_m, u8 slot_index)
+ 	char mgpir_pl[MLXSW_REG_MGPIR_LEN];
+ 	int i, err;
+ 
++	return 0;
++
+ 	mlxsw_reg_mgpir_pack(mgpir_pl, slot_index);
+ 	err = mlxsw_reg_query(mlxsw_m->core, MLXSW_REG(mgpir), mgpir_pl);
+ 	if (err)
+@@ -425,6 +427,8 @@ static void mlxsw_m_ports_remove(struct mlxsw_m *mlxsw_m, u8 slot_index)
+ 	u8 module;
+ 	int i;
+ 
++	return;
++
+ 	for (i = 0; i < mlxsw_m->max_ports; i++) {
+ 		port_mapping = mlxsw_m_port_mapping_get(mlxsw_m, slot_index,
+ 							i);
+-- 
+2.20.1
+

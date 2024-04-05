@@ -1,0 +1,138 @@
+From d418f1f950be43e83ec21eb01d54d2c4c1fc103c Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Thu, 16 Nov 2023 18:35:25 +0000
+Subject: [PATCH v5.10 1/1] mlxsw: i2c: Downstream: Add retry mechanism for
+ failed transactions
+
+Sometimes I2C transactions could broken or non-completed because of
+some noise on I2C line or because ASIC resources is busy handling
+big amount of PCIe tarnsactions.
+
+Add re-try mechanism for re-sending transaction which was not properly
+completed.
+Retry up to three times and produce error log only in case the last try
+is not successful.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/i2c.c | 34 +++++++++++++++++------
+ 1 file changed, 25 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/i2c.c b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+index 9fe03dd9e..6feb65535 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/i2c.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+@@ -51,6 +51,7 @@
+ #define MLXSW_I2C_BLK_MAX		100
+ #define MLXSW_I2C_RETRY			5
+ #define MLXSW_I2C_TIMEOUT_MSECS		5000
++#define MLXSW_I2C_CMD_RETRY_FW_ERR	3
+ #define MLXSW_I2C_MAX_DATA_SIZE		256
+ 
+ #define MLXSW_I2C_WORK_ARMED		1
+@@ -78,6 +79,7 @@
+  * @irq: IRQ line number;
+  * @irq_unhandled_count: number of unhandled interrupts;
+  * @status: status to indicate chip reset or in-service update;
++ * @retry_cntr: retry counter for failed transaction;
+  */
+ struct mlxsw_i2c {
+ 	struct {
+@@ -98,6 +100,7 @@ struct mlxsw_i2c {
+ 	int irq;
+ 	atomic_t irq_unhandled_count;
+ 	u8 status;
++	int retry_cntr;
+ };
+ 
+ #define MLXSW_I2C_READ_MSG(_client, _addr_buf, _buf, _len) {	\
+@@ -254,6 +257,7 @@ mlxsw_i2c_cmd_status_verify(struct device *dev, struct mlxsw_i2c *mlxsw_i2c,
+ 		dev_info(dev, "FW status=%x(%s)): Access to device is not allowed in this state\n", status, mlxsw_cmd_status_str(status));
+ 		return true;
+ 	}
++
+ 	return false;
+ }
+ 
+@@ -398,7 +402,8 @@ mlxsw_i2c_write(struct device *dev, size_t in_mbox_size, u8 *in_mbox, int num,
+ 	/* Prepare and write out Command Interface Register for transaction. */
+ 	err = mlxsw_i2c_write_cmd(client, mlxsw_i2c, 0);
+ 	if (err) {
+-		dev_err(&client->dev, "Could not start transaction");
++		if (mlxsw_i2c->retry_cntr == MLXSW_I2C_CMD_RETRY_FW_ERR)
++			dev_err(&client->dev, "Could not start transaction");
+ 		err = -EIO;
+ 		goto mlxsw_i2c_write_exit;
+ 	}
+@@ -406,14 +411,16 @@ mlxsw_i2c_write(struct device *dev, size_t in_mbox_size, u8 *in_mbox, int num,
+ 	/* Wait until go bit is cleared. */
+ 	err = mlxsw_i2c_wait_go_bit(client, mlxsw_i2c, p_status);
+ 	if (err) {
+-		dev_err(&client->dev, "HW semaphore is not released");
++		if (mlxsw_i2c->retry_cntr == MLXSW_I2C_CMD_RETRY_FW_ERR)
++			dev_err(&client->dev, "HW semaphore is not released");
+ 		goto mlxsw_i2c_write_exit;
+ 	}
+ 
+ 	/* Validate transaction completion status. */
+ 	if (*p_status) {
+-		dev_err(&client->dev, "Bad transaction completion status %x\n",
+-			*p_status);
++		if (mlxsw_i2c->retry_cntr == MLXSW_I2C_CMD_RETRY_FW_ERR)
++			dev_err(&client->dev, "Bad transaction completion status %x\n",
++				*p_status);
+ 		err = -EIO;
+ 	}
+ 
+@@ -443,7 +450,7 @@ mlxsw_i2c_cmd(struct device *dev, u16 opcode, u32 in_mod, size_t in_mbox_size,
+ 	/* Do not run transaction if chip is in reset or in-service update state. */
+ 	if (mlxsw_i2c->status)
+ 		return 0;
+-
++retry:
+ 	if (in_mbox) {
+ 		reg_size = mlxsw_i2c_get_reg_size(in_mbox);
+ 		num = reg_size / mlxsw_i2c->block_size;
+@@ -451,8 +458,10 @@ mlxsw_i2c_cmd(struct device *dev, u16 opcode, u32 in_mod, size_t in_mbox_size,
+ 			num++;
+ 
+ 		if (mutex_lock_interruptible(&mlxsw_i2c->cmd.lock) < 0) {
+-			dev_err(&client->dev, "Could not acquire lock");
+-			return -EINVAL;
++			if (mlxsw_i2c->retry_cntr == MLXSW_I2C_CMD_RETRY_FW_ERR)
++				dev_err(&client->dev, "Could not acquire lock");
++			err = -EINVAL;
++			goto cmd_retry;
+ 		}
+ 
+ 		err = mlxsw_i2c_write(dev, reg_size, in_mbox, num, status);
+@@ -471,8 +480,10 @@ mlxsw_i2c_cmd(struct device *dev, u16 opcode, u32 in_mod, size_t in_mbox_size,
+ 				  (mlxsw_i2c->block_size % MLXSW_I2C_BLK_DEF));
+ 
+ 		if (mutex_lock_interruptible(&mlxsw_i2c->cmd.lock) < 0) {
+-			dev_err(&client->dev, "Could not acquire lock");
+-			return -EINVAL;
++			if (mlxsw_i2c->retry_cntr == MLXSW_I2C_CMD_RETRY_FW_ERR)
++				dev_err(&client->dev, "Could not acquire lock");
++			err = -EINVAL;
++			goto cmd_retry;
+ 		}
+ 
+ 		err = mlxsw_i2c_write_init_cmd(client, mlxsw_i2c, opcode,
+@@ -519,8 +530,13 @@ mlxsw_i2c_cmd(struct device *dev, u16 opcode, u32 in_mod, size_t in_mbox_size,
+ 
+ cmd_fail:
+ 	mutex_unlock(&mlxsw_i2c->cmd.lock);
++cmd_retry:
+ 	if (mlxsw_i2c_cmd_status_verify(&client->dev, mlxsw_i2c, *status))
+ 		err = 0;
++	else if (mlxsw_i2c->retry_cntr++ < MLXSW_I2C_CMD_RETRY_FW_ERR)
++		goto retry;
++	mlxsw_i2c->retry_cntr = 0;
++
+ 	return err;
+ }
+ 
+-- 
+2.20.1
+

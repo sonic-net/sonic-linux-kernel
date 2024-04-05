@@ -1,0 +1,33 @@
+From d11192c5d4622552cd399194bf90af03ea2495a5 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Thu, 6 Jul 2023 07:40:34 +0000
+Subject: [PATH backport 2/2] mlxsw: reg: Limit MTBR register records buffer by
+ one record
+
+The MTBR register is used to obtain specific cable status, so just only
+one data record is required in transaction.
+
+Limit size of MTBR register to avoid sending redundant size of buffer
+to firmware.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/reg.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/reg.h b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+index f8c828e05..81b4278fc 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/reg.h
++++ b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+@@ -8771,7 +8771,7 @@ MLXSW_ITEM_BIT_ARRAY(reg, mtwe, sensor_warning, 0x0, 0x10, 1);
+ #define MLXSW_REG_MTBR_ID 0x900F
+ #define MLXSW_REG_MTBR_BASE_LEN 0x10 /* base length, without records */
+ #define MLXSW_REG_MTBR_REC_LEN 0x04 /* record length */
+-#define MLXSW_REG_MTBR_REC_MAX_COUNT 47 /* firmware limitation */
++#define MLXSW_REG_MTBR_REC_MAX_COUNT 1
+ #define MLXSW_REG_MTBR_LEN (MLXSW_REG_MTBR_BASE_LEN +	\
+ 			    MLXSW_REG_MTBR_REC_LEN *	\
+ 			    MLXSW_REG_MTBR_REC_MAX_COUNT)
+-- 
+2.20.1
+

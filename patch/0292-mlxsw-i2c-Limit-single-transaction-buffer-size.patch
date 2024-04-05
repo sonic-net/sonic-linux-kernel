@@ -1,0 +1,45 @@
+From 3363b3f15f1f65c5b33c464c1bb9d71fc044d3a8 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Thu, 6 Jul 2023 04:51:52 +0000
+Subject: [PATH backport 1/2] mlxsw: i2c: Limit single transaction buffer size
+
+Maximum size of buffer is obtained from underlying I2C adapter and in
+case adapter allows I2C transaction buffer size greater than 100 bytes,
+transaction will fail due to firmware limitation.
+Limit the maximum size of transaction buffer by 100 bytes to fit to
+firmware.
+
+Fixes: 3029a693beda ("mlxsw: i2c: Allow flexible setting of I2C transactions size")
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/i2c.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/i2c.c b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+index e04557afc..9fe03dd9e 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/i2c.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+@@ -48,6 +48,7 @@
+ #define MLXSW_I2C_MBOX_SIZE_BITS	12
+ #define MLXSW_I2C_ADDR_BUF_SIZE		4
+ #define MLXSW_I2C_BLK_DEF		32
++#define MLXSW_I2C_BLK_MAX		100
+ #define MLXSW_I2C_RETRY			5
+ #define MLXSW_I2C_TIMEOUT_MSECS		5000
+ #define MLXSW_I2C_MAX_DATA_SIZE		256
+@@ -700,9 +701,10 @@ static int mlxsw_i2c_probe(struct i2c_client *client,
+ 			return -EOPNOTSUPP;
+ 		}
+ 
+-		mlxsw_i2c->block_size = max_t(u16, MLXSW_I2C_BLK_DEF,
++		mlxsw_i2c->block_size = min_t(u16, MLXSW_I2C_BLK_MAX,
++					      max_t(u16, MLXSW_I2C_BLK_DEF,
+ 					      min_t(u16, quirks->max_read_len,
+-						    quirks->max_write_len));
++						    quirks->max_write_len)));
+ 	} else {
+ 		mlxsw_i2c->block_size = MLXSW_I2C_BLK_DEF;
+ 	}
+-- 
+2.20.1
+

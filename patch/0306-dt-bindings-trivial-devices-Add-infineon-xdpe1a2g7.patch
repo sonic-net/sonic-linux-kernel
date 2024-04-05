@@ -1,0 +1,29 @@
+From 752f09e963ed92cf6ba69930a26dc4cba674bdd3 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Mon, 17 Jul 2023 16:24:58 +0000
+Subject: [PATCH hwmon-next 2/2] dt-bindings: trivial-devices: Add
+ infineon,xdpe1a2g7
+
+Add new Infineon Multi-phase Digital VR Controller xdpe1a2g7
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ Documentation/devicetree/bindings/trivial-devices.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/trivial-devices.yaml b/Documentation/devicetree/bindings/trivial-devices.yaml
+index adec3a0f6..aa1fa8414 100644
+--- a/Documentation/devicetree/bindings/trivial-devices.yaml
++++ b/Documentation/devicetree/bindings/trivial-devices.yaml
+@@ -98,6 +98,8 @@ properties:
+           - infineon,slb9645tt
+             # Infineon TLV493D-A1B6 I2C 3D Magnetic Sensor
+           - infineon,tlv493d-a1b6
++            # Infineon Multi-phase Digital VR Controller xdpe1a2g7
++            - infineon,xdpe1a2g7
+             # Infineon Multi-phase Digital VR Controller xdpe12254
+           - infineon,xdpe12254
+             # Infineon Multi-phase Digital VR Controller xdpe12284
+-- 
+2.20.1
+

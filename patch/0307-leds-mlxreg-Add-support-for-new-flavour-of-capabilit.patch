@@ -1,0 +1,53 @@
+From 6f745b2a6cfd48e1e5ab0276665ac1583df263d2 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Thu, 20 Jul 2023 11:01:56 +0000
+Subject: [PATCH] leds: mlxreg: Add support for new flavour of capability
+ register
+X-NVConfidentiality: public
+
+LED platform data is common across the various systems, while LED
+driver should be able to apply only the LED instances relevant
+to specific system.
+
+For example, platform data might contain descriptions for fan1,
+fan2, ..., fan{n} LEDs, while some systems equipped with all 'n' fan
+LEDs, others with less.
+
+For detection of the real number of equipped LEDs special capability
+register is used.
+This register used to indicate presence of LED through the bitmap.
+
+For some new big modular systems this register will provide presence
+data by counter.
+
+Use slot parameter to distinct whether capability register contains
+bitmask or counter.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/leds/leds-mlxreg.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/leds/leds-mlxreg.c b/drivers/leds/leds-mlxreg.c
+index 6241a3407..e6b205d31 100644
+--- a/drivers/leds/leds-mlxreg.c
++++ b/drivers/leds/leds-mlxreg.c
+@@ -243,7 +243,14 @@ static int mlxreg_led_config(struct mlxreg_led_priv_data *priv)
+ 				dev_err(&priv->pdev->dev, "Failed to query capability register\n");
+ 				return err;
+ 			}
+-			if (!(regval & data->bit))
++			/*
++			 * If slot is specified - validate if slot is equipped on system.
++			 * In case slot is specified in platform data, capability register
++			 * contains the counter of untits.
++			 */
++			if (data->slot && data->slot > regval)
++				continue;
++			else if (!(regval & data->bit) && !data->slot)
+ 				continue;
+ 			/*
+ 			 * Field "bit" can contain one capability bit in 0 byte
+-- 
+2.14.1
+

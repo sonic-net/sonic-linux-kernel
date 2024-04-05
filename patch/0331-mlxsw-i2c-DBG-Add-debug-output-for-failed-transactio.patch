@@ -1,0 +1,79 @@
+From d85edce462e65b126d9e0737b8129180db5176a6 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Mon, 20 Nov 2023 07:33:46 +0000
+Subject: [PATCH v5.10 1/1] mlxsw: i2c: DBG: Add debug output for failed
+ transactions
+
+Add debug output for re-try mechanism for re-sending transaction which
+was not properly completed.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/i2c.c | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/i2c.c b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+index 6feb65535..59d008c2e 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/i2c.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+@@ -49,7 +49,7 @@
+ #define MLXSW_I2C_ADDR_BUF_SIZE		4
+ #define MLXSW_I2C_BLK_DEF		32
+ #define MLXSW_I2C_BLK_MAX		100
+-#define MLXSW_I2C_RETRY			5
++#define MLXSW_I2C_RETRY			25
+ #define MLXSW_I2C_TIMEOUT_MSECS		5000
+ #define MLXSW_I2C_CMD_RETRY_FW_ERR	3
+ #define MLXSW_I2C_MAX_DATA_SIZE		256
+@@ -404,6 +404,9 @@ mlxsw_i2c_write(struct device *dev, size_t in_mbox_size, u8 *in_mbox, int num,
+ 	if (err) {
+ 		if (mlxsw_i2c->retry_cntr == MLXSW_I2C_CMD_RETRY_FW_ERR)
+ 			dev_err(&client->dev, "Could not start transaction");
++		else
++			dev_info(&client->dev, "Could not start transaction retry_cntr %d",
++				 mlxsw_i2c->retry_cntr);
+ 		err = -EIO;
+ 		goto mlxsw_i2c_write_exit;
+ 	}
+@@ -413,6 +416,9 @@ mlxsw_i2c_write(struct device *dev, size_t in_mbox_size, u8 *in_mbox, int num,
+ 	if (err) {
+ 		if (mlxsw_i2c->retry_cntr == MLXSW_I2C_CMD_RETRY_FW_ERR)
+ 			dev_err(&client->dev, "HW semaphore is not released");
++		else
++			dev_info(&client->dev, "HW semaphore is not released retry_cntr %d",
++				 mlxsw_i2c->retry_cntr);
+ 		goto mlxsw_i2c_write_exit;
+ 	}
+ 
+@@ -421,6 +427,9 @@ mlxsw_i2c_write(struct device *dev, size_t in_mbox_size, u8 *in_mbox, int num,
+ 		if (mlxsw_i2c->retry_cntr == MLXSW_I2C_CMD_RETRY_FW_ERR)
+ 			dev_err(&client->dev, "Bad transaction completion status %x\n",
+ 				*p_status);
++		else
++			dev_info(&client->dev, "Bad transaction completion status %x retry_cntr %d",
++				 *p_status, mlxsw_i2c->retry_cntr);
+ 		err = -EIO;
+ 	}
+ 
+@@ -460,6 +469,8 @@ mlxsw_i2c_cmd(struct device *dev, u16 opcode, u32 in_mod, size_t in_mbox_size,
+ 		if (mutex_lock_interruptible(&mlxsw_i2c->cmd.lock) < 0) {
+ 			if (mlxsw_i2c->retry_cntr == MLXSW_I2C_CMD_RETRY_FW_ERR)
+ 				dev_err(&client->dev, "Could not acquire lock");
++			else
++				dev_info(&client->dev, "Could not acquire lock retry_cntr %d", mlxsw_i2c->retry_cntr);
+ 			err = -EINVAL;
+ 			goto cmd_retry;
+ 		}
+@@ -482,6 +493,9 @@ mlxsw_i2c_cmd(struct device *dev, u16 opcode, u32 in_mod, size_t in_mbox_size,
+ 		if (mutex_lock_interruptible(&mlxsw_i2c->cmd.lock) < 0) {
+ 			if (mlxsw_i2c->retry_cntr == MLXSW_I2C_CMD_RETRY_FW_ERR)
+ 				dev_err(&client->dev, "Could not acquire lock");
++			else
++				dev_info(&client->dev, "Could not acquire lock retry_cntr %d",
++					 mlxsw_i2c->retry_cntr);
+ 			err = -EINVAL;
+ 			goto cmd_retry;
+ 		}
+-- 
+2.20.1
+

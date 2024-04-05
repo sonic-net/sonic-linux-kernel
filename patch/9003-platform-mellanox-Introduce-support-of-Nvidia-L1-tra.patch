@@ -1,0 +1,274 @@
+From 270d86db50e5668572737922dcc72d5e4cf4eee1 Mon Sep 17 00:00:00 2001
+From: Oleksandr Shamray <oleksandrs@nvidia.com>
+Date: Mon, 30 Oct 2023 14:57:49 +0000
+Subject: [PATCH] platform: mellanox: Introduce support of Nvidia L1 tray DGX
+ switch
+
+Add support for new L1 tray DGX switch node providing L1
+connectivity for multi-node networking chassis.
+
+System contains the following components:
+    - COMe module based on Intel Coffee Lake CPU
+    - Switch baseboard with one ASIC, while
+      64 ports of each ASIC are connected to two backplane connector
+    - Integrated 4dual-rotor FANs inside L1 node
+    - Support 54V DC input from the external power server.
+
+Add the structures related to the new systems to allow proper activation
+of the all required platform driver.
+
+Signed-off-by: Oleksandr Shamray <oleksandrs@nvidia.com>
+Reviewed-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/platform/mellanox/mlx-platform.c | 207 +++++++++++++++++++++++++++++++
+ 1 file changed, 207 insertions(+)
+
+diff --git a/drivers/platform/mellanox/mlx-platform.c b/drivers/platform/mellanox/mlx-platform.c
+index 5a00174..335e576 100644
+--- a/drivers/platform/mellanox/mlx-platform.c
++++ b/drivers/platform/mellanox/mlx-platform.c
+@@ -2970,6 +2970,25 @@ static struct mlxreg_core_data mlxplat_mlxcpld_erot_error_items_data[] = {
+ 	},
+ };
+ 
++/* Platform hotplug for  switch systems family data */
++static struct mlxreg_core_data mlxplat_mlxcpld_erot_1_ap_items_data[] = {
++	{
++		.label = "erot1_ap",
++		.reg = MLXPLAT_CPLD_LPC_REG_EROT_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = MLXPLAT_CPLD_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data mlxplat_mlxcpld_erot_1_error_items_data[] = {
++	{
++		.label = "erot1_error",
++		.reg = MLXPLAT_CPLD_LPC_REG_EROTE_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = MLXPLAT_CPLD_NR_NONE,
++	},
++};
++
+ static struct mlxreg_core_item mlxplat_mlxcpld_rack_switch_items[] = {
+ 	{
+ 		.data = mlxplat_mlxcpld_ext_psu_items_data,
+@@ -3185,6 +3204,84 @@ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_l1_switch_data = {
+ 	.mask_low = MLXPLAT_CPLD_LOW_AGGR_MASK_LOW | MLXPLAT_CPLD_LOW_AGGR_MASK_PWR_BUT,
+ };
+ 
++
++static struct mlxreg_core_data mlxplat_mlxcpld_l1_g3_switch_health_events_items_data[] = {
++	{
++		.label = "intrusion",
++		.reg = MLXPLAT_CPLD_LPC_REG_BRD_OFFSET,
++		.mask = MLXPLAT_CPLD_INTRUSION_MASK,
++		.hpdev.nr = MLXPLAT_CPLD_NR_NONE,
++		.hpdev.action = MLXREG_HOTPLUG_DEVICE_NO_ACTION,
++		.hpdev.notifier = &mlxplat_mlxcpld_l1_switch_intrusion_events_notifier,
++	},
++	{
++		.label = "pwm_pg",
++		.reg = MLXPLAT_CPLD_LPC_REG_BRD_OFFSET,
++		.mask = MLXPLAT_CPLD_PWM_PG_MASK,
++		.hpdev.nr = MLXPLAT_CPLD_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_item mlxplat_mlxcpld_l1_g3_switch_events_items[] = {
++	{
++		.data = mlxplat_mlxcpld_default_ng_fan_items_data,
++		.aggr_mask = MLXPLAT_CPLD_AGGR_MASK_NG_DEF,
++		.reg = MLXPLAT_CPLD_LPC_REG_FAN_OFFSET,
++		.mask = MLXPLAT_CPLD_FAN_NG_MASK,
++		.count = ARRAY_SIZE(mlxplat_mlxcpld_default_ng_fan_items_data),
++		.inversed = 1,
++		.health = false,
++	},
++	{
++		.data = mlxplat_mlxcpld_erot_1_ap_items_data,
++		.aggr_mask = MLXPLAT_CPLD_AGGR_MASK_NG_DEF,
++		.reg = MLXPLAT_CPLD_LPC_REG_EROT_OFFSET,
++		.mask = MLXPLAT_CPLD_EROT_MASK,
++		.count = ARRAY_SIZE(mlxplat_mlxcpld_erot_1_ap_items_data),
++		.inversed = 1,
++		.health = false,
++	},
++	{
++		.data = mlxplat_mlxcpld_erot_1_error_items_data,
++		.aggr_mask = MLXPLAT_CPLD_AGGR_MASK_NG_DEF,
++		.reg = MLXPLAT_CPLD_LPC_REG_EROTE_OFFSET,
++		.mask = MLXPLAT_CPLD_EROT_MASK,
++		.count = ARRAY_SIZE(mlxplat_mlxcpld_erot_1_error_items_data),
++		.inversed = 1,
++		.health = false,
++	},
++	{
++		.data = mlxplat_mlxcpld_l1_switch_pwr_events_items_data,
++		.aggr_mask = MLXPLAT_CPLD_AGGR_MASK_NG_DEF,
++		.reg = MLXPLAT_CPLD_LPC_REG_PWRB_OFFSET,
++		.mask = MLXPLAT_CPLD_PWR_BUTTON_MASK,
++		.count = ARRAY_SIZE(mlxplat_mlxcpld_l1_switch_pwr_events_items_data),
++		.inversed = 1,
++		.health = false,
++	},
++	{
++		.data = mlxplat_mlxcpld_l1_g3_switch_health_events_items_data,
++		.aggr_mask = MLXPLAT_CPLD_AGGR_MASK_NG_DEF,
++		.reg = MLXPLAT_CPLD_LPC_REG_BRD_OFFSET,
++		.mask = (MLXPLAT_CPLD_INTRUSION_MASK | MLXPLAT_CPLD_PWM_PG_MASK),
++		.count = ARRAY_SIZE(mlxplat_mlxcpld_l1_g3_switch_health_events_items_data),
++		.inversed = 1,
++		.health = false,
++		.ind = 8,
++	},
++};
++
++static
++struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_l1_g3_switch_data = {
++	.items = mlxplat_mlxcpld_l1_g3_switch_events_items,
++	.counter = ARRAY_SIZE(mlxplat_mlxcpld_l1_g3_switch_events_items),
++	.cell = MLXPLAT_CPLD_LPC_REG_AGGR_OFFSET,
++	.mask = MLXPLAT_CPLD_AGGR_MASK_NG_DEF | MLXPLAT_CPLD_AGGR_MASK_COMEX,
++	.cell_low = MLXPLAT_CPLD_LPC_REG_AGGRLO_OFFSET,
++	.mask_low = MLXPLAT_CPLD_LOW_AGGR_MASK_LOW | MLXPLAT_CPLD_LOW_AGGR_MASK_PWR_BUT,
++};
++
++
+ static struct spi_board_info rack_switch_switch_spi_board_info[] = {
+ 	{
+ 		.modalias       = "spidev",
+@@ -3950,6 +4047,86 @@ static struct mlxreg_core_platform_data mlxplat_l1_switch_led_data = {
+ 		.counter = ARRAY_SIZE(mlxplat_mlxcpld_l1_switch_led_data),
+ };
+ 
++/* Platform led data for chassis GH system */
++static struct mlxreg_core_data mlxplat_mlxcpld_l1_g3_switch_led_data[] = {
++	{
++		.label = "status:green",
++		.reg = MLXPLAT_CPLD_LPC_REG_LED1_OFFSET,
++		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
++	},
++	{
++		.label = "status:orange",
++		.reg = MLXPLAT_CPLD_LPC_REG_LED1_OFFSET,
++		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK
++	},
++	{
++		.label = "fan1:green",
++		.reg = MLXPLAT_CPLD_LPC_REG_LED2_OFFSET,
++		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(0),
++	},
++	{
++		.label = "fan1:orange",
++		.reg = MLXPLAT_CPLD_LPC_REG_LED2_OFFSET,
++		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(0),
++	},
++	{
++		.label = "fan2:green",
++		.reg = MLXPLAT_CPLD_LPC_REG_LED2_OFFSET,
++		.mask = MLXPLAT_CPLD_LED_HI_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(1),
++	},
++	{
++		.label = "fan2:orange",
++		.reg = MLXPLAT_CPLD_LPC_REG_LED2_OFFSET,
++		.mask = MLXPLAT_CPLD_LED_HI_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(1),
++	},
++	{
++		.label = "fan3:green",
++		.reg = MLXPLAT_CPLD_LPC_REG_LED3_OFFSET,
++		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(2),
++	},
++	{
++		.label = "fan3:orange",
++		.reg = MLXPLAT_CPLD_LPC_REG_LED3_OFFSET,
++		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(2),
++	},
++	{
++		.label = "fan4:green",
++		.reg = MLXPLAT_CPLD_LPC_REG_LED3_OFFSET,
++		.mask = MLXPLAT_CPLD_LED_HI_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(3),
++	},
++	{
++		.label = "fan4:orange",
++		.reg = MLXPLAT_CPLD_LPC_REG_LED3_OFFSET,
++		.mask = MLXPLAT_CPLD_LED_HI_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(3),
++	},
++	{
++		.label = "uid:blue",
++		.reg = MLXPLAT_CPLD_LPC_REG_LED5_OFFSET,
++		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
++	},
++};
++
++static struct mlxreg_core_platform_data mlxplat_l1_g3_switch_led_data = {
++		.data = mlxplat_mlxcpld_l1_g3_switch_led_data,
++		.counter = ARRAY_SIZE(mlxplat_mlxcpld_l1_g3_switch_led_data),
++};
++
+ /* Platform led data for XDR systems */
+ static struct mlxreg_core_data mlxplat_mlxcpld_xdr_led_data[] = {
+ 	{
+@@ -7438,6 +7615,29 @@ static int __init mlxplat_dmi_l1_switch_matched(const struct dmi_system_id *dmi)
+ 	return mlxplat_register_platform_device();
+ }
+ 
++static int __init mlxplat_dmi_l1_g3_switch_matched(const struct dmi_system_id *dmi)
++{
++	int i;
++
++	mlxplat_max_adap_num = MLXPLAT_CPLD_MAX_PHYS_ADAPTER_NUM;
++	mlxplat_mux_num = ARRAY_SIZE(mlxplat_rack_switch_mux_data);
++	mlxplat_mux_data = mlxplat_rack_switch_mux_data;
++	mlxplat_hotplug = &mlxplat_mlxcpld_l1_g3_switch_data;
++	mlxplat_hotplug->deferred_nr =
++		mlxplat_msn21xx_channels[MLXPLAT_CPLD_GRP_CHNL_NUM - 1];
++	mlxplat_led = &mlxplat_l1_g3_switch_led_data;
++	mlxplat_regs_io = &mlxplat_default_ng_regs_io_data;
++	mlxplat_fan = &mlxplat_default_fan_data;
++	for (i = 0; i < ARRAY_SIZE(mlxplat_mlxcpld_wd_set_type2); i++)
++		mlxplat_wd_data[i] = &mlxplat_mlxcpld_wd_set_type2[i];
++	mlxplat_i2c = &mlxplat_mlxcpld_i2c_ng_data;
++	mlxplat_regmap_config = &mlxplat_mlxcpld_regmap_config_rack_switch;
++	pm_power_off = mlxplat_poweroff;
++	mlxplat_spi = rack_switch_switch_spi_board_info;
++
++	return mlxplat_register_platform_device();
++}
++
+ static int __init mlxplat_dmi_bf3_comex_default_matched(const struct dmi_system_id *dmi)
+ {
+ 	int i;
+@@ -7585,6 +7785,13 @@ static const struct dmi_system_id mlxplat_dmi_table[] __initconst = {
+ 		},
+ 	},
+ 	{
++		.callback = mlxplat_dmi_l1_g3_switch_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0017"),
++			DMI_EXACT_MATCH(DMI_PRODUCT_SKU, "HI159"),
++		},
++	},
++	{
+ 		.callback = mlxplat_dmi_l1_switch_matched,
+ 		.matches = {
+ 			DMI_MATCH(DMI_BOARD_NAME, "VMOD0017"),
+-- 
+2.8.4
+
