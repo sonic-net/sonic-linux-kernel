@@ -52,7 +52,7 @@ jobs:
     inputs:
       source: specific
       project: build
-      pipelineId: 426041
+      pipelineId: 499053
       artifact: ${{ parameters.artifact_name }}
       runVersion: 'specific'
       itemPattern: ${{ parameters.linux_deb_pattern }}
@@ -71,7 +71,7 @@ jobs:
       pip3 install tabulate
       python3 $(System.DefaultWorkingDirectory)/.azure-pipelines/kcfg-diff.py \
               --buildid $(Build.BuildId) \
-              --ref_buildid 426041 \
+              --ref_buildid 499053 \
               --arch ${{ parameters.arch }} \
               --old_kcfg $(Agent.TempDirectory)/old/boot/ \
               --new_kcfg $(Agent.TempDirectory)/new/boot/ \
