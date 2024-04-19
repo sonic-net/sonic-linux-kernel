@@ -1,8 +1,9 @@
-From 37d223fa389636092d519ca903f186d608eed3c8 Mon Sep 17 00:00:00 2001
+From e0cf8c8ffec53a11f86947bb5087343b986ac65b Mon Sep 17 00:00:00 2001
 From: Jiri Pirko <jiri@nvidia.com>
 Date: Thu, 31 Dec 2020 17:35:08 +0100
-Subject: [PATCH backport 5.10 126/182] devlink: implement line card
- provisioning
+Subject: [PATCH] From 37d223fa389636092d519ca903f186d608eed3c8 Mon Sep 17
+ 00:00:00 2001 Subject: [PATCH backport 5.10 126/182] devlink: implement line
+ card  provisioning
 
 In order to be able to configure all needed stuff on a port/netdevice
 of a line card without the line card being present, introduce line card
@@ -22,17 +23,12 @@ once the provisioning/unprovisioning is done on its side. These helpers
 are not to be called directly due to the async nature of provisioning.
 
 Signed-off-by: Jiri Pirko <jiri@nvidia.com>
----
- include/net/devlink.h        |  41 ++++-
- include/uapi/linux/devlink.h |  15 ++
- net/core/devlink.c           | 311 ++++++++++++++++++++++++++++++++---
- 3 files changed, 346 insertions(+), 21 deletions(-)
 
 diff --git a/include/net/devlink.h b/include/net/devlink.h
-index e8f046590579..44b60085ec16 100644
+index 30f730fa0..a8e9bc2c2 100644
 --- a/include/net/devlink.h
 +++ b/include/net/devlink.h
-@@ -142,11 +142,43 @@ struct devlink_port {
+@@ -146,11 +146,43 @@ struct devlink_port {
  	struct mutex reporters_lock; /* Protects reporter_list */
  };
  
@@ -76,7 +72,7 @@ index e8f046590579..44b60085ec16 100644
  };
  
  struct devlink_sb_pool_info {
-@@ -1413,9 +1445,14 @@ void devlink_port_attrs_pci_pf_set(struct devlink_port *devlink_port, u32 contro
+@@ -1431,9 +1463,14 @@ void devlink_port_attrs_pci_pf_set(struct devlink_port *devlink_port, u32 contro
  				   u16 pf, bool external);
  void devlink_port_attrs_pci_vf_set(struct devlink_port *devlink_port, u32 controller,
  				   u16 pf, u16 vf, bool external);
@@ -94,7 +90,7 @@ index e8f046590579..44b60085ec16 100644
  			u32 size, u16 ingress_pools_count,
  			u16 egress_pools_count, u16 ingress_tc_count,
 diff --git a/include/uapi/linux/devlink.h b/include/uapi/linux/devlink.h
-index ff07ad596035..d8833664522f 100644
+index ff07ad596..d88336645 100644
 --- a/include/uapi/linux/devlink.h
 +++ b/include/uapi/linux/devlink.h
 @@ -334,6 +334,18 @@ enum devlink_reload_limit {
@@ -127,7 +123,7 @@ index ff07ad596035..d8833664522f 100644
  	/* add new attributes above here, update the policy in devlink.c */
  
 diff --git a/net/core/devlink.c b/net/core/devlink.c
-index 645fe0612b53..943973ffc450 100644
+index 6e2933391..943973ffc 100644
 --- a/net/core/devlink.c
 +++ b/net/core/devlink.c
 @@ -265,8 +265,10 @@ devlink_linecard_get_from_info(struct devlink *devlink, struct genl_info *info)
@@ -361,12 +357,10 @@ index 645fe0612b53..943973ffc450 100644
  static int devlink_nl_sb_fill(struct sk_buff *msg, struct devlink *devlink,
  			      struct devlink_sb *devlink_sb,
  			      enum devlink_command cmd, u32 portid,
-@@ -7818,19 +7997,8 @@ static const struct nla_policy devlink_nl_policy[DEVLINK_ATTR_MAX + 1] = {
+@@ -7818,16 +7997,8 @@ static const struct nla_policy devlink_nl_policy[DEVLINK_ATTR_MAX + 1] = {
  	[DEVLINK_ATTR_RELOAD_ACTION] = NLA_POLICY_RANGE(NLA_U8, DEVLINK_RELOAD_ACTION_DRIVER_REINIT,
  							DEVLINK_RELOAD_ACTION_MAX),
  	[DEVLINK_ATTR_RELOAD_LIMITS] = NLA_POLICY_BITFIELD32(DEVLINK_RELOAD_LIMITS_VALID_MASK),
--//<<<<<<< HEAD
--//=======
 -	[DEVLINK_ATTR_PORT_FLAVOUR] = { .type = NLA_U16 },
 -	[DEVLINK_ATTR_PORT_PCI_PF_NUMBER] = { .type = NLA_U16 },
 -	[DEVLINK_ATTR_PORT_PCI_SF_NUMBER] = { .type = NLA_U32 },
@@ -377,12 +371,11 @@ index 645fe0612b53..943973ffc450 100644
 -	[DEVLINK_ATTR_RATE_NODE_NAME] = { .type = NLA_NUL_STRING },
 -	[DEVLINK_ATTR_RATE_PARENT_NODE_NAME] = { .type = NLA_NUL_STRING },
  	[DEVLINK_ATTR_LINECARD_INDEX] = { .type = NLA_U32 },
--//>>>>>>> 1180815a3831... devlink: add support to create line card and expose to user
 +	[DEVLINK_ATTR_LINECARD_TYPE] = { .type = NLA_NUL_STRING },
  };
  
  static const struct genl_small_ops devlink_nl_ops[] = {
-@@ -7878,6 +8046,13 @@ static const struct genl_small_ops devlink_nl_ops[] = {
+@@ -7875,6 +8046,13 @@ static const struct genl_small_ops devlink_nl_ops[] = {
  				  DEVLINK_NL_FLAG_NO_LOCK,
  		/* can be retrieved by unprivileged users */
  	},
@@ -396,7 +389,7 @@ index 645fe0612b53..943973ffc450 100644
  	{
  		.cmd = DEVLINK_CMD_SB_GET,
  		.validate = GENL_DONT_VALIDATE_STRICT | GENL_DONT_VALIDATE_DUMP,
-@@ -8677,35 +8852,85 @@ static int __devlink_port_phys_port_name_get(struct devlink_port *devlink_port,
+@@ -8674,35 +8852,85 @@ static int __devlink_port_phys_port_name_get(struct devlink_port *devlink_port,
  	return 0;
  }
  
@@ -488,7 +481,7 @@ index 645fe0612b53..943973ffc450 100644
  	mutex_unlock(&devlink->linecards_lock);
  	return linecard;
  }
-@@ -8721,6 +8946,7 @@ void devlink_linecard_destroy(struct devlink_linecard *linecard)
+@@ -8718,6 +8946,7 @@ void devlink_linecard_destroy(struct devlink_linecard *linecard)
  	struct devlink *devlink = linecard->devlink;
  
  	devlink_linecard_notify(linecard, DEVLINK_CMD_LINECARD_DEL);
@@ -496,7 +489,7 @@ index 645fe0612b53..943973ffc450 100644
  	mutex_lock(&devlink->linecards_lock);
  	list_del(&linecard->list);
  	mutex_unlock(&devlink->linecards_lock);
-@@ -8728,6 +8954,53 @@ void devlink_linecard_destroy(struct devlink_linecard *linecard)
+@@ -8725,6 +8954,53 @@ void devlink_linecard_destroy(struct devlink_linecard *linecard)
  }
  EXPORT_SYMBOL_GPL(devlink_linecard_destroy);
  
@@ -551,5 +544,5 @@ index 645fe0612b53..943973ffc450 100644
  			u32 size, u16 ingress_pools_count,
  			u16 egress_pools_count, u16 ingress_tc_count,
 -- 
-2.20.1
+2.30.2
 

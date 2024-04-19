@@ -1,8 +1,9 @@
-From 36a2e4e93d7d1ca2ed670b4cf827400ba367e290 Mon Sep 17 00:00:00 2001
+From 14737410acb0227a53cdb28381c0f8b52018e1d2 Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Wed, 22 Dec 2021 08:57:27 +0000
-Subject: [PATCH backport 5.10 125/182] devlink: add support to create line
- card and expose to user
+Subject: [PATCH] From 36a2e4e93d7d1ca2ed670b4cf827400ba367e290 Mon Sep 17
+ 00:00:00 2001 Subject: [PATCH backport 5.10 125/182] devlink: add support to
+ create line  card and expose to user
 
 Extend the devlink API so the driver is going to be able to create and
 destroy linecard instances. There can be multiple line cards per devlink
@@ -10,17 +11,12 @@ device. Expose this new type of object over devlink netlink API to the
 userspace, with notifications.
 
 Signed-off-by: Jiri Pirko <jiri@nvidia.com>
----
- include/net/devlink.h        |  15 ++
- include/uapi/linux/devlink.h |  22 +++
- net/core/devlink.c           | 303 ++++++++++++++++++++++++++++++++++-
- 3 files changed, 339 insertions(+), 1 deletion(-)
 
 diff --git a/include/net/devlink.h b/include/net/devlink.h
-index b01bb9bca5a2..e8f046590579 100644
+index e81314255..30f730fa0 100644
 --- a/include/net/devlink.h
 +++ b/include/net/devlink.h
-@@ -31,6 +31,7 @@ struct devlink_dev_stats {
+@@ -35,6 +35,7 @@ struct devlink_dev_stats {
  struct devlink_ops;
  
  struct devlink {
@@ -28,7 +24,7 @@ index b01bb9bca5a2..e8f046590579 100644
  	struct list_head list;
  	struct list_head port_list;
  	struct list_head sb_list;
-@@ -44,6 +45,8 @@ struct devlink {
+@@ -48,6 +49,8 @@ struct devlink {
  	struct list_head trap_list;
  	struct list_head trap_group_list;
  	struct list_head trap_policer_list;
@@ -37,7 +33,7 @@ index b01bb9bca5a2..e8f046590579 100644
  	const struct devlink_ops *ops;
  	struct xarray snapshot_ids;
  	struct devlink_dev_stats stats;
-@@ -55,6 +58,8 @@ struct devlink {
+@@ -59,6 +62,8 @@ struct devlink {
  	u8 reload_failed:1,
  	   reload_enabled:1,
  	   registered:1;
@@ -46,7 +42,7 @@ index b01bb9bca5a2..e8f046590579 100644
  	char priv[0] __aligned(NETDEV_ALIGN);
  };
  
-@@ -137,6 +142,13 @@ struct devlink_port {
+@@ -141,6 +146,13 @@ struct devlink_port {
  	struct mutex reporters_lock; /* Protects reporter_list */
  };
  
@@ -60,7 +56,7 @@ index b01bb9bca5a2..e8f046590579 100644
  struct devlink_sb_pool_info {
  	enum devlink_sb_pool_type pool_type;
  	u32 size;
-@@ -1401,6 +1413,9 @@ void devlink_port_attrs_pci_pf_set(struct devlink_port *devlink_port, u32 contro
+@@ -1419,6 +1431,9 @@ void devlink_port_attrs_pci_pf_set(struct devlink_port *devlink_port, u32 contro
  				   u16 pf, bool external);
  void devlink_port_attrs_pci_vf_set(struct devlink_port *devlink_port, u32 controller,
  				   u16 pf, u16 vf, bool external);
@@ -71,7 +67,7 @@ index b01bb9bca5a2..e8f046590579 100644
  			u32 size, u16 ingress_pools_count,
  			u16 egress_pools_count, u16 ingress_tc_count,
 diff --git a/include/uapi/linux/devlink.h b/include/uapi/linux/devlink.h
-index cf89c318f2ac..ff07ad596035 100644
+index cf89c318f..ff07ad596 100644
 --- a/include/uapi/linux/devlink.h
 +++ b/include/uapi/linux/devlink.h
 @@ -126,6 +126,16 @@ enum devlink_command {
@@ -111,7 +107,7 @@ index cf89c318f2ac..ff07ad596035 100644
  
  	__DEVLINK_ATTR_MAX,
 diff --git a/net/core/devlink.c b/net/core/devlink.c
-index 72047750dcd9..645fe0612b53 100644
+index 72047750d..6e2933391 100644
 --- a/net/core/devlink.c
 +++ b/net/core/devlink.c
 @@ -91,6 +91,25 @@ static const struct nla_policy devlink_function_nl_policy[DEVLINK_PORT_FUNCTION_
@@ -401,12 +397,10 @@ index 72047750dcd9..645fe0612b53 100644
  static int devlink_nl_sb_fill(struct sk_buff *msg, struct devlink *devlink,
  			      struct devlink_sb *devlink_sb,
  			      enum devlink_command cmd, u32 portid,
-@@ -7594,6 +7818,19 @@ static const struct nla_policy devlink_nl_policy[DEVLINK_ATTR_MAX + 1] = {
+@@ -7594,6 +7818,16 @@ static const struct nla_policy devlink_nl_policy[DEVLINK_ATTR_MAX + 1] = {
  	[DEVLINK_ATTR_RELOAD_ACTION] = NLA_POLICY_RANGE(NLA_U8, DEVLINK_RELOAD_ACTION_DRIVER_REINIT,
  							DEVLINK_RELOAD_ACTION_MAX),
  	[DEVLINK_ATTR_RELOAD_LIMITS] = NLA_POLICY_BITFIELD32(DEVLINK_RELOAD_LIMITS_VALID_MASK),
-+//<<<<<<< HEAD
-+//=======
 +	[DEVLINK_ATTR_PORT_FLAVOUR] = { .type = NLA_U16 },
 +	[DEVLINK_ATTR_PORT_PCI_PF_NUMBER] = { .type = NLA_U16 },
 +	[DEVLINK_ATTR_PORT_PCI_SF_NUMBER] = { .type = NLA_U32 },
@@ -417,11 +411,10 @@ index 72047750dcd9..645fe0612b53 100644
 +	[DEVLINK_ATTR_RATE_NODE_NAME] = { .type = NLA_NUL_STRING },
 +	[DEVLINK_ATTR_RATE_PARENT_NODE_NAME] = { .type = NLA_NUL_STRING },
 +	[DEVLINK_ATTR_LINECARD_INDEX] = { .type = NLA_U32 },
-+//>>>>>>> 1180815a3831... devlink: add support to create line card and expose to user
  };
  
  static const struct genl_small_ops devlink_nl_ops[] = {
-@@ -7633,6 +7870,14 @@ static const struct genl_small_ops devlink_nl_ops[] = {
+@@ -7633,6 +7867,14 @@ static const struct genl_small_ops devlink_nl_ops[] = {
  		.flags = GENL_ADMIN_PERM,
  		.internal_flags = DEVLINK_NL_FLAG_NO_LOCK,
  	},
@@ -436,7 +429,7 @@ index 72047750dcd9..645fe0612b53 100644
  	{
  		.cmd = DEVLINK_CMD_SB_GET,
  		.validate = GENL_DONT_VALIDATE_STRICT | GENL_DONT_VALIDATE_DUMP,
-@@ -7980,6 +8225,7 @@ struct devlink *devlink_alloc(const struct devlink_ops *ops, size_t priv_size)
+@@ -7980,6 +8222,7 @@ struct devlink *devlink_alloc(const struct devlink_ops *ops, size_t priv_size)
  	xa_init_flags(&devlink->snapshot_ids, XA_FLAGS_ALLOC);
  	__devlink_net_set(devlink, &init_net);
  	INIT_LIST_HEAD(&devlink->port_list);
@@ -444,7 +437,7 @@ index 72047750dcd9..645fe0612b53 100644
  	INIT_LIST_HEAD(&devlink->sb_list);
  	INIT_LIST_HEAD_RCU(&devlink->dpipe_table_list);
  	INIT_LIST_HEAD(&devlink->resource_list);
-@@ -7991,6 +8237,8 @@ struct devlink *devlink_alloc(const struct devlink_ops *ops, size_t priv_size)
+@@ -7991,6 +8234,8 @@ struct devlink *devlink_alloc(const struct devlink_ops *ops, size_t priv_size)
  	INIT_LIST_HEAD(&devlink->trap_policer_list);
  	mutex_init(&devlink->lock);
  	mutex_init(&devlink->reporters_lock);
@@ -453,7 +446,7 @@ index 72047750dcd9..645fe0612b53 100644
  	return devlink;
  }
  EXPORT_SYMBOL_GPL(devlink_alloc);
-@@ -8071,6 +8319,7 @@ EXPORT_SYMBOL_GPL(devlink_reload_disable);
+@@ -8071,6 +8316,7 @@ EXPORT_SYMBOL_GPL(devlink_reload_disable);
   */
  void devlink_free(struct devlink *devlink)
  {
@@ -461,7 +454,7 @@ index 72047750dcd9..645fe0612b53 100644
  	mutex_destroy(&devlink->reporters_lock);
  	mutex_destroy(&devlink->lock);
  	WARN_ON(!list_empty(&devlink->trap_policer_list));
-@@ -8082,6 +8331,7 @@ void devlink_free(struct devlink *devlink)
+@@ -8082,6 +8328,7 @@ void devlink_free(struct devlink *devlink)
  	WARN_ON(!list_empty(&devlink->resource_list));
  	WARN_ON(!list_empty(&devlink->dpipe_table_list));
  	WARN_ON(!list_empty(&devlink->sb_list));
@@ -469,7 +462,7 @@ index 72047750dcd9..645fe0612b53 100644
  	WARN_ON(!list_empty(&devlink->port_list));
  
  	xa_destroy(&devlink->snapshot_ids);
-@@ -8427,6 +8677,57 @@ static int __devlink_port_phys_port_name_get(struct devlink_port *devlink_port,
+@@ -8427,6 +8674,57 @@ static int __devlink_port_phys_port_name_get(struct devlink_port *devlink_port,
  	return 0;
  }
  
@@ -528,5 +521,5 @@ index 72047750dcd9..645fe0612b53 100644
  			u32 size, u16 ingress_pools_count,
  			u16 egress_pools_count, u16 ingress_tc_count,
 -- 
-2.20.1
+2.30.2
 
