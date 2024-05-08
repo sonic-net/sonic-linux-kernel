@@ -114,22 +114,33 @@ Support-for-fullcone-nat.patch
 0039-mlxsw-reg-Limit-MTBR-register-payload-to-a-single-da.patch
 0040-mlxsw-core-Extend-allowed-list-of-external-cooling-d.patch
 0041-mlxsw-i2c-Utilize-standard-macros-for-dividing-buffe.patch
+0042-hwmon-mlxreg-fan-Add-support-for-new-flavour-of-capa.patch
 0043-hwmon-mlxreg-fan-Extend-number-of-supporetd-fans.patch
+0044-leds-mlxreg-Add-support-for-new-flavour-of-capabilit.patch
+0045-leds-mlxreg-Remove-code-for-amber-LED-colour.patch
+0046-Extend-driver-to-support-Infineon-Digital-Multi-phas.patch
+0047-dt-bindings-trivial-devices-Add-infineon-xdpe1a2g7.patch
+0048-hwmon-pmbus-Add-support-for-MPS-Multi-phase-mp2891-c.patch
+0049-dt-bindings-trivial-devices-Add-mps-mp2891.patch
+0050-leds-mlxreg-Skip-setting-LED-color-during-initializa.patch
 0051-platform-mellanox-mlxreg-hotplug-Allow-more-flexible.patch
 0052-i2c-mux-Add-register-map-based-mux-driver.patch
+0053-platform-mellanox-Add-support-for-dynamic-I2C-channe.patch
+0054-platform-mellanox-Introduce-support-for-switches-equ.patch
+0055-mellanox-Relocate-mlx-platform-driver.patch
 0056-Documentation-ABI-Add-new-attribute-for-mlxreg-io-sy.patch
-0057-Documentation-ABI-Add-new-attribute-for-mlxreg-io-sy.patch
-0061-pinctrl-Introduce-struct-pinfunction-and-PINCTRL_PIN.patch
-0062-pinctrl-mlxbf3-Add-pinctrl-driver-support.patch
-0063-gpio-mlxbf3-Add-gpio-driver-support.patch
-0064-pinctrl-mlxbf3-set-varaiable-mlxbf3_pmx_funcs-storag.patch
 0085-hwmon-mlxreg-fan-Separate-methods-of-fan-setting-com.patch
+0087-platform-mellanox-indicate-deferred-I2C-bus-creation.patch
+8000-mlxsw-Use-weak-reverse-dependencies-for-firmware-fla.patch
 8003-mlxsw-i2c-SONIC-ISSU-Prevent-transaction-execution-f.patch
+8004-mlxsw-minimal-Downstream-Ignore-error-reading-SPAD-r.patch
 8005-leds-leds-mlxreg-Downstream-Send-udev-event-from-led.patch
 8006-i2c-mlxcpld-Downstream-WA-to-avoid-error-for-SMBUS-r.patch
 8007-hwmon-mlxreg-fan-Downstream-Allow-fan-speed-setting-.patch
 8008-hwmon-emc2305-Downstream-Allow-fan-speed-setting-gra.patch
 8009-hwmon-mlxsw-Downstream-Allow-fan-speed-setting-granu.patch
+8010-mlxsw-i2c-Downstream-Add-retry-mechanism-for-failed-.patch
+8011-mlxsw-minimal-Downstream-Disable-ethtool-interface.patch
 ###-> mellanox_hw_mgmt-end
 
 # Cisco patches for 5.10 kernel
