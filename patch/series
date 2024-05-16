@@ -199,6 +199,11 @@ cisco-npu-disable-other-bars.patch
 0022-drivers-soc-pensando-boot_count-to-sysfs-for-kdump.patch
 0023-arch-arm64-boot-dts-psci-support.patch
 0024-drivers-soc-pensando-penfw-driver.patch
+0025-dts-changes-for-mtfuji-and-lipari.patch
+0026-Add-support-for-new-qspi-macronix-flash-mx66u1g45g.patch
+0027-pensando-add-rtc-cpld.patch
+0028-Create-miniaturised-diafgw-partition-for-128MB-flash.patch
+0029-pcie-if-hotplug-enabled-do-immediate-reset-on-panic.patch
 
 # Security patch
 0001-Change-the-system.map-file-permission-only-readable-.patch

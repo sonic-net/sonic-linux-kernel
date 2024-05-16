@@ -1,0 +1,242 @@
+From d7e9aa21a1554e5d7d02ef56d162fc238bf9ef4a Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Wed, 27 Mar 2024 16:03:00 +0000
+Subject: [PATCH] dts changes for mtfuji and lipari
+
+Bringup changes for mtfuji and lipari. Both are distributed
+smart switches.
+
+Signed-off-by: Hiren Mehta <hiren@pensando.io>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
+---
+ arch/arm64/boot/dts/pensando/Makefile         |   5 +-
+ .../dts/pensando/elba-asic-psci-lipari.dts    |  26 +++++
+ .../dts/pensando/elba-asic-psci-mtfuji.dts    |  26 +++++
+ .../boot/dts/pensando/elba-asic-psci.dts      |  26 +++++
+ .../dts/pensando/elba-flash128-parts.dtsi     | 101 ++++++++++++++++++
+ 5 files changed, 182 insertions(+), 2 deletions(-)
+ create mode 100644 arch/arm64/boot/dts/pensando/elba-asic-psci-lipari.dts
+ create mode 100644 arch/arm64/boot/dts/pensando/elba-asic-psci-mtfuji.dts
+ create mode 100644 arch/arm64/boot/dts/pensando/elba-asic-psci.dts
+ create mode 100644 arch/arm64/boot/dts/pensando/elba-flash128-parts.dtsi
+
+diff --git a/arch/arm64/boot/dts/pensando/Makefile b/arch/arm64/boot/dts/pensando/Makefile
+index 8971be416..b13afe86d 100644
+--- a/arch/arm64/boot/dts/pensando/Makefile
++++ b/arch/arm64/boot/dts/pensando/Makefile
+@@ -1,6 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0
+-dtb-$(CONFIG_ARCH_PENSANDO_ELBA_SOC) += \
+-		elba-asic.dtb
++dtb-$(CONFIG_ARCH_PENSANDO_ELBA_SOC) += elba-asic-psci.dtb \
++	elba-asic-psci-mtfuji.dtb elba-asic-psci-lipari.dtb \
++	elba-asic.dtb
+ 
+ always-y	:= $(dtb-y)
+ subdir-y	:= $(dts-dirs)
+diff --git a/arch/arm64/boot/dts/pensando/elba-asic-psci-lipari.dts b/arch/arm64/boot/dts/pensando/elba-asic-psci-lipari.dts
+new file mode 100644
+index 000000000..dfa6deaa0
+--- /dev/null
++++ b/arch/arm64/boot/dts/pensando/elba-asic-psci-lipari.dts
+@@ -0,0 +1,26 @@
++// SPDX-License-Identifier: GPL-2.0
++
++/dts-v1/;
++
++/ {
++	model = "Elba ASIC Board";
++	compatible = "pensando,elba";
++
++	aliases {
++		serial0 = &uart0;
++		spi0 = &spi0;
++		spi1 = &qspi;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++};
++
++#include "elba.dtsi"
++#include "elba-16core.dtsi"
++#include "elba-16core-psci.dtsi"
++#include "elba-asic-common.dtsi"
++#include "elba-flash-parts.dtsi"
++#include "elba-asic-memory.dtsi"
++#include "elba-mdev.dtsi"
+diff --git a/arch/arm64/boot/dts/pensando/elba-asic-psci-mtfuji.dts b/arch/arm64/boot/dts/pensando/elba-asic-psci-mtfuji.dts
+new file mode 100644
+index 000000000..714094b57
+--- /dev/null
++++ b/arch/arm64/boot/dts/pensando/elba-asic-psci-mtfuji.dts
+@@ -0,0 +1,26 @@
++// SPDX-License-Identifier: GPL-2.0
++
++/dts-v1/;
++
++/ {
++	model = "Elba ASIC Board";
++	compatible = "pensando,elba";
++
++	aliases {
++		serial0 = &uart0;
++		spi0 = &spi0;
++		spi1 = &qspi;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++};
++
++#include "elba.dtsi"
++#include "elba-16core.dtsi"
++#include "elba-16core-psci.dtsi"
++#include "elba-asic-common.dtsi"
++#include "elba-flash128-parts.dtsi"
++#include "elba-asic-memory.dtsi"
++#include "elba-mdev.dtsi"
+diff --git a/arch/arm64/boot/dts/pensando/elba-asic-psci.dts b/arch/arm64/boot/dts/pensando/elba-asic-psci.dts
+new file mode 100644
+index 000000000..dfa6deaa0
+--- /dev/null
++++ b/arch/arm64/boot/dts/pensando/elba-asic-psci.dts
+@@ -0,0 +1,26 @@
++// SPDX-License-Identifier: GPL-2.0
++
++/dts-v1/;
++
++/ {
++	model = "Elba ASIC Board";
++	compatible = "pensando,elba";
++
++	aliases {
++		serial0 = &uart0;
++		spi0 = &spi0;
++		spi1 = &qspi;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++};
++
++#include "elba.dtsi"
++#include "elba-16core.dtsi"
++#include "elba-16core-psci.dtsi"
++#include "elba-asic-common.dtsi"
++#include "elba-flash-parts.dtsi"
++#include "elba-asic-memory.dtsi"
++#include "elba-mdev.dtsi"
+diff --git a/arch/arm64/boot/dts/pensando/elba-flash128-parts.dtsi b/arch/arm64/boot/dts/pensando/elba-flash128-parts.dtsi
+new file mode 100644
+index 000000000..ddb961b79
+--- /dev/null
++++ b/arch/arm64/boot/dts/pensando/elba-flash128-parts.dtsi
+@@ -0,0 +1,101 @@
++// SPDX-License-Identifier: GPL-2.0
++
++&flash0 {
++	partitions {
++		compatible = "fixed-partitions";
++		#address-cells = <1>;
++		#size-cells = <1>;
++		partition@0 {
++			label = "flash";
++			reg = <0x10000 0x7ff0000>;
++		};
++
++		partition@f0000 {
++			label = "golduenv";
++			reg = <0xf0000 0x10000>;
++		};
++
++		partition@100000 {
++			label = "boot0";
++			reg = <0x100000 0x80000>;
++		};
++
++		partition@180000 {
++			label = "golduboot";
++			reg = <0x180000 0x200000>;
++		};
++
++		partition@380000 {
++			label = "brdcfg0";
++			reg = <0x380000 0x10000>;
++		};
++
++		partition@390000 {
++			label = "brdcfg1";
++			reg = <0x390000 0x10000>;
++		};
++
++		partition@400000 {
++			label = "goldfw";
++			reg = <0x400000 0x3c00000>;
++		};
++
++		partition@4010000 {
++			label = "fwmap";
++			reg = <0x4010000 0x20000>;
++		};
++
++		partition@4030000 {
++			label = "fwsel";
++			reg = <0x4030000 0x20000>;
++		};
++
++		partition@4090000 {
++			label = "bootlog";
++			reg = <0x4090000 0x20000>;
++		};
++
++		partition@40b0000 {
++			label = "panicbuf";
++			reg = <0x40b0000 0x20000>;
++		};
++
++		partition@40d0000 {
++			label = "uservars";
++			reg = <0x40d0000 0x20000>;
++		};
++
++		partition@4200000 {
++			label = "uboota";
++			reg = <0x4200000 0x400000>;
++		};
++
++		partition@4600000 {
++			label = "ubootb";
++			reg = <0x4600000 0x400000>;
++		};
++
++		partition@4a00000 {
++			label = "mainfwa";
++			reg = <0x4a00000 0x1000000>;
++		};
++
++		partition@5a00000 {
++			label = "mainfwb";
++			reg = <0x5a00000 0x1000000>;
++		};
++
++		partition@7fe0000 {
++			label = "ubootenv";
++			reg = <0x7fe0000 0x10000>;
++		};
++	};
++};
++
++&soc {
++	panicdump@740b0000 {
++		compatible = "pensando,capri-crash";
++		pensando,crash-ctrl = <&qspi>;
++		reg = <0x0 0x740b0000 0x0 0x20000>;
++	};
++};
+-- 
+2.25.1
+
