@@ -171,6 +171,7 @@ cisco-npu-disable-other-bars.patch
 0012-net-mvpp2-clear-BM-pool-before-initialization.patch
 0013-mmc-sdhci-xenon-fix-PHY-init-clock-stability.patch
 0014-mmc-sdhci-xenon-add-timeout-for-PHY-init-complete.patch
+0015-arm64-dts-marvell-Add-Supermicro-SSE-G3748-board.patch
 
 # amd-pensando elba support
 0000-Add-support-for-the-TI-TPS53659.patch
