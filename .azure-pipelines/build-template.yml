@@ -17,11 +17,11 @@ parameters:
 - name: pool
   type: string
   values:
-  - sonicbld
+  - sonicbld-1es
   - sonicbld_8c
   - sonicbld-arm64
   - sonicbld-armhf
-  default: sonicbld
+  default: sonicbld-1es
 
 - name: timeout
   type: number
