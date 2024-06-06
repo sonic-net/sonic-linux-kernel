@@ -45,7 +45,7 @@ index 77d67344cee4..f173c4195d86 100644
 +	tristate "MPS MP2855"
 +	help
 +	  If you say yes here you get hardware monitoring support for MPS
-+	  MP2855 Daula-Loop, Digital, Multi-Phase Controller with PMBus
++	  MP2855 Dual-Loop, Digital, Multi-Phase Controller with PMBus
 +	  interface for AMD SVI2 2.0 platform.
 +
 +	  This driver can also be built as a module. If so, the module will
