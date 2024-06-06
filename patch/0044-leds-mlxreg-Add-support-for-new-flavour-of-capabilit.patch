@@ -1,8 +1,8 @@
-From 46c4b0cdf2a3abe321e137bcb87e5639c39fd655 Mon Sep 17 00:00:00 2001
+From 242233be3adcd06398d728b2e793d9e40e6fbc3d Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Thu, 20 Jul 2023 11:01:56 +0000
-Subject: [PATCH backport 6.1.42 44/85] leds: mlxreg: Add support for new
- flavour of capability register
+Subject: [PATCH v6.1 25/81] leds: mlxreg: Add support for new flavour of
+ capability register
 
 LED platform data is common across the various systems, while LED
 driver should be able to apply only the LED instances relevant
@@ -28,7 +28,7 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  1 file changed, 9 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/leds/leds-mlxreg.c b/drivers/leds/leds-mlxreg.c
-index b7855c93bd72..063a9cb50a2b 100644
+index b7855c93bd72..161195de78ba 100644
 --- a/drivers/leds/leds-mlxreg.c
 +++ b/drivers/leds/leds-mlxreg.c
 @@ -206,16 +206,22 @@ static int mlxreg_led_config(struct mlxreg_led_priv_data *priv)
@@ -43,7 +43,7 @@ index b7855c93bd72..063a9cb50a2b 100644
 +			 */
 +			if (data->slot && data->slot > regval)
 +				continue;
-+			else if (!(regval & data->bit))
++			else if (!(regval & data->bit) && !data->slot)
  				continue;
  			/*
  			 * Field "bit" can contain one capability bit in 0 byte

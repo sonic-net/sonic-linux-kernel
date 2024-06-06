@@ -1,8 +1,8 @@
-From fa70f126d07b6fe84c1c110fb3a3923570b72f2e Mon Sep 17 00:00:00 2001
+From 8769d44cd9dab3e8e6f539956a40eb041f479fef Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Sun, 23 Jul 2023 06:49:01 +0000
-Subject: [PATCH backport 6.1.42 43/85] hwmon: (mlxreg-fan) Extend number of
- supporetd fans
+Subject: [PATCH v6.1 24/80] hwmon: (mlxreg-fan) Extend number of supporetd
+ fans
 
 Some new big modular systems can be equipped with up to 24 fans.
 Extend maximum number of fans accordingly.
@@ -13,7 +13,7 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  1 file changed, 11 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/hwmon/mlxreg-fan.c b/drivers/hwmon/mlxreg-fan.c
-index dad94d2892b2..c515e1d2fe4e 100644
+index 342ff355e925..bddc927b207c 100644
 --- a/drivers/hwmon/mlxreg-fan.c
 +++ b/drivers/hwmon/mlxreg-fan.c
 @@ -12,7 +12,7 @@
@@ -25,7 +25,7 @@ index dad94d2892b2..c515e1d2fe4e 100644
  #define MLXREG_FAN_MAX_PWM		4
  #define MLXREG_FAN_PWM_NOT_CONNECTED	0xff
  #define MLXREG_FAN_MAX_STATE		10
-@@ -300,6 +300,16 @@ static const struct hwmon_channel_info *mlxreg_fan_hwmon_info[] = {
+@@ -304,6 +304,16 @@ static const struct hwmon_channel_info *mlxreg_fan_hwmon_info[] = {
  			   HWMON_F_INPUT | HWMON_F_FAULT,
  			   HWMON_F_INPUT | HWMON_F_FAULT,
  			   HWMON_F_INPUT | HWMON_F_FAULT,
