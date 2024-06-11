@@ -7,7 +7,6 @@ KVERSION_SHORT ?= 6.1.0-11-$(KERNEL_ABI_MINOR_VERSION)
 KVERSION ?= $(KVERSION_SHORT)-amd64
 KERNEL_VERSION ?= 6.1.38
 KERNEL_SUBVERSION ?= 4
-kernel_procure_method ?= build
 CONFIGURED_ARCH ?= amd64
 CONFIGURED_PLATFORM ?= vs
 SECURE_UPGRADE_MODE ?=
@@ -24,41 +23,15 @@ endif
 MAIN_TARGET = $(LINUX_HEADER_COMMON)
 DERIVED_TARGETS = $(LINUX_HEADER_AMD64) $(LINUX_IMAGE)
 
-ifneq ($(kernel_procure_method), build)
-# Downloading kernel
-
-# TBD, need upload the new kernel packages
-LINUX_HEADER_COMMON_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-public/linux-headers-$(KVERSION_SHORT)-common_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_all.deb?sv=2015-04-05&sr=b&sig=JmF0asLzRh6btfK4xxfVqX%2F5ylqaY4wLkMb5JwBJOb8%3D&se=2128-12-23T19%3A05%3A28Z&sp=r"
-
-LINUX_HEADER_AMD64_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-public/linux-headers-$(KVERSION_SHORT)-amd64_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_amd64.deb?sv=2015-04-05&sr=b&sig=%2FD9a178J4L%2FN3Fi2uX%2FWJaddpYOZqGmQL4WAC7A7rbA%3D&se=2128-12-23T19%3A06%3A13Z&sp=r"
-
-LINUX_IMAGE_URL = "https://sonicstorage.blob.core.windows.net/packages/kernel-public/linux-image-$(KVERSION_SHORT)-amd64_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_amd64.deb?sv=2015-04-05&sr=b&sig=oRGGO9xJ6jmF31KGy%2BwoqEYMuTfCDcfILKIJbbaRFkU%3D&se=2128-12-23T19%3A06%3A47Z&sp=r"
-
-$(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
-	# Obtaining the Debian kernel packages
-	rm -rf $(BUILD_DIR)
-	wget --no-use-server-timestamps -O $(LINUX_HEADER_COMMON) $(LINUX_HEADER_COMMON_URL)
-	wget --no-use-server-timestamps -O $(LINUX_HEADER_AMD64) $(LINUX_HEADER_AMD64_URL)
-	wget --no-use-server-timestamps -O $(LINUX_IMAGE) $(LINUX_IMAGE_URL)
-
-ifneq ($(DEST),)
-	mv $(DERIVED_TARGETS) $* $(DEST)/
-endif
-
-$(addprefix $(DEST)/, $(DERIVED_TARGETS)): $(DEST)/% : $(DEST)/$(MAIN_TARGET)
-
-else
-# Building kernel
-
 DSC_FILE = linux_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION).dsc
 DEBIAN_FILE = linux_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION).debian.tar.xz
 ORIG_FILE = linux_$(KERNEL_VERSION).orig.tar.xz
 BUILD_DIR=linux-$(KERNEL_VERSION)
-SOURCE_FILE_BASE_URL="https://sonicstorage.blob.core.windows.net/debian-security/pool/updates/main/l/linux"
+LINUX_SOURCE_BASE_URL="https://sonicstorage.blob.core.windows.net/debian-security/pool/updates/main/l/linux"
 
-DSC_FILE_URL = "$(SOURCE_FILE_BASE_URL)/$(DSC_FILE)"
-DEBIAN_FILE_URL = "$(SOURCE_FILE_BASE_URL)/$(DEBIAN_FILE)"
-ORIG_FILE_URL = "$(SOURCE_FILE_BASE_URL)/$(ORIG_FILE)"
+DSC_FILE_URL = "$(LINUX_SOURCE_BASE_URL)/$(DSC_FILE)"
+DEBIAN_FILE_URL = "$(LINUX_SOURCE_BASE_URL)/$(DEBIAN_FILE)"
+ORIG_FILE_URL = "$(LINUX_SOURCE_BASE_URL)/$(ORIG_FILE)"
 NON_UP_DIR = /tmp/non_upstream_patches
 
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
@@ -148,5 +121,3 @@ ifneq ($(DEST),)
 endif
 
 $(addprefix $(DEST)/, $(DERIVED_TARGETS)): $(DEST)/% : $(DEST)/$(MAIN_TARGET)
-
-endif # building kernel
