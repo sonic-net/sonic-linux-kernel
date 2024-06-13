@@ -29,6 +29,7 @@ driver-support-optoe-EOF_fix.patch
 driver-support-optoe-chunk-offset-fix.patch
 driver-support-optoe-QSFP_DD.patch
 driver-support-optoe-write-max.patch
+driver-support-optoe-write-max_fix.patch
 driver-support-optoe-twoaddr-a2h-access.patch
 driver-support-optoe-oneaddr-pageable.patch
 driver-support-optoe-dynamic-write-timeout.patch
