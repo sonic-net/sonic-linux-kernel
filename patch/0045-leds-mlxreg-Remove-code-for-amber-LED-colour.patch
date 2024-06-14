@@ -1,8 +1,7 @@
-From af93d2527b5af3f2e53507c7e35bcd9c9bd521cb Mon Sep 17 00:00:00 2001
+From 9fc276007cac2ab2efc9f55f66c11816f4e2da6b Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Thu, 20 Jul 2023 11:17:31 +0000
-Subject: [PATCH backport 6.1.42 45/85] leds: mlxreg: Remove code for amber LED
- colour
+Subject: [PATCH v6.1 26/81] leds: mlxreg: Remove code for amber LED colour
 
 Remove unused code for amber LED colour.
 
@@ -15,7 +14,7 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  1 file changed, 2 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/leds/leds-mlxreg.c b/drivers/leds/leds-mlxreg.c
-index 063a9cb50a2b..215132f67c07 100644
+index 161195de78ba..23de154ade61 100644
 --- a/drivers/leds/leds-mlxreg.c
 +++ b/drivers/leds/leds-mlxreg.c
 @@ -19,7 +19,6 @@

@@ -129,8 +129,14 @@ Support-for-fullcone-nat.patch
 0054-platform-mellanox-Introduce-support-for-switches-equ.patch
 0055-mellanox-Relocate-mlx-platform-driver.patch
 0056-Documentation-ABI-Add-new-attribute-for-mlxreg-io-sy.patch
+0057-Documentation-ABI-Add-new-attribute-for-mlxreg-io-sy.patch
 0085-hwmon-mlxreg-fan-Separate-methods-of-fan-setting-com.patch
 0087-platform-mellanox-indicate-deferred-I2C-bus-creation.patch
+0087-platform_data-mlxreg-Add-capability-bit-and-mask-fie.patch
+0088-platform-mellanox-mlxreg-hotplug-Add-support-for-new.patch
+0089-platform-mellanox-mlx-platform-Change-register-name.patch
+0090-platform-mellanox-mlx-platform-Add-support-for-new-X.patch
+0093-hwmon-pmbus-Add-support-for-MPS-Multi-phase-mp2855-c.patch
 8000-mlxsw-Use-weak-reverse-dependencies-for-firmware-fla.patch
 8003-mlxsw-i2c-SONIC-ISSU-Prevent-transaction-execution-f.patch
 8004-mlxsw-minimal-Downstream-Ignore-error-reading-SPAD-r.patch

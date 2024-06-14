@@ -1,8 +1,8 @@
-From f897ae50422b9fbff200051419ebb3f5fa280bd8 Mon Sep 17 00:00:00 2001
+From 34758fcde60b934272415849940ee11da6328385 Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Thu, 2 Nov 2023 11:42:47 +0000
-Subject: [PATCH v6.1.42 downstream 1/2] hwmon: (mlxreg-fan): Downstream: Allow
- fan speed setting granularity of 1 PWM
+Subject: [PATCH v6.1 81/81] hwmon: (mlxreg-fan): Downstream: Allow fan speed
+ setting granularity of 1 PWM
 
 Currently PWM setting is allowed with 10 percent stepping.
 Such configuration is aligned with thermal drivers, which are used to be
@@ -26,11 +26,11 @@ submitted to up-stream.
 
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
 ---
- drivers/hwmon/mlxreg-fan.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ drivers/hwmon/mlxreg-fan.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/hwmon/mlxreg-fan.c b/drivers/hwmon/mlxreg-fan.c
-index b48bd7c961d6..ca9b1b27e5d2 100644
+index 102a517940f3..1c4adcfd4498 100644
 --- a/drivers/hwmon/mlxreg-fan.c
 +++ b/drivers/hwmon/mlxreg-fan.c
 @@ -15,10 +15,15 @@
@@ -51,7 +51,6 @@ index b48bd7c961d6..ca9b1b27e5d2 100644
  #define MLXREG_FAN_TACHO_SAMPLES_PER_PULSE_DEF	44
  #define MLXREG_FAN_TACHO_DIV_MIN		283
  #define MLXREG_FAN_TACHO_DIV_DEF		(MLXREG_FAN_TACHO_DIV_MIN * 4)
--- 
 -- 
 2.20.1
 
