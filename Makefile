@@ -128,6 +128,7 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Learning new git repo head (above commit) by calling stg repair.
 	stg repair
 	stg import -s ../patch/series
+	stg series
 
 	# Optionally add/remove kernel options
 	if [ -f ../manage-config ]; then
