@@ -211,6 +211,7 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 0314-platform-mellanox-mlx-platform-Introduce-ACPI-init-f.patch
 0315-platform-mellanox-mlx-platform-Get-interrupt-line-th.patch
 0316-platform-mellanox-Add-initial-support-for-PCIe-based.patch
+0329-platform-mellanox-indicate-deferred-I2C-bus-creation.patch
 ###-> mellanox_hw_mgmt-end
 
 # Cisco patches for 5.10 kernel
