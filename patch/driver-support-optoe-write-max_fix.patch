@@ -1,0 +1,34 @@
+From f1250392a9dff619b147d8aee0c73c0f6d550713 Mon Sep 17 00:00:00 2001
+From: Prince George <prgeor@microsoft.com>
+Date: Thu, 13 Jun 2024 14:18:22 +0000
+Subject: [PATCH] Fix optoe's write_max when using native i2c driver
+
+Signed-off-by: Prince George <prgeor@microsoft.com>
+---
+ drivers/misc/eeprom/optoe.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
+index 5a2e71be5..1efd18040 100644
+--- a/drivers/misc/eeprom/optoe.c
++++ b/drivers/misc/eeprom/optoe.c
+@@ -1114,7 +1114,7 @@ static int optoe_probe(struct i2c_client *client,
+ 		goto exit;
+ 	}
+ 
+-	dev_dbg(&client->dev, "dev_class: %d\n", optoe->dev_class);
++	dev_dbg(&client->dev, "dev_class: %d use_smbus=%d\n", optoe->dev_class, use_smbus);
+ 	optoe->use_smbus = use_smbus;
+ 	optoe->chip = chip;
+ 	optoe->num_addresses = num_addresses;
+@@ -1157,7 +1157,7 @@ static int optoe_probe(struct i2c_client *client,
+ 		optoe->write_max = write_max;
+ 
+ 		/* buffer (data + address at the beginning) */
+-		optoe->writebuf = kmalloc(write_max + 2, GFP_KERNEL);
++		optoe->writebuf = kmalloc(OPTOE_PAGE_SIZE + 2, GFP_KERNEL);
+ 		if (!optoe->writebuf) {
+ 			err = -ENOMEM;
+ 			goto exit_kfree;
+-- 
+2.25.1
