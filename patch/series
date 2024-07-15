@@ -137,7 +137,10 @@ Support-for-fullcone-nat.patch
 0088-platform-mellanox-mlxreg-hotplug-Add-support-for-new.patch
 0089-platform-mellanox-mlx-platform-Change-register-name.patch
 0090-platform-mellanox-mlx-platform-Add-support-for-new-X.patch
+0091-platform-mellanox-mlxreg-dpu-Add-initial-support-for.patch
+0092-platform-mellanox-Introduce-support-of-Nvidia-smart-.patch
 0093-hwmon-pmbus-Add-support-for-MPS-Multi-phase-mp2855-c.patch
+0094-i2c-asf-Introduce-MCTP-support-over-ASF-controller.patch
 8000-mlxsw-Use-weak-reverse-dependencies-for-firmware-fla.patch
 8003-mlxsw-i2c-SONIC-ISSU-Prevent-transaction-execution-f.patch
 8004-mlxsw-minimal-Downstream-Ignore-error-reading-SPAD-r.patch
