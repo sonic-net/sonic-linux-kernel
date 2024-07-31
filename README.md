@@ -18,7 +18,7 @@ This repository contains the scripts and patches to build the kernel for SONiC. 
     - If being upstreamed, please include a link to the mail thread in the patch or PR description.
   - Those patches don't make sense to be upstreamed, either because they're applicable only within SONiC or they would break some general use case.
     - DTS (device tree source) files are acceptable here, as the board description in the files may be applicable to SONiC software only.
-	- For patches added into this folder, please explain why the patch cannot be upstreamed.
+    - For patches added into this folder, please explain why the patch cannot be upstreamed.
 - Platform specific kernel modules which are impossible or very difficult to be built out of kernel tree.
 
 Platform specific kernel modules are expected to develop out-of-tree kernel modules, provide them in debian packages to be embedded into SONiC image and installed on their platforms.
