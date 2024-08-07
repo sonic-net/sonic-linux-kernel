@@ -4,7 +4,7 @@ diff --git a/debian/config/defines b/debian/config/defines
 index 55d7e51a7..d0bd92833 100644
 --- a/debian/config/defines
 +++ b/debian/config/defines
-@@ -171,3 +171,6 @@ gcc-10: gcc-10 <!stage1 !cross !pkg.linux.nokernel>, gcc-10-@gnu-type-package@ <
+@@ -171,3 +171,6 @@ gcc-12: gcc-12 <!stage1 !cross !pkg.linux.nokernel>, gcc-12-@gnu-type-package@ <
  # initramfs-generators
  initramfs-fallback: linux-initramfs-tool
  initramfs-tools: initramfs-tools (>= 0.120+deb8u2)
@@ -19,8 +19,8 @@ index 7d4eabf04..30b3c66a3 100644
  a20d83421667bad21739041d4e743ed1  debian/templates/sourcebin.meta.maintscript.in
  cbc5b0a81441c4c98b329ebe10827812  debian/templates/tools-unversioned.control.in
  568f629072d584e9a0eb1dc9d3a94749  debian/templates/tools-versioned.control.in
--2805c12fb7881444231472fec6a3e6ff  debian/config/defines
-+afa615d81b7e9d81aa865ec2b0647c44  debian/config/defines
+-1d140a262c41627e255a1aaa0ddcfe92  debian/config/defines
++cb9f5129f072fe65d26e16d8963d4297  debian/config/defines
  59a811890d2e7129bec940075850f11f  debian/config/alpha/defines
  60569b1b4c618e2fe7b135f687d0f0d2  debian/config/amd64/defines
  bc35d767074baf305423437d049be85d  debian/config/arm64/defines

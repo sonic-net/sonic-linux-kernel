@@ -128,7 +128,7 @@ index 26c40ea6d..4f91e3e7f 100644
  {
  	int (*init_func)(struct platform_device *pdev,
 @@ -352,6 +439,7 @@ static const struct of_device_id dw_spi_mmio_of_match[] = {
- 	{ .compatible = "intel,thunderbay-ssi", .data = dw_spi_intel_init},
+ 	},
  	{ .compatible = "microchip,sparx5-spi", dw_spi_mscc_sparx5_init},
  	{ .compatible = "canaan,k210-spi", dw_spi_canaan_k210_init},
 +	{ .compatible = "pensando,elba-spi", .data = dw_spi_elba_init },

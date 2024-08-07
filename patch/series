@@ -108,9 +108,6 @@ Support-for-fullcone-nat.patch
 0033-i2c-mlxcpld-Allow-driver-to-run-on-ARM64-architectur.patch
 0034-i2c-mlxcpld-Add-support-for-extended-transaction-len.patch
 0035-i2c-mlxcpld-Support-PCIe-mapped-register-space.patch
-0036-mlxsw-i2c-Fix-chunk-size-setting-in-output-mailbox-b.patch
-0037-mlxsw-i2c-Limit-single-transaction-buffer-size.patch
-0038-mlxsw-core_hwmon-Adjust-module-label-names-based-on-.patch
 0039-mlxsw-reg-Limit-MTBR-register-payload-to-a-single-da.patch
 0040-mlxsw-core-Extend-allowed-list-of-external-cooling-d.patch
 0041-mlxsw-i2c-Utilize-standard-macros-for-dividing-buffe.patch
@@ -136,7 +133,10 @@ Support-for-fullcone-nat.patch
 0088-platform-mellanox-mlxreg-hotplug-Add-support-for-new.patch
 0089-platform-mellanox-mlx-platform-Change-register-name.patch
 0090-platform-mellanox-mlx-platform-Add-support-for-new-X.patch
+0091-platform-mellanox-mlxreg-dpu-Add-initial-support-for.patch
+0092-platform-mellanox-Introduce-support-of-Nvidia-smart-.patch
 0093-hwmon-pmbus-Add-support-for-MPS-Multi-phase-mp2855-c.patch
+0094-i2c-asf-Introduce-MCTP-support-over-ASF-controller.patch
 8000-mlxsw-Use-weak-reverse-dependencies-for-firmware-fla.patch
 8003-mlxsw-i2c-SONIC-ISSU-Prevent-transaction-execution-f.patch
 8004-mlxsw-minimal-Downstream-Ignore-error-reading-SPAD-r.patch
@@ -174,9 +174,6 @@ cisco-npu-disable-other-bars.patch
 0009-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
 0010-dts-marvell-Add-support-for-7020-comexpress.patch
 0011-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch
-0012-net-mvpp2-clear-BM-pool-before-initialization.patch
-0013-mmc-sdhci-xenon-fix-PHY-init-clock-stability.patch
-0014-mmc-sdhci-xenon-add-timeout-for-PHY-init-complete.patch
 0015-arm64-dts-marvell-Add-Supermicro-SSE-G3748-board.patch
 
 # amd-pensando elba support
