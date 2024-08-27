@@ -24,14 +24,14 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  Documentation/hwmon/mp2891.rst | 128 ++++++++++
  drivers/hwmon/pmbus/Kconfig    |   9 +
  drivers/hwmon/pmbus/Makefile   |   1 +
- drivers/hwmon/pmbus/mp2891.c   | 424 +++++++++++++++++++++++++++++++++
- 4 files changed, 562 insertions(+)
+ drivers/hwmon/pmbus/mp2891.c   | 427 +++++++++++++++++++++++++++++++++
+ 4 files changed, 565 insertions(+)
  create mode 100644 Documentation/hwmon/mp2891.rst
  create mode 100644 drivers/hwmon/pmbus/mp2891.c
 
 diff --git a/Documentation/hwmon/mp2891.rst b/Documentation/hwmon/mp2891.rst
 new file mode 100644
-index 000000000000..c4bda3d7ee8a
+index 000000000..c4bda3d7e
 --- /dev/null
 +++ b/Documentation/hwmon/mp2891.rst
 @@ -0,0 +1,128 @@
@@ -164,7 +164,7 @@ index 000000000000..c4bda3d7ee8a
 +
 +**temp1_max_alarm**
 diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
-index 89668af67206..77d67344cee4 100644
+index 89668af67..77d67344c 100644
 --- a/drivers/hwmon/pmbus/Kconfig
 +++ b/drivers/hwmon/pmbus/Kconfig
 @@ -299,6 +299,15 @@ config SENSORS_MP2888
@@ -184,7 +184,7 @@ index 89668af67206..77d67344cee4 100644
  	tristate "MPS MP2975"
  	help
 diff --git a/drivers/hwmon/pmbus/Makefile b/drivers/hwmon/pmbus/Makefile
-index 0002dbe22d52..8e767d7b8c5b 100644
+index 0002dbe22..8e767d7b8 100644
 --- a/drivers/hwmon/pmbus/Makefile
 +++ b/drivers/hwmon/pmbus/Makefile
 @@ -32,6 +32,7 @@ obj-$(CONFIG_SENSORS_MAX31785)	+= max31785.o
@@ -197,10 +197,10 @@ index 0002dbe22d52..8e767d7b8c5b 100644
  obj-$(CONFIG_SENSORS_PLI1209BC)	+= pli1209bc.o
 diff --git a/drivers/hwmon/pmbus/mp2891.c b/drivers/hwmon/pmbus/mp2891.c
 new file mode 100644
-index 000000000000..1547625fea7e
+index 000000000..a4386e8e9
 --- /dev/null
 +++ b/drivers/hwmon/pmbus/mp2891.c
-@@ -0,0 +1,424 @@
+@@ -0,0 +1,427 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + * Hardware monitoring driver for MPS Multi-phase Digital VR Controllers(MP2891)
@@ -456,7 +456,7 @@ index 000000000000..1547625fea7e
 +	 * bit 13 = 0, the vid_step is defined by bits 15:14:
 +	 * 00b - 6.25mV/LSB, 01b - 5mV/LSB, 10b - 2mV/LSB, 11b - 1mV
 +	 */
-+	if ((ret & MP2891_DAC_2P5MV_MASK) >> MP2891_VID_STEP_POS) {
++	if (ret & MP2891_DAC_2P5MV_MASK) {
 +		data->vid_step[page] = 250;
 +		return mp2891_git_vid_volt_ref(client, data, page);
 +	}
@@ -467,6 +467,9 @@ index 000000000000..1547625fea7e
 +			break;
 +	case 2:
 +		data->vid_step[page] = 200;
++		break;
++	case 3:
++		data->vid_step[page] = 100;
 +		break;
 +	default:
 +		data->vid_step[page] = 250;
@@ -626,5 +629,5 @@ index 000000000000..1547625fea7e
 +MODULE_LICENSE("GPL");
 +MODULE_IMPORT_NS(PMBUS);
 -- 
-2.20.1
+2.44.0
 
