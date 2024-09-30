@@ -215,6 +215,10 @@ cisco-npu-disable-other-bars.patch
 # Micas patches
 0001-fix-os-crash-caused-by-optoe-when-class-switch.patch
 
+# Wistron platform support
+0001-arm64-dts-marvell-Add-Wistron-ES1227-54TS-board.patch
+0002-Add-support-for-xmc-spi-device.patch
+
 #
 #
 ############################################################
