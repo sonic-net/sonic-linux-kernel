@@ -209,6 +209,9 @@ cisco-npu-disable-other-bars.patch
 0028-Create-miniaturised-diafgw-partition-for-128MB-flash.patch
 0029-pcie-if-hotplug-enabled-do-immediate-reset-on-panic.patch
 
+# Fix for w25q128 flash that dont have SFDP support
+0001-Revert-mtd-spi-nor-Correct-flags-for-Winbond-w25q128.patch 
+
 # Security patch
 0001-Change-the-system.map-file-permission-only-readable-.patch
 
