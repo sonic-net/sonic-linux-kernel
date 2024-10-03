@@ -12,6 +12,7 @@ CONFIG_MTD_SPI_NOR_USE_4K_SECTORS
 ###-> mellanox_common-end
 
 [amd64]
+CONFIG_AMD_MEM_ENCRYPT
 # Unset X86_PAT according to Broadcom's requirement
 CONFIG_X86_PAT
 CONFIG_MLXSW_PCI
