@@ -1,0 +1,70 @@
+From 32cc3c00e15b250b4f8f2543eb14939e9b42d8ca Mon Sep 17 00:00:00 2001
+From: Saikrishna Arcot <sarcot@microsoft.com>
+Date: Mon, 7 Oct 2024 10:54:54 -0700
+Subject: [PATCH] Update the pmbus_data struct to the current version in
+ pmbus_core.c
+
+The dps460 driver has included a copy of `struct pmbus_data` within its code
+(which is bad for many reasons). Because of this, it hasn't been updated since
+the 4.19 version of `struct pmbus_data`, and now differs from the actual
+structure definition, resulting in eventual kernel panics.
+
+As a quick fix, update `struct pmbus_data` that is present in dps460 to the
+current version.
+---
+ drivers/hwmon/pmbus/dni_dps460.c | 26 +++++---------------------
+ 1 file changed, 5 insertions(+), 21 deletions(-)
+
+diff --git a/drivers/hwmon/pmbus/dni_dps460.c b/drivers/hwmon/pmbus/dni_dps460.c
+index 4e96a430b..8b04b3ec8 100644
+--- a/drivers/hwmon/pmbus/dni_dps460.c
++++ b/drivers/hwmon/pmbus/dni_dps460.c
+@@ -40,15 +40,6 @@ enum chips { dni_dps460 };
+ #define FAN_VALUE_MAX 0x64
+ 
+ /* Needed to access the mutex. Copied from pmbus_core.c */
+-#define PB_STATUS_BASE		0
+-#define PB_STATUS_VOUT_BASE	(PB_STATUS_BASE + PMBUS_PAGES)
+-#define PB_STATUS_IOUT_BASE	(PB_STATUS_VOUT_BASE + PMBUS_PAGES)
+-#define PB_STATUS_FAN_BASE	(PB_STATUS_IOUT_BASE + PMBUS_PAGES)
+-#define PB_STATUS_FAN34_BASE	(PB_STATUS_FAN_BASE + PMBUS_PAGES)
+-#define PB_STATUS_TEMP_BASE	(PB_STATUS_FAN34_BASE + PMBUS_PAGES)
+-#define PB_STATUS_INPUT_BASE	(PB_STATUS_TEMP_BASE + PMBUS_PAGES)
+-#define PB_STATUS_VMON_BASE	(PB_STATUS_INPUT_BASE + 1)
+-#define PB_NUM_STATUS_REG	(PB_STATUS_VMON_BASE + 1)
+ struct pmbus_data {
+ 	struct device *dev;
+ 	struct device *hwmon_dev;
+@@ -63,25 +54,18 @@ struct pmbus_data {
+ 	int max_attributes;
+ 	int num_attributes;
+ 	struct attribute_group group;
+-	const struct attribute_group *groups[2];
+-	struct dentry *debugfs;         /* debugfs device directory */
++	const struct attribute_group **groups;
++	struct dentry *debugfs;		/* debugfs device directory */
+ 
+ 	struct pmbus_sensor *sensors;
+ 
+ 	struct mutex update_lock;
+-	bool valid;
+-	unsigned long last_updated;	/* in jiffies */
+ 
+-	/*
+-	 * A single status register covers multiple attributes,
+-	 * so we keep them all together.
+-	 */
+-	u16 status[PB_NUM_STATUS_REG];
+-
+-	bool has_status_word;           /* device uses STATUS_WORD register */
++	bool has_status_word;		/* device uses STATUS_WORD register */
+ 	int (*read_status)(struct i2c_client *client, int page);
+ 
+-	u8 currpage;
++	s16 currpage;	/* current page, -1 for unknown/unset */
++	s16 currphase;	/* current phase, 0xff for all, -1 for unknown/unset */
+ };
+ 
+ /*
+-- 
+2.34.1
