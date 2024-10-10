@@ -107,6 +107,9 @@ cisco-npu-disable-other-bars.patch
 #
 # Marvell platform patches for 4.19
 armhf_secondary_boot_online.patch
+
+# optoe patches
+0001-fix-driver-optoe-twoaddr-a2h-read-write-bug.patch
 ############################################################
 #
 # Internal patches will be added below (placeholder)

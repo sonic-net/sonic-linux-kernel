@@ -1,0 +1,71 @@
+From 3e289806e5d3c45c6afc2a6caeb935828a5032eb Mon Sep 17 00:00:00 2001
+From: "Song,Qinghua" <songqh@clounix.com>
+Date: Fri, 20 Sep 2024 19:32:52 +0800
+Subject: [PATCH] fix driver optoe twoaddr a2h read/write bug
+
+Signed-off-by:  Qinghua Song <songqh@clounix.com>
+---
+ drivers/misc/eeprom/optoe.c | 26 ++++++++++++++++++++++++--
+ 1 file changed, 24 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
+index 16287fdc5..a277cc28c 100644
+--- a/drivers/misc/eeprom/optoe.c
++++ b/drivers/misc/eeprom/optoe.c
+@@ -284,7 +284,6 @@ static uint8_t optoe_translate_offset(struct optoe_data *optoe,
+ 	if (optoe->dev_class == TWO_ADDR) {
+ 		if (*offset > 255) {
+ 			/* like QSFP, but shifted to client[1] */
+-			*client = optoe->client[1];
+ 			*offset -= 256;
+ 		}
+ 	}
+@@ -304,6 +303,26 @@ static uint8_t optoe_translate_offset(struct optoe_data *optoe,
+ 
+ 	return page;  /* note also returning client and offset */
+ }
++static void optoe_update_client(struct optoe_data *optoe, loff_t *offset, struct i2c_client **client)
++{
++    /* if SFP style, offset > 255, shift to i2c addr 0x51 */
++	if (optoe->dev_class == TWO_ADDR) {
++		if (*offset > 255) {
++			*client = optoe->client[1];
++		} else {
++			*client = optoe->client[0];
++		}
++	}
++	return;
++}
++
++static void optoe_reset_client(struct optoe_data *optoe, loff_t *offset, struct i2c_client **client)
++{
++	*client = optoe->client[0];
++
++	return;
++}
++
+ 
+ static ssize_t optoe_eeprom_read(struct optoe_data *optoe,
+ 		    struct i2c_client *client,
+@@ -529,6 +548,8 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
+ 			return ret;
+ 		}
+ 	}
++        
++	optoe_update_client(optoe, &off, &client);
+ 
+ 	while (count) {
+ 		ssize_t	status;
+@@ -551,7 +572,8 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
+ 		retval += status;
+ 	}
+ 
+-
++	optoe_reset_client(optoe, &off, &client);
++       
+ 	if (page > 0) {
+ 		/* return the page register to page 0 (why?) */
+ 		page = 0;
+-- 
+2.25.1
+
