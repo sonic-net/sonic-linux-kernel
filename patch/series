@@ -218,7 +218,8 @@ armhf_secondary_boot_online.patch
 0019-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
 0020-dts-marvell-Add-support-for-7020-comexpress.patch
 
-#
+#optoe
+0001-fix-driver-optoe-twoaddr-a2h-read-write-bug.patch
 #
 ############################################################
 #
