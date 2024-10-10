@@ -1,0 +1,41 @@
+From fda3e52362937e1317e97d1d02f5f52a618cd355 Mon Sep 17 00:00:00 2001
+From: Oleksandr Shamray <oleksandrs@nvidia.com>
+Date: Fri, 31 May 2024 13:20:12 +0000
+Subject: [PATCH 11/90] platform/mellanox: mlx-platform: Fix FAN tacho reading
+ issue
+
+Fix FAN presence for tacho13..tacho14:
+For systems equipped  with 7 FAN modules, attribute tacho[13..14] can read none-zero value in case FAN module is not present.
+This happens because .reg_prsnt bit was not initialized for tacho[13..14].
+
+Fixes: 752a490bc2f1 ("platform/x86: mlx-platform: Extend FAN and LED config to support new MQM97xx systems")
+
+Signed-off-by: Oleksandr Shamray <oleksandrs@nvidia.com>
+Reviewed-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/platform/mellanox/mlx-platform.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/platform/mellanox/mlx-platform.c b/drivers/platform/mellanox/mlx-platform.c
+index 8426a386f..ece3eaf72 100644
+--- a/drivers/platform/mellanox/mlx-platform.c
++++ b/drivers/platform/mellanox/mlx-platform.c
+@@ -6659,6 +6659,7 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_fan_data[] = {
+ 		.mask = GENMASK(7, 0),
+ 		.capability = MLXPLAT_CPLD_LPC_REG_FAN_CAP2_OFFSET,
+ 		.bit = BIT(4),
++		.reg_prsnt = MLXPLAT_CPLD_LPC_REG_FAN_OFFSET,
+ 	},
+ 	{
+ 		.label = "tacho14",
+@@ -6666,6 +6667,7 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_fan_data[] = {
+ 		.mask = GENMASK(7, 0),
+ 		.capability = MLXPLAT_CPLD_LPC_REG_FAN_CAP2_OFFSET,
+ 		.bit = BIT(5),
++		.reg_prsnt = MLXPLAT_CPLD_LPC_REG_FAN_OFFSET,
+ 	},
+ 	{
+ 		.label = "conf",
+-- 
+2.20.1
+

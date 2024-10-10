@@ -3,10 +3,10 @@ SHELL = /bin/bash
 .SHELLFLAGS += -e
 
 KERNEL_ABI_MINOR_VERSION = 2
-KVERSION_SHORT ?= 5.10.0-23-$(KERNEL_ABI_MINOR_VERSION)
+KVERSION_SHORT ?= 5.10.0-30-$(KERNEL_ABI_MINOR_VERSION)
 KVERSION ?= $(KVERSION_SHORT)-amd64
-KERNEL_VERSION ?= 5.10.179
-KERNEL_SUBVERSION ?= 3
+KERNEL_VERSION ?= 5.10.218
+KERNEL_SUBVERSION ?= 1
 kernel_procure_method ?= build
 CONFIGURED_ARCH ?= amd64
 CONFIGURED_PLATFORM ?= vs
@@ -54,7 +54,8 @@ DSC_FILE = linux_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION).dsc
 DEBIAN_FILE = linux_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION).debian.tar.xz
 ORIG_FILE = linux_$(KERNEL_VERSION).orig.tar.xz
 BUILD_DIR=linux-$(KERNEL_VERSION)
-SOURCE_FILE_BASE_URL="https://sonicstorage.blob.core.windows.net/debian-security/pool/updates/main/l/linux"
+#SOURCE_FILE_BASE_URL="https://sonicstorage.blob.core.windows.net/debian-security/pool/updates/main/l/linux"
+SOURCE_FILE_BASE_URL="https://security.debian.org/pool/updates/main/l/linux"
 
 DSC_FILE_URL = "$(SOURCE_FILE_BASE_URL)/$(DSC_FILE)"
 DEBIAN_FILE_URL = "$(SOURCE_FILE_BASE_URL)/$(DEBIAN_FILE)"
