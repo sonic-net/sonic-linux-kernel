@@ -69,6 +69,8 @@ Support-for-fullcone-nat.patch
 # Tbridge-per-port-multicast-broadcast-flood-flags.patch
 #
 
+0001-devlink-Fix-RCU-stall-when-unregistering-a-devlink-i.patch
+
 # Mellanox patches for 5.10
 ###-> mellanox_sdk-start
 0001-psample-define-the-macro-PSAMPLE_MD_EXTENDED_ATTR.patch
