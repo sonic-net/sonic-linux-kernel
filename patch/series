@@ -178,6 +178,8 @@ cisco-npu-disable-other-bars.patch
 0010-dts-marvell-Add-support-for-7020-comexpress.patch
 0011-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch
 0015-arm64-dts-marvell-Add-Supermicro-SSE-G3748-board.patch
+0016-arm64-dts-marvell-Add-Wistron-ES-1227-54TS-board.patch
+0017-Extend-driver-to-support-XMC-XM25QH256C-device.patch
 
 # amd-pensando elba support
 0000-Add-support-for-the-TI-TPS53659.patch
