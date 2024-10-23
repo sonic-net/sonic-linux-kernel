@@ -12,34 +12,24 @@ firmware.
 Fixes: 3029a693beda ("mlxsw: i2c: Allow flexible setting of I2C transactions size")
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
 ---
- drivers/net/ethernet/mellanox/mlxsw/i2c.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ drivers/net/ethernet/mellanox/mlxsw/i2c.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/i2c.c b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
-index e04557afc..9fe03dd9e 100644
+index ae2bc0966..4441dc6c7 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/i2c.c
 +++ b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
-@@ -48,6 +48,7 @@
- #define MLXSW_I2C_MBOX_SIZE_BITS	12
- #define MLXSW_I2C_ADDR_BUF_SIZE		4
- #define MLXSW_I2C_BLK_DEF		32
-+#define MLXSW_I2C_BLK_MAX		100
- #define MLXSW_I2C_RETRY			5
- #define MLXSW_I2C_TIMEOUT_MSECS		5000
- #define MLXSW_I2C_MAX_DATA_SIZE		256
-@@ -700,9 +701,10 @@ static int mlxsw_i2c_probe(struct i2c_client *client,
- 			return -EOPNOTSUPP;
+@@ -702,8 +702,9 @@ static int mlxsw_i2c_probe(struct i2c_client *client,
  		}
  
--		mlxsw_i2c->block_size = max_t(u16, MLXSW_I2C_BLK_DEF,
-+		mlxsw_i2c->block_size = min_t(u16, MLXSW_I2C_BLK_MAX,
-+					      max_t(u16, MLXSW_I2C_BLK_DEF,
- 					      min_t(u16, quirks->max_read_len,
+ 		mlxsw_i2c->block_size = min_t(u16, MLXSW_I2C_BLK_MAX,
+-					      min_t(u16, quirks->max_read_len,
 -						    quirks->max_write_len));
-+						    quirks->max_write_len)));
++                                             max_t(u16, MLXSW_I2C_BLK_DEF,
++                                             min_t(u16, quirks->max_read_len,
++                                                   quirks->max_write_len)));
  	} else {
  		mlxsw_i2c->block_size = MLXSW_I2C_BLK_DEF;
  	}
 -- 
 2.20.1
-

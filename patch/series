@@ -162,9 +162,6 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 0095-hwmon-mlxreg-fan-Fix-out-of-bounds-read-on-array-fan.patch
 0096-hwmon-mlxreg-fan-Modify-PWM-connectivity-validation.patch
 0097-hwmon-mlxreg-fan-Support-distinctive-names-per-diffe.patch
-0097-1-mlxsw-Use-u16-for-local_port-field.patch
-0097-2-mlxsw-i2c-Fix-chunk-size-setting.patch
-0097-3-mlxsw-core_hwmon-Adjust-module-label-names.patch
 0152-mlxsw-i2c-Prevent-transaction-execution-for-spec.patch
 0157-platform-x86-mlx-platform-Make-activation-of-some-dr.patch
 0158-platform-x86-mlx-platform-Add-cosmetic-changes-for-a.patch
@@ -201,24 +198,25 @@ kernel-compat-always-include-linux-compat.h-from-net-compat.patch
 0197-platform-mellanox-Fix-order-in-exit-flow.patch
 0198-platform-mellanox-Add-new-attributes.patch
 0199-platform-mellanox-Change-register-offset-addresses.patch
-0269-platform-mellanox-Add-field-upgrade-capability-regis.patch
-0270-platform-mellanox-Modify-reset-causes-description.patch
-0278-platform-mellanox-mlx-platform-Modify-graceful-shutd.patch
-0279-platform-mellanox-mlx-platform-Fix-signals-polarity-.patch
-0280-platform-mellanox-mlxreg-hotplug-Extend-condition-fo.patch
-0281-platform-mellanox-mlx-platform-Modify-health-and-pow.patch
-0282-platform-mellanox-mlx-platform-Add-reset-cause-attri.patch
-0284-platform-mellanox-mlx-platform-add-support-for-addit.patch
-0294-hwmon-pmbus-Add-support-for-MPS-Multi-phase-mp2891-c.patch
-0295-dt-bindings-trivial-devices-Add-mps-mp2891.patch
-0304-platform-mellanox-mlx-platform-Modify-power-off-call.patch
-0305-Extend-driver-to-support-Infineon-Digital-Multi-phas.patch
-0311-platform-mellanox-nvsw-sn2201-change-fans-i2c-busses.patch
-0312-platform-mellanox-mlx-platform-Add-reset-callback.patch
-0313-platform-mellanox-mlx-platform-Prepare-driver-to-all.patch
-0314-platform-mellanox-mlx-platform-Introduce-ACPI-init-f.patch
-0315-platform-mellanox-mlx-platform-Get-interrupt-line-th.patch
-0316-platform-mellanox-Add-initial-support-for-PCIe-based.patch
+0242-platform-mellanox-Add-field-upgrade-capability-regis.patch
+0243-platform-mellanox-Modify-reset-causes-description.patch
+0247-platform-mellanox-mlx-platform-Modify-graceful-shutd.patch
+0248-platform-mellanox-mlx-platform-Fix-signals-polarity-.patch
+0249-platform-mellanox-mlxreg-hotplug-Extend-condition-fo.patch
+0250-platform-mellanox-mlx-platform-Modify-health-and-pow.patch
+0251-platform-mellanox-mlx-platform-Add-reset-cause-attri.patch
+0252-platform-mellanox-mlx-platform-add-support-for-addit.patch
+0261-hwmon-pmbus-Add-support-for-MPS-Multi-phase-mp2891-c.patch
+0262-dt-bindings-trivial-devices-Add-mps-mp2891.patch
+0267-platform-mellanox-mlx-platform-Modify-power-off-call.patch
+0268-Extend-driver-to-support-Infineon-Digital-Multi-phas.patch
+0275-platform-mellanox-nvsw-sn2201-change-fans-i2c-busses.patch
+0276-platform-mellanox-mlx-platform-Add-reset-callback.patch
+0277-platform-mellanox-mlx-platform-Prepare-driver-to-all.patch
+0278-platform-mellanox-mlx-platform-Introduce-ACPI-init-f.patch
+0279-platform-mellanox-mlx-platform-Get-interrupt-line-th.patch
+0280-platform-mellanox-Add-initial-support-for-PCIe-based.patch
+0300-hwmon-pmbus-Add-support-for-MPS-Multi-phase-mp2855-c.patch
 ###-> mellanox_hw_mgmt-end
 
 # Cisco patches for 5.10 kernel

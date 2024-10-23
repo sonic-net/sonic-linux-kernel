@@ -117,8 +117,8 @@ index 7a918daa3b19..88641e3b1cc4 100644
  	__s32		accept_ra_defrtr;
 +	__u32		ra_defrtr_metric;
  	__s32		accept_ra_min_hop_limit;
+ 	__s32		accept_ra_min_lft;
  	__s32		accept_ra_pinfo;
- 	__s32		ignore_routes_with_linkdown;
 diff --git a/include/net/ip6_route.h b/include/net/ip6_route.h
 index 44969d03debf..0bf09a9bca4e 100644
 --- a/include/net/ip6_route.h
@@ -132,18 +132,6 @@ index 44969d03debf..0bf09a9bca4e 100644
 +				     u32 defrtr_usr_metric);
  
  void rt6_purge_dflt_routers(struct net *net);
- 
-diff --git a/include/uapi/linux/ipv6.h b/include/uapi/linux/ipv6.h
-index 9cdbc5b04855..a5e93062315b 100644
---- a/include/uapi/linux/ipv6.h
-+++ b/include/uapi/linux/ipv6.h
-@@ -190,6 +190,7 @@ enum {
- 	DEVCONF_NDISC_TCLASS,
- 	DEVCONF_RPL_SEG_ENABLED,
- 	DEVCONF_ACCEPT_UNTRACKED_NA,
-+	DEVCONF_RA_DEFRTR_METRIC,
- 	DEVCONF_MAX
- };
  
 diff --git a/include/uapi/linux/sysctl.h b/include/uapi/linux/sysctl.h
 index 09dabb76a113..6a3b194c50fe 100644
@@ -168,7 +156,7 @@ index 038708de6ef9..cac1e63dac54 100644
 +	.ra_defrtr_metric	= IP6_RT_PRIO_USER,
  	.accept_ra_from_local	= 0,
  	.accept_ra_min_hop_limit= 1,
- 	.accept_ra_pinfo	= 1,
+ 	.accept_ra_min_lft	= 0,
 @@ -260,6 +261,7 @@ static struct ipv6_devconf ipv6_devconf_dflt __read_mostly = {
  	.max_desync_factor	= MAX_DESYNC_FACTOR,
  	.max_addresses		= IPV6_MAX_ADDRESSES,
@@ -176,7 +164,7 @@ index 038708de6ef9..cac1e63dac54 100644
 +	.ra_defrtr_metric	= IP6_RT_PRIO_USER,
  	.accept_ra_from_local	= 0,
  	.accept_ra_min_hop_limit= 1,
- 	.accept_ra_pinfo	= 1,
+ 	.accept_ra_min_lft	= 0,
 @@ -5512,6 +5514,7 @@ static inline void ipv6_store_devconf(struct ipv6_devconf *cnf,
  	array[DEVCONF_MAX_DESYNC_FACTOR] = cnf->max_desync_factor;
  	array[DEVCONF_MAX_ADDRESSES] = cnf->max_addresses;

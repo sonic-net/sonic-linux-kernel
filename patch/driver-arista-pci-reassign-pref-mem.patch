@@ -78,8 +78,8 @@ index d17f3bf36..7b87b7d9b 100644
 +		pci_assign_unassigned_bridge_resources(bridge);
 +	}
  	pcie_bus_configure_settings(parent);
- 	pci_bus_add_devices(parent);
  
+ 	/*
 diff --git a/drivers/pci/setup-prefmem.c b/drivers/pci/setup-prefmem.c
 new file mode 100644
 index 000000000..57cd08b35

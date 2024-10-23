@@ -76,27 +76,14 @@ index 65862d6e0d8f..dc2d928b979f 100644
  	struct ipv6_stable_secret {
  		bool initialized;
  		struct in6_addr secret;
-diff --git a/include/uapi/linux/ipv6.h b/include/uapi/linux/ipv6.h
-index 6c320b140806..9cdbc5b04855 100644
---- a/include/uapi/linux/ipv6.h
-+++ b/include/uapi/linux/ipv6.h
-@@ -189,7 +189,7 @@ enum {
- 	DEVCONF_ACCEPT_RA_RT_INFO_MIN_PLEN,
- 	DEVCONF_NDISC_TCLASS,
- 	DEVCONF_RPL_SEG_ENABLED,
--	DEVCONF_ACCEPT_UNSOLICITED_NA,
-+	DEVCONF_ACCEPT_UNTRACKED_NA,
- 	DEVCONF_MAX
- };
- 
 diff --git a/net/ipv6/addrconf.c b/net/ipv6/addrconf.c
 index a238476403a7..9ac433cfbfaf 100644
 --- a/net/ipv6/addrconf.c
 +++ b/net/ipv6/addrconf.c
-@@ -5516,7 +5516,7 @@ static inline void ipv6_store_devconf(struct ipv6_devconf *cnf,
- 	array[DEVCONF_DISABLE_POLICY] = cnf->disable_policy;
+@@ -5582,7 +5582,7 @@ static inline void ipv6_store_devconf(struct ipv6_devconf *cnf,
  	array[DEVCONF_NDISC_TCLASS] = cnf->ndisc_tclass;
  	array[DEVCONF_RPL_SEG_ENABLED] = cnf->rpl_seg_enabled;
+ 	array[DEVCONF_ACCEPT_RA_MIN_LFT] = cnf->accept_ra_min_lft;
 -	array[DEVCONF_ACCEPT_UNSOLICITED_NA] = cnf->accept_unsolicited_na;
 +	array[DEVCONF_ACCEPT_UNTRACKED_NA] = cnf->accept_untracked_na;
  }
