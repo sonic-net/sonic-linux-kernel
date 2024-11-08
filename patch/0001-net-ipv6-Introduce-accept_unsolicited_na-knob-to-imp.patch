@@ -1,0 +1,438 @@
+From a831dae1f2fadea0e173b5192d2a9bb70bb06e07 Mon Sep 17 00:00:00 2001
+From: Arun Ajith S <aajith@arista.com>
+Date: Fri, 15 Apr 2022 08:34:02 +0000
+Subject: [PATCH 1/2] net/ipv6: Introduce accept_unsolicited_na knob to
+ implement router-side changes for RFC9131
+
+Add a new neighbour cache entry in STALE state for routers on receiving
+an unsolicited (gratuitous) neighbour advertisement with
+target link-layer-address option specified.
+This is similar to the arp_accept configuration for IPv4.
+A new sysctl endpoint is created to turn on this behaviour:
+/proc/sys/net/ipv6/conf/interface/accept_unsolicited_na.
+
+Signed-off-by: Arun Ajith S <aajith@arista.com>
+Reviewed-by: David Ahern <dsahern@kernel.org>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ Documentation/networking/ip-sysctl.rst        |  27 ++
+ include/linux/ipv6.h                          |   1 +
+ include/uapi/linux/ipv6.h                     |   1 +
+ net/ipv6/addrconf.c                           |  10 +
+ net/ipv6/ndisc.c                              |  20 +-
+ tools/testing/selftests/net/Makefile          |   1 +
+ .../net/ndisc_unsolicited_na_test.sh          | 255 ++++++++++++++++++
+ 7 files changed, 314 insertions(+), 1 deletion(-)
+ create mode 100755 tools/testing/selftests/net/ndisc_unsolicited_na_test.sh
+
+diff --git a/Documentation/networking/ip-sysctl.rst b/Documentation/networking/ip-sysctl.rst
+index 25e6673a085a..76c645584e93 100644
+--- a/Documentation/networking/ip-sysctl.rst
++++ b/Documentation/networking/ip-sysctl.rst
+@@ -2256,6 +2256,33 @@ drop_unsolicited_na - BOOLEAN
+ 
+ 	By default this is turned off.
+ 
++accept_unsolicited_na - BOOLEAN
++	Add a new neighbour cache entry in STALE state for routers on receiving an
++	unsolicited neighbour advertisement with target link-layer address option
++	specified. This is as per router-side behavior documented in RFC9131.
++	This has lower precedence than drop_unsolicited_na.
++
++	 ====   ======  ======  ==============================================
++	 drop   accept  fwding                   behaviour
++	 ----   ------  ------  ----------------------------------------------
++	    1        X       X  Drop NA packet and don't pass up the stack
++	    0        0       X  Pass NA packet up the stack, don't update NC
++	    0        1       0  Pass NA packet up the stack, don't update NC
++	    0        1       1  Pass NA packet up the stack, and add a STALE
++	                        NC entry
++	 ====   ======  ======  ==============================================
++
++	This will optimize the return path for the initial off-link communication
++	that is initiated by a directly connected host, by ensuring that
++	the first-hop router which turns on this setting doesn't have to
++	buffer the initial return packets to do neighbour-solicitation.
++	The prerequisite is that the host is configured to send
++	unsolicited neighbour advertisements on interface bringup.
++	This setting should be used in conjunction with the ndisc_notify setting
++	on the host to satisfy this prerequisite.
++
++	By default this is turned off.
++
+ enhanced_dad - BOOLEAN
+ 	Include a nonce option in the IPv6 neighbor solicitation messages used for
+ 	duplicate address detection per RFC7527. A received DAD NS will only signal
+diff --git a/include/linux/ipv6.h b/include/linux/ipv6.h
+index dda61d150a13..65862d6e0d8f 100644
+--- a/include/linux/ipv6.h
++++ b/include/linux/ipv6.h
+@@ -60,6 +60,7 @@ struct ipv6_devconf {
+ 	__s32		suppress_frag_ndisc;
+ 	__s32		accept_ra_mtu;
+ 	__s32		drop_unsolicited_na;
++	__s32		accept_unsolicited_na;
+ 	struct ipv6_stable_secret {
+ 		bool initialized;
+ 		struct in6_addr secret;
+diff --git a/include/uapi/linux/ipv6.h b/include/uapi/linux/ipv6.h
+index 13e8751bf24a..6c320b140806 100644
+--- a/include/uapi/linux/ipv6.h
++++ b/include/uapi/linux/ipv6.h
+@@ -189,6 +189,7 @@ enum {
+ 	DEVCONF_ACCEPT_RA_RT_INFO_MIN_PLEN,
+ 	DEVCONF_NDISC_TCLASS,
+ 	DEVCONF_RPL_SEG_ENABLED,
++	DEVCONF_ACCEPT_UNSOLICITED_NA,
+ 	DEVCONF_MAX
+ };
+ 
+diff --git a/net/ipv6/addrconf.c b/net/ipv6/addrconf.c
+index 8b6eb384bac7..a238476403a7 100644
+--- a/net/ipv6/addrconf.c
++++ b/net/ipv6/addrconf.c
+@@ -5516,6 +5516,7 @@ static inline void ipv6_store_devconf(struct ipv6_devconf *cnf,
+ 	array[DEVCONF_DISABLE_POLICY] = cnf->disable_policy;
+ 	array[DEVCONF_NDISC_TCLASS] = cnf->ndisc_tclass;
+ 	array[DEVCONF_RPL_SEG_ENABLED] = cnf->rpl_seg_enabled;
++	array[DEVCONF_ACCEPT_UNSOLICITED_NA] = cnf->accept_unsolicited_na;
+ }
+ 
+ static inline size_t inet6_ifla6_size(void)
+@@ -6896,6 +6897,15 @@ static const struct ctl_table addrconf_sysctl[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec,
+ 	},
++	{
++		.procname	= "accept_unsolicited_na",
++		.data		= &ipv6_devconf.accept_unsolicited_na,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++		.extra1		= (void *)SYSCTL_ZERO,
++		.extra2		= (void *)SYSCTL_ONE,
++	},
+ 	{
+ 		/* sentinel */
+ 	}
+diff --git a/net/ipv6/ndisc.c b/net/ipv6/ndisc.c
+index 76717478f173..fd37aae022d3 100644
+--- a/net/ipv6/ndisc.c
++++ b/net/ipv6/ndisc.c
+@@ -964,6 +964,7 @@ static void ndisc_recv_na(struct sk_buff *skb)
+ 	struct inet6_dev *idev = __in6_dev_get(dev);
+ 	struct inet6_ifaddr *ifp;
+ 	struct neighbour *neigh;
++	bool create_neigh;
+ 
+ 	if (skb->len < sizeof(struct nd_msg)) {
+ 		ND_PRINTK(2, warn, "NA: packet too short\n");
+@@ -984,6 +985,7 @@ static void ndisc_recv_na(struct sk_buff *skb)
+ 	/* For some 802.11 wireless deployments (and possibly other networks),
+ 	 * there will be a NA proxy and unsolicitd packets are attacks
+ 	 * and thus should not be accepted.
++	 * drop_unsolicited_na takes precedence over accept_unsolicited_na
+ 	 */
+ 	if (!msg->icmph.icmp6_solicited && idev &&
+ 	    idev->cnf.drop_unsolicited_na)
+@@ -1024,7 +1026,23 @@ static void ndisc_recv_na(struct sk_buff *skb)
+ 		in6_ifa_put(ifp);
+ 		return;
+ 	}
+-	neigh = neigh_lookup(&nd_tbl, &msg->target, dev);
++	/* RFC 9131 updates original Neighbour Discovery RFC 4861.
++	 * An unsolicited NA can now create a neighbour cache entry
++	 * on routers if it has Target LL Address option.
++	 *
++	 * drop   accept  fwding                   behaviour
++	 * ----   ------  ------  ----------------------------------------------
++	 *    1        X       X  Drop NA packet and don't pass up the stack
++	 *    0        0       X  Pass NA packet up the stack, don't update NC
++	 *    0        1       0  Pass NA packet up the stack, don't update NC
++	 *    0        1       1  Pass NA packet up the stack, and add a STALE
++	 *                          NC entry
++	 * Note that we don't do a (daddr == all-routers-mcast) check.
++	 */
++	create_neigh = !msg->icmph.icmp6_solicited && lladdr &&
++		       idev && idev->cnf.forwarding &&
++		       idev->cnf.accept_unsolicited_na;
++	neigh = __neigh_lookup(&nd_tbl, &msg->target, dev, create_neigh);
+ 
+ 	if (neigh) {
+ 		u8 old_flags = neigh->flags;
+diff --git a/tools/testing/selftests/net/Makefile b/tools/testing/selftests/net/Makefile
+index ef352477cac6..35d14273d61e 100644
+--- a/tools/testing/selftests/net/Makefile
++++ b/tools/testing/selftests/net/Makefile
+@@ -21,6 +21,7 @@ TEST_PROGS += rxtimestamp.sh
+ TEST_PROGS += devlink_port_split.py
+ TEST_PROGS += drop_monitor_tests.sh
+ TEST_PROGS += vrf_route_leaking.sh
++TEST_PROGS += ndisc_unsolicited_na_test.sh
+ TEST_PROGS_EXTENDED := in_netns.sh
+ TEST_GEN_FILES =  socket nettest
+ TEST_GEN_FILES += psock_fanout psock_tpacket msg_zerocopy reuseport_addr_any
+diff --git a/tools/testing/selftests/net/ndisc_unsolicited_na_test.sh b/tools/testing/selftests/net/ndisc_unsolicited_na_test.sh
+new file mode 100755
+index 000000000000..f508657ee126
+--- /dev/null
++++ b/tools/testing/selftests/net/ndisc_unsolicited_na_test.sh
+@@ -0,0 +1,255 @@
++#!/bin/bash
++# SPDX-License-Identifier: GPL-2.0
++
++# This test is for the accept_unsolicited_na feature to
++# enable RFC9131 behaviour. The following is the test-matrix.
++# drop   accept  fwding                   behaviour
++# ----   ------  ------  ----------------------------------------------
++#    1        X       X  Drop NA packet and don't pass up the stack
++#    0        0       X  Pass NA packet up the stack, don't update NC
++#    0        1       0  Pass NA packet up the stack, don't update NC
++#    0        1       1  Pass NA packet up the stack, and add a STALE
++#                           NC entry
++
++ret=0
++# Kselftest framework requirement - SKIP code is 4.
++ksft_skip=4
++
++PAUSE_ON_FAIL=no
++PAUSE=no
++
++HOST_NS="ns-host"
++ROUTER_NS="ns-router"
++
++HOST_INTF="veth-host"
++ROUTER_INTF="veth-router"
++
++ROUTER_ADDR="2000:20::1"
++HOST_ADDR="2000:20::2"
++SUBNET_WIDTH=64
++ROUTER_ADDR_WITH_MASK="${ROUTER_ADDR}/${SUBNET_WIDTH}"
++HOST_ADDR_WITH_MASK="${HOST_ADDR}/${SUBNET_WIDTH}"
++
++IP_HOST="ip -6 -netns ${HOST_NS}"
++IP_HOST_EXEC="ip netns exec ${HOST_NS}"
++IP_ROUTER="ip -6 -netns ${ROUTER_NS}"
++IP_ROUTER_EXEC="ip netns exec ${ROUTER_NS}"
++
++tcpdump_stdout=
++tcpdump_stderr=
++
++log_test()
++{
++	local rc=$1
++	local expected=$2
++	local msg="$3"
++
++	if [ ${rc} -eq ${expected} ]; then
++		printf "    TEST: %-60s  [ OK ]\n" "${msg}"
++		nsuccess=$((nsuccess+1))
++	else
++		ret=1
++		nfail=$((nfail+1))
++		printf "    TEST: %-60s  [FAIL]\n" "${msg}"
++		if [ "${PAUSE_ON_FAIL}" = "yes" ]; then
++		echo
++			echo "hit enter to continue, 'q' to quit"
++			read a
++			[ "$a" = "q" ] && exit 1
++		fi
++	fi
++
++	if [ "${PAUSE}" = "yes" ]; then
++		echo
++		echo "hit enter to continue, 'q' to quit"
++		read a
++		[ "$a" = "q" ] && exit 1
++	fi
++}
++
++setup()
++{
++	set -e
++
++	local drop_unsolicited_na=$1
++	local accept_unsolicited_na=$2
++	local forwarding=$3
++
++	# Setup two namespaces and a veth tunnel across them.
++	# On end of the tunnel is a router and the other end is a host.
++	ip netns add ${HOST_NS}
++	ip netns add ${ROUTER_NS}
++	${IP_ROUTER} link add ${ROUTER_INTF} type veth \
++                peer name ${HOST_INTF} netns ${HOST_NS}
++
++	# Enable IPv6 on both router and host, and configure static addresses.
++	# The router here is the DUT
++	# Setup router configuration as specified by the arguments.
++	# forwarding=0 case is to check that a non-router
++	# doesn't add neighbour entries.
++        ROUTER_CONF=net.ipv6.conf.${ROUTER_INTF}
++	${IP_ROUTER_EXEC} sysctl -qw \
++                ${ROUTER_CONF}.forwarding=${forwarding}
++	${IP_ROUTER_EXEC} sysctl -qw \
++                ${ROUTER_CONF}.drop_unsolicited_na=${drop_unsolicited_na}
++	${IP_ROUTER_EXEC} sysctl -qw \
++                ${ROUTER_CONF}.accept_unsolicited_na=${accept_unsolicited_na}
++	${IP_ROUTER_EXEC} sysctl -qw ${ROUTER_CONF}.disable_ipv6=0
++	${IP_ROUTER} addr add ${ROUTER_ADDR_WITH_MASK} dev ${ROUTER_INTF}
++
++	# Turn on ndisc_notify on host interface so that
++	# the host sends unsolicited NAs.
++	HOST_CONF=net.ipv6.conf.${HOST_INTF}
++	${IP_HOST_EXEC} sysctl -qw ${HOST_CONF}.ndisc_notify=1
++	${IP_HOST_EXEC} sysctl -qw ${HOST_CONF}.disable_ipv6=0
++	${IP_HOST} addr add ${HOST_ADDR_WITH_MASK} dev ${HOST_INTF}
++
++	set +e
++}
++
++start_tcpdump() {
++	set -e
++	tcpdump_stdout=`mktemp`
++	tcpdump_stderr=`mktemp`
++	${IP_ROUTER_EXEC} timeout 15s \
++                tcpdump --immediate-mode -tpni ${ROUTER_INTF} -c 1 \
++                "icmp6 && icmp6[0] == 136 && src ${HOST_ADDR}" \
++                > ${tcpdump_stdout} 2> /dev/null
++	set +e
++}
++
++cleanup_tcpdump()
++{
++	set -e
++	[[ ! -z  ${tcpdump_stdout} ]] && rm -f ${tcpdump_stdout}
++	[[ ! -z  ${tcpdump_stderr} ]] && rm -f ${tcpdump_stderr}
++	tcpdump_stdout=
++	tcpdump_stderr=
++	set +e
++}
++
++cleanup()
++{
++	cleanup_tcpdump
++	ip netns del ${HOST_NS}
++	ip netns del ${ROUTER_NS}
++}
++
++link_up() {
++	set -e
++	${IP_ROUTER} link set dev ${ROUTER_INTF} up
++	${IP_HOST} link set dev ${HOST_INTF} up
++	set +e
++}
++
++verify_ndisc() {
++	local drop_unsolicited_na=$1
++	local accept_unsolicited_na=$2
++	local forwarding=$3
++
++	neigh_show_output=$(${IP_ROUTER} neigh show \
++                to ${HOST_ADDR} dev ${ROUTER_INTF} nud stale)
++	if [ ${drop_unsolicited_na} -eq 0 ] && \
++			[ ${accept_unsolicited_na} -eq 1 ] && \
++			[ ${forwarding} -eq 1 ]; then
++		# Neighbour entry expected to be present for 011 case
++		[[ ${neigh_show_output} ]]
++	else
++		# Neighbour entry expected to be absent for all other cases
++		[[ -z ${neigh_show_output} ]]
++	fi
++}
++
++test_unsolicited_na_common()
++{
++	# Setup the test bed, but keep links down
++	setup $1 $2 $3
++
++	# Bring the link up, wait for the NA,
++	# and add a delay to ensure neighbour processing is done.
++	link_up
++	start_tcpdump
++
++	# Verify the neighbour table
++	verify_ndisc $1 $2 $3
++
++}
++
++test_unsolicited_na_combination() {
++	test_unsolicited_na_common $1 $2 $3
++	test_msg=("test_unsolicited_na: "
++		"drop_unsolicited_na=$1 "
++		"accept_unsolicited_na=$2 "
++		"forwarding=$3")
++	log_test $? 0 "${test_msg[*]}"
++	cleanup
++}
++
++test_unsolicited_na_combinations() {
++	# Args: drop_unsolicited_na accept_unsolicited_na forwarding
++
++	# Expect entry
++	test_unsolicited_na_combination 0 1 1
++
++	# Expect no entry
++	test_unsolicited_na_combination 0 0 0
++	test_unsolicited_na_combination 0 0 1
++	test_unsolicited_na_combination 0 1 0
++	test_unsolicited_na_combination 1 0 0
++	test_unsolicited_na_combination 1 0 1
++	test_unsolicited_na_combination 1 1 0
++	test_unsolicited_na_combination 1 1 1
++}
++
++###############################################################################
++# usage
++
++usage()
++{
++	cat <<EOF
++usage: ${0##*/} OPTS
++        -p          Pause on fail
++        -P          Pause after each test before cleanup
++EOF
++}
++
++###############################################################################
++# main
++
++while getopts :pPh o
++do
++	case $o in
++		p) PAUSE_ON_FAIL=yes;;
++		P) PAUSE=yes;;
++		h) usage; exit 0;;
++		*) usage; exit 1;;
++	esac
++done
++
++# make sure we don't pause twice
++[ "${PAUSE}" = "yes" ] && PAUSE_ON_FAIL=no
++
++if [ "$(id -u)" -ne 0 ];then
++	echo "SKIP: Need root privileges"
++	exit $ksft_skip;
++fi
++
++if [ ! -x "$(command -v ip)" ]; then
++	echo "SKIP: Could not run test without ip tool"
++	exit $ksft_skip
++fi
++
++if [ ! -x "$(command -v tcpdump)" ]; then
++	echo "SKIP: Could not run test without tcpdump tool"
++	exit $ksft_skip
++fi
++
++# start clean
++cleanup &> /dev/null
++
++test_unsolicited_na_combinations
++
++printf "\nTests passed: %3d\n" ${nsuccess}
++printf "Tests failed: %3d\n"   ${nfail}
++
++exit $ret
+-- 
+2.25.1
+

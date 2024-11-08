@@ -1,0 +1,88 @@
+From: Pavan Naregundi <pnaregundi@marvell.com>
+Date: Wed, 6 Mar 2024 06:34:40 +0000
+Subject: dts: ac5: marvell: Add switching/watchdog node
+
+This patch adds following changes to 98DX25xx and 98DX35xx SoC,
+    - SDMA(Subsystem DMA engine) node for control path Rx/Tx.
+    - prestera node for interupt handing from switching ASIC.
+    - arm watchdog node.
+    - clock-frequency in timer node.
+    - ac5-ehci compatible string in usb.
+
+Signed-off-by: Yuval Shaia <yshaia@marvell.com>
+Tested-by: Raz Adashi <raza@marvell.com>
+Reviewed-by: Raz Adashi <raza@marvell.com>
+
+Signed-off-by: Pavan Naregundi <pnaregundi@marvell.com>
+---
+ arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi   | 14 +++++++++++++-
+ arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts | 10 +++++++++-
+ 2 files changed, 22 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
+index 21ef78f8c..3c01fdc35 100644
+--- a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
++++ b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
+@@ -64,6 +64,7 @@ timer {
+ 			     <GIC_PPI 8 IRQ_TYPE_LEVEL_HIGH>,
+ 			     <GIC_PPI 10 IRQ_TYPE_LEVEL_HIGH>,
+ 			     <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH>;
++		clock-frequency = <25000000>;
+ 	};
+ 
+ 	pmu {
+@@ -258,7 +259,7 @@ eth1: ethernet@24000 {
+ 			};
+ 
+ 			usb0: usb@80000 {
+-				compatible = "marvell,orion-ehci";
++				compatible = "marvell,ac5-ehci", "marvell,orion-ehci";
+ 				reg = <0x0 0x80000 0x0 0x500>;
+ 				interrupts = <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;
+ 				status = "disabled";
+@@ -329,6 +330,17 @@ nand: nand-controller@805b0000 {
+ 			status = "disabled";
+ 		};
+ 
++		prestera {
++			compatible = "marvell,armada-ac5-switch";
++			interrupts = <GIC_SPI 0x23 IRQ_TYPE_LEVEL_HIGH>;
++			status = "okay";
++		};
++
++		wdog {
++			compatible = "arm,smc-wdt";
++			status = "okay";
++		};
++
+ 		gic: interrupt-controller@80600000 {
+ 			compatible = "arm,gic-v3";
+ 			#interrupt-cells = <3>;
+diff --git a/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts b/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts
+index 0c973d7a2..68887449a 100644
+--- a/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts
++++ b/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts
+@@ -29,7 +29,7 @@ aliases {
+ 
+ 	memory@0 {
+ 		device_type = "memory";
+-		reg = <0x2 0x00000000 0x0 0x40000000>;
++		reg = <0x2 0x00000000 0x1 0x00000000>;
+ 	};
+ 
+ 	usb1phy: usb-phy {
+@@ -103,3 +103,11 @@ parition@2 {
+ &sdhci {
+ 	status = "okay";
+ };
++
++/{
++	sdma_drv {
++		compatible = "marvell,mvppnd";
++		interrupts = <GIC_SPI 0x23 IRQ_TYPE_LEVEL_HIGH>;
++		status = "okay";
++	};
++};
+-- 
+2.25.1
+

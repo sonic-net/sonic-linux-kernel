@@ -1,0 +1,721 @@
+From 07de412931de30c8966adbd9d38784c920192ab5 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Tue, 24 Oct 2023 10:15:28 +0000
+Subject: [PATCH] soc/pensando: pcie driver
+
+pcie driver provides these services on elba
+1) panic blink handler runs after panic, restart when host restarts
+2) sysfs panic_reboot node to restart immediately on panic
+3) /dev/penpcie controlled access to pcie clock domain registers
+
+Signed-off-by: David Clear <dclear@amd.com>
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
+---
+ arch/arm64/boot/dts/pensando/elba.dtsi |   7 +
+ drivers/soc/pensando/Kconfig           |   7 +
+ drivers/soc/pensando/Makefile          |   1 +
+ drivers/soc/pensando/cap_pcie.c        | 437 +++++++++++++++++++++++++
+ drivers/soc/pensando/cap_pcie_elba.h   |  54 +++
+ drivers/soc/pensando/cap_reboot.c      |  85 +++++
+ drivers/soc/pensando/cap_reboot.h      |  11 +
+ drivers/soc/pensando/penpcie_dev.h     |  26 ++
+ 8 files changed, 628 insertions(+)
+ create mode 100644 drivers/soc/pensando/cap_pcie.c
+ create mode 100644 drivers/soc/pensando/cap_pcie_elba.h
+ create mode 100644 drivers/soc/pensando/cap_reboot.c
+ create mode 100644 drivers/soc/pensando/cap_reboot.h
+ create mode 100644 drivers/soc/pensando/penpcie_dev.h
+
+diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
+index 6be705650..ec59d762b 100644
+--- a/arch/arm64/boot/dts/pensando/elba.dtsi
++++ b/arch/arm64/boot/dts/pensando/elba.dtsi
+@@ -269,5 +269,12 @@ bsm@307c2080 {
+ 			compatible = "pensando,bsm";
+ 			reg = <0x0 0x307c2080 0x0 0x4>;
+ 		};
++
++		pcie@307c2480 {
++			compatible = "pensando,pcie";
++			reg = <0x0 0x307c2480 0x0 0x4		/* MS CFG_WDT */
++			       0x0 0x1400 0x0 0x10		/* WDT0 */
++			       0x0 0x20000000 0x0 0x380000>;	/* PXB Base */
++		};
+ 	};
+ };
+diff --git a/drivers/soc/pensando/Kconfig b/drivers/soc/pensando/Kconfig
+index 59c1fa4c6..be2d3dbfa 100644
+--- a/drivers/soc/pensando/Kconfig
++++ b/drivers/soc/pensando/Kconfig
+@@ -15,6 +15,13 @@ config PENSANDO_SOC_CAPMEM
+ 	help
+ 	  Support for the Pensando SoC memory driver
+ 
++config PENSANDO_SOC_PCIE
++	tristate "PCIe driver for Pensando SoCs"
++	depends on OF
++	default y
++	help
++	  Provide a PCIe driver for pciemgr kernel assist
++
+ config PENSANDO_SOC_RSTCAUSE
+ 	tristate "Pensando reset cause driver"
+ 	depends on OF
+diff --git a/drivers/soc/pensando/Makefile b/drivers/soc/pensando/Makefile
+index ea5062fd7..675e84d1f 100644
+--- a/drivers/soc/pensando/Makefile
++++ b/drivers/soc/pensando/Makefile
+@@ -6,6 +6,7 @@ obj-y += cap_soc.o
+ CFLAGS_cap_mem.o := -I$(src)
+ 
+ obj-$(CONFIG_PENSANDO_SOC_CAPMEM) += cap_mem.o
++obj-$(CONFIG_PENSANDO_SOC_PCIE) += cap_pcie.o cap_reboot.o
+ obj-$(CONFIG_PENSANDO_SOC_RSTCAUSE) += cap_rstcause.o
+ obj-$(CONFIG_PENSANDO_SOC_CRASH) += cap_crash.o
+ obj-$(CONFIG_PENSANDO_SOC_BSM) += cap_bsm.o
+diff --git a/drivers/soc/pensando/cap_pcie.c b/drivers/soc/pensando/cap_pcie.c
+new file mode 100644
+index 000000000..3c43f56d3
+--- /dev/null
++++ b/drivers/soc/pensando/cap_pcie.c
+@@ -0,0 +1,437 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (c) 2019-2022, Pensando Systems Inc.
++ */
++
++#include <linux/types.h>
++#include <linux/errno.h>
++#include <linux/module.h>
++#include <linux/uaccess.h>
++#include <linux/ioctl.h>
++#include <linux/platform_device.h>
++#include <linux/miscdevice.h>
++#include <linux/of.h>
++#include <linux/of_address.h>
++#include <linux/of_platform.h>
++#include <linux/init.h>
++#include <linux/spinlock.h>
++#include <linux/io.h>
++#include <linux/fs.h>
++#include <asm/traps.h>
++#include "cap_reboot.h"
++#include "cap_rstcause.h"
++#include "penpcie_dev.h"
++#include "cap_pcie_elba.h"
++
++#define DRV_NAME	"cap_pcie"
++#define PFX		DRV_NAME ": "
++
++/* device resource indexes */
++#define MS_CFG_WDT_IDX  0
++#define WDT_IDX         1
++#define PCIE_IDX	2
++
++struct pciedev_info {
++	u32 __iomem *ms_cfg_wdt;
++	u32 __iomem *wdt;
++	void __iomem *pcieva;
++	u64 pcie_base;
++	u64 pcie_size;
++	u64 pciep_access_address;
++	int pciep_access_error;
++	spinlock_t pciep_access_lock;
++	long (*saved_panic_blink)(int state);
++};
++
++static struct pciedev_info pciedev_info;
++
++static void *pcie_ptov(const u64 pciepa)
++{
++	struct pciedev_info *pi = &pciedev_info;
++	const u64 pcieoff = pciepa - pi->pcie_base;
++
++	return pi->pcieva + pcieoff;
++}
++
++static u32 pcie_readl(const u64 pciepa)
++{
++	return readl(pcie_ptov(pciepa));
++}
++
++static void pcie_writel(const u32 val, const u64 pciepa)
++{
++	writel(val, pcie_ptov(pciepa));
++}
++
++static int pciep_access_in_progress(void)
++{
++	struct pciedev_info *pi = &pciedev_info;
++
++	if (pi->pciep_access_address) {
++		pi->pciep_access_error++;
++		return 1;
++	}
++	return 0;
++}
++
++int platform_serror(struct pt_regs *regs, unsigned int esr)
++{
++	if (pciep_access_in_progress())
++		return 1;
++
++	if ((esr >> 26) == 0x2f && (esr & 0x3) == 0x0) { /* Decode Error */
++		if (user_mode(regs)) {
++			struct task_struct *tsk = current;
++
++			pr_info("%s[%d]: serror converted to bus error\n",
++				tsk->comm, task_pid_nr(tsk));
++			force_signal_inject(SIGBUS, BUS_ADRERR, regs->pc, esr);
++		} else {
++			/* ignore */
++			pr_info("ignoring serror decode-error in kernel mode\n");
++		}
++		return 1;
++	}
++
++	return 0;
++}
++
++static void pciep_access_begin(const u64 pciepa)
++{
++	struct pciedev_info *pi = &pciedev_info;
++
++	pi->pciep_access_address = pciepa;
++	pi->pciep_access_error = 0;
++}
++
++static int pciep_access_end(void)
++{
++	struct pciedev_info *pi = &pciedev_info;
++
++	if (pi->pciep_access_error) {
++		pr_info_ratelimited("pcie access serror: address 0x%llx\n",
++				    pi->pciep_access_address);
++	}
++	pi->pciep_access_address = 0;
++	return pi->pciep_access_error;
++}
++
++static int pciep_valid_pa(const uint64_t pciepa, const uint32_t size)
++{
++	struct pciedev_info *pi = &pciedev_info;
++
++	if (!pi->pcieva)
++		return -ENXIO;
++	if (pciepa < pi->pcie_base ||
++	    pciepa > pi->pcie_base + pi->pcie_size ||
++	    size > pi->pcie_size ||
++	    pciepa + size > pi->pcie_base + pi->pcie_size)
++		return -ERANGE;
++	return 0;
++}
++
++/*
++ * Protect reads to pcie registers in the pcie clock domain.
++ * The pcie refclock can be removed by the system without warning,
++ * and outstanding read requests to these registers will generate
++ * an AXI read error response.  ARM will treat this as an asynchronous
++ * System Error (SError) event.  The default handling of SError is to
++ * send SIGILL if SError arrives while in user space, or panic if the
++ * SError arrives when not in process context.  Neither of these responses
++ * is desireable for our case where a pcie register might be accessed
++ * just as the pcie refclock gets removed.  Here we detect the SError
++ * event during our pcie register access and return failure to the
++ * caller, but the system continues.
++ */
++int pciep_regrd32(const uint64_t pciepa, uint32_t *val)
++{
++	struct pciedev_info *pi = &pciedev_info;
++	int r;
++	unsigned long flags;
++
++	r = pciep_valid_pa(pciepa, sizeof(u32));
++	if (r)
++		return r;
++
++	spin_lock_irqsave(&pi->pciep_access_lock, flags);
++	pciep_access_begin(pciepa);
++
++	*val = pcie_readl(pciepa);
++	asm volatile("msr daifclr, #4" ::: "memory"); /* unmask async SError */
++	dsb(sy);		/* sync in-flight ld/st */
++	isb();
++
++	r = pciep_access_end();
++	spin_unlock_irqrestore(&pi->pciep_access_lock, flags);
++	if (r)
++		return -EIO;
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(pciep_regrd32);
++
++static long pcie_unlocked_ioctl(struct file *file,
++		unsigned int cmd, unsigned long arg)
++{
++	void __user *p = (void __user *)arg;
++	struct pcie_rw rw;
++	uint32_t val;
++	int r;
++
++	switch (cmd) {
++
++	case PCIE_PCIEP_REGRD:
++		if (copy_from_user(&rw, p, sizeof(rw)))
++			return -EFAULT;
++		if (rw.size != sizeof(u32))
++			return -EINVAL;
++		r = pciep_regrd32(rw.pciepa, &val);
++		if (r)
++			return r;
++		return copy_to_user(rw.rdvalp, &val, sizeof(val));
++
++	default:
++		return -ENOTTY;
++	}
++}
++
++const struct file_operations pcie_fops = {
++	.owner		= THIS_MODULE,
++	.unlocked_ioctl	= pcie_unlocked_ioctl,
++};
++
++static struct miscdevice pcie_dev = {
++	MISC_DYNAMIC_MINOR,
++	PENPCIE_NAME,
++	&pcie_fops
++};
++
++static int pcieport_get_ltssm_en(const int port)
++{
++	const u32 val = pcie_readl(PXC_(CFG_C_PORT_MAC, port));
++
++	return (val & CFG_MACF_(0_2_LTSSM_EN)) != 0;
++}
++
++static int pcie_get_ltssm_en(void)
++{
++	int port;
++
++	for (port = 0; port < PCIEPORT_NPORTS; port++)
++		if (pcieport_get_ltssm_en(port))
++			return port;
++	return -1;
++}
++
++static void pcieport_set_crs(const int port, const int on)
++{
++	u32 val;
++
++	val = pcie_readl(PXC_(CFG_C_PORT_MAC, port));
++	if (on)
++		val |= CFG_MACF_(0_2_CFG_RETRY_EN);
++	else
++		val &= ~CFG_MACF_(0_2_CFG_RETRY_EN);
++	pcie_writel(val, PXC_(CFG_C_PORT_MAC, port));
++}
++
++static void pcie_set_crs(const int on)
++{
++	int port;
++
++	for (port = 0; port < PCIEPORT_NPORTS; port++)
++		pcieport_set_crs(port, on);
++}
++
++static int pcieport_poll_for_hostdn(const int port)
++{
++	const u32 val = pcie_readl(PXC_(INT_C_MAC_INTREG, port));
++
++	return (val & MAC_INTREGF_(RST_DN2UP)) != 0;
++}
++
++/*
++ * Detect if the host is rebooting by watching the pcie mac
++ * for an interrupt indicating the link went into reset.
++ */
++static int pcie_poll_for_hostdn(void)
++{
++	int port;
++
++	for (port = 0; port < PCIEPORT_NPORTS; port++)
++		if (pcieport_poll_for_hostdn(port))
++			return port;
++	return -1;
++}
++
++/*
++ * Asic reset using the WDT0 configured to reset immediately.
++ * Note that we do NOT touch the WDT config here until *after*
++ * we are in the panic handling.  The WDT might be used by the
++ * watchdog driver while the system is up, but here after a panic
++ * we take ownership of the WDT to reset the system.
++ *
++ * Note also this function never returns.
++ */
++static void cap_reset(void)
++{
++	struct pciedev_info *pi = &pciedev_info;
++	u32 val;
++
++	pr_info(PFX "pensando reset!\n");
++
++	/* Enable WDT0 to reset the system */
++	val = ioread32(pi->ms_cfg_wdt);
++	val |= (1 << CFG_WDT_RST_EN);
++	iowrite32(val, pi->ms_cfg_wdt);
++
++	/* Configure WDT to immediately reset */
++	iowrite32(0, pi->wdt + WDT_TORR);
++	iowrite32(WDT_KICK_VAL, pi->wdt + WDT_CRR);
++	iowrite32(WDT_CR_PCLK_256, pi->wdt + WDT_CR);
++	iowrite32(WDT_CR_PCLK_256 | WDT_CR_ENABLE, pi->wdt + WDT_CR);
++	for (;;)
++		asm volatile("wfi");
++	/* NOTREACHED */
++}
++
++/*
++ * This function is called by the spin loop at the end of a
++ * system panic.  We'll watch for the host to reset and
++ * reset ourselves at the same time.
++ *
++ * If we haven't yet initialized the link (ltssm_en=0) then the
++ * host side hasn't come up yet.  In that case just reset immediately.
++ */
++static long pcie_panic_blink(int state)
++{
++	int port;
++
++	/* Check sysfs for immediate reboot */
++	if (cap_panic_reboot())
++		cap_reset();
++
++	port = pcie_get_ltssm_en();
++	if (port >= 0) {
++		pr_info(PFX "port %d enabled\n", port);
++		pcie_set_crs(0);
++		while ((port = pcie_poll_for_hostdn()) < 0)
++			continue;
++		pr_info(PFX "port %d hostdn\n", port);
++#ifdef CONFIG_PENSANDO_SOC_RSTCAUSE
++		/* reflect the pcie reset state in the reset cause */
++		cap_rstcause_set(CAP_RSTCAUSE_EV_PCIE_RESET);
++#endif
++	}
++	cap_reset();
++
++	/* NOTREACHED */
++	return 0;
++}
++
++static int map_resources(struct platform_device *pd)
++{
++	struct pciedev_info *pi = &pciedev_info;
++	struct device_node *dn = pd->dev.of_node;
++
++	pi->ms_cfg_wdt = of_iomap(dn, MS_CFG_WDT_IDX);
++	pi->wdt = of_iomap(dn, WDT_IDX);
++	pi->pcieva = of_iomap(dn, PCIE_IDX);
++
++	if (IS_ERR(pi->ms_cfg_wdt) ||
++		IS_ERR(pi->wdt) ||
++		IS_ERR(pi->pcieva)) {
++		pr_err(PFX "iomap resources failed\n");
++		goto errout;
++	}
++	return 0;
++
++ errout:
++	if (pi->ms_cfg_wdt != NULL)
++		iounmap(pi->ms_cfg_wdt);
++	if (pi->wdt != NULL)
++		iounmap(pi->wdt);
++	if (pi->pcieva != NULL)
++		iounmap(pi->pcieva);
++	return -ENOMEM;
++}
++
++static void unmap_resources(struct platform_device *pd)
++{
++	struct pciedev_info *pi = &pciedev_info;
++
++	if (pi->ms_cfg_wdt != NULL)
++		iounmap(pi->ms_cfg_wdt);
++	if (pi->wdt != NULL)
++		iounmap(pi->wdt);
++	if (pi->pcieva != NULL)
++		iounmap(pi->pcieva);
++}
++
++static int pcie_probe(struct platform_device *pd)
++{
++	struct pciedev_info *pi = &pciedev_info;
++	struct device_node *dn = pd->dev.of_node;
++	struct resource res;
++	int err;
++
++	spin_lock_init(&pi->pciep_access_lock);
++
++	err = map_resources(pd);
++	if (err)
++		goto errout;
++
++	err = of_address_to_resource(dn, PCIE_IDX, &res);
++	if (err) {
++		pr_err(PFX "can't find PCIE_IDX res: %d\n", err);
++		goto errout_unmap;
++	}
++	pi->pcie_base = res.start;
++	pi->pcie_size = resource_size(&res);
++
++	err = misc_register(&pcie_dev);
++	if (err) {
++		pr_err(PFX "register pcie_dev failed: %d\n", err);
++		goto errout_unmap;
++	}
++
++	/*
++	 * Hook the panic_blink handler so we run after
++	 * all the panic notifiers and after all the
++	 * console msgs have been flushed.
++	 */
++	pi->saved_panic_blink = panic_blink;
++	panic_blink = pcie_panic_blink;
++	return 0;
++
++ errout_unmap:
++	unmap_resources(pd);
++ errout:
++	return err;
++}
++
++static int pcie_remove(struct platform_device *pd)
++{
++	struct pciedev_info *pi = &pciedev_info;
++
++	misc_deregister(&pcie_dev);
++	panic_blink = pi->saved_panic_blink;
++	unmap_resources(pd);
++	return 0;
++}
++
++static const struct of_device_id pcie_of_match[] = {
++	{ .compatible = "pensando,pcie" },
++	{ /* end of table */ }
++};
++
++static struct platform_driver pcie_driver = {
++	.probe = pcie_probe,
++	.remove = pcie_remove,
++	.driver = {
++		.name = "pensando-pcie",
++		.owner = THIS_MODULE,
++		.of_match_table = pcie_of_match,
++	},
++};
++module_platform_driver(pcie_driver);
+diff --git a/drivers/soc/pensando/cap_pcie_elba.h b/drivers/soc/pensando/cap_pcie_elba.h
+new file mode 100644
+index 000000000..b79046ae9
+--- /dev/null
++++ b/drivers/soc/pensando/cap_pcie_elba.h
+@@ -0,0 +1,54 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (c) 2021, Pensando Systems Inc.
++ */
++
++#ifndef __CAP_PCIE_ELBA_H__
++#define __CAP_PCIE_ELBA_H__
++
++#define PCIEPORT_NPORTS		8
++
++#define ELB_ADDR_BASE_PP_PXC_0_OFFSET 0x20100000
++#define ELB_ADDR_BASE_PP_PXC_0_SIZE 0x40000
++#define ELB_ADDR_BASE_PP_PP_0_OFFSET 0x20300000
++#define ELB_ADDR_BASE_PP_PP_0_SIZE 0x40000
++
++#define ELB_PXC_CSR_CFG_C_PORT_MAC_BYTE_ADDRESS 0x20f8
++#define ELB_PXC_CSR_CFG_C_PORT_MAC_CFG_C_PORT_MAC_0_2_LTSSM_EN_FIELD_MASK 0x00000002
++#define ELB_PXC_CSR_CFG_C_PORT_MAC_CFG_C_PORT_MAC_0_2_CFG_RETRY_EN_FIELD_MASK 0x00000008
++
++#define ELB_PXC_CSR_INT_C_MAC_INTREG_BYTE_ADDRESS 0x2220
++#define ELB_PXC_CSR_INT_C_MAC_INTREG_RST_DN2UP_INTERRUPT_FIELD_MASK 0x00000010
++
++#define _PP_BASE(pn) \
++	(ELB_ADDR_BASE_PP_PP_0_OFFSET + \
++	(((pn) >> 2) * ELB_ADDR_BASE_PP_PP_0_SIZE))
++
++#define PP_(REG, pn) \
++	(_PP_BASE(pn) + ELB_PP_CSR_ ##REG## _BYTE_ADDRESS)
++
++#define _PXC_BASE(pn) \
++	(ELB_ADDR_BASE_PP_PXC_0_OFFSET + \
++	((pn) * ELB_ADDR_BASE_PP_PXC_0_SIZE))
++
++#define PXC_(REG, pn) \
++	(_PXC_BASE(pn) + ELB_PXC_CSR_ ##REG## _BYTE_ADDRESS)
++
++#define CFG_MACF_(REG) \
++	(ELB_PXC_CSR_CFG_C_PORT_MAC_CFG_C_PORT_MAC_ ##REG## _FIELD_MASK)
++#define MAC_INTREGF_(REG) \
++	(ELB_PXC_CSR_INT_C_MAC_INTREG_ ##REG## _INTERRUPT_FIELD_MASK)
++
++#define ELB_SOC_CSR_CFG_WDT_RST_EN_LSB 0
++#define CFG_WDT_RST_EN  ELB_SOC_CSR_CFG_WDT_RST_EN_LSB
++
++#define WDT_CR          0x00
++#define WDT_TORR        0x01
++#define WDT_CRR         0x03
++
++#define WDT_CR_ENABLE   0x1
++#define WDT_CR_PCLK_256 (0x7 << 2)
++
++#define WDT_KICK_VAL    0x76
++
++#endif /* __CAP_PCIE_ELBA_H__ */
+diff --git a/drivers/soc/pensando/cap_reboot.c b/drivers/soc/pensando/cap_reboot.c
+new file mode 100644
+index 000000000..42d87f242
+--- /dev/null
++++ b/drivers/soc/pensando/cap_reboot.c
+@@ -0,0 +1,85 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Pensando reboot control via sysfs
++ *
++ * Copyright (c) 2020-2021, Pensando Systems Inc.
++ */
++
++#include <linux/string.h>
++#include <linux/sysfs.h>
++#include <linux/module.h>
++#include <linux/init.h>
++#include "cap_reboot.h"
++
++/*
++ * This module provides userspace control of reboot behavior
++ * after a panic.  Naples25 SWM and OCP cards will use this
++ * to enable immediate reboot after panic handling.
++ */
++static int panic_reboot;	/* default=0, no reboot */
++
++bool cap_panic_reboot(void)
++{
++	if (panic_reboot)
++		return true;
++	return false;
++}
++
++extern struct kobject *pensando_fw_kobj_get(void);
++struct kobject *reboot_kobj;
++
++static ssize_t panic_reboot_show(struct kobject *kobj,
++		struct kobj_attribute *attr, char *buf)
++{
++	return sprintf(buf, "%d\n", panic_reboot);
++}
++
++static ssize_t panic_reboot_store(struct kobject *kobj,
++		struct kobj_attribute *attr, const char *buf, size_t count)
++{
++	int ret;
++
++	ret = kstrtoint(buf, 10, &panic_reboot);
++	if (ret < 0)
++		return ret;
++	return count;
++}
++
++static struct kobj_attribute panic_reboot_attribute =
++	__ATTR(panic_reboot, 0664, panic_reboot_show, panic_reboot_store);
++
++static struct attribute *attrs[] = {
++	&panic_reboot_attribute.attr,
++	NULL,
++};
++
++/* Put all attributes in the kobject directory */
++static struct attribute_group attr_group = {
++	.attrs = attrs,
++};
++
++static int __init capri_reboot_init(void)
++{
++	struct kobject *pensando_kobj;
++	int ret;
++
++	pensando_kobj = pensando_fw_kobj_get();
++	if (!pensando_kobj)
++		return -ENOMEM;
++	reboot_kobj = kobject_create_and_add("reboot", pensando_kobj);
++	if (!reboot_kobj)
++		return -ENOMEM;
++
++	ret = sysfs_create_group(reboot_kobj, &attr_group);
++	if (ret)
++		kobject_put(reboot_kobj);
++	return ret;
++}
++
++static void __exit capri_reboot_exit(void)
++{
++	kobject_put(reboot_kobj);
++}
++
++module_init(capri_reboot_init);
++module_exit(capri_reboot_exit);
+diff --git a/drivers/soc/pensando/cap_reboot.h b/drivers/soc/pensando/cap_reboot.h
+new file mode 100644
+index 000000000..8718fff85
+--- /dev/null
++++ b/drivers/soc/pensando/cap_reboot.h
+@@ -0,0 +1,11 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (c) 2020-2021, Pensando Systems Inc.
++ */
++
++#ifndef __CAP_REBOOT_H__
++#define __CAP_REBOOT_H__
++
++bool cap_panic_reboot(void);
++
++#endif
+diff --git a/drivers/soc/pensando/penpcie_dev.h b/drivers/soc/pensando/penpcie_dev.h
+new file mode 100644
+index 000000000..5426d2edf
+--- /dev/null
++++ b/drivers/soc/pensando/penpcie_dev.h
+@@ -0,0 +1,26 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (c) 2020-2022, Pensando Systems Inc.
++ */
++
++#ifndef __PENPCIE_DEV_H__
++#define __PENPCIE_DEV_H__
++
++#define PENPCIE_NAME		"penpcie"
++#define PENPCIE_DEV		"/dev/penpcie"
++
++struct pcie_rw {
++	uint64_t pciepa;
++	size_t size;
++	union {
++		void *rdvalp;
++		uint64_t wrval;
++	};
++};
++
++#define PCIE_IOCTL_NUM		'P'
++#define PCIE_PCIEP_REGRD	_IOWR(PCIE_IOCTL_NUM, 1, struct pcie_rw)
++
++int pciep_regrd32(const uint64_t pciepa, uint32_t *val);
++
++#endif
+-- 
+2.39.2
+

@@ -1,0 +1,84 @@
+From cd40be983803830da19cb492b250abccf71ace7d Mon Sep 17 00:00:00 2001
+From: Elad Nachman <enachman@marvell.com>
+Date: Wed, 3 Jan 2024 19:28:03 +0200
+Subject: arm64: dts: ac5: add mmc node and clock
+
+Add mmc and mmc clock nodes to ac5 and ac5x device tree files
+
+Signed-off-by: Elad Nachman <enachman@marvell.com>
+Signed-off-by: Gregory CLEMENT <gregory.clement@bootlin.com>
+---
+ arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi | 31 ++++++++++++++++++-
+ .../boot/dts/marvell/ac5-98dx35xx-rd.dts      |  4 +++
+ 2 files changed, 34 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
+index b5e042b8e929..5591939e057b 100644
+--- a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
++++ b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
+@@ -77,7 +77,6 @@ soc {
+ 		#address-cells = <2>;
+ 		#size-cells = <2>;
+ 		ranges;
+-		dma-ranges;
+ 
+ 		internal-regs@7f000000 {
+ 			#address-cells = <1>;
+@@ -204,6 +203,30 @@ gpio1: gpio@18140 {
+ 			};
+ 		};
+ 
++		mmc_dma: bus@80500000 {
++				compatible = "simple-bus";
++				ranges;
++				#address-cells = <0x2>;
++				#size-cells = <0x2>;
++				reg = <0x0 0x80500000 0x0 0x100000>;
++				dma-ranges = <0x0 0x0 0x2 0x0 0x0 0x80000000>;
++				dma-coherent;
++
++				sdhci: mmc@805c0000 {
++					compatible = "marvell,ac5-sdhci",
++						     "marvell,armada-ap806-sdhci";
++					reg = <0x0 0x805c0000 0x0 0x1000>;
++					interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;
++					clocks = <&emmc_clock>, <&cnm_clock>;
++					clock-names = "core", "axi";
++					bus-width = <8>;
++					non-removable;
++					mmc-ddr-1_8v;
++					mmc-hs200-1_8v;
++					mmc-hs400-1_8v;
++				};
++		};
++
+ 		/*
+ 		 * Dedicated section for devices behind 32bit controllers so we
+ 		 * can configure specific DMA mapping for them
+@@ -335,5 +358,11 @@ nand_clock: nand-clock {
+ 			#clock-cells = <0>;
+ 			clock-frequency = <400000000>;
+ 		};
++
++		emmc_clock: emmc-clock {
++			compatible = "fixed-clock";
++			#clock-cells = <0>;
++			clock-frequency = <400000000>;
++		};
+ 	};
+ };
+diff --git a/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts b/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts
+index f0ebdb84eec9..0c973d7a215a 100644
+--- a/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts
++++ b/arch/arm64/boot/dts/marvell/ac5-98dx35xx-rd.dts
+@@ -99,3 +99,7 @@ parition@2 {
+ 		};
+ 	};
+ };
++
++&sdhci {
++	status = "okay";
++};
+-- 
+2.25.1
+

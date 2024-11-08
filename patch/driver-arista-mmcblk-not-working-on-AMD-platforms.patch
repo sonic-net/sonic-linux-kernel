@@ -1,0 +1,58 @@
+amd/mmc: mmcblk not working on some AMD platforms
+
+ADMA and ADMA-64 seem to be broken on AMD. This patch enables the
+following quirks (for AMD only):
+    SDHCI_QUIRK_BROKEN_ADMA
+    SDHCI_QUIRK2_BROKEN_64_BIT_DMA
+
+This fixes issues that would manifest in the following fashion.
+
+mmc0: Timeout waiting for hardware interrupt.
+sdhci: =========== REGISTER DUMP (mmc0)===========
+sdhci: Sys addr: 0x00000078 | Version:  0x00001002
+sdhci: Blk size: 0x00007200 | Blk cnt:  0x00000078
+sdhci: Argument: 0x000ab148 | Trn mode: 0x0000003b
+sdhci: Present:  0x01ff0001 | Host ctl: 0x00000019
+sdhci: Power:    0x0000000f | Blk gap:  0x00000000
+sdhci: Wake-up:  0x00000000 | Clock:    0x0000fa07
+sdhci: Timeout:  0x0000000c | Int stat: 0x00000000
+sdhci: Int enab: 0x02ff008b | Sig enab: 0x02ff008b
+sdhci: AC12 err: 0x00000002 | Slot int: 0x000000ff
+sdhci: Caps:     0x75fec8b2 | Caps_1:   0x00002501
+sdhci: Cmd:      0x0000123a | Max curr: 0x00c80064
+sdhci: Host ctl2: 0x00000000
+sdhci: ADMA Err: 0x00000000 | ADMA Ptr: 0x000000020f97b20c
+sdhci: ===========================================
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, aborting
+mmc0: cache flush error -110
+mmc0: tried to reset card, got error -110
+blk_update_request: I/O error, dev mmcblk0, sector 700744
+blk_update_request: I/O error, dev mmcblk0, sector 700752
+
+Signed-off-by: Radu Rendec <rrendec@arista.com>
+Signed-off-by: Samuel Angebault <staphylo@arista.com>
+---
+ drivers/mmc/host/sdhci-pci-core.c |    7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/mmc/host/sdhci-pci-core.c b/drivers/mmc/host/sdhci-pci-core.c
+index bf04a08ee..c10790dd6 100644
+--- a/drivers/mmc/host/sdhci-pci-core.c
++++ b/drivers/mmc/host/sdhci-pci-core.c
+@@ -1791,8 +1791,13 @@ static int amd_probe(struct sdhci_pci_chip *chip)
+ 
+ 	pci_dev_put(smbus_dev);
+ 
+-	if (gen == AMD_CHIPSET_BEFORE_ML || gen == AMD_CHIPSET_CZ)
++	dev_info(&chip->pdev->dev, "identified AMD generation %d chip\n", gen);
++
++	if (gen == AMD_CHIPSET_BEFORE_ML || gen == AMD_CHIPSET_CZ) {
++		chip->quirks |= SDHCI_QUIRK_BROKEN_ADMA;
++		chip->quirks2 |= SDHCI_QUIRK2_BROKEN_64_BIT_DMA;
+ 		chip->quirks2 |= SDHCI_QUIRK2_CLEAR_TRANSFERMODE_REG_BEFORE_CMD;
++	}
+ 
+ 	return 0;
+ }

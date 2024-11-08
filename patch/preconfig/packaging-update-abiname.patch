@@ -9,26 +9,26 @@ From: Olivier Singla <olivier.singla@broadcom.com>
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/debian/config/defines b/debian/config/defines
-index cd4938ecc..e54c10256 100644
+index 983625720..55d7e51a7 100644
 --- a/debian/config/defines
 +++ b/debian/config/defines
 @@ -1,5 +1,5 @@
  [abi]
--abiname: 12
-+abiname: 12-2
+-abiname: 22
++abiname: 22-2
  ignore-changes:
   __cpuhp_*
   __udp_gso_segment
 diff --git a/debian/control.md5sum b/debian/control.md5sum
-index e86f5f1db..caddd5360 100644
+index b3ce4f58d..7d4eabf04 100644
 --- a/debian/control.md5sum
 +++ b/debian/control.md5sum
 @@ -38,7 +38,7 @@ afb508873a44a1f196c2a525fec4b415  debian/templates/image.prerm.in
- 381bc892fd36ef7ea5327f649b99cb98  debian/templates/sourcebin.meta.maintscript.in
- 814dda166c7e3ef02e6e259e805ac66a  debian/templates/tests-control.image.in
- 33d71bfd398d2f9b3bc5c0193b67d17e  debian/templates/tests-control.main.in
--601c2559d4800fd0180a6a944c9f74f1  debian/config/defines
-+d54c376df16977677abfa95bf70cc6b6  debian/config/defines
+ a20d83421667bad21739041d4e743ed1  debian/templates/sourcebin.meta.maintscript.in
+ cbc5b0a81441c4c98b329ebe10827812  debian/templates/tools-unversioned.control.in
+ 568f629072d584e9a0eb1dc9d3a94749  debian/templates/tools-versioned.control.in
+-36001efefc2d9ec53b7a0fd2a504677b  debian/config/defines
++1d140a262c41627e255a1aaa0ddcfe92  debian/config/defines
  59a811890d2e7129bec940075850f11f  debian/config/alpha/defines
- 026ce5cdad7814c28f4fd87589786719  debian/config/amd64/defines
- 44bff3917069a99eeb20ceff24609dda  debian/config/arm64/defines
+ 60569b1b4c618e2fe7b135f687d0f0d2  debian/config/amd64/defines
+ bc35d767074baf305423437d049be85d  debian/config/arm64/defines

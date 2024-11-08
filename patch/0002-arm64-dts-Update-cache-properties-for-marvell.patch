@@ -1,0 +1,88 @@
+From: Pierre Gondois <pierre.gondois@arm.com>
+Date: Mon, 31 Oct 2022 10:20:16 +0100
+arm64: dts: Update cache properties for marvell
+
+The DeviceTree Specification v0.3 specifies that the cache node
+'compatible' and 'cache-level' properties are 'required'. Cf.
+s3.8 Multi-level and Shared Cache Nodes
+
+The recently added init_of_cache_level() function checks
+these properties. Add them if missing.
+
+Signed-off-by: Pierre Gondois <pierre.gondois@arm.com>
+Reviewed-by: Chris Packham <chris.packham@alliedtelesis.co.nz>
+Signed-off-by: Gregory CLEMENT <gregory.clement@bootlin.com>
+---
+ arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi      | 1 +
+ arch/arm64/boot/dts/marvell/armada-ap806-dual.dtsi | 1 +
+ arch/arm64/boot/dts/marvell/armada-ap806-quad.dtsi | 2 ++
+ arch/arm64/boot/dts/marvell/armada-ap807-quad.dtsi | 2 ++
+ 4 files changed, 6 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
+index 44ed6f963..7308f7b6b 100644
+--- a/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
++++ b/arch/arm64/boot/dts/marvell/ac5-98dx25xx.dtsi
+@@ -49,6 +49,7 @@ cpu1: cpu@1 {
+ 
+ 		l2: l2-cache {
+ 			compatible = "cache";
++			cache-level = <2>;
+ 		};
+ 	};
+ 
+diff --git a/arch/arm64/boot/dts/marvell/armada-ap806-dual.dtsi b/arch/arm64/boot/dts/marvell/armada-ap806-dual.dtsi
+index fcab5173f..990f70303 100644
+--- a/arch/arm64/boot/dts/marvell/armada-ap806-dual.dtsi
++++ b/arch/arm64/boot/dts/marvell/armada-ap806-dual.dtsi
+@@ -51,6 +51,7 @@ l2: l2-cache {
+ 			cache-size = <0x80000>;
+ 			cache-line-size = <64>;
+ 			cache-sets = <512>;
++			cache-level = <2>;
+ 		};
+ 	};
+ 
+diff --git a/arch/arm64/boot/dts/marvell/armada-ap806-quad.dtsi b/arch/arm64/boot/dts/marvell/armada-ap806-quad.dtsi
+index 3db427122..a7b8e001c 100644
+--- a/arch/arm64/boot/dts/marvell/armada-ap806-quad.dtsi
++++ b/arch/arm64/boot/dts/marvell/armada-ap806-quad.dtsi
+@@ -81,6 +81,7 @@ l2_0: l2-cache0 {
+ 			cache-size = <0x80000>;
+ 			cache-line-size = <64>;
+ 			cache-sets = <512>;
++			cache-level = <2>;
+ 		};
+ 
+ 		l2_1: l2-cache1 {
+@@ -88,6 +89,7 @@ l2_1: l2-cache1 {
+ 			cache-size = <0x80000>;
+ 			cache-line-size = <64>;
+ 			cache-sets = <512>;
++			cache-level = <2>;
+ 		};
+ 	};
+ };
+diff --git a/arch/arm64/boot/dts/marvell/armada-ap807-quad.dtsi b/arch/arm64/boot/dts/marvell/armada-ap807-quad.dtsi
+index 68782f161..7740098fd 100644
+--- a/arch/arm64/boot/dts/marvell/armada-ap807-quad.dtsi
++++ b/arch/arm64/boot/dts/marvell/armada-ap807-quad.dtsi
+@@ -81,6 +81,7 @@ l2_0: l2-cache0 {
+ 			cache-size = <0x80000>;
+ 			cache-line-size = <64>;
+ 			cache-sets = <512>;
++			cache-level = <2>;
+ 		};
+ 
+ 		l2_1: l2-cache1 {
+@@ -88,6 +89,7 @@ l2_1: l2-cache1 {
+ 			cache-size = <0x80000>;
+ 			cache-line-size = <64>;
+ 			cache-sets = <512>;
++			cache-level = <2>;
+ 		};
+ 	};
+ };
+-- 
+2.25.1
+

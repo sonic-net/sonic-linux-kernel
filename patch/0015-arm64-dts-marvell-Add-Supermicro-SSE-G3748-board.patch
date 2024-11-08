@@ -1,0 +1,150 @@
+From d1a0b114b178ff3949afc23f69053618dfaf581a Mon Sep 17 00:00:00 2001
+From: Erich Yen <erichy@supermicro.com>
+Date: Tue, 21 May 2024 20:41:37 +0000
+Subject: [PATCH] arm64: dts: marvell: Add Supermicro SSE-G3748 board
+
+This change adds device tree files for Supermicro SSE-G3748 board.
+This dts file is derived from Marvell RD-AC5X board.
+SPI flash partitions and i2c1 configurations are modified to match with SSE-G3748 board.
+---
+ arch/arm64/boot/dts/marvell/Makefile          |   1 +
+ arch/arm64/boot/dts/marvell/smc_sse-g3748.dts | 118 ++++++++++++++++++
+ 2 files changed, 119 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/marvell/smc_sse-g3748.dts
+
+diff --git a/arch/arm64/boot/dts/marvell/Makefile b/arch/arm64/boot/dts/marvell/Makefile
+index 310b57e47..88cef592e 100644
+--- a/arch/arm64/boot/dts/marvell/Makefile
++++ b/arch/arm64/boot/dts/marvell/Makefile
+@@ -28,3 +28,4 @@ dtb-$(CONFIG_ARCH_MVEBU) += cn9130-crb-B.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += ac5-98dx35xx-rd.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += armada-7020-comexpress.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += 7215-ixs-a1.dtb
++dtb-$(CONFIG_ARCH_MVEBU) += smc_sse-g3748.dtb
+diff --git a/arch/arm64/boot/dts/marvell/smc_sse-g3748.dts b/arch/arm64/boot/dts/marvell/smc_sse-g3748.dts
+new file mode 100644
+index 000000000..00fc581d7
+--- /dev/null
++++ b/arch/arm64/boot/dts/marvell/smc_sse-g3748.dts
+@@ -0,0 +1,118 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Device Tree For Supermicro SSE-G3748.
++ *
++ * Copyright (C) 2021 Marvell
++ * Copyright (C) 2022 Allied Telesis Labs
++ * Copyright (C) 2023 Supermicro
++ */
++
++/dts-v1/;
++
++#include "ac5-98dx35xx.dtsi"
++
++/ {
++        model = "Supermicro SSE-G3748 Board";
++        compatible = "marvell,rd-ac5x", "marvell,ac5x", "marvell,ac5";
++
++        aliases {
++                serial0 = &uart0;
++                spiflash0 = &spiflash0;
++                gpio0 = &gpio0;
++                ethernet0 = &eth0;
++                ethernet1 = &eth1;
++        };
++
++        memory@0 {
++                device_type = "memory";
++                reg = <0x2 0x00000000 0x0 0x40000000>;
++        };
++
++        usb1phy: usb-phy {
++                compatible = "usb-nop-xceiv";
++                #phy-cells = <0>;
++        };
++};
++
++&mdio {
++        status = "okay";
++        pinctrl-names = "default";
++        phy0: ethernet-phy@0 {
++                reg = <0>;
++        };
++};
++
++&i2c0 {
++        status = "okay";
++};
++
++&i2c1 {
++        /delete-property/ pinctrl-names;
++        /delete-property/ pinctrl-0;
++        /delete-property/ pinctrl-1;
++        /delete-property/ scl-gpios;
++        /delete-property/ sda-gpios;
++        status = "okay";
++};
++
++&eth0 {
++        status = "okay";
++        phy-mode = "sgmii";
++        phy-handle = <&phy0>;
++};
++
++/* USB0 is a host USB */
++&usb0 {
++        status = "okay";
++};
++
++/* USB1 is a peripheral USB */
++&usb1 {
++        status = "okay";
++        phys = <&usb1phy>;
++        phy-names = "usb-phy";
++        dr_mode = "peripheral";
++};
++
++&spi0 {
++        status = "okay";
++
++        spiflash0: flash@0 {
++                compatible = "jedec,spi-nor";
++                spi-max-frequency = <50000000>;
++                spi-tx-bus-width = <1>; /* 1-single, 2-dual, 4-quad */
++                spi-rx-bus-width = <1>; /* 1-single, 2-dual, 4-quad */
++                reg = <0>;
++
++                #address-cells = <1>;
++                #size-cells = <1>;
++
++                partition@0 {
++                        label = "spi_flash_part0";
++                        reg = <0x0 0x200000>;
++                };
++
++                parition@1 {
++                        label = "spi_flash_part1";
++                        reg = <0x200000 0x10000>;
++                };
++
++                parition@2 {
++                        label = "spi_flash_part2";
++                        reg = <0x210000 0xC00000>;
++                };
++
++                parition@3 {
++                        label = "spi_flash_part3";
++                        reg = <0xE10000 0x1F0000>;
++                };
++        };
++};
++
++/{
++        sdma_drv {
++                compatible = "marvell,mvppnd";
++                interrupts = <GIC_SPI 0x23 IRQ_TYPE_LEVEL_HIGH>;
++                status = "okay";
++        };
++};
+-- 
+2.25.1
+

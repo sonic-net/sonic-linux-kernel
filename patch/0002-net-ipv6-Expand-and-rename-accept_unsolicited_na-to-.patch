@@ -1,0 +1,273 @@
+From babe4dd2db417d840b59743dfab4a3dbac367bb2 Mon Sep 17 00:00:00 2001
+From: Arun Ajith S <aajith@arista.com>
+Date: Mon, 30 May 2022 10:14:14 +0000
+Subject: [PATCH 2/2] net/ipv6: Expand and rename accept_unsolicited_na to
+ accept_untracked_na
+
+RFC 9131 changes default behaviour of handling RX of NA messages when the
+corresponding entry is absent in the neighbour cache. The current
+implementation is limited to accept just unsolicited NAs. However, the
+RFC is more generic where it also accepts solicited NAs. Both types
+should result in adding a STALE entry for this case.
+
+Expand accept_untracked_na behaviour to also accept solicited NAs to
+be compliant with the RFC and rename the sysctl knob to
+accept_untracked_na.
+
+Fixes: f9a2fb73318e ("net/ipv6: Introduce accept_unsolicited_na knob to implement router-side changes for RFC9131")
+Signed-off-by: Arun Ajith S <aajith@arista.com>
+Reviewed-by: David Ahern <dsahern@kernel.org>
+Link: https://lore.kernel.org/r/20220530101414.65439-1-aajith@arista.com
+Signed-off-by: Paolo Abeni <pabeni@redhat.com>
+---
+ Documentation/networking/ip-sysctl.rst        | 23 ++++------
+ include/linux/ipv6.h                          |  2 +-
+ include/uapi/linux/ipv6.h                     |  2 +-
+ net/ipv6/addrconf.c                           |  6 +--
+ net/ipv6/ndisc.c                              | 42 +++++++++++--------
+ .../net/ndisc_unsolicited_na_test.sh          | 23 +++++-----
+ 6 files changed, 50 insertions(+), 48 deletions(-)
+
+diff --git a/Documentation/networking/ip-sysctl.rst b/Documentation/networking/ip-sysctl.rst
+index 76c645584e93..38e49fd3ee69 100644
+--- a/Documentation/networking/ip-sysctl.rst
++++ b/Documentation/networking/ip-sysctl.rst
+@@ -2256,21 +2256,16 @@ drop_unsolicited_na - BOOLEAN
+ 
+ 	By default this is turned off.
+ 
+-accept_unsolicited_na - BOOLEAN
+-	Add a new neighbour cache entry in STALE state for routers on receiving an
+-	unsolicited neighbour advertisement with target link-layer address option
+-	specified. This is as per router-side behavior documented in RFC9131.
+-	This has lower precedence than drop_unsolicited_na.
++accept_untracked_na - BOOLEAN
++	Add a new neighbour cache entry in STALE state for routers on receiving a
++	neighbour advertisement (either solicited or unsolicited) with target
++	link-layer address option specified if no neighbour entry is already
++	present for the advertised IPv6 address. Without this knob, NAs received
++	for untracked addresses (absent in neighbour cache) are silently ignored.
++
++	This is as per router-side behaviour documented in RFC9131.
+ 
+-	 ====   ======  ======  ==============================================
+-	 drop   accept  fwding                   behaviour
+-	 ----   ------  ------  ----------------------------------------------
+-	    1        X       X  Drop NA packet and don't pass up the stack
+-	    0        0       X  Pass NA packet up the stack, don't update NC
+-	    0        1       0  Pass NA packet up the stack, don't update NC
+-	    0        1       1  Pass NA packet up the stack, and add a STALE
+-	                        NC entry
+-	 ====   ======  ======  ==============================================
++	This has lower precedence than drop_unsolicited_na.
+ 
+ 	This will optimize the return path for the initial off-link communication
+ 	that is initiated by a directly connected host, by ensuring that
+diff --git a/include/linux/ipv6.h b/include/linux/ipv6.h
+index 65862d6e0d8f..dc2d928b979f 100644
+--- a/include/linux/ipv6.h
++++ b/include/linux/ipv6.h
+@@ -60,7 +60,7 @@ struct ipv6_devconf {
+ 	__s32		suppress_frag_ndisc;
+ 	__s32		accept_ra_mtu;
+ 	__s32		drop_unsolicited_na;
+-	__s32		accept_unsolicited_na;
++	__s32		accept_untracked_na;
+ 	struct ipv6_stable_secret {
+ 		bool initialized;
+ 		struct in6_addr secret;
+diff --git a/include/uapi/linux/ipv6.h b/include/uapi/linux/ipv6.h
+index 6c320b140806..9cdbc5b04855 100644
+--- a/include/uapi/linux/ipv6.h
++++ b/include/uapi/linux/ipv6.h
+@@ -189,7 +189,7 @@ enum {
+ 	DEVCONF_ACCEPT_RA_RT_INFO_MIN_PLEN,
+ 	DEVCONF_NDISC_TCLASS,
+ 	DEVCONF_RPL_SEG_ENABLED,
+-	DEVCONF_ACCEPT_UNSOLICITED_NA,
++	DEVCONF_ACCEPT_UNTRACKED_NA,
+ 	DEVCONF_MAX
+ };
+ 
+diff --git a/net/ipv6/addrconf.c b/net/ipv6/addrconf.c
+index a238476403a7..9ac433cfbfaf 100644
+--- a/net/ipv6/addrconf.c
++++ b/net/ipv6/addrconf.c
+@@ -5516,7 +5516,7 @@ static inline void ipv6_store_devconf(struct ipv6_devconf *cnf,
+ 	array[DEVCONF_DISABLE_POLICY] = cnf->disable_policy;
+ 	array[DEVCONF_NDISC_TCLASS] = cnf->ndisc_tclass;
+ 	array[DEVCONF_RPL_SEG_ENABLED] = cnf->rpl_seg_enabled;
+-	array[DEVCONF_ACCEPT_UNSOLICITED_NA] = cnf->accept_unsolicited_na;
++	array[DEVCONF_ACCEPT_UNTRACKED_NA] = cnf->accept_untracked_na;
+ }
+ 
+ static inline size_t inet6_ifla6_size(void)
+@@ -6898,8 +6898,8 @@ static const struct ctl_table addrconf_sysctl[] = {
+ 		.proc_handler	= proc_dointvec,
+ 	},
+ 	{
+-		.procname	= "accept_unsolicited_na",
+-		.data		= &ipv6_devconf.accept_unsolicited_na,
++		.procname	= "accept_untracked_na",
++		.data		= &ipv6_devconf.accept_untracked_na,
+ 		.maxlen		= sizeof(int),
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec,
+diff --git a/net/ipv6/ndisc.c b/net/ipv6/ndisc.c
+index fd37aae022d3..f236ed938efd 100644
+--- a/net/ipv6/ndisc.c
++++ b/net/ipv6/ndisc.c
+@@ -964,7 +964,7 @@ static void ndisc_recv_na(struct sk_buff *skb)
+ 	struct inet6_dev *idev = __in6_dev_get(dev);
+ 	struct inet6_ifaddr *ifp;
+ 	struct neighbour *neigh;
+-	bool create_neigh;
++	u8 new_state;
+ 
+ 	if (skb->len < sizeof(struct nd_msg)) {
+ 		ND_PRINTK(2, warn, "NA: packet too short\n");
+@@ -985,7 +985,7 @@ static void ndisc_recv_na(struct sk_buff *skb)
+ 	/* For some 802.11 wireless deployments (and possibly other networks),
+ 	 * there will be a NA proxy and unsolicitd packets are attacks
+ 	 * and thus should not be accepted.
+-	 * drop_unsolicited_na takes precedence over accept_unsolicited_na
++	 * drop_unsolicited_na takes precedence over accept_untracked_na
+ 	 */
+ 	if (!msg->icmph.icmp6_solicited && idev &&
+ 	    idev->cnf.drop_unsolicited_na)
+@@ -1026,25 +1026,33 @@ static void ndisc_recv_na(struct sk_buff *skb)
+ 		in6_ifa_put(ifp);
+ 		return;
+ 	}
++
++	neigh = neigh_lookup(&nd_tbl, &msg->target, dev);
++
+ 	/* RFC 9131 updates original Neighbour Discovery RFC 4861.
+-	 * An unsolicited NA can now create a neighbour cache entry
+-	 * on routers if it has Target LL Address option.
++	 * NAs with Target LL Address option without a corresponding
++	 * entry in the neighbour cache can now create a STALE neighbour
++	 * cache entry on routers.
++	 *
++	 *   entry accept  fwding  solicited        behaviour
++	 * ------- ------  ------  ---------    ----------------------
++	 * present      X       X         0     Set state to STALE
++	 * present      X       X         1     Set state to REACHABLE
++	 *  absent      0       X         X     Do nothing
++	 *  absent      1       0         X     Do nothing
++	 *  absent      1       1         X     Add a new STALE entry
+ 	 *
+-	 * drop   accept  fwding                   behaviour
+-	 * ----   ------  ------  ----------------------------------------------
+-	 *    1        X       X  Drop NA packet and don't pass up the stack
+-	 *    0        0       X  Pass NA packet up the stack, don't update NC
+-	 *    0        1       0  Pass NA packet up the stack, don't update NC
+-	 *    0        1       1  Pass NA packet up the stack, and add a STALE
+-	 *                          NC entry
+ 	 * Note that we don't do a (daddr == all-routers-mcast) check.
+ 	 */
+-	create_neigh = !msg->icmph.icmp6_solicited && lladdr &&
+-		       idev && idev->cnf.forwarding &&
+-		       idev->cnf.accept_unsolicited_na;
+-	neigh = __neigh_lookup(&nd_tbl, &msg->target, dev, create_neigh);
++	new_state = msg->icmph.icmp6_solicited ? NUD_REACHABLE : NUD_STALE;
++	if (!neigh && lladdr &&
++	    idev && idev->cnf.forwarding &&
++	    idev->cnf.accept_untracked_na) {
++		neigh = neigh_create(&nd_tbl, &msg->target, dev);
++		new_state = NUD_STALE;
++	}
+ 
+-	if (neigh) {
++	if (neigh && !IS_ERR(neigh)) {
+ 		u8 old_flags = neigh->flags;
+ 		struct net *net = dev_net(dev);
+ 
+@@ -1064,7 +1072,7 @@ static void ndisc_recv_na(struct sk_buff *skb)
+ 		}
+ 
+ 		ndisc_update(dev, neigh, lladdr,
+-			     msg->icmph.icmp6_solicited ? NUD_REACHABLE : NUD_STALE,
++			     new_state,
+ 			     NEIGH_UPDATE_F_WEAK_OVERRIDE|
+ 			     (msg->icmph.icmp6_override ? NEIGH_UPDATE_F_OVERRIDE : 0)|
+ 			     NEIGH_UPDATE_F_OVERRIDE_ISROUTER|
+diff --git a/tools/testing/selftests/net/ndisc_unsolicited_na_test.sh b/tools/testing/selftests/net/ndisc_unsolicited_na_test.sh
+index f508657ee126..86e621b7b9c7 100755
+--- a/tools/testing/selftests/net/ndisc_unsolicited_na_test.sh
++++ b/tools/testing/selftests/net/ndisc_unsolicited_na_test.sh
+@@ -1,15 +1,14 @@
+ #!/bin/bash
+ # SPDX-License-Identifier: GPL-2.0
+ 
+-# This test is for the accept_unsolicited_na feature to
++# This test is for the accept_untracked_na feature to
+ # enable RFC9131 behaviour. The following is the test-matrix.
+ # drop   accept  fwding                   behaviour
+ # ----   ------  ------  ----------------------------------------------
+-#    1        X       X  Drop NA packet and don't pass up the stack
+-#    0        0       X  Pass NA packet up the stack, don't update NC
+-#    0        1       0  Pass NA packet up the stack, don't update NC
+-#    0        1       1  Pass NA packet up the stack, and add a STALE
+-#                           NC entry
++#    1        X       X  Don't update NC
++#    0        0       X  Don't update NC
++#    0        1       0  Don't update NC
++#    0        1       1  Add a STALE NC entry
+ 
+ ret=0
+ # Kselftest framework requirement - SKIP code is 4.
+@@ -72,7 +71,7 @@ setup()
+ 	set -e
+ 
+ 	local drop_unsolicited_na=$1
+-	local accept_unsolicited_na=$2
++	local accept_untracked_na=$2
+ 	local forwarding=$3
+ 
+ 	# Setup two namespaces and a veth tunnel across them.
+@@ -93,7 +92,7 @@ setup()
+ 	${IP_ROUTER_EXEC} sysctl -qw \
+                 ${ROUTER_CONF}.drop_unsolicited_na=${drop_unsolicited_na}
+ 	${IP_ROUTER_EXEC} sysctl -qw \
+-                ${ROUTER_CONF}.accept_unsolicited_na=${accept_unsolicited_na}
++                ${ROUTER_CONF}.accept_untracked_na=${accept_untracked_na}
+ 	${IP_ROUTER_EXEC} sysctl -qw ${ROUTER_CONF}.disable_ipv6=0
+ 	${IP_ROUTER} addr add ${ROUTER_ADDR_WITH_MASK} dev ${ROUTER_INTF}
+ 
+@@ -144,13 +143,13 @@ link_up() {
+ 
+ verify_ndisc() {
+ 	local drop_unsolicited_na=$1
+-	local accept_unsolicited_na=$2
++	local accept_untracked_na=$2
+ 	local forwarding=$3
+ 
+ 	neigh_show_output=$(${IP_ROUTER} neigh show \
+                 to ${HOST_ADDR} dev ${ROUTER_INTF} nud stale)
+ 	if [ ${drop_unsolicited_na} -eq 0 ] && \
+-			[ ${accept_unsolicited_na} -eq 1 ] && \
++			[ ${accept_untracked_na} -eq 1 ] && \
+ 			[ ${forwarding} -eq 1 ]; then
+ 		# Neighbour entry expected to be present for 011 case
+ 		[[ ${neigh_show_output} ]]
+@@ -179,14 +178,14 @@ test_unsolicited_na_combination() {
+ 	test_unsolicited_na_common $1 $2 $3
+ 	test_msg=("test_unsolicited_na: "
+ 		"drop_unsolicited_na=$1 "
+-		"accept_unsolicited_na=$2 "
++		"accept_untracked_na=$2 "
+ 		"forwarding=$3")
+ 	log_test $? 0 "${test_msg[*]}"
+ 	cleanup
+ }
+ 
+ test_unsolicited_na_combinations() {
+-	# Args: drop_unsolicited_na accept_unsolicited_na forwarding
++	# Args: drop_unsolicited_na accept_untracked_na forwarding
+ 
+ 	# Expect entry
+ 	test_unsolicited_na_combination 0 1 1
+-- 
+2.25.1
+

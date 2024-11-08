@@ -8,4 +8,4 @@
 # the repo. Unless a later match takes precedence,
 # @user will be requested for review when someone opens
 # a pull request.
-*       @sonic-kernel
+*       @sonic-net/sonic-linux-kernel-maintainer

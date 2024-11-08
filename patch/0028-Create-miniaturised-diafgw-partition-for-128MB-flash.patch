@@ -1,0 +1,32 @@
+From c7e456919fb30b80d6028128d6016cf0dc7a16e3 Mon Sep 17 00:00:00 2001
+From: Shantanu Shrivastava <shanshri@amd.com>
+Date: Mon, 11 Mar 2024 14:06:05 +0000
+Subject: [PATCH] Create miniaturised diafgw partition for 128MB flash
+
+Changes for creating a miniaturised diagfw for installing
+minigold
+
+Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
+---
+ arch/arm64/boot/dts/pensando/elba-flash128-parts.dtsi | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/pensando/elba-flash128-parts.dtsi b/arch/arm64/boot/dts/pensando/elba-flash128-parts.dtsi
+index ddb961b79..7a86eb759 100644
+--- a/arch/arm64/boot/dts/pensando/elba-flash128-parts.dtsi
++++ b/arch/arm64/boot/dts/pensando/elba-flash128-parts.dtsi
+@@ -85,6 +85,11 @@ partition@5a00000 {
+ 			reg = <0x5a00000 0x1000000>;
+ 		};
+ 
++		partition@6a00000 {
++			label = "diagfw";
++			reg = <0x6a00000 0x15e0000>;
++		};
++
+ 		partition@7fe0000 {
+ 			label = "ubootenv";
+ 			reg = <0x7fe0000 0x10000>;
+-- 
+2.25.1
+

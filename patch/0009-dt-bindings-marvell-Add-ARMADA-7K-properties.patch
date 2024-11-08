@@ -1,0 +1,27 @@
+From: Pavan Naregundi <pnaregundi@marvell.com>
+Date: Tue, 14 Mar 2023 05:57:34 +0000
+dt-bindings: marvell: Add ARMADA-7K properties
+
+This patch adds compatible properties for the Marvell Armada7020
+Comexpress in documentation.
+
+Signed-off-by: Eyal Oron <oeyal@marvell.com>
+---
+ Documentation/devicetree/bindings/arm/marvell/armada-7k-8k.yaml | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Documentation/devicetree/bindings/arm/marvell/armada-7k-8k.yaml b/Documentation/devicetree/bindings/arm/marvell/armada-7k-8k.yaml
+index e9bf30545..26092dc11 100644
+--- a/Documentation/devicetree/bindings/arm/marvell/armada-7k-8k.yaml
++++ b/Documentation/devicetree/bindings/arm/marvell/armada-7k-8k.yaml
+@@ -20,6 +20,7 @@ properties:
+           - const: marvell,armada7020
+           - const: marvell,armada-ap806-dual
+           - const: marvell,armada-ap806
++          - const: marvell,armada7020-comexpress
+ 
+       - description: Armada 7040 SoC
+         items:
+-- 
+2.25.1
+
