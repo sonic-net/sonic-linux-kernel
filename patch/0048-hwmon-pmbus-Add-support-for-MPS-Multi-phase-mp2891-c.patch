@@ -24,8 +24,8 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  Documentation/hwmon/mp2891.rst | 128 ++++++++++
  drivers/hwmon/pmbus/Kconfig    |   9 +
  drivers/hwmon/pmbus/Makefile   |   1 +
- drivers/hwmon/pmbus/mp2891.c   | 427 +++++++++++++++++++++++++++++++++
- 4 files changed, 565 insertions(+)
+ drivers/hwmon/pmbus/mp2891.c   | 431 +++++++++++++++++++++++++++++++++
+ 4 files changed, 569 insertions(+)
  create mode 100644 Documentation/hwmon/mp2891.rst
  create mode 100644 drivers/hwmon/pmbus/mp2891.c
 
@@ -197,10 +197,10 @@ index 0002dbe22..8e767d7b8 100644
  obj-$(CONFIG_SENSORS_PLI1209BC)	+= pli1209bc.o
 diff --git a/drivers/hwmon/pmbus/mp2891.c b/drivers/hwmon/pmbus/mp2891.c
 new file mode 100644
-index 000000000..a4386e8e9
+index 000000000..522c0bb5f
 --- /dev/null
 +++ b/drivers/hwmon/pmbus/mp2891.c
-@@ -0,0 +1,427 @@
+@@ -0,0 +1,431 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + * Hardware monitoring driver for MPS Multi-phase Digital VR Controllers(MP2891)
@@ -221,6 +221,7 @@ index 000000000..a4386e8e9
 + * Note: command PMBUS_READ_DUTY_CYCLE (0x94) is re-purposed for reading input power.
 + *	 command PMBUS_READ_FREQUENCY (0x95) is re-purposed for reading input current.
 + */
++#define MP2891_PMBUS_VOUT_MIN		0x2b
 +#define MP2891_VOUT_OV_FAULT_LIMIT_R1	0x40
 +#define MP2891_VOUT_UV_FAULT_LIMIT_R1	0x44
 +#define MP2891_MFR_IIN_RPT_EST		0x53
@@ -312,7 +313,7 @@ index 000000000..a4386e8e9
 +{
 +	const struct pmbus_driver_info *info = pmbus_get_driver_info(client);
 +	struct mp2891_data *data = to_mp2891_data(info);
-+	int off, ret;
++	int ret;
 +
 +	switch (reg) {
 +	case PMBUS_READ_VOUT:
@@ -338,14 +339,17 @@ index 000000000..a4386e8e9
 +			return ret;
 +		return DIV_ROUND_CLOSEST(ret & GENMASK(7, 0), 8) * 1000;
 +	case PMBUS_VOUT_UV_FAULT_LIMIT:
-+	case PMBUS_VOUT_OV_FAULT_LIMIT:
-+		ret = pmbus_read_word_data(client, page, phase, reg);
++		ret = pmbus_read_word_data(client, page, phase, MP2891_PMBUS_VOUT_MIN);
 +		if (ret <= 0)
 +			return ret;
-+		off = (reg == PMBUS_VOUT_UV_FAULT_LIMIT) ? MP2891_MFR_UVP_OFFSET_DEFAULT :
-+							   MP2891_MFR_OVP_OFFSET_DEFAULT;
-+		off = MP2891_MFR_OVP_UVP_OFFSET_GET(ret, off);
-+		return DIV_ROUND_CLOSEST(data->vid_ref[page] + off, 100);
++		ret = (ret & GENMASK(10, 0)) * data->vid_step[page] * 105;
++		return DIV_ROUND_CLOSEST(ret, 10000);
++	case PMBUS_VOUT_OV_FAULT_LIMIT:
++		ret = pmbus_read_word_data(client, page, phase, PMBUS_VOUT_MAX);
++		if (ret <= 0)
++			return ret;
++		ret = (ret & GENMASK(10, 0)) * data->vid_step[page] * 95;
++		return DIV_ROUND_CLOSEST(ret, 10000);
 +	case PMBUS_IOUT_UC_FAULT_LIMIT:
 +		ret = pmbus_read_word_data(client, page, phase, reg);
 +		return ret <= 0 ? ret : DIV_ROUND_CLOSEST((ret & GENMASK(7, 0)) *
