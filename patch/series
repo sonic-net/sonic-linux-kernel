@@ -223,6 +223,10 @@ cisco-npu-disable-other-bars.patch
 # Micas patches
 0001-fix-os-crash-caused-by-optoe-when-class-switch.patch
 
+# Fix to avoid kernel panic on Kernel 6.1.94
+# https://github.com/sonic-net/sonic-buildimage/issues/20901
+revert-456d8aa-to-fix-pcie_aspm_exit_link_status.patch
+
 #
 #
 ############################################################
