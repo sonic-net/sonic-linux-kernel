@@ -3,7 +3,13 @@ From: Nathan Wolfe <nwolfe@arista.com>
 Date: Tue, 8 Oct 2024 11:57:26 -0700
 Subject: [PATCH] revert 456d8aa to fix pcie_aspm_exit_link_status
 
+For certain pci tree structures involving pci devices with sibling
+functions we can get a nullptr dereference when the link state goes down
+due to this change.
+
 https://github.com/torvalds/linux/commit/456d8aa37d0f56fc9e985e812496e861dcd6f2f2
+Upstream Discussion:
+https://lore.kernel.org/linux-pci/20240801171103.GA107989@bhelgaas/T/#t
 ---
  drivers/pci/pcie/aspm.c | 21 +++++++++------------
  1 file changed, 9 insertions(+), 12 deletions(-)
