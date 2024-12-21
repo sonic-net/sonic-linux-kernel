@@ -219,6 +219,10 @@ cisco-npu-disable-other-bars.patch
 # Security patch
 0001-Change-the-system.map-file-permission-only-readable-.patch
 
+# Fix to avoid kernel panic on Kernel 6.1.94
+# https://github.com/sonic-net/sonic-buildimage/issues/20901
+revert-456d8aa-to-fix-pcie_aspm_exit_link_status.patch
+
 #
 #
 ############################################################
