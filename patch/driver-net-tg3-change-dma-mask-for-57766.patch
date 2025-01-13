@@ -1,0 +1,51 @@
+From 821f6d79ad2773e0ff1537c0bb3c7af93a694709 Mon Sep 17 00:00:00 2001
+From: Boyang Yu <byu@arista.com>
+Date: Fri, 9 Aug 2024 17:03:51 +0000
+Subject: [PATCH] tg3: fix broadcom NIC 57766 staying down issue
+
+Set consistent dma mask to 31 in the tg3 driver for broadcom NIC
+ASIC_REV_57766. Before the change, when a previous DMA end with
+lower 16 bits 0xffff, and a new dma starts with upper bits 0xffff,
+the hardware seems to think we're at address 0xffffffff and triggers
+an overflow. The change asks the kernel to only address 31 bits for
+coherent allocations. This will ensure that upper bits are at most
+0x7fff thus avoiding the bug.
+
+Signed-off-by: Boyang Yu <byu@arista.com>
+---
+ drivers/net/ethernet/broadcom/tg3.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/broadcom/tg3.c b/drivers/net/ethernet/broadcom/tg3.c
+index 6a1179935..b1bb1dc55 100644
+--- a/drivers/net/ethernet/broadcom/tg3.c
++++ b/drivers/net/ethernet/broadcom/tg3.c
+@@ -17794,7 +17794,7 @@ static int tg3_init_one(struct pci_dev *pdev,
+ 	 * On 64-bit systems without IOMMU, use 64-bit dma_mask and
+ 	 * do DMA address check in tg3_start_xmit().
+ 	 */
+-	if (tg3_flag(tp, 4G_DMA_ONLY))
++	if (tg3_flag(tp, 4G_DMA_ONLY) || (tg3_asic_rev(tp) == ASIC_REV_57766))
+ 		persist_dma_mask = dma_mask = DMA_BIT_MASK(32);
+ 	else if (tg3_flag(tp, 40BIT_DMA_BUG)) {
+ 		persist_dma_mask = dma_mask = DMA_BIT_MASK(40);
+@@ -17825,6 +17825,16 @@ static int tg3_init_one(struct pci_dev *pdev,
+ 				"No usable DMA configuration, aborting\n");
+ 			goto err_out_apeunmap;
+ 		}
++
++		if (tg3_asic_rev(tp) == ASIC_REV_57766) {
++			err = dma_set_coherent_mask(&pdev->dev,
++						    DMA_BIT_MASK(31));
++			if (err < 0) {
++				dev_err(&pdev->dev,
++					"Unable to obtain 31 bit DMA for consistent allocations\n");
++				goto err_out_apeunmap;
++			}
++		}
+ 	}
+ 
+ 	tg3_init_bufmgr_config(tp);
+-- 
+2.41.0
+

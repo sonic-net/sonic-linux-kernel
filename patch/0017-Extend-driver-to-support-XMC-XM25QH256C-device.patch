@@ -1,0 +1,30 @@
+From a3f125fa447f51491391f5683ef6ca5bce36e97a Mon Sep 17 00:00:00 2001
+From: Owen Wu <twowen@gmail.com>
+Date: Tue, 15 Oct 2024 14:02:06 +0800
+Subject: [PATCH] Extend driver to support XMC XM25QH256C device.
+
+Add new component for alternative support
+
+Signed-off-by: Owen Wu <twowen@gmail.com>
+---
+ drivers/mtd/spi-nor/xmc.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/mtd/spi-nor/xmc.c b/drivers/mtd/spi-nor/xmc.c
+index 051411e86..74fd4e284 100644
+--- a/drivers/mtd/spi-nor/xmc.c
++++ b/drivers/mtd/spi-nor/xmc.c
+@@ -16,6 +16,10 @@ static const struct flash_info xmc_nor_parts[] = {
+ 	{ "XM25QH128A", INFO(0x207018, 0, 64 * 1024, 256)
+ 		NO_SFDP_FLAGS(SECT_4K | SPI_NOR_DUAL_READ |
+ 			      SPI_NOR_QUAD_READ) },
++	{ "XM25QH256C", INFO(0x204019, 0, 64 * 1024, 512)
++		NO_SFDP_FLAGS(SECT_4K | SPI_NOR_DUAL_READ |
++			      SPI_NOR_QUAD_READ)
++			      FIXUP_FLAGS(SPI_NOR_4B_OPCODES) },
+ };
+ 
+ const struct spi_nor_manufacturer spi_nor_xmc = {
+-- 
+2.25.1
+

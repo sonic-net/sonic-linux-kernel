@@ -35,6 +35,7 @@ driver-support-optoe-oneaddr-pageable.patch
 driver-support-optoe-update-to-linux-6.1.patch
 driver-support-optoe-dynamic-write-timeout.patch
 driver-net-tg3-add-param-short-preamble-and-reset.patch
+driver-net-tg3-change-dma-mask-for-57766.patch
 0004-dt-bindings-hwmon-Add-missing-documentation-for-lm75.patch
 0005-dt-bindings-hwmon-Add-tmp75b-to-lm75.txt.patch
 0006-device-tree-bindinds-add-NXP-PCT2075-as-compatible-d.patch
@@ -67,6 +68,8 @@ Support-for-fullcone-nat.patch
 # Trtnetlink-catch-EOPNOTSUPP-errors.patch
 # Tbridge-per-port-multicast-broadcast-flood-flags.patch
 #
+
+0001-devlink-Fix-RCU-stall-when-unregistering-a-devlink-i.patch
 
 # Mellanox patches for 5.10
 ###-> mellanox_sdk-start
@@ -109,9 +112,6 @@ Support-for-fullcone-nat.patch
 0033-i2c-mlxcpld-Allow-driver-to-run-on-ARM64-architectur.patch
 0034-i2c-mlxcpld-Add-support-for-extended-transaction-len.patch
 0035-i2c-mlxcpld-Support-PCIe-mapped-register-space.patch
-0036-mlxsw-i2c-Fix-chunk-size-setting-in-output-mailbox-b.patch
-0037-mlxsw-i2c-Limit-single-transaction-buffer-size.patch
-0038-mlxsw-core_hwmon-Adjust-module-label-names-based-on-.patch
 0039-mlxsw-reg-Limit-MTBR-register-payload-to-a-single-da.patch
 0040-mlxsw-core-Extend-allowed-list-of-external-cooling-d.patch
 0041-mlxsw-i2c-Utilize-standard-macros-for-dividing-buffe.patch
@@ -137,7 +137,11 @@ Support-for-fullcone-nat.patch
 0088-platform-mellanox-mlxreg-hotplug-Add-support-for-new.patch
 0089-platform-mellanox-mlx-platform-Change-register-name.patch
 0090-platform-mellanox-mlx-platform-Add-support-for-new-X.patch
+0091-platform-mellanox-mlxreg-dpu-Add-initial-support-for.patch
+0092-platform-mellanox-Introduce-support-of-Nvidia-smart-.patch
 0093-hwmon-pmbus-Add-support-for-MPS-Multi-phase-mp2855-c.patch
+0094-i2c-asf-Introduce-MCTP-support-over-ASF-controller.patch
+0095-platform-mellanox-nvsw-sn2201-Add-support-for-new-sy.patch
 8000-mlxsw-Use-weak-reverse-dependencies-for-firmware-fla.patch
 8003-mlxsw-i2c-SONIC-ISSU-Prevent-transaction-execution-f.patch
 8004-mlxsw-minimal-Downstream-Ignore-error-reading-SPAD-r.patch
@@ -175,10 +179,9 @@ cisco-npu-disable-other-bars.patch
 0009-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
 0010-dts-marvell-Add-support-for-7020-comexpress.patch
 0011-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch
-0012-net-mvpp2-clear-BM-pool-before-initialization.patch
-0013-mmc-sdhci-xenon-fix-PHY-init-clock-stability.patch
-0014-mmc-sdhci-xenon-add-timeout-for-PHY-init-complete.patch
 0015-arm64-dts-marvell-Add-Supermicro-SSE-G3748-board.patch
+0016-arm64-dts-marvell-Add-Wistron-ES-1227-54TS-board.patch
+0017-Extend-driver-to-support-XMC-XM25QH256C-device.patch
 
 # amd-pensando elba support
 0000-Add-support-for-the-TI-TPS53659.patch
@@ -212,8 +215,18 @@ cisco-npu-disable-other-bars.patch
 0028-Create-miniaturised-diafgw-partition-for-128MB-flash.patch
 0029-pcie-if-hotplug-enabled-do-immediate-reset-on-panic.patch
 
+# Fix for w25q128 flash that dont have SFDP support
+0001-Revert-mtd-spi-nor-Correct-flags-for-Winbond-w25q128.patch 
+
 # Security patch
 0001-Change-the-system.map-file-permission-only-readable-.patch
+
+# Micas patches
+0001-fix-os-crash-caused-by-optoe-when-class-switch.patch
+
+# Fix to avoid kernel panic on Kernel 6.1.94
+# https://github.com/sonic-net/sonic-buildimage/issues/20901
+revert-456d8aa-to-fix-pcie_aspm_exit_link_status.patch
 
 #
 #
