@@ -18,4 +18,3 @@ CONFIG_LOCK_DOWN_IN_EFI_SECURE_BOOT
 
 [armhf]
 
-[marvell-armhf]
