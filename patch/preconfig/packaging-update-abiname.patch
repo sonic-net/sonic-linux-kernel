@@ -14,8 +14,8 @@ index 983625720..55d7e51a7 100644
 +++ b/debian/config/defines
 @@ -1,5 +1,5 @@
  [abi]
--abiname: 22
-+abiname: 22-2
+-abiname: 29
++abiname: 29-2
  ignore-changes:
   __cpuhp_*
   __udp_gso_segment
@@ -27,8 +27,8 @@ index b3ce4f58d..7d4eabf04 100644
  a20d83421667bad21739041d4e743ed1  debian/templates/sourcebin.meta.maintscript.in
  cbc5b0a81441c4c98b329ebe10827812  debian/templates/tools-unversioned.control.in
  568f629072d584e9a0eb1dc9d3a94749  debian/templates/tools-versioned.control.in
--36001efefc2d9ec53b7a0fd2a504677b  debian/config/defines
-+1d140a262c41627e255a1aaa0ddcfe92  debian/config/defines
+-f3ba608063c55ec489dcdf9397ec8082  debian/config/defines
++26c0dd754fd9fd1ffd676fe8a91d40c2  debian/config/defines
  59a811890d2e7129bec940075850f11f  debian/config/alpha/defines
  60569b1b4c618e2fe7b135f687d0f0d2  debian/config/amd64/defines
  bc35d767074baf305423437d049be85d  debian/config/arm64/defines
