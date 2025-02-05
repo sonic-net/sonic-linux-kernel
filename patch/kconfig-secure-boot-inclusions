@@ -16,4 +16,3 @@ CONFIG_MODULE_SIG_FORCE=y
 
 [armhf]
 
-[marvell-armhf]

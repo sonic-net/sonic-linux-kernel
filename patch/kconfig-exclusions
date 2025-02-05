@@ -22,7 +22,7 @@ CONFIG_MLXSW_PCI
 [arm64]
 CONFIG_SQUASHFS_DECOMP_MULTI_PERCPU
 
-[marvell-arm64]
+[marvell-prestera-arm64]
 CONFIG_UBIFS_FS_ZSTD
 CONFIG_CRYPTO_DEV_SAFEXCEL
 
@@ -31,7 +31,7 @@ CONFIG_ARM64_VA_BITS_48
 
 [armhf]
 
-[marvell-armhf]
+[marvell-prestera-armhf]
 CONFIG_ARCH_VIRT
 CONFIG_ARCH_BCM
 CONFIG_ARCH_EXYNOS
