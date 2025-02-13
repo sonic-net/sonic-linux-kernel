@@ -51,7 +51,7 @@ index 22d2c0cd4..f3f9d89c4 100644
 +			ret = optoe_eeprom_write(optoe, client, &page,
 +				OPTOE_PAGE_SELECT_REG, 1);
 +			if (ret < 0) {
-+				dev_warn(&client->dev,
++				dev_err(&client->dev,
 +					"Non-SFP write page register for page %d failed ret:%d!\n",
 +						page, ret);
 +				return ret;
