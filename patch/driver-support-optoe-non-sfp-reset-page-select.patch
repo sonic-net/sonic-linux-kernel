@@ -33,19 +33,27 @@ The fix has been tested on a non-SFP module and it was ensured that the sfputil 
 
 Signed-off-by: Mihir Patel <patelmi@microsoft.com>
 ---
- drivers/misc/eeprom/optoe.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+ drivers/misc/eeprom/optoe.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
 diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
-index 22d2c0cd4..f3f9d89c4 100644
+index 22d2c0cd4..2ffcb23e9 100644
 --- a/drivers/misc/eeprom/optoe.c
 +++ b/drivers/misc/eeprom/optoe.c
-@@ -528,6 +528,19 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
+@@ -528,6 +528,27 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
  					page, ret);
  			return ret;
  		}
 +	} else {
-+		/* Set the page select byte to 0 if accessing the upper memory of page 0h (limit scope of fix to non-SFP modules) */
++		/*
++		 * Reset page select byte to 0 when accessing upper memory (offset >= 128) of page 0h.
++		 * This is only done for non-SFP modules because:
++		 * 1. SFP modules have page select byte on A2h address (0x51), not A0h (0x50) unlike
++		 *     non-SFP modules (QSFP, CMIS). This mandates additional handling for SFP modules.
++		 * 3. SFPs requiring page select changes are uncommon, so this fix targets non-SFP modules only
++		 *
++		 * Note: This fix can be enhanced in the future to support SFP modules if needed.
++		 */
 +		if (optoe->dev_class != TWO_ADDR && phy_offset >= OPTOE_PAGE_SIZE) {
 +			page = 0;
 +			ret = optoe_eeprom_write(optoe, client, &page,
