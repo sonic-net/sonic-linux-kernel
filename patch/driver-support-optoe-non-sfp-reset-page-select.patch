@@ -1,0 +1,73 @@
+From 719486dda84c1f058b24916dc386888cbb6ac1ee Mon Sep 17 00:00:00 2001
+From: Mihir Patel <patelmi@microsoft.com>
+Date: Wed, 12 Feb 2025 21:04:48 +0000
+Subject: [PATCH] Reset page select byte to 0
+
+Description
+The optoe kernel driver currently assumes that the page select byte (page 0, byte 127) is set to 0h before accessing the upper memory on page 0h.
+This assumption causes failures when accessing the module's EEPROM in multiple scenarios.
+On the contrary, the driver currently sets the page select byte if the intended page to be accessed is > 0 as evident from the below code
+https://github.com/opencomputeproject/oom/blob/c32499a89dff005e7ff2acb48b33f55543ce5140/optoe/optoe.c#L344-L353
+
+Impact
+If the optoe driver accesses any page except page 0h and the code for restoring the page select byte to 0h fails, subsequent attempts to
+access the upper memory of page 0h will fail because the page select byte from the previous transaction remains unchanged.
+https://github.com/opencomputeproject/oom/blob/c32499a89dff005e7ff2acb48b33f55543ce5140/optoe/optoe.c#L373-L392
+
+Steps to recreate the failure scenario
+One way to recreate this issue is:
+
+1. Initiate CDB firmware download operation on a module supporting CDB foreground mode only
+2. Kill the process which is downloading the FW
+3. Dump the page select byte and ensure it displays a non-zero value
+4. Execute sfputil show fwversion EthernetXX CLI and you will observe a traceback. The traceback occurs because the vendor name is read
+with garbage content, as the page select byte is set to 0x9F instead of 0x0.
+
+Fix
+Before optoe accesses any address from upper page 0h, the page select byte is now set to 0.
+This fix is done only for non-SFP modules to limit the scope of impact. SFP modules require additional handling since the page select byte
+is on page A2h and NOT A0h unlike non-SFP modules which do not have the concept of A0h and A2h page.
+
+Testing
+The fix has been tested on a non-SFP module and it was ensured that the sfputil show fwversion EthernetXX CLI command executes successfully without any traceback.
+
+Signed-off-by: Mihir Patel <patelmi@microsoft.com>
+---
+ drivers/misc/eeprom/optoe.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
+index 22d2c0cd4..2ffcb23e9 100644
+--- a/drivers/misc/eeprom/optoe.c
++++ b/drivers/misc/eeprom/optoe.c
+@@ -528,6 +528,27 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
+ 					page, ret);
+ 			return ret;
+ 		}
++	} else {
++		/*
++		 * Reset page select byte to 0 when accessing upper memory (offset >= 128) of page 0h.
++		 * This is only done for non-SFP modules because:
++		 * 1. SFP modules have page select byte on A2h address (0x51), not A0h (0x50) unlike
++		 *     non-SFP modules (QSFP, CMIS). This mandates additional handling for SFP modules.
++		 * 3. SFPs requiring page select changes are uncommon, so this fix targets non-SFP modules only
++		 *
++		 * Note: This fix can be enhanced in the future to support SFP modules if needed.
++		 */
++		if (optoe->dev_class != TWO_ADDR && phy_offset >= OPTOE_PAGE_SIZE) {
++			page = 0;
++			ret = optoe_eeprom_write(optoe, client, &page,
++				OPTOE_PAGE_SELECT_REG, 1);
++			if (ret < 0) {
++				dev_err(&client->dev,
++					"Non-SFP write page register for page %d failed ret:%d!\n",
++						page, ret);
++				return ret;
++			}
++		}
+ 	}
+ 
+ 	while (count) {
+-- 
+2.25.1
+
