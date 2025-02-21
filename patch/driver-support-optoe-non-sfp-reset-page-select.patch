@@ -40,7 +40,7 @@ diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
 index 22d2c0cd4..2ffcb23e9 100644
 --- a/drivers/misc/eeprom/optoe.c
 +++ b/drivers/misc/eeprom/optoe.c
-@@ -528,6 +528,27 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
+@@ -528,6 +528,36 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
  					page, ret);
  			return ret;
  		}
@@ -55,14 +55,23 @@ index 22d2c0cd4..2ffcb23e9 100644
 +		 * Note: This fix can be enhanced in the future to support SFP modules if needed.
 +		 */
 +		if (optoe->dev_class != TWO_ADDR && phy_offset >= OPTOE_PAGE_SIZE) {
-+			page = 0;
-+			ret = optoe_eeprom_write(optoe, client, &page,
++			ret = optoe_eeprom_read(optoe, client, &page,
 +				OPTOE_PAGE_SELECT_REG, 1);
 +			if (ret < 0) {
 +				dev_err(&client->dev,
-+					"Non-SFP write page register for page %d failed ret:%d!\n",
-+						page, ret);
++					"Non-SFP read page register failed ret:%d!\n", ret);
 +				return ret;
++			}
++			if (page != 0) {
++				page = 0;
++				ret = optoe_eeprom_write(optoe, client, &page,
++					OPTOE_PAGE_SELECT_REG, 1);
++				if (ret < 0) {
++					dev_err(&client->dev,
++						"Non-SFP write page register for page %d failed ret:%d!\n",
++							page, ret);
++					return ret;
++				}
 +			}
 +		}
  	}
