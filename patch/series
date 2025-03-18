@@ -107,6 +107,7 @@ Support-for-fullcone-nat.patch
 0027-platform-mellanox-mlx-platform-Get-interrupt-line-th.patch
 0028-platform-mellanox-Add-initial-support-for-PCIe-based.patch
 0029-platform-mellanox-mlxreg-hotplug-Extend-condition-fo.patch
+0030-1-platform-mellanox-nvsw-sn2201-Add-check-for-platform.patch
 0030-platform-mellanox-nvsw-sn2201-change-fans-i2c-busses.patch
 0032-platform_data-mlxreg-Add-field-with-mapped-resource-.patch
 0033-i2c-mlxcpld-Allow-driver-to-run-on-ARM64-architectur.patch
