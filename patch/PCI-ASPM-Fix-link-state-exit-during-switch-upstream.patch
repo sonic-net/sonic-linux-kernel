@@ -7,6 +7,8 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
+[ Upstream commit cbf937dcadfd571a434f8074d057b32cd14fbea5 ]
+
 Before 456d8aa37d0f ("PCI/ASPM: Disable ASPM on MFD function removal to
 avoid use-after-free"), we would free the ASPM link only after the last
 function on the bus pertaining to the given link was removed.
