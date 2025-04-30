@@ -1,8 +1,7 @@
-From ddec9cfeb44ed194cadee824f3f49c057bf7a560 Mon Sep 17 00:00:00 2001
+From ac10df67c019b8ee1c80b46390759669cd69862f Mon Sep 17 00:00:00 2001
 From: Michael Shych <michaelsh@nvidia.com>
 Date: Wed, 12 Jul 2023 14:26:38 +0000
-Subject: [PATH backport v6.1 30/32] platform: mellanox: nvsw-sn2201: change
- fans i2c busses.
+Subject: [PATCH 2/4] platform: mellanox: nvsw-sn2201: change fans i2c busses.
 
 Link: https://www.spinics.net/lists/platform-driver-x86/msg39647.html
 
@@ -18,7 +17,7 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  1 file changed, 8 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/platform/mellanox/nvsw-sn2201.c b/drivers/platform/mellanox/nvsw-sn2201.c
-index 7b9c107c17ce..75b699676ca6 100644
+index f53baf7e7..1a7c45aa4 100644
 --- a/drivers/platform/mellanox/nvsw-sn2201.c
 +++ b/drivers/platform/mellanox/nvsw-sn2201.c
 @@ -84,6 +84,10 @@
