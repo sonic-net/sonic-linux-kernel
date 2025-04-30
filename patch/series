@@ -227,7 +227,7 @@ cisco-npu-disable-other-bars.patch
 
 # Fix to avoid kernel panic on Kernel 6.1.94
 # https://github.com/sonic-net/sonic-buildimage/issues/20901
-revert-456d8aa-to-fix-pcie_aspm_exit_link_status.patch
+PCI-ASPM-Fix-link-state-exit-during-switch-upstream.patch
 
 #
 #
