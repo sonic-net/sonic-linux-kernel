@@ -1,0 +1,63 @@
+From 67a686455cf959f8736b86d42aed06b446efb001 Mon Sep 17 00:00:00 2001
+From: Roy Cohen <roycohen@nvidia.com>
+Date: Mon, 13 Jan 2025 10:47:27 +0200
+Subject: [PATCH platform-next 1/2] platform_data/mlxreg: Add fields for
+ interrupt storm handling
+
+Add fields for interrupt storm handling.
+Extend structure mlxreg_core_data with the following fields:
+ 'wmark_low_cntr' - interrupt storm counter.
+ 'mark_low_ts'    - interrupt storm low bound timestamp.
+ 'wmark_high_ts'  - interrupt storm high bound timestamp.
+
+Extend structure mlxreg_core_item with the following field:
+ 'storming_bits' - interrupt storming bits mask.
+
+Signed-off-by: Roy Cohen <roycohen@nvidia.com>
+---
+ include/linux/platform_data/mlxreg.h | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/include/linux/platform_data/mlxreg.h b/include/linux/platform_data/mlxreg.h
+index d9f679752226..67dddacfa8fa 100644
+--- a/include/linux/platform_data/mlxreg.h
++++ b/include/linux/platform_data/mlxreg.h
+@@ -133,6 +133,9 @@ struct mlxreg_hotplug_device {
+  * @regnum: number of registers occupied by multi-register attribute;
+  * @slot: slot number, at which device is located;
+  * @secured: if set indicates that entry access is secured;
++ * @wmark_low_cntr: interrupt storm counter;
++ * @wmark_low_ts: interrupt storm low bound timestamp;
++ * @wmark_high_ts: interrupt storm high bound timestamp;
+  */
+ struct mlxreg_core_data {
+ 	char label[MLXREG_CORE_LABEL_MAX_SIZE];
+@@ -155,6 +158,9 @@ struct mlxreg_core_data {
+ 	u8 regnum;
+ 	u8 slot;
+ 	u8 secured;
++	unsigned int wmark_low_cntr;
++	unsigned long wmark_low_ts;
++	unsigned long wmark_high_ts;
+ };
+ 
+ /**
+@@ -173,6 +179,7 @@ struct mlxreg_core_data {
+  * @ind: element's index inside the group;
+  * @inversed: if 0: 0 for signal status is OK, if 1 - 1 is OK;
+  * @health: true if device has health indication, false in other case;
++ * @storming_bits: interrupt storming bits mask;
+  */
+ struct mlxreg_core_item {
+ 	struct mlxreg_core_data *data;
+@@ -188,6 +195,7 @@ struct mlxreg_core_item {
+ 	u8 ind;
+ 	u8 inversed;
+ 	u8 health;
++	u32 storming_bits;
+ };
+ 
+ /**
+-- 
+2.44.0
+

@@ -139,8 +139,14 @@ Support-for-fullcone-nat.patch
 0092-platform-mellanox-Introduce-support-of-Nvidia-smart-.patch
 0093-hwmon-pmbus-Add-support-for-MPS-Multi-phase-mp2855-c.patch
 0094-i2c-asf-Introduce-MCTP-support-over-ASF-controller.patch
-#0095-platform-mellanox-nvsw-sn2201-Add-support-for-new-sy.patch
+0095-platform-mellanox-nvsw-sn2201-Add-support-for-new-sy.patch
 0097-platform-mellanox-mlx-platform-Add-support-for-new-N.patch
+0098-platform-mellanox-Downstream-Add-support-for-new-Nvi.patch
+0099-platform-mellanox-Downstream-Add-support-DGX-flavor-.patch
+0100-platform-mellanox-mlxreg-io-Extend-number-of-hwmon-a.patch
+0101-platform_data-mlxreg-Add-fields-for-interrupt-storm-.patch
+0102-platform-mellanox-mlxreg-hotplug-Add-support-for-han.patch
+0103-platform-mellanox-mlx-dpu-improve-interrupt-handling.patch
 8000-mlxsw-Use-weak-reverse-dependencies-for-firmware-fla.patch
 8003-mlxsw-i2c-SONIC-ISSU-Prevent-transaction-execution-f.patch
 8004-mlxsw-minimal-Downstream-Ignore-error-reading-SPAD-r.patch
@@ -151,6 +157,7 @@ Support-for-fullcone-nat.patch
 8009-hwmon-mlxsw-Downstream-Allow-fan-speed-setting-granu.patch
 8010-mlxsw-i2c-Downstream-Add-retry-mechanism-for-failed-.patch
 8011-mlxsw-minimal-Downstream-Disable-ethtool-interface.patch
+8012-hwmon-pmbus-Downstream-Workaround-for-psu-attributes.patch
 ###-> mellanox_hw_mgmt-end
 
 # Cisco patches for 5.10 kernel
