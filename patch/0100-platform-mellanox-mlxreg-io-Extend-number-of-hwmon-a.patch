@@ -1,0 +1,33 @@
+From 41b6df4fb187cd6a4bbf501017090821825d3bef Mon Sep 17 00:00:00 2001
+From: Oleksandr Shamray <oleksandrs@nvidia.com>
+Date: Wed, 5 Feb 2025 14:45:21 +0200
+Subject: [PATCH] platform/mellanox: mlxreg-io: Extend number of hwmon
+ attributes
+
+Extend maximum number of the attributes, exposed to 'sysfs' to support
+new systems having more attributes.
+
+Signed-off-by: Oleksandr Shamray <oleksandrs@nvidia.com>
+Reviewed-by: Vadim Pasternak <vadimp@nvidia.com>
+
+Signed-off-by: Oleksandr Shamray <oleksandrs@nvidia.com>
+---
+ drivers/platform/mellanox/mlxreg-io.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/platform/mellanox/mlxreg-io.c b/drivers/platform/mellanox/mlxreg-io.c
+index ddc08ab..881182c 100644
+--- a/drivers/platform/mellanox/mlxreg-io.c
++++ b/drivers/platform/mellanox/mlxreg-io.c
+@@ -18,7 +18,7 @@
+ 
+ /* Attribute parameters. */
+ #define MLXREG_IO_ATT_SIZE	10
+-#define MLXREG_IO_ATT_NUM	96
++#define MLXREG_IO_ATT_NUM	128
+ 
+ /**
+  * struct mlxreg_io_priv_data - driver's private data:
+-- 
+2.8.4
+

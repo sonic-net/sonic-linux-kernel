@@ -1,7 +1,7 @@
-From ab5040e2b99cc3eb57eaa266b90877bcc38c28ed Mon Sep 17 00:00:00 2001
+From 1c43cf584d3fd62823dd3b28018481f15a8836c7 Mon Sep 17 00:00:00 2001
 From: Michael Shych <michaelsh@nvidia.com>
 Date: Wed, 29 Nov 2023 13:12:38 +0000
-Subject: [PATCH v1 1/1] platform: mellanox: indicate deferred I2C bus creation
+Subject: [PATCH 3/4] platform: mellanox: indicate deferred I2C bus creation
  for a hot-plug driver
 
 It fixes timing issue when during initialization hot-plug driver
@@ -15,7 +15,7 @@ Signed-off-by: Michael Shych <michaelsh@nvidia.com>
  1 file changed, 1 insertion(+)
 
 diff --git a/drivers/platform/mellanox/nvsw-sn2201.c b/drivers/platform/mellanox/nvsw-sn2201.c
-index 65b677690..79e4d0619 100644
+index 1a7c45aa4..a3e2bc6d6 100644
 --- a/drivers/platform/mellanox/nvsw-sn2201.c
 +++ b/drivers/platform/mellanox/nvsw-sn2201.c
 @@ -520,6 +520,7 @@ struct mlxreg_core_hotplug_platform_data nvsw_sn2201_hotplug = {
@@ -27,5 +27,5 @@ index 65b677690..79e4d0619 100644
  
  /* SN2201 static devices. */
 -- 
-2.14.1
+2.20.1
 
