@@ -1,0 +1,155 @@
+From edf1951c7f5e87a9b6c2ad82bd97866012f552a6 Mon Sep 17 00:00:00 2001
+From: Ciju Rajan K <crajank@nvidia.com>
+Date: Tue, 25 Mar 2025 11:20:04 +0200
+Subject: [PATCH 01/22] From 4b17e10a22771fcd2dbb4754c43200af2fc69425 Mon Sep
+ 17 00:00:00 2001 From: Ciju Rajan K <crajank@nvidia.com> Date: Tue, 18 Mar
+ 2025 21:15:00 +0200 Subject: platform/mellanox: mlxreg-dpu: Introduce
+ completion callback
+
+DPU auxiliary powering can cause interrupt flooding because
+DPU interrupt handlers are not configured yet, while middle
+interrupt aggregation register is unmasked by default during
+initialization. Thus, interrupts are getting through, while
+handlers are still not fully initialized. Do not unmask
+aggregation interrupt register at initialization for all
+DPUs. Instead do it per DPU, when its initialization is done.
+
+This patch also adds the change to clear the DPU event
+registers.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+Signed-off-by: Ciju Rajan K <crajank@nvidia.com>
+---
+ drivers/platform/mellanox/mlx-platform.c | 28 +++++++++++++++++++++---
+ drivers/platform/mellanox/mlxreg-dpu.c   |  8 +++++++
+ include/linux/platform_data/mlxreg.h     |  4 ++++
+ 3 files changed, 37 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/platform/mellanox/mlx-platform.c b/drivers/platform/mellanox/mlx-platform.c
+index b1713d805..d2dfdac34 100644
+--- a/drivers/platform/mellanox/mlx-platform.c
++++ b/drivers/platform/mellanox/mlx-platform.c
+@@ -2198,6 +2198,8 @@ static struct mlxreg_core_data mlxplat_mlxcpld_modular_pwr_items_data[] = {
+ 	},
+ };
+ 
++#define MLXPLAT_SMART_SWITCH_SLOT_TO_MASK(s)   (GENMASK((s) * 2 - 1, (s) * 2 - 2))
++
+ 
+ static
+ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_lc_act = {
+@@ -3334,6 +3336,23 @@ static struct mlxreg_core_item mlxplat_mlxcpld_smart_switch_items[] = {
+ 	},
+ };
+ 
++static int mlxplat_dpu_completion_notify(void *handle, int id)
++{
++       u32 regval, mask;
++       int err;
++
++       if (id <= 0 || id > 4)
++               return -EINVAL;
++
++       err = regmap_read(handle, MLXPLAT_CPLD_LPC_REG_AGGRCX_MASK_OFFSET, &regval);
++       if (err)
++               return err;
++
++       mask = MLXPLAT_SMART_SWITCH_SLOT_TO_MASK(id);
++
++       return regmap_write(handle, MLXPLAT_CPLD_LPC_REG_AGGRCX_MASK_OFFSET, regval | mask);
++}
++
+ static
+ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_smart_switch_data = {
+ 	.items = mlxplat_mlxcpld_smart_switch_items,
+@@ -3371,24 +3390,28 @@ static struct mlxreg_core_data mlxplat_mlxcpld_smart_switch_dpu_data[] = {
+ 		.hpdev.brdinfo = &mlxplat_mlxcpld_smart_switch_dpu_devs[0],
+ 		.hpdev.nr = MLXPLAT_CPLD_NR_DPU_BASE,
+ 		.slot = 1,
++		.completion_notify = mlxplat_dpu_completion_notify,
+ 	},
+ 	{
+ 		.label = "dpu2",
+ 		.hpdev.brdinfo = &mlxplat_mlxcpld_smart_switch_dpu_devs[1],
+ 		.hpdev.nr = MLXPLAT_CPLD_NR_DPU_BASE + 1,
+ 		.slot = 2,
++		.completion_notify = mlxplat_dpu_completion_notify,
+ 	},
+ 	{
+ 		.label = "dpu3",
+ 		.hpdev.brdinfo = &mlxplat_mlxcpld_smart_switch_dpu_devs[2],
+ 		.hpdev.nr = MLXPLAT_CPLD_NR_DPU_BASE + 2,
+ 		.slot = 3,
++		.completion_notify = mlxplat_dpu_completion_notify,
+ 	},
+ 	{
+ 		.label = "dpu4",
+-		.hpdev.brdinfo = &mlxplat_mlxcpld_smart_switch_dpu_devs[2],
++		.hpdev.brdinfo = &mlxplat_mlxcpld_smart_switch_dpu_devs[3],
+ 		.hpdev.nr = MLXPLAT_CPLD_NR_DPU_BASE + 3,
+ 		.slot = 4,
++		.completion_notify = mlxplat_dpu_completion_notify,
+ 	},
+ };
+ 
+@@ -8018,8 +8041,6 @@ static const struct reg_default mlxplat_mlxcpld_regmap_smart_switch[] = {
+ 	{ MLXPLAT_CPLD_LPC_REG_WD1_ACT_OFFSET, 0x00 },
+ 	{ MLXPLAT_CPLD_LPC_REG_WD2_ACT_OFFSET, 0x00 },
+ 	{ MLXPLAT_CPLD_LPC_REG_WD3_ACT_OFFSET, 0x00 },
+-	{ MLXPLAT_CPLD_LPC_REG_AGGRCX_MASK_OFFSET,
+-	  MLXPLAT_CPLD_LPC_SM_SW_MASK },
+ };
+ 
+ struct mlxplat_mlxcpld_regmap_context {
+@@ -9333,6 +9354,7 @@ static int mlxplat_post_init(struct mlxplat_priv *priv)
+ 	/* Add DPU drivers. */
+ 	for (j = 0; j < MLXPLAT_CPLD_DPU_MAX_DEVS; j++) {
+ 		if (mlxplat_dpu_data[j]) {
++			mlxplat_dpu_data[j]->handle = priv->regmap;
+ 			priv->pdev_dpu[j] =
+ 				platform_device_register_resndata(&mlxplat_dev->dev, "mlxreg-dpu",
+ 								  j, NULL, 0, mlxplat_dpu_data[j],
+diff --git a/drivers/platform/mellanox/mlxreg-dpu.c b/drivers/platform/mellanox/mlxreg-dpu.c
+index b7685012d..aa8923c49 100644
+--- a/drivers/platform/mellanox/mlxreg-dpu.c
++++ b/drivers/platform/mellanox/mlxreg-dpu.c
+@@ -581,6 +581,14 @@ static int mlxreg_dpu_probe(struct platform_device *pdev)
+ 	if (err)
+ 		goto mlxreg_dpu_config_init_fail;
+ 
++	err = data->completion_notify(data->handle, data->slot);
++	if (err)
++		goto mlxreg_dpu_completion_notify_fail;
++
++	return err;
++
++mlxreg_dpu_completion_notify_fail:
++	mlxreg_dpu_config_exit(mlxreg_dpu);
+ mlxreg_dpu_config_init_fail:
+ regcache_sync_fail:
+ devm_regmap_init_i2c_fail:
+diff --git a/include/linux/platform_data/mlxreg.h b/include/linux/platform_data/mlxreg.h
+index 67dddacfa..e8f2032b3 100644
+--- a/include/linux/platform_data/mlxreg.h
++++ b/include/linux/platform_data/mlxreg.h
+@@ -136,6 +136,8 @@ struct mlxreg_hotplug_device {
+  * @wmark_low_cntr: interrupt storm counter;
+  * @wmark_low_ts: interrupt storm low bound timestamp;
+  * @wmark_high_ts: interrupt storm high bound timestamp;
++ * @handle: parent handle;
++ * @completion_notify: callback to notify when platform driver probing is done;
+  */
+ struct mlxreg_core_data {
+ 	char label[MLXREG_CORE_LABEL_MAX_SIZE];
+@@ -161,6 +163,8 @@ struct mlxreg_core_data {
+ 	unsigned int wmark_low_cntr;
+ 	unsigned long wmark_low_ts;
+ 	unsigned long wmark_high_ts;
++	void *handle;
++	int (*completion_notify)(void *handle, int id);
+ };
+ 
+ /**
+-- 
+2.44.0
+
