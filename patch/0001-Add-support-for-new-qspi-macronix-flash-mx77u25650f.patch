@@ -1,0 +1,29 @@
+From d00e6b6d68f39fe09a9d0062681ae1a666e03fcc Mon Sep 17 00:00:00 2001
+From: Nate White <nate@nexthop.ai>
+Date: Thu, 13 Mar 2025 13:42:08 +0000
+Subject: [PATCH] Add support for new qspi macronix flash mx77u25650f
+
+Changes for supporting new qspi macronix flash mx77u25650f
+
+Signed-off-by: Nate White <nate@nexthop.ai>
+---
+ drivers/mtd/spi-nor/macronix.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/mtd/spi-nor/macronix.c b/drivers/mtd/spi-nor/macronix.c
+index 9b7f0d86c..b8777c63e 100644
+--- a/drivers/mtd/spi-nor/macronix.c
++++ b/drivers/mtd/spi-nor/macronix.c
+@@ -103,6 +103,9 @@ static const struct flash_info macronix_nor_parts[] = {
+ 	{ "mx66u1g45g",	 INFO(0xc2253b, 0, 64 * 1024, 2048)
+ 		NO_SFDP_FLAGS(SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ)
+ 		FIXUP_FLAGS(SPI_NOR_4B_OPCODES) },
++	{ "mx77u25650f", INFO(0xc27539, 0, 64 * 1024, 512)
++		NO_SFDP_FLAGS(SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ)
++		FIXUP_FLAGS(SPI_NOR_4B_OPCODES) },
+ };
+
+ static void macronix_nor_default_init(struct spi_nor *nor)
+--
+2.39.5
+
