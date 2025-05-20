@@ -225,9 +225,6 @@ cisco-npu-disable-other-bars.patch
 # Micas patches
 0001-fix-os-crash-caused-by-optoe-when-class-switch.patch
 
-# Nexthop patches
-0001-Add-support-for-new-qspi-macronix-flash-mx77u25650f.patch
-
 # Fix to avoid kernel panic on Kernel 6.1.94
 # https://github.com/sonic-net/sonic-buildimage/issues/20901
 PCI-ASPM-Fix-link-state-exit-during-switch-upstream.patch
