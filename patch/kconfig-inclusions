@@ -1,6 +1,7 @@
 [common]
 CONFIG_LOG_BUF_SHIFT=20
 CONFIG_RTC_INTF_DEV_UIE_EMUL=y
+CONFIG_CRYPTO_SHA512=y
 ###-> mellanox_common-start
 ###-> mellanox_common-end
 
