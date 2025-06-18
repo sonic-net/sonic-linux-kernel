@@ -17,7 +17,7 @@ index 310b57e47..88cef592e 100644
 --- a/arch/arm64/boot/dts/marvell/Makefile
 +++ b/arch/arm64/boot/dts/marvell/Makefile
 @@ -28,3 +28,4 @@ dtb-$(CONFIG_ARCH_MVEBU) += cn9130-crb-B.dtb
- dtb-$(CONFIG_ARCH_MVEBU) += ac5-98dx35xx-rd.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += cn9132-clearfog.dtb
  dtb-$(CONFIG_ARCH_MVEBU) += armada-7020-comexpress.dtb
  dtb-$(CONFIG_ARCH_MVEBU) += 7215-ixs-a1.dtb
 +dtb-$(CONFIG_ARCH_MVEBU) += smc_sse-g3748.dtb

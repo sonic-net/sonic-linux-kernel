@@ -30,9 +30,9 @@ index 058237681..49f274add 100644
 --- a/arch/arm64/boot/dts/marvell/Makefile
 +++ b/arch/arm64/boot/dts/marvell/Makefile
 @@ -26,3 +26,4 @@ dtb-$(CONFIG_ARCH_MVEBU) += cn9132-db-B.dtb
- dtb-$(CONFIG_ARCH_MVEBU) += cn9130-crb-A.dtb
- dtb-$(CONFIG_ARCH_MVEBU) += cn9130-crb-B.dtb
- dtb-$(CONFIG_ARCH_MVEBU) += ac5-98dx35xx-rd.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += cn9130-cf-pro.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += cn9131-cf-solidwan.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += cn9132-clearfog.dtb
 +dtb-$(CONFIG_ARCH_MVEBU) += armada-7020-comexpress.dtb
 diff --git a/arch/arm64/boot/dts/marvell/armada-7020-comexpress.dts b/arch/arm64/boot/dts/marvell/armada-7020-comexpress.dts
 new file mode 100644
