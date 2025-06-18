@@ -1,0 +1,26 @@
+--- a/drivers/irqchip/irq-mvebu-gicp.c	2025-06-11 16:23:39.943033000 +0300
++++ b/drivers/irqchip/irq-mvebu-gicp.c	2025-06-11 16:35:15.706499500 +0300
+@@ -29,6 +29,7 @@
+
+ struct mvebu_gicp {
+ 	struct mvebu_gicp_spi_range *spi_ranges;
++	void __iomem *base;
+ 	unsigned int spi_ranges_cnt;
+ 	unsigned int spi_cnt;
+ 	unsigned long *spi_bitmap;
+@@ -244,6 +245,15 @@
+ 	}
+
+ 	platform_set_drvdata(pdev, gicp);
++	dev_dbg(&pdev->dev, "gicp - Clearing existing interrupts\n");
++	gicp->base = devm_platform_ioremap_resource(pdev, 0);
++	if (IS_ERR(gicp->base))
++		dev_err(&pdev->dev, "gicp - Cannot ioremap !\n");
++	else {
++		for (i = 0; i < 64; i++)
++			writel(i, gicp->base + GICP_CLRSPI_NSR_OFFSET);
++	}
++	dev_dbg(&pdev->dev, "gicp - Cleared existing interrupts\n");
+
+ 	return 0;
+ }
