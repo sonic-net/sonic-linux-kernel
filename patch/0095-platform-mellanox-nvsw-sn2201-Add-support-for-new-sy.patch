@@ -1,8 +1,8 @@
-From 693ea1c72c6f1b83232c043fdb1b175a450bc172 Mon Sep 17 00:00:00 2001
-From: Vadim Pasternak <vadimp@nvidia.com>
-Date: Wed, 7 Aug 2024 00:09:11 +0000
-Subject: [PATCH backport 6.1 1/1] platform: mellanox: nvsw-sn2200: Add support
- for new system flavour
+From 13e4e0e5b566a116e2107a0a959d2b294b388b42 Mon Sep 17 00:00:00 2001
+From: Oleksandr Shamray <oleksandrs@nvidia.com>
+Date: Wed, 11 Dec 2024 17:49:45 +0200
+Subject: [PATCH 4/4] platform: mellanox: nvsw-sn2200: Add support for new
+ system flavour
 
 Add support for SN2201 system flavour, which is fitting OCP rack
 form-factor and feeded from external power source through the rack
@@ -15,11 +15,11 @@ For new system flavour:
 
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
 ---
- drivers/platform/mellanox/nvsw-sn2201.c | 111 +++++++++++++++++++++++-
- 1 file changed, 108 insertions(+), 3 deletions(-)
+ drivers/platform/mellanox/nvsw-sn2201.c | 112 +++++++++++++++++++++++-
+ 1 file changed, 109 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/platform/mellanox/nvsw-sn2201.c b/drivers/platform/mellanox/nvsw-sn2201.c
-index 2612bb5f82a3..d604069e3313 100644
+index a3e2bc6d6..64c705f3b 100644
 --- a/drivers/platform/mellanox/nvsw-sn2201.c
 +++ b/drivers/platform/mellanox/nvsw-sn2201.c
 @@ -6,6 +6,7 @@
@@ -103,7 +103,7 @@ index 2612bb5f82a3..d604069e3313 100644
  };
  
  /* SN2201 default static board info. */
-@@ -608,6 +647,58 @@ static struct mlxreg_hotplug_device nvsw_sn2201_static_brdinfo[] = {
+@@ -608,6 +647,59 @@ static struct mlxreg_hotplug_device nvsw_sn2201_static_brdinfo[] = {
  	},
  };
  
@@ -159,10 +159,11 @@ index 2612bb5f82a3..d604069e3313 100644
 +	},
 +};
 +
++
  /* LED default data. */
  static struct mlxreg_core_data nvsw_sn2201_led_data[] = {
  	{
-@@ -982,7 +1073,10 @@ static int nvsw_sn2201_config_init(struct nvsw_sn2201 *nvsw_sn2201, void *regmap
+@@ -982,7 +1074,10 @@ static int nvsw_sn2201_config_init(struct nvsw_sn2201 *nvsw_sn2201, void *regmap
  	nvsw_sn2201->io_data = &nvsw_sn2201_regs_io;
  	nvsw_sn2201->led_data = &nvsw_sn2201_led;
  	nvsw_sn2201->wd_data = &nvsw_sn2201_wd;
@@ -174,11 +175,12 @@ index 2612bb5f82a3..d604069e3313 100644
  
  	/* Register IO access driver. */
  	if (nvsw_sn2201->io_data) {
-@@ -1199,11 +1293,17 @@ static int nvsw_sn2201_config_pre_init(struct nvsw_sn2201 *nvsw_sn2201)
+@@ -1199,12 +1294,18 @@ static int nvsw_sn2201_config_pre_init(struct nvsw_sn2201 *nvsw_sn2201)
  static int nvsw_sn2201_probe(struct platform_device *pdev)
  {
  	struct nvsw_sn2201 *nvsw_sn2201;
 +	const char *sku;
+ 	int ret;
  
  	nvsw_sn2201 = devm_kzalloc(&pdev->dev, sizeof(*nvsw_sn2201), GFP_KERNEL);
  	if (!nvsw_sn2201)
@@ -191,8 +193,8 @@ index 2612bb5f82a3..d604069e3313 100644
 +
  	nvsw_sn2201->dev = &pdev->dev;
  	platform_set_drvdata(pdev, nvsw_sn2201);
- 	platform_device_add_resources(pdev, nvsw_sn2201_lpc_io_resources,
-@@ -1212,8 +1312,13 @@ static int nvsw_sn2201_probe(struct platform_device *pdev)
+ 	ret = platform_device_add_resources(pdev, nvsw_sn2201_lpc_io_resources,
+@@ -1215,8 +1316,13 @@ static int nvsw_sn2201_probe(struct platform_device *pdev)
  	nvsw_sn2201->main_mux_deferred_nr = NVSW_SN2201_MAIN_MUX_DEFER_NR;
  	nvsw_sn2201->main_mux_devs = nvsw_sn2201_main_mux_brdinfo;
  	nvsw_sn2201->cpld_devs = nvsw_sn2201_cpld_brdinfo;
@@ -209,5 +211,5 @@ index 2612bb5f82a3..d604069e3313 100644
  	return nvsw_sn2201_config_pre_init(nvsw_sn2201);
  }
 -- 
-2.44.0
+2.20.1
 

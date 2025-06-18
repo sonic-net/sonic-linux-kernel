@@ -1,0 +1,37 @@
+From b8a552a5eb168b5f53292f639668eec5ece93935 Mon Sep 17 00:00:00 2001
+From: Ciju Rajan K <crajank@nvidia.com>
+Date: Thu, 10 Oct 2024 14:13:28 +0300
+Subject: hwmon: pmbus: Downstream: Workaround for psu attributes
+
+Starting from kernel 5.12.rc-1, pmbus reads are always
+forced down to chip and get the values directly. Driver
+doesn't cache the values anymore.
+
+This behviour change has caused problems in Delta-1.1K
+PSUs, on which pmbus registers were not written.
+
+This patch introduces the driver caching.
+
+Bugs# 3874682
+
+Signed-off-by: Ciju Rajan K <crajank@nvidia.com>
+---
+ drivers/hwmon/pmbus/pmbus_core.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/hwmon/pmbus/pmbus_core.c b/drivers/hwmon/pmbus/pmbus_core.c
+index 7ec049347..464ba9d5a 100644
+--- a/drivers/hwmon/pmbus/pmbus_core.c
++++ b/drivers/hwmon/pmbus/pmbus_core.c
+@@ -1173,7 +1173,7 @@ static ssize_t pmbus_set_sensor(struct device *dev,
+ 	if (ret < 0)
+ 		rv = ret;
+ 	else
+-		sensor->data = -ENODATA;
++		sensor->data = regval;
+ 	mutex_unlock(&data->update_lock);
+ 	return rv;
+ }
+-- 
+2.44.0
+
