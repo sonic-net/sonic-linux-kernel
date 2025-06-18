@@ -20,7 +20,7 @@ index 2ce636937..64155eddc 100644
 --- a/drivers/pci/setup-bus.c
 +++ b/drivers/pci/setup-bus.c
 @@ -967,6 +967,154 @@ static inline resource_size_t calculate_mem_align(resource_size_t *aligns,
- 	return min_align;
+ 	return true;
  }
  
 +#define PLX_RES_MAGIC_VALUE            0xABBA
@@ -183,12 +183,12 @@ index 2ce636937..64155eddc 100644
  	if (!b_res)
  		return -ENOSPC;
 @@ -1016,6 +1165,7 @@ static int pbus_size_mem(struct pci_bus *bus, unsigned long mask,
- 	list_for_each_entry(dev, &bus->devices, bus_list) {
+ 		struct resource *r;
  		int i;
  
 +		dev_count++;
- 		for (i = 0; i < PCI_NUM_RESOURCES; i++) {
- 			struct resource *r = &dev->resource[i];
+ 		pci_dev_for_each_resource(dev, r, i) {
+ 			const char *r_name = pci_resource_name(dev, i);
  			resource_size_t r_size;
 @@ -1071,6 +1221,28 @@ static int pbus_size_mem(struct pci_bus *bus, unsigned long mask,
  		}
@@ -216,9 +216,9 @@ index 2ce636937..64155eddc 100644
 +		}
 +	}
 +
+ 	win_align = window_alignment(bus, b_res->flags);
  	min_align = calculate_mem_align(aligns, max_order);
- 	min_align = max(min_align, window_alignment(bus, b_res->flags));
- 	size0 = calculate_memsize(size, min_size, 0, 0, resource_size(b_res), min_align);
+ 	min_align = max(min_align, win_align);
 -- 
 2.26.2
 

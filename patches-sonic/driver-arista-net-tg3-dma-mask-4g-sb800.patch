@@ -41,9 +41,9 @@ index 5143cdd0e..72198ef56 100644
  
  	if (!tg3_flag(tp, IS_5788) &&
  	    tg3_asic_rev(tp) != ASIC_REV_5700)
-@@ -17757,7 +17768,7 @@ static int tg3_init_one(struct pci_dev *pdev,
+@@ -17796,7 +17807,7 @@ static int tg3_init_one(struct pci_dev *pdev,
  	 * On 64-bit systems without IOMMU, use 64-bit dma_mask and
- 	 * do DMA address check in tg3_start_xmit().
+ 	 * do DMA address check in __tg3_start_xmit().
  	 */
 -	if (tg3_flag(tp, IS_5788))
 +	if (tg3_flag(tp, 4G_DMA_ONLY))

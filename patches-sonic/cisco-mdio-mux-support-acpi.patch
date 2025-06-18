@@ -57,8 +57,8 @@ index ccb3ee704..e70c8d36a 100644
 +		r = fwnode_property_read_u32(child_bus_node, "reg", &v);
  		if (r) {
  			dev_err(dev,
- 				"Error: Failed to find reg for child %pOF\n",
- 				child_bus_node);
+ 				"Error: Failed to find reg for child %pOF: %pe\n",
+ 				child_bus_node, ERR_PTR(r));
  			continue;
  		}
 +		r = fwnode_property_read_u32(child_bus_node, "phy_mask", &phy_mask);
@@ -68,9 +68,9 @@ index ccb3ee704..e70c8d36a 100644
  		cb = devm_kzalloc(dev, sizeof(*cb), GFP_KERNEL);
  		if (!cb) {
 @@ -173,7 +177,12 @@ int mdio_mux_init(struct device *dev,
- 		cb->mii_bus->parent = dev;
- 		cb->mii_bus->read = mdio_mux_read;
- 		cb->mii_bus->write = mdio_mux_write;
+ 			cb->mii_bus->read_c45 = mdio_mux_read_c45;
+ 		if (parent_bus->write_c45)
+ 			cb->mii_bus->write_c45 = mdio_mux_write_c45;
 -		r = of_mdiobus_register(cb->mii_bus, child_bus_node);
 +		cb->mii_bus->phy_mask = phy_mask;
 +		if (is_of_node(child_bus_node))

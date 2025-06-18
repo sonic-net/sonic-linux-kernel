@@ -20,9 +20,9 @@ index 2b26a875a..82bbd84a2 100644
 --- a/drivers/mtd/spi-nor/core.c
 +++ b/drivers/mtd/spi-nor/core.c
 @@ -21,6 +21,7 @@
- #include <linux/sched/task_stack.h>
+ #include <linux/sizes.h>
+ #include <linux/slab.h>
  #include <linux/spi/flash.h>
- #include <linux/mtd/spi-nor.h>
 +#include <linux/acpi.h>
  
  #include "core.h"

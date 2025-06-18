@@ -22,7 +22,7 @@ index 6a1179935..b1bb1dc55 100644
 +++ b/drivers/net/ethernet/broadcom/tg3.c
 @@ -17794,7 +17794,7 @@ static int tg3_init_one(struct pci_dev *pdev,
  	 * On 64-bit systems without IOMMU, use 64-bit dma_mask and
- 	 * do DMA address check in tg3_start_xmit().
+ 	 * do DMA address check in __tg3_start_xmit().
  	 */
 -	if (tg3_flag(tp, 4G_DMA_ONLY))
 +	if (tg3_flag(tp, 4G_DMA_ONLY) || (tg3_asic_rev(tp) == ASIC_REV_57766))
