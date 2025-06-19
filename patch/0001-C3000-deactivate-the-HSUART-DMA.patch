@@ -1,8 +1,12 @@
 From b63977b0e1421c641495940fafab9502a2a6d659 Mon Sep 17 00:00:00 2001
-From: ruijie-opensource <opensource@ruijie.com.cn>
+From: philo <philo@micasnetworks.com>
 Date: Thu, 17 Apr 2025 02:17:18 -0500
 Subject: [PATCH] C3000 deactivate the HSUART DMA
 
+Intel DNV CPU report a err，there is a possibility that the serial port function will be abnormal and the CPU will hang.
+So for DNV CPU, HSUART DMA will be deactivated.
+
+Signed-off-by: philo <philo@micasnetworks.com>
 ---
  drivers/tty/serial/8250/8250_mid.c | 18 +++++++++++-------
  1 file changed, 11 insertions(+), 7 deletions(-)
