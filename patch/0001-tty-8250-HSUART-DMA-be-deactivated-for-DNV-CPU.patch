@@ -1,7 +1,7 @@
 From b63977b0e1421c641495940fafab9502a2a6d659 Mon Sep 17 00:00:00 2001
 From: Philo Shao <philo@micasnetworks.com>
 Date: Thu, 17 Apr 2025 02:17:18 -0500
-Subject: [PATCH] tty/8250: The HSUART DMA be deactivated for the DNV CPU.
+Subject: tty/8250: Deactivate the HSUART DMA for the DNV CPU.
 
 Intel DNV CPU reports an error, indicating that there is a possibility of abnormal serial port functionality and the CPU may hang. 
 The HSUART DMA will be deactivated for the DNV CPU.
