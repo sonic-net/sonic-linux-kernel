@@ -1,0 +1,82 @@
+From 9445542ffcd2b7f7532e5e195a44215c482cc90a Mon Sep 17 00:00:00 2001
+From: Long Wu <wulong@clounix.com>
+Date: Wed, 25 Jun 2025 15:39:53 +0800
+Subject: [PATCH] drivers/misc/eeprom: Fix optoe twoaddr a2h read/write issue
+
+The page select register(127) only in the a0h from sfp8472 spec,
+when accessing the a2h, the function `optoe_translate_offset()`
+will update the slave_addr to a2h. Using this slave_addr to
+config the page slelect register, the contents will be wrong.
+
+signed-off-by: Qinghua Song <songqh@clounix.com>
+signed-off-by: Long Wu <wulong@clounix.com>
+---
+ drivers/misc/eeprom/optoe.c | 30 ++++++++++++++++++++++++++----
+ 1 file changed, 26 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
+index 22d2c0cd4..478bce1cf 100644
+--- a/drivers/misc/eeprom/optoe.c
++++ b/drivers/misc/eeprom/optoe.c
+@@ -282,11 +282,8 @@ static uint8_t optoe_translate_offset(struct optoe_data *optoe,
+ 
+ 	/* if SFP style, offset > 255, shift to i2c addr 0x51 */
+ 	if (optoe->dev_class == TWO_ADDR) {
+-		if (*offset > 255) {
+-			/* like QSFP, but shifted to client[1] */
+-			*client = optoe->client[1];
++		if (*offset > 255)
+ 			*offset -= 256;
+-		}
+ 	}
+ 
+ 	/*
+@@ -305,6 +302,28 @@ static uint8_t optoe_translate_offset(struct optoe_data *optoe,
+ 	return page;  /* note also returning client and offset */
+ }
+ 
++static void optoe_update_client(struct optoe_data *optoe,
++		loff_t *offset, struct i2c_client **client)
++{
++	/* if SFP style, offset > 255, shift to i2c addr 0x51 */
++	if (optoe->dev_class == TWO_ADDR) {
++		if (*offset > 255)
++			*client = optoe->client[1];
++		else
++			*client = optoe->client[0];
++	}
++
++	return;
++}
++
++static void optoe_reset_client(struct optoe_data *optoe,
++		struct i2c_client **client)
++{
++	*client = optoe->client[0];
++
++	return;
++}
++
+ static ssize_t optoe_eeprom_read(struct optoe_data *optoe,
+ 		    struct i2c_client *client,
+ 		    char *buf, unsigned int offset, size_t count)
+@@ -530,6 +549,8 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
+ 		}
+ 	}
+ 
++	optoe_update_client(optoe, &off, &client);
++
+ 	while (count) {
+ 		ssize_t	status;
+ 
+@@ -551,6 +572,7 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
+ 		retval += status;
+ 	}
+ 
++	optoe_reset_client(optoe, &client);
+ 
+ 	if (page > 0) {
+ 		/* return the page register to page 0 (why?) */
+-- 
+2.25.1
+
