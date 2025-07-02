@@ -1,0 +1,12 @@
+[[flavour]]
+name = 'armhf'
+[flavour.packages]
+source = false
+
+
+[[featureset]]
+name = 'sonic'
+[[featureset.flavour]]
+name = 'armhf'
+[featureset.flavour.build]
+config = ['armhf/config.sonic']
