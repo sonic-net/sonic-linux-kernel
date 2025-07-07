@@ -69,13 +69,13 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	dpkg-source -x $(DSC_FILE)
 
 	pushd $(BUILD_DIR)
-	git init
-	git add -f *
-	git commit -qm "check in all loose files"
+	#git init
+	#git add -f *
+	#git commit -qm "check in all loose files"
 
 	cp -r ../config.local ../patches-sonic debian/
-	git add -f debian/config.local debian/patches-sonic
-	git commit -qm "Add SONiC configuration"
+	#git add -f debian/config.local debian/patches-sonic
+	#git commit -qm "Add SONiC configuration"
 
 	# patching anything that could affect following configuration generation.
 	#stg init
