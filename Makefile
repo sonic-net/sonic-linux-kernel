@@ -1,6 +1,6 @@
 .ONESHELL:
 SHELL = /bin/bash
-.SHELLFLAGS += -e
+.SHELLFLAGS += -ex
 
 KERNEL_VERSION ?= 6.12.30
 KERNEL_SUBVERSION ?= 1
@@ -73,7 +73,7 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	#git add -f *
 	#git commit -qm "check in all loose files"
 
-	cp -r ../config.local ../patches-sonic debian/
+	cp -vr ../config.local ../patches-sonic debian/
 	#git add -f debian/config.local debian/patches-sonic
 	#git commit -qm "Add SONiC configuration"
 
