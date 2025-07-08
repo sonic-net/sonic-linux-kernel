@@ -59,9 +59,6 @@ jobs:
       targetPath: $(Agent.TempDirectory)/
     displayName: "Download the linux-image artifact from the last build with a different kernel version"
   - script: |
-      git config --global user.email "lguohan@build.com"
-      git config --global user.name "Guohan Lu"
-      export kernel_procure_method=build
       cat /proc/cpuinfo
       CONFIGURED_ARCH=${{ parameters.arch }} CONFIGURED_PLATFORM=${{ parameters.platform }} make
     displayName: "Compile sonic kernel"
