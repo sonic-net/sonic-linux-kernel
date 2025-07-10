@@ -27,7 +27,7 @@ DSC_FILE = linux_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION).dsc
 DEBIAN_FILE = linux_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION).debian.tar.xz
 ORIG_FILE = linux_$(KERNEL_VERSION).orig.tar.xz
 BUILD_DIR=linux-$(KERNEL_VERSION)
-LINUX_SOURCE_BASE_URL=https://sonicstorage.blob.core.windows.net/debian-security/pool/updates/main/l/linux
+LINUX_SOURCE_BASE_URL=https://packages.trafficmanager.net/public/debian-security/pool/updates/main/l/linux
 
 DSC_FILE_URL = "$(LINUX_SOURCE_BASE_URL)/$(DSC_FILE)"
 DEBIAN_FILE_URL = "$(LINUX_SOURCE_BASE_URL)/$(DEBIAN_FILE)"
