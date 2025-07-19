@@ -1,6 +1,6 @@
 From: Justin Oliver <justinoliver@arista.com>
 Date: 2022-12-12 17:42:20 +0000
-Subject: Designware I2C driver fails to probe device after kexec
+Subject: [PATCH] i2c: designware: Fix device probe failure after kexec
 
 The Designware I2C driver sometimes fails to probe the I2C controller after
 we boot into another kernel with kexec. Kexec will call the `shutdown`
@@ -9,6 +9,11 @@ defines a `shutdown` procedure for the Designware I2C platform driver. This
 will gracefully bring down the I2C controller, allowing the driver to
 successfully initialize the device with the new kernel.
 
+This patch addresses the following error after kexec:
+i2c_designware AMDI0010:00: Unknown Synopsys component type: 0xffffffff
+
+Signed-off-by: Justin Oliver <justinoliver@arista.com>
+Signed-off-by: Karan Jagjitkumar <karan@arista.com>
 ---
  drivers/i2c/busses/i2c-designware-platdrv.c |   16 ++++++++++++++++
  1 file changed, 16 insertions(+)
