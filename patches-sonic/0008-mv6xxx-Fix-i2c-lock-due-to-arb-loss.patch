@@ -95,9 +95,9 @@ index 878c076eb..180c32cf9 100644
 +		/* Move i2c MPPs to GPIOs */
 +		if (pinctrl_select_state(pc, drv_data->i2c_gpio_state) >= 0) {
 +			ret = devm_gpio_request_one(drv_data->adapter.dev.parent,
-+					 drv_data->scl_gpio, GPIOF_DIR_OUT, NULL);
++					 drv_data->scl_gpio, GPIOF_OUT_INIT_LOW, NULL);
 +			ret |= devm_gpio_request_one(drv_data->adapter.dev.parent,
-+					 drv_data->sda_gpio, GPIOF_DIR_OUT, NULL);
++					 drv_data->sda_gpio, GPIOF_OUT_INIT_LOW, NULL);
 +			if (!ret) {
 +				/* toggle i2c scl 10 times, for the slave that occupies
 +				 * the bus Tx its remaining data, and release the bus
