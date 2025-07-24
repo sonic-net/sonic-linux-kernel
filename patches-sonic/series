@@ -165,7 +165,7 @@ cisco-npu-disable-other-bars.patch
 0005-dts-ac5-marvell-Add-switching-watchdog-node.patch
 #0006-mmc-xenon-Add-ac5-support-via-bounce-buffer.patch # Upstreamed
 #0007-usb-ehci-Add-support-for-ac5.patch # Upstreamed
-0008-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch
+#0008-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch # TODO(trixie): update for current version
 0009-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
 0010-dts-marvell-Add-support-for-7020-comexpress.patch
 0011-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch
