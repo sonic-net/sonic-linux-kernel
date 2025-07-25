@@ -1,9 +1,3 @@
-[[flavour]]
-name = 'arm64'
-[flavour.packages]
-source = false
-
-
 [[featureset]]
 name = 'sonic'
 [[featureset.flavour]]

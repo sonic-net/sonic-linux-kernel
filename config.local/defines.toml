@@ -1,3 +1,8 @@
+[packages]
+docs = false
+source = false
+tools_unversioned = false
+
 [[featureset]]
 name = 'none'
 enable = false
