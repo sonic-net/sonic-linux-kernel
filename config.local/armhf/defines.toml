@@ -1,0 +1,12 @@
+[[flavour]]
+name = 'armmp'
+[flavour.packages]
+source = false
+
+
+[[featureset]]
+name = 'sonic'
+[[featureset.flavour]]
+name = 'armmp'
+[featureset.flavour.build]
+config = ['armhf/config.sonic']
