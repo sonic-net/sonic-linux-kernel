@@ -167,10 +167,10 @@ cisco-npu-disable-other-bars.patch
 #0007-usb-ehci-Add-support-for-ac5.patch # Upstreamed
 #0008-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch # TODO(trixie): update for current version
 0009-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
-0010-dts-marvell-Add-support-for-7020-comexpress.patch
-0011-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch
-0015-arm64-dts-marvell-Add-Supermicro-SSE-G3748-board.patch
-0016-arm64-dts-marvell-Add-Wistron-ES-1227-54TS-board.patch
+#0010-dts-marvell-Add-support-for-7020-comexpress.patch # TODO(trixie): update for current version
+#0011-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch # TODO(trixie): update for current version
+#0015-arm64-dts-marvell-Add-Supermicro-SSE-G3748-board.patch # TODO(trixie): update for current version
+#0016-arm64-dts-marvell-Add-Wistron-ES-1227-54TS-board.patch # TODO(trixie): update for current version
 #0017-Extend-driver-to-support-XMC-XM25QH256C-device.patch # TODO(trixie): update for current version
 
 # amd-pensando elba support
