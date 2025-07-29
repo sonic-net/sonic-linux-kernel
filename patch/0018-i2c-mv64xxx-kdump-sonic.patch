@@ -1,0 +1,24 @@
+--- a/drivers/i2c/busses/i2c-mv64xxx.c	2025-05-14 17:43:42.421398200 +0300
++++ b/drivers/i2c/busses/i2c-mv64xxx.c	2025-06-10 22:07:10.137321500 +0300
+@@ -414,14 +415,18 @@
+ 		break;
+
+ 	case MV64XXX_I2C_ACTION_SEND_DATA:
+-		writel(drv_data->msg->buf[drv_data->byte_posn++],
+-			drv_data->reg_base + drv_data->reg_offsets.data);
++		if (drv_data->msg && drv_data->msg->buf)
++			writel(drv_data->msg->buf[drv_data->byte_posn++],
++				drv_data->reg_base + drv_data->reg_offsets.data);
+ 		writel(drv_data->cntl_bits,
+ 			drv_data->reg_base + drv_data->reg_offsets.control);
+ 		break;
+
+ 	case MV64XXX_I2C_ACTION_RCV_DATA:
+-		drv_data->msg->buf[drv_data->byte_posn++] =
++		if (drv_data->msg && drv_data->msg->buf)
++			drv_data->msg->buf[drv_data->byte_posn++] =
++				readl(drv_data->reg_base + drv_data->reg_offsets.data);
++		else
+ 			readl(drv_data->reg_base + drv_data->reg_offsets.data);
+ 		writel(drv_data->cntl_bits,
+ 			drv_data->reg_base + drv_data->reg_offsets.control);
