@@ -1,0 +1,28 @@
+Index: source_sonic/drivers/misc/eeprom/optoe.c
+===================================================================
+--- source_sonic.orig/drivers/misc/eeprom/optoe.c
++++ source_sonic/drivers/misc/eeprom/optoe.c
+@@ -1016,13 +1016,13 @@ static struct attribute_group optoe_attr
+ 	.attrs = optoe_attrs,
+ };
+ 
+-static int optoe_probe(struct i2c_client *client,
+-			const struct i2c_device_id *id)
++static int optoe_probe(struct i2c_client *client)
+ {
+ 	int err;
+ 	int use_smbus = 0;
+ 	struct optoe_platform_data chip;
+ 	struct optoe_data *optoe;
++	const struct i2c_device_id *id;
+ 	int num_addresses = 0;
+ 	char port_name[MAX_PORT_NAME_LEN];
+ 
+@@ -1045,6 +1045,7 @@ static int optoe_probe(struct i2c_client
+ 			"probe, chip provided, flags:0x%x; name: %s\n",
+ 			chip.flags, client->name);
+ 	} else {
++		id = i2c_match_id(optoe_ids, client);
+ 		if (!id->driver_data) {
+ 			err = -ENODEV;
+ 			goto exit;
