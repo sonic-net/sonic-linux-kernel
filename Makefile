@@ -91,13 +91,24 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 
 	# Optionally add/remove kernel options
 	# TODO(trixie): Make a way to verify that our configs are being set
+	# TODO(trixie): Add secure boot support
 	# if [ -f ../manage-config ]; then
 	# 	../manage-config $(CONFIGURED_ARCH) $(CONFIGURED_PLATFORM) $(SECURE_UPGRADE_MODE) $(SECURE_UPGRADE_SIGNING_CERT)
 	# fi
 
 	# Building a custom kernel from Debian kernel source
 	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) DEB_BUILD_PROFILES=nodoc fakeroot make -f debian/rules -j $(shell nproc) binary-indep
-	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_sonic
+
+	if [[ $(CONFIGURED_ARCH) == "armhf" ]]; then
+		KERNEL_FLAVOR_ARCH=armmp
+	else
+		KERNEL_FLAVOR_ARCH=$(CONFIGURED_ARCH)
+	fi
+	if DEB_HOST_ARCH=$(CONFIGURED_ARCH) dh_listpackages | grep $(KERNEL_FLAVOR_ARCH)-$(CONFIGURED_PLATFORM); then
+		ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_sonic_$(KERNEL_FLAVOR_ARCH)-$(CONFIGURED_PLATFORM)
+	else
+		ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_sonic_$(KERNEL_FLAVOR_ARCH)
+	fi
 	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_kbuild
 	popd
 
