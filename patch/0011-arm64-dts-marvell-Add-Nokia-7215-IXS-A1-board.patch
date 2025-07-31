@@ -11,9 +11,9 @@ Signed-off-by: Natarajan Subbiramani <natarajan.subbiramani.ext@nokia.com>
 Tested-by:  Natarajan Subbiramani <natarajan.subbiramani.ext@nokia.com>
 Reviewed-by: Jon Goldberg <jon.goldberg@nokia.com>
 ---
- arch/arm64/boot/dts/marvell/7215-ixs-a1.dts | 226 ++++++++++++++++++++
+ arch/arm64/boot/dts/marvell/7215-ixs-a1.dts | 225 ++++++++++++++++++++
  arch/arm64/boot/dts/marvell/Makefile        |   1 +
- 2 files changed, 227 insertions(+)
+ 2 files changed, 226 insertions(+)
  create mode 100644 arch/arm64/boot/dts/marvell/7215-ixs-a1.dts
 
 diff --git a/arch/arm64/boot/dts/marvell/7215-ixs-a1.dts b/arch/arm64/boot/dts/marvell/7215-ixs-a1.dts
@@ -21,7 +21,7 @@ new file mode 100644
 index 000000000000..e683b7ca4c9c
 --- /dev/null
 +++ b/arch/arm64/boot/dts/marvell/7215-ixs-a1.dts
-@@ -0,0 +1,226 @@
+@@ -0,0 +1,225 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright (C) 2024 Nokia
@@ -140,7 +140,6 @@ index 000000000000..e683b7ca4c9c
 +	non-removable;
 +	mmc-ddr-1_8v;
 +	mmc-hs200-1_8v;
-+	mmc-hs400-1_8v;
 +};
 +
 +/*Delete nodes that are not available*/
