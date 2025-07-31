@@ -1,6 +1,16 @@
+[[flavour]]
+name = 'arm64-pensando'
+[flavour.build]
+config = ['arm64/config.sonic', 'arm64/config.sonic-pensando']
+[flavour.description]
+hardware = 'arm64 pensando'
+hardware_long = 'pensando hardware'
+
 [[featureset]]
 name = 'sonic'
 [[featureset.flavour]]
 name = 'arm64'
 [featureset.flavour.build]
 config = ['arm64/config.sonic']
+[[featureset.flavour]]
+name = 'arm64-pensando'
