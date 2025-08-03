@@ -1,0 +1,44 @@
+From 3c04dd543d85e6e087e7ad3147b47b3d6d702bdd Mon Sep 17 00:00:00 2001
+From: Elad Nachman <enachman@marvell.com>
+Date: Tue, 29 Jul 2025 11:09:46 +0300
+Subject: [PATCH v2 1/1] i2c: mv64xxx: prevent illegal pointer access
+
+Spurious interrupts left while i2c controller still at RX or TX state
+would try to access the RX or TX buffer pointer, which is NULL.
+Add check to verify buffer pointer is not NULL before reading or writing
+the buffer for additional TX or RX operations.
+
+Signed-off-by: Elad Nachman <enachman@marvell.com>
+---
+ drivers/i2c/busses/i2c-mv64xxx.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-mv64xxx.c b/drivers/i2c/busses/i2c-mv64xxx.c
+index 8fc26a511320..e6baa9c520b4 100644
+--- a/drivers/i2c/busses/i2c-mv64xxx.c
++++ b/drivers/i2c/busses/i2c-mv64xxx.c
+@@ -390,14 +390,18 @@ mv64xxx_i2c_do_action(struct mv64xxx_i2c_data *drv_data)
+ 		break;
+ 
+ 	case MV64XXX_I2C_ACTION_SEND_DATA:
+-		writel(drv_data->msg->buf[drv_data->byte_posn++],
+-			drv_data->reg_base + drv_data->reg_offsets.data);
++		if (drv_data->msg && drv_data->msg->buf)
++			writel(drv_data->msg->buf[drv_data->byte_posn++],
++				drv_data->reg_base + drv_data->reg_offsets.data);
+ 		writel(drv_data->cntl_bits,
+ 			drv_data->reg_base + drv_data->reg_offsets.control);
+ 		break;
+ 
+ 	case MV64XXX_I2C_ACTION_RCV_DATA:
+-		drv_data->msg->buf[drv_data->byte_posn++] =
++		if (drv_data->msg && drv_data->msg->buf)
++			drv_data->msg->buf[drv_data->byte_posn++] =
++				readl(drv_data->reg_base + drv_data->reg_offsets.data);
++		else
+ 			readl(drv_data->reg_base + drv_data->reg_offsets.data);
+ 		writel(drv_data->cntl_bits,
+ 			drv_data->reg_base + drv_data->reg_offsets.control);
+-- 
+2.25.1
+
