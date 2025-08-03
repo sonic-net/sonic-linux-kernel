@@ -1,16 +1,6 @@
-[[flavour]]
-name = 'armmp-marvell-prestera'
-[flavour.build]
-config = ['armhf/config.sonic', 'armhf/config.sonic-marvell-prestera']
-[flavour.description]
-hardware = 'armhf marvell prestera'
-hardware_long = 'marvell prestera hardware'
-
 [[featureset]]
 name = 'sonic'
 [[featureset.flavour]]
 name = 'armmp'
 [featureset.flavour.build]
-config = ['armhf/config.sonic']
-[[featureset.flavour]]
-name = 'armmp-marvell-prestera'
+config = ['armhf/config.sonic', 'armhf/config.sonic-platform-specific']

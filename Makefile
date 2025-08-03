@@ -72,24 +72,14 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	dpkg-source -x $(DSC_FILE)
 
 	pushd $(BUILD_DIR)
-	#git init
-	#git add -f *
-	#git commit -qm "check in all loose files"
 
 	cp -vr ../config.local ../patches-sonic debian/
-	#git add -f debian/config.local debian/patches-sonic
-	#git commit -qm "Add SONiC configuration"
+	if [[ -f debian/config.local/$(CONFIGURED_ARCH)/config.$(CONFIGURED_PLATFORM) ]]; then
+		cp debian/config.local/$(CONFIGURED_ARCH)/config.$(CONFIGURED_PLATFORM) debian/config.local/$(CONFIGURED_ARCH)/config.sonic-platform-specific
+	fi
 
-	# patching anything that could affect following configuration generation.
-	#stg init
-	#stg import -s ../patch/preconfig/series
-
-	# re-generate debian/rules.gen, requires kernel-wedge
+	# re-generate debian packages and rules with SONiC customizations
 	debian/bin/gencontrol.py
-
-	# Learning new git repo head (above commit) by calling stg repair.
-	#stg repair
-	#stg import -s ../patch/series
 
 	# Optionally add/remove kernel options
 	# TODO(trixie): Make a way to verify that our configs are being set
@@ -101,11 +91,7 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Building a custom kernel from Debian kernel source
 	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) DEB_BUILD_PROFILES=nodoc fakeroot make -f debian/rules -j $(shell nproc) binary-indep
 
-	if DEB_HOST_ARCH=$(CONFIGURED_ARCH) dh_listpackages | grep $(KERNEL_FLAVOR_ARCH)-$(CONFIGURED_PLATFORM); then
-		ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_sonic_$(KERNEL_FLAVOR_ARCH)-$(CONFIGURED_PLATFORM)
-	else
-		ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_sonic_$(KERNEL_FLAVOR_ARCH)
-	fi
+	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_sonic_$(KERNEL_FLAVOR_ARCH)
 	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_kbuild
 	popd
 
