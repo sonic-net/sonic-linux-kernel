@@ -12,3 +12,6 @@ CONFIG_MEDIA_CONTROLLER=n
 CONFIG_DVB_CORE=n
 CONFIG_MEDIA_TUNER=n
 CONFIG_MEDIA_ATTACH=n
+
+# Disable module compression, since squashfs will do compression anyways
+CONFIG_MODULE_COMPRESS=n
