@@ -1,11 +1,6 @@
 CONFIG_LOG_BUF_SHIFT=20
 CONFIG_RTC_INTF_DEV_UIE_EMUL=y
 
-# Unset classid and priority network cgroups due to conflict between cgroups v1 and v2
-CONFIG_CGROUP_NET_CLASSID=n
-CONFIG_NET_CLS_CGROUP=n
-CONFIG_NETFILTER_XT_MATCH_CGROUP=n
-CONFIG_CGROUP_NET_PRIO=n
 # Unset to enable UBIFS on flash
 CONFIG_MTD_SPI_NOR_USE_4K_SECTORS=n
 ###-> mellanox_common-start
