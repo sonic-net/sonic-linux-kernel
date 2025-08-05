@@ -7,6 +7,8 @@ KERNEL_SUBVERSION ?= 1
 KERNEL_FEATURESET ?= sonic
 CONFIGURED_ARCH ?= amd64
 CONFIGURED_PLATFORM ?= vs
+CROSS_BUILD_ENVIRON ?= n
+SONIC_CONFIG_MAKE_JOBS ?= $(shell nproc)
 KVERSION ?= $(KERNEL_VERSION)-$(KERNEL_FEATURESET)-$(CONFIGURED_ARCH)
 SECURE_UPGRADE_MODE ?=
 SECURE_UPGRADE_SIGNING_CERT ?=
@@ -88,11 +90,11 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# 	../manage-config $(CONFIGURED_ARCH) $(CONFIGURED_PLATFORM) $(SECURE_UPGRADE_MODE) $(SECURE_UPGRADE_SIGNING_CERT)
 	# fi
 
-	# Building a custom kernel from Debian kernel source
-	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) DEB_BUILD_PROFILES=nodoc fakeroot make -f debian/rules -j $(shell nproc) binary-indep
-
-	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_sonic_$(KERNEL_FLAVOR_ARCH)
-	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_kbuild
+ifeq ($(CROSS_BUILD_ENVIRON), y)
+	dpkg-buildpackage -b -us -uc -a$(CONFIGURED_ARCH) -Pcross,nocheck,nodoc -j$(SONIC_CONFIG_MAKE_JOBS)
+else
+	dpkg-buildpackage -b -us -uc -Pnodoc -j$(SONIC_CONFIG_MAKE_JOBS)
+endif
 	popd
 
 ifneq ($(DEST),)
