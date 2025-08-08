@@ -69,18 +69,19 @@ index ba56485cbe8c..e86723b44c2e 100644
  obj-$(CONFIG_MLXREG_LC) += mlxreg-lc.o
 diff --git a/drivers/platform/mellanox/mlxreg-dpu.c b/drivers/platform/mellanox/mlxreg-dpu.c
 new file mode 100644
-index 000000000000..f831d6dd5ece
+index 000000000..c6cfbee55
 --- /dev/null
 +++ b/drivers/platform/mellanox/mlxreg-dpu.c
-@@ -0,0 +1,625 @@
+@@ -0,0 +1,626 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Nvidia Data Processor Unit platform driver
 + *
-+ * Copyright (C) 2024 Nvidia Technologies Ltd.
++ * Copyright (C) 2025 Nvidia Technologies Ltd.
 + */
 +
 +#include <linux/device.h>
++#include <linux/dev_printk.h>
 +#include <linux/i2c.h>
 +#include <linux/module.h>
 +#include <linux/platform_data/mlxcpld.h>
@@ -389,13 +390,14 @@ index 000000000000..f831d6dd5ece
 +	.mask = MLXREG_DPU_AGGR_MASK,
 +};
 +
-+/* mlxreg_dpu - device private data
-+ * @dev: platform device;
-+ * @data: pltaform core data;
-+ * @io_data: register access platform data;
-+ * @io_regs: register access device;
-+ * @hotplug_data: hotplug platform data;
-+ * @hotplug: hotplug device;
++/**
++ * struct mlxreg_dpu - device private data
++ * @dev: platform device
++ * @data: platform core data
++ * @io_data: register access platform data
++ * @io_regs: register access device
++ * @hotplug_data: hotplug platform data
++ * @hotplug: hotplug device
 + */
 +struct mlxreg_dpu {
 +	struct device *dev;
@@ -478,6 +480,11 @@ index 000000000000..f831d6dd5ece
 +	return false;
 +}
 +
++static const struct reg_default mlxreg_dpu_regmap_default[] = {
++        { MLXREG_DPU_REG_PG_EVENT_OFFSET, 0x00 },
++        { MLXREG_DPU_REG_HEALTH_EVENT_OFFSET, 0x00 },
++};
++
 +/* Configuration for the register map of a device with 2 bytes address space. */
 +static const struct regmap_config mlxreg_dpu_regmap_conf = {
 +	.reg_bits = 16,
@@ -487,10 +494,13 @@ index 000000000000..f831d6dd5ece
 +	.writeable_reg = mlxreg_dpu_writeable_reg,
 +	.readable_reg = mlxreg_dpu_readable_reg,
 +	.volatile_reg = mlxreg_dpu_volatile_reg,
++	.reg_defaults = mlxreg_dpu_regmap_default,
++	.num_reg_defaults = ARRAY_SIZE(mlxreg_dpu_regmap_default),
 +};
 +
-+static int mlxreg_dpu_copy_hotplug_data(struct device *dev, struct mlxreg_dpu *mlxreg_dpu,
-+					struct mlxreg_core_hotplug_platform_data *hotplug_data)
++static int
++mlxreg_dpu_copy_hotplug_data(struct device *dev, struct mlxreg_dpu *mlxreg_dpu,
++			     const struct mlxreg_core_hotplug_platform_data *hotplug_data)
 +{
 +	struct mlxreg_core_item *item;
 +	int i;
@@ -502,18 +512,15 @@ index 000000000000..f831d6dd5ece
 +
 +	mlxreg_dpu->hotplug_data->items = devm_kmemdup(dev, hotplug_data->items,
 +						       mlxreg_dpu->hotplug_data->counter *
-+						       sizeof(*hotplug_data->items),
++						       sizeof(*mlxreg_dpu->hotplug_data->items),
 +						       GFP_KERNEL);
 +	if (!mlxreg_dpu->hotplug_data->items)
 +		return -ENOMEM;
 +
 +	item = mlxreg_dpu->hotplug_data->items;
-+	for (i = 0; i < mlxreg_dpu->hotplug_data->counter; i++, item++) {
-+		item = devm_kmemdup(dev, &hotplug_data->items[i], sizeof(*item), GFP_KERNEL);
-+		if (!item)
-+			return -ENOMEM;
++	for (i = 0; i < hotplug_data->counter; i++, item++) {
 +		item->data = devm_kmemdup(dev, hotplug_data->items[i].data,
-+					  hotplug_data->items[i].count * sizeof(item->data),
++					  hotplug_data->items[i].count * sizeof(*item->data),
 +					  GFP_KERNEL);
 +		if (!item->data)
 +			return -ENOMEM;
@@ -533,6 +540,7 @@ index 000000000000..f831d6dd5ece
 +	err = regmap_read(regmap, MLXREG_DPU_REG_CONFIG3_OFFSET, &regval);
 +	if (err)
 +		return err;
++
 +	switch (regval) {
 +	case MLXREG_DPU_BF3:
 +		/* Copy platform specific hotplug data. */
@@ -552,15 +560,15 @@ index 000000000000..f831d6dd5ece
 +	if (mlxreg_dpu->io_data) {
 +		mlxreg_dpu->io_data->regmap = regmap;
 +		mlxreg_dpu->io_regs =
-+		platform_device_register_resndata(dev, "mlxreg-io", data->slot, NULL, 0,
-+						  mlxreg_dpu->io_data,
-+						  sizeof(*mlxreg_dpu->io_data));
++			platform_device_register_resndata(dev, "mlxreg-io",
++							  data->slot, NULL, 0,
++							  mlxreg_dpu->io_data,
++							  sizeof(*mlxreg_dpu->io_data));
 +		if (IS_ERR(mlxreg_dpu->io_regs)) {
 +			dev_err(dev, "Failed to create regio for client %s at bus %d at addr 0x%02x\n",
 +				data->hpdev.brdinfo->type, data->hpdev.nr,
 +				data->hpdev.brdinfo->addr);
-+			err = PTR_ERR(mlxreg_dpu->io_regs);
-+			goto fail_register_io;
++			return PTR_ERR(mlxreg_dpu->io_regs);
 +		}
 +	}
 +
@@ -569,9 +577,10 @@ index 000000000000..f831d6dd5ece
 +		mlxreg_dpu->hotplug_data->regmap = regmap;
 +		mlxreg_dpu->hotplug_data->irq = irq;
 +		mlxreg_dpu->hotplug =
-+		platform_device_register_resndata(dev, "mlxreg-hotplug", data->slot, NULL, 0,
-+						  mlxreg_dpu->hotplug_data,
-+						  sizeof(*mlxreg_dpu->hotplug_data));
++			platform_device_register_resndata(dev, "mlxreg-hotplug",
++							  data->slot, NULL, 0,
++							  mlxreg_dpu->hotplug_data,
++							  sizeof(*mlxreg_dpu->hotplug_data));
 +		if (IS_ERR(mlxreg_dpu->hotplug)) {
 +			err = PTR_ERR(mlxreg_dpu->hotplug);
 +			goto fail_register_hotplug;
@@ -582,16 +591,13 @@ index 000000000000..f831d6dd5ece
 +
 +fail_register_hotplug:
 +	platform_device_unregister(mlxreg_dpu->io_regs);
-+fail_register_io:
 +
 +	return err;
 +}
 +
 +static void mlxreg_dpu_config_exit(struct mlxreg_dpu *mlxreg_dpu)
 +{
-+	/* Unregister hotplug driver. */
 +	platform_device_unregister(mlxreg_dpu->hotplug);
-+	/* Unregister IO access driver. */
 +	platform_device_unregister(mlxreg_dpu->io_regs);
 +}
 +
@@ -606,13 +612,13 @@ index 000000000000..f831d6dd5ece
 +	if (!data || !data->hpdev.brdinfo)
 +		return -EINVAL;
 +
-+	mlxreg_dpu = devm_kzalloc(&pdev->dev, sizeof(*mlxreg_dpu), GFP_KERNEL);
-+	if (!mlxreg_dpu)
-+		return -ENOMEM;
-+
 +	data->hpdev.adapter = i2c_get_adapter(data->hpdev.nr);
 +	if (!data->hpdev.adapter)
 +		return -EPROBE_DEFER;
++
++	mlxreg_dpu = devm_kzalloc(&pdev->dev, sizeof(*mlxreg_dpu), GFP_KERNEL);
++	if (!mlxreg_dpu)
++		return -ENOMEM;
 +
 +	/* Create device at the top of DPU I2C tree.*/
 +	data->hpdev.client = i2c_new_client_device(data->hpdev.adapter,
@@ -624,8 +630,7 @@ index 000000000000..f831d6dd5ece
 +		goto i2c_new_device_fail;
 +	}
 +
-+	regmap = devm_regmap_init_i2c(data->hpdev.client,
-+				      &mlxreg_dpu_regmap_conf);
++	regmap = devm_regmap_init_i2c(data->hpdev.client, &mlxreg_dpu_regmap_conf);
 +	if (IS_ERR(regmap)) {
 +		dev_err(&pdev->dev, "Failed to create regmap for client %s at bus %d at addr 0x%02x\n",
 +			data->hpdev.brdinfo->type, data->hpdev.nr, data->hpdev.brdinfo->addr);
@@ -647,12 +652,9 @@ index 000000000000..f831d6dd5ece
 +	mlxreg_dpu->dev = &pdev->dev;
 +	platform_set_drvdata(pdev, mlxreg_dpu);
 +
-+	/* Configure DPU. */
 +	err = mlxreg_dpu_config_init(mlxreg_dpu, regmap, data, data->hpdev.brdinfo->irq);
 +	if (err)
 +		goto mlxreg_dpu_config_init_fail;
-+
-+	return err;
 +
 +mlxreg_dpu_config_init_fail:
 +regcache_sync_fail:
@@ -697,7 +699,6 @@ index 000000000000..f831d6dd5ece
 +MODULE_DESCRIPTION("Nvidia Data Processor Unit platform driver");
 +MODULE_LICENSE("Dual BSD/GPL");
 +MODULE_ALIAS("platform:mlxreg-dpu");
-+
 -- 
-2.34.1
+2.44.0
 
