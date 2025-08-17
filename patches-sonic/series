@@ -52,6 +52,8 @@ driver-net-tg3-change-dma-mask-for-57766.patch
 # Tbridge-per-port-multicast-broadcast-flood-flags.patch
 #
 
+0001-efi-memattr-Ignore-table-if-the-size-is-clearly-bogus.patch
+
 # Mellanox patches for 5.10
 # TODO(trixie): update for current version
 ###-> mellanox_sdk-start
@@ -211,6 +213,7 @@ cisco-npu-disable-other-bars.patch
 
 # Micas patches
 0001-fix-os-crash-caused-by-optoe-when-class-switch.patch
+0001-tty-8250-HSUART-DMA-be-deactivated-for-DNV-CPU.patch
 
 # Fix to avoid kernel panic on Kernel 6.1.94
 # https://github.com/sonic-net/sonic-buildimage/issues/20901
