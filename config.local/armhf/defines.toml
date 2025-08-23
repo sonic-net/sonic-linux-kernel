@@ -1,0 +1,6 @@
+[[featureset]]
+name = 'sonic'
+[[featureset.flavour]]
+name = 'armmp'
+[featureset.flavour.build]
+config = ['armhf/config.sonic', 'armhf/config.sonic-platform-specific']
