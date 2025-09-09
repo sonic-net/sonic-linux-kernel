@@ -71,6 +71,8 @@ Support-for-fullcone-nat.patch
 #
 
 0001-efi-memattr-Ignore-table-if-the-size-is-clearly-bogus.patch
+# Backport from v6.14 to v6.1.132 and v6.12.20
+0001-prevent-bridge-link-show-failure-for-non-eswitch-allowed-devices.patch
 
 # Mellanox patches for 5.10
 ###-> mellanox_sdk-start
