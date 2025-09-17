@@ -15,23 +15,24 @@ stages:
   - template: .azure-pipelines/build-template.yml
     parameters:
       arch: amd64
-      sonic_slave: sonic-slave-bookworm
+      pool: sonicso1ES-amd64
+      sonic_slave: sonic-slave-trixie
       artifact_name: sonic-linux-kernel
       linux_deb_pattern: linux-image-*-unsigned_*deb
 
   - template: .azure-pipelines/build-template.yml
     parameters:
       arch: arm64
-      pool: sonicbld-arm64
-      sonic_slave: sonic-slave-bookworm-arm64
+      pool: sonicso1ES-arm64
+      sonic_slave: sonic-slave-trixie-arm64
       artifact_name: sonic-linux-kernel.arm64
       linux_deb_pattern: linux-image-*-unsigned_*deb
 
   - template: .azure-pipelines/build-template.yml
     parameters:
       arch: armhf
-      pool: sonicbld-armhf
-      sonic_slave: sonic-slave-bookworm-armhf
+      pool: sonicso1ES-armhf
+      sonic_slave: sonic-slave-trixie-armhf
       artifact_name: sonic-linux-kernel.armhf
       linux_deb_pattern: linux-image-*-armmp_*deb
 
@@ -39,8 +40,8 @@ stages:
     parameters:
       arch: arm64
       platform: pensando
-      pool: sonicbld-arm64
-      sonic_slave: sonic-slave-bookworm-arm64
+      pool: sonicso1ES-arm64
+      sonic_slave: sonic-slave-trixie-arm64
       artifact_name: sonic-linux-kernel.pensando.arm64
       linux_deb_pattern: linux-image-*-unsigned_*deb
 

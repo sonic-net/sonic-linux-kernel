@@ -16,11 +16,10 @@ parameters:
 - name: pool
   type: string
   values:
-  - sonicbld-1es
-  - sonicbld_8c
-  - sonicbld-arm64
-  - sonicbld-armhf
-  default: sonicbld-1es
+  - sonicso1ES-amd64
+  - sonicso1ES-arm64
+  - sonicso1ES-armhf
+  default: sonicso1ES-amd64
 
 - name: timeout
   type: number
@@ -59,9 +58,6 @@ jobs:
       targetPath: $(Agent.TempDirectory)/
     displayName: "Download the linux-image artifact from the last build with a different kernel version"
   - script: |
-      git config --global user.email "lguohan@build.com"
-      git config --global user.name "Guohan Lu"
-      export kernel_procure_method=build
       cat /proc/cpuinfo
       CONFIGURED_ARCH=${{ parameters.arch }} CONFIGURED_PLATFORM=${{ parameters.platform }} make
     displayName: "Compile sonic kernel"
