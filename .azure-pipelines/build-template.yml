@@ -16,7 +16,7 @@ parameters:
 - name: pool
   type: string
   values:
-  - sonicso1ES-arm64
+  - sonicso1ES-amd64
   - sonicso1ES-arm64
   - sonicso1ES-armhf
   default: sonicso1ES-amd64
