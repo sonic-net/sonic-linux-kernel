@@ -174,6 +174,8 @@ cisco-npu-disable-other-bars.patch
 #0015-arm64-dts-marvell-Add-Supermicro-SSE-G3748-board.patch # TODO(trixie): update for current version
 #0016-arm64-dts-marvell-Add-Wistron-ES-1227-54TS-board.patch # TODO(trixie): update for current version
 #0017-Extend-driver-to-support-XMC-XM25QH256C-device.patch # TODO(trixie): update for current version
+0018-i2c-mv64xxx-kdump-sonic.patch
+0019-mrvl-gicp-clr-irqs-on-probe.patch
 
 # amd-pensando elba support
 # TODO(trixie): update for current version
