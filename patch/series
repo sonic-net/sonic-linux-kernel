@@ -10,6 +10,7 @@ driver-arista-net-tg3-access-regs-indirectly.patch
 driver-arista-pci-reassign-pref-mem.patch
 driver-arista-mmcblk-not-working-on-AMD-platforms.patch
 driver-arista-restrict-eMMC-drive-to-50Mhz-from-userland.patch
+driver-arista-i2c-designware-shutdown.patch
 driver-support-sff-8436-eeprom.patch
 driver-support-sff-8436-eeprom-update.patch
 driver-sff-8436-use-nvmem-framework.patch
@@ -68,6 +69,10 @@ Support-for-fullcone-nat.patch
 # Trtnetlink-catch-EOPNOTSUPP-errors.patch
 # Tbridge-per-port-multicast-broadcast-flood-flags.patch
 #
+
+0001-efi-memattr-Ignore-table-if-the-size-is-clearly-bogus.patch
+# Backport from v6.14 to v6.1.132 and v6.12.20
+0001-prevent-bridge-link-show-failure-for-non-eswitch-allowed-devices.patch
 
 # Mellanox patches for 5.10
 ###-> mellanox_sdk-start
@@ -188,6 +193,8 @@ cisco-npu-disable-other-bars.patch
 0015-arm64-dts-marvell-Add-Supermicro-SSE-G3748-board.patch
 0016-arm64-dts-marvell-Add-Wistron-ES-1227-54TS-board.patch
 0017-Extend-driver-to-support-XMC-XM25QH256C-device.patch
+0018-i2c-mv64xxx-kdump-sonic.patch
+0019-mrvl-gicp-clr-irqs-on-probe.patch
 
 # amd-pensando elba support
 0000-Add-support-for-the-TI-TPS53659.patch
@@ -226,6 +233,7 @@ cisco-npu-disable-other-bars.patch
 
 # Micas patches
 0001-fix-os-crash-caused-by-optoe-when-class-switch.patch
+0001-tty-8250-HSUART-DMA-be-deactivated-for-DNV-CPU.patch
 
 # Fix to avoid kernel panic on Kernel 6.1.94
 # https://github.com/sonic-net/sonic-buildimage/issues/20901

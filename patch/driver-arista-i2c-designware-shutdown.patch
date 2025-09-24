@@ -1,0 +1,54 @@
+From: Justin Oliver <justinoliver@arista.com>
+Date: 2022-12-12 17:42:20 +0000
+Subject: [PATCH] i2c: designware: Fix device probe failure after kexec
+
+The Designware I2C driver sometimes fails to probe the I2C controller after
+we boot into another kernel with kexec. Kexec will call the `shutdown`
+method of each platform driver before booting the new kernel so this patch
+defines a `shutdown` procedure for the Designware I2C platform driver. This
+will gracefully bring down the I2C controller, allowing the driver to
+successfully initialize the device with the new kernel.
+
+This patch addresses the following error after kexec:
+i2c_designware AMDI0010:00: Unknown Synopsys component type: 0xffffffff
+
+Signed-off-by: Justin Oliver <justinoliver@arista.com>
+Signed-off-by: Karan Jagjitkumar <karan@arista.com>
+---
+ drivers/i2c/busses/i2c-designware-platdrv.c |   16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/drivers/i2c/busses/i2c-designware-platdrv.c b/drivers/i2c/busses/i2c-designware-platdrv.c
+index 01234567..89abcdef 100644
+--- a/drivers/i2c/busses/i2c-designware-platdrv.c
++++ b/drivers/i2c/busses/i2c-designware-platdrv.c
+@@ -350,6 +350,21 @@ static int dw_i2c_plat_remove(struct platform_device *pdev)
+ 	return 0;
+ }
+ 
++static void dw_i2c_plat_shutdown(struct platform_device *pdev)
++{
++	struct dw_i2c_dev *dev = platform_get_drvdata(pdev);
++
++	pm_runtime_get_sync(&pdev->dev);
++
++	dev->disable(dev);
++
++	pm_runtime_dont_use_autosuspend(&pdev->dev);
++	pm_runtime_put_sync(&pdev->dev);
++	dw_i2c_plat_pm_cleanup(dev);
++
++	reset_control_assert(dev->rst);
++}
++
+ #ifdef CONFIG_PM_SLEEP
+ static int dw_i2c_plat_prepare(struct device *dev)
+ {
+@@ -425,6 +440,7 @@ MODULE_ALIAS("platform:i2c_designware");
+ static struct platform_driver dw_i2c_driver = {
+ 	.probe = dw_i2c_plat_probe,
+ 	.remove = dw_i2c_plat_remove,
++	.shutdown = dw_i2c_plat_shutdown,
+ 	.driver		= {
+ 		.name	= "i2c_designware",
+ 		.of_match_table = of_match_ptr(dw_i2c_of_match),

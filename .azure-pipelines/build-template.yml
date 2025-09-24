@@ -42,7 +42,7 @@ jobs:
   timeoutInMinutes: ${{ parameters.timeout }}
 
   container:
-    image: sonicdev-microsoft.azurecr.io:443/${{ parameters.sonic_slave }}:bookworm
+    image: sonicdev-microsoft.azurecr.io:443/${{ parameters.sonic_slave }}:master
 
   steps:
   - checkout: self

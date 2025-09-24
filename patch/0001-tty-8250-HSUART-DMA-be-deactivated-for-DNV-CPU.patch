@@ -1,0 +1,45 @@
+From b63977b0e1421c641495940fafab9502a2a6d659 Mon Sep 17 00:00:00 2001
+From: Philo Shao <philo@micasnetworks.com>
+Date: Thu, 17 Apr 2025 02:17:18 -0500
+Subject: tty/8250: Deactivate the HSUART DMA for the DNV CPU
+
+Intel DNV CPU reports an error, indicating that there is a possibility of abnormal serial port functionality and the CPU may hang. 
+The HSUART DMA will be deactivated for the DNV CPU.
+
+Signed-off-by: Philo Shao <philo@micasnetworks.com>
+---
+ drivers/tty/serial/8250/8250_mid.c | 18 +++++++++++-------
+ 1 file changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/tty/serial/8250/8250_mid.c b/drivers/tty/serial/8250/8250_mid.c
+index 2cc78a4bf..e4a5d6358 100644
+--- a/drivers/tty/serial/8250/8250_mid.c
++++ b/drivers/tty/serial/8250/8250_mid.c
+@@ -321,13 +321,17 @@ static int mid8250_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 	if (!uart.port.membase)
+ 		return -ENOMEM;
+ 
+-	ret = mid->board->setup(mid, &uart.port);
+-	if (ret)
+-		return ret;
+-
+-	ret = mid8250_dma_setup(mid, &uart);
+-	if (ret)
+-		goto err;
++	if (id->device != PCI_DEVICE_ID_INTEL_DNV_UART) {
++		ret = mid->board->setup(mid, &uart.port);
++		if (ret)
++			return ret;
++
++		ret = mid8250_dma_setup(mid, &uart);
++		if (ret)
++			goto err;
++	} else {
++		uart.port.handle_irq = dnv_handle_irq;
++	}
+ 
+ 	ret = serial8250_register_8250_port(&uart);
+ 	if (ret < 0)
+-- 
+2.25.1
+
