@@ -1,4 +1,4 @@
-From d1cbdb3b1894c81f0762f3d7242c7f97a429de75 Mon Sep 17 00:00:00 2001
+From d0144bfbcbf78c7577f5e1330aba16f1e5bb4ebe Mon Sep 17 00:00:00 2001
 From: Natarajan Subbiramani <natarajan.subbiramani.ext@nokia.com>
 Date: Mon, 4 Mar 2024 14:22:19 -0500
 Subject: [PATCH] arm64: dts: marvell: Add DTS for 7215-IXS-A1 board
@@ -18,7 +18,7 @@ Reviewed-by: Jon Goldberg <jon.goldberg@nokia.com>
 
 diff --git a/arch/arm64/boot/dts/marvell/7215-ixs-a1.dts b/arch/arm64/boot/dts/marvell/7215-ixs-a1.dts
 new file mode 100644
-index 000000000000..e683b7ca4c9c
+index 000000000..fd0e6b395
 --- /dev/null
 +++ b/arch/arm64/boot/dts/marvell/7215-ixs-a1.dts
 @@ -0,0 +1,225 @@
@@ -248,16 +248,14 @@ index 000000000000..e683b7ca4c9c
 +	phy-mode = "sgmii";
 +};
 diff --git a/arch/arm64/boot/dts/marvell/Makefile b/arch/arm64/boot/dts/marvell/Makefile
-index 49f274add..310b57e47 100644
+index 062317759..c9d4e7836 100644
 --- a/arch/arm64/boot/dts/marvell/Makefile
 +++ b/arch/arm64/boot/dts/marvell/Makefile
-@@ -27,3 +27,4 @@ dtb-$(CONFIG_ARCH_MVEBU) += cn9130-crb-A.dtb
+@@ -33,3 +33,4 @@ dtb-$(CONFIG_ARCH_MVEBU) += cn9130-cf-pro.dtb
  dtb-$(CONFIG_ARCH_MVEBU) += cn9131-cf-solidwan.dtb
  dtb-$(CONFIG_ARCH_MVEBU) += cn9132-clearfog.dtb
  dtb-$(CONFIG_ARCH_MVEBU) += armada-7020-comexpress.dtb
 +dtb-$(CONFIG_ARCH_MVEBU) += 7215-ixs-a1.dtb
-
-base-commit: 6b6f1082cb46d72823b7ea99c058c601668ba1d3
 -- 
 2.34.1
 

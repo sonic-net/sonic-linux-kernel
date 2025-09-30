@@ -1,4 +1,4 @@
-From d1a0b114b178ff3949afc23f69053618dfaf581a Mon Sep 17 00:00:00 2001
+From fc880f237cbfba658a147f797b363ab61f3577d0 Mon Sep 17 00:00:00 2001
 From: Erich Yen <erichy@supermicro.com>
 Date: Tue, 21 May 2024 20:41:37 +0000
 Subject: [PATCH] arm64: dts: marvell: Add Supermicro SSE-G3748 board
@@ -13,10 +13,10 @@ SPI flash partitions and i2c1 configurations are modified to match with SSE-G374
  create mode 100644 arch/arm64/boot/dts/marvell/smc_sse-g3748.dts
 
 diff --git a/arch/arm64/boot/dts/marvell/Makefile b/arch/arm64/boot/dts/marvell/Makefile
-index 310b57e47..88cef592e 100644
+index c9d4e7836..10adf28c9 100644
 --- a/arch/arm64/boot/dts/marvell/Makefile
 +++ b/arch/arm64/boot/dts/marvell/Makefile
-@@ -28,3 +28,4 @@ dtb-$(CONFIG_ARCH_MVEBU) += cn9130-crb-B.dtb
+@@ -34,3 +34,4 @@ dtb-$(CONFIG_ARCH_MVEBU) += cn9131-cf-solidwan.dtb
  dtb-$(CONFIG_ARCH_MVEBU) += cn9132-clearfog.dtb
  dtb-$(CONFIG_ARCH_MVEBU) += armada-7020-comexpress.dtb
  dtb-$(CONFIG_ARCH_MVEBU) += 7215-ixs-a1.dtb
@@ -146,5 +146,5 @@ index 000000000..00fc581d7
 +        };
 +};
 -- 
-2.25.1
+2.34.1
 

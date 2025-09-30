@@ -166,16 +166,17 @@ cisco-npu-disable-other-bars.patch
 #0004-arm64-dts-ac5-add-mmc-node-and-clock.patch # Upstreamed
 0005-dts-ac5-marvell-Add-switching-watchdog-node.patch
 #0006-mmc-xenon-Add-ac5-support-via-bounce-buffer.patch # Upstreamed
-#0007-usb-ehci-Add-support-for-ac5.patch # Upstreamed
-#0008-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch # TODO(trixie): update for current version
+#0007-usb-ehci-Add-support-for-ac5.patch # Upstreamed but no 64-bit, so the next 0007
+0007-usb-ehci-Add-support-for-ac5-with-DMA-mask-64-bit.patch
+0008-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch
 0009-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
-#0010-dts-marvell-Add-support-for-7020-comexpress.patch # TODO(trixie): update for current version
-#0011-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch # TODO(trixie): update for current version
-#0015-arm64-dts-marvell-Add-Supermicro-SSE-G3748-board.patch # TODO(trixie): update for current version
-#0016-arm64-dts-marvell-Add-Wistron-ES-1227-54TS-board.patch # TODO(trixie): update for current version
-#0017-Extend-driver-to-support-XMC-XM25QH256C-device.patch # TODO(trixie): update for current version
-0018-i2c-mv64xxx-kdump-sonic.patch
-0019-mrvl-gicp-clr-irqs-on-probe.patch
+0010-dts-marvell-Add-support-for-7020-comexpress.patch
+0011-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch
+0015-arm64-dts-marvell-Add-Supermicro-SSE-G3748-board.patch
+0016-arm64-dts-marvell-Add-Wistron-ES-1227-54TS-board.patch
+0017-Extend-driver-to-support-XMC-XM25QH256C-device.patch
+0018-drivers-i2c-fix-after-kdump-crash.patch
+0019-irqchip-mvebu-gicp-Clear-pending-interrupts-on-init.patch
 
 # amd-pensando elba support
 # TODO(trixie): update for current version
