@@ -81,15 +81,13 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 		cp debian/config.local/$(CONFIGURED_ARCH)/config.$(CONFIGURED_PLATFORM) debian/config.local/$(CONFIGURED_ARCH)/config.sonic-platform-specific
 	fi
 
+	# Enable secure boot configs if needed
+	../manage-config $(CONFIGURED_ARCH) $(SECURE_UPGRADE_MODE) $(SECURE_UPGRADE_SIGNING_CERT)
+
 	# re-generate debian packages and rules with SONiC customizations
 	debian/bin/gencontrol.py
 
-	# Optionally add/remove kernel options
 	# TODO(trixie): Make a way to verify that our configs are being set
-	# TODO(trixie): Add secure boot support
-	# if [ -f ../manage-config ]; then
-	# 	../manage-config $(CONFIGURED_ARCH) $(CONFIGURED_PLATFORM) $(SECURE_UPGRADE_MODE) $(SECURE_UPGRADE_SIGNING_CERT)
-	# fi
 
 ifeq ($(CROSS_BUILD_ENVIRON), y)
 	dpkg-buildpackage -b -us -uc -a$(CONFIGURED_ARCH) -Pcross,nocheck,nodoc -j$(SONIC_CONFIG_MAKE_JOBS)
