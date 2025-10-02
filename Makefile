@@ -81,6 +81,8 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 		cp debian/config.local/$(CONFIGURED_ARCH)/config.$(CONFIGURED_PLATFORM) debian/config.local/$(CONFIGURED_ARCH)/config.sonic-platform-specific
 	fi
 
+	patch -p1 -i ../patches-debian/disable-secureboot-config-checks.patch
+
 	# Enable secure boot configs if needed
 	../manage-config $(CONFIGURED_ARCH) $(SECURE_UPGRADE_MODE) $(SECURE_UPGRADE_SIGNING_CERT)
 

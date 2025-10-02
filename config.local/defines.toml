@@ -20,6 +20,3 @@ enable = true
   sonic = 'This kernel includes patches that support SONiC.'
   [featureset.description.short]
   sonic = 'SONiC Kernel'
-
-[build]
-enable_signed = false
