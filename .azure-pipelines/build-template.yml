@@ -66,8 +66,9 @@ jobs:
     displayName: "Generate additional secure boot certificate"
     condition: ${{ eq(parameters.secure_boot, true) }}
   - script: |
+      set -x
       cat /proc/cpuinfo
-      if [[ ${{ parameters.secure_boot }} -eq "True" ]]; then
+      if [[ ${{ parameters.secure_boot }} = "True" ]]; then
           export SECURE_UPGRADE_MODE=dev
           export SECURE_UPGRADE_SIGNING_CERT=$(System.DefaultWorkingDirectory)/build_trusted_key.pem
       fi
