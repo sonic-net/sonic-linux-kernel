@@ -50,7 +50,7 @@ stages:
       sonic_slave: sonic-slave-trixie-armhf
       old_artifact_name: sonic-linux-kernel.armhf
       artifact_name: sonic-linux-kernel.armhf
-      old_linux_deb_pattern: linux-image-*-unsigned_*deb
+      old_linux_deb_pattern: linux-image-*-armmp_*deb
       linux_deb_pattern: linux-image-*+deb*-*-armmp_*deb
 
   - template: .azure-pipelines/build-template.yml
