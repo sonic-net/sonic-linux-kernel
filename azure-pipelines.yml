@@ -22,6 +22,15 @@ stages:
 
   - template: .azure-pipelines/build-template.yml
     parameters:
+      arch: amd64
+      pool: sonicso1ES-amd64
+      sonic_slave: sonic-slave-trixie
+      artifact_name: sonic-linux-kernel
+      linux_deb_pattern: linux-image-*-unsigned_*deb
+      secure_boot: true
+
+  - template: .azure-pipelines/build-template.yml
+    parameters:
       arch: arm64
       pool: sonicso1ES-arm64
       sonic_slave: sonic-slave-trixie-arm64
