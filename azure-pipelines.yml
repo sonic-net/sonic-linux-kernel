@@ -43,7 +43,7 @@ stages:
       pool: sonicso1ES-armhf
       sonic_slave: sonic-slave-trixie-armhf
       artifact_name: sonic-linux-kernel.armhf
-      linux_deb_pattern: linux-image-deb*-*-armmp_*deb
+      linux_deb_pattern: linux-image-*+deb*-*-armmp_*deb
 
   - template: .azure-pipelines/build-template.yml
     parameters:
