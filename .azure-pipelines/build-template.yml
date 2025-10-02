@@ -28,6 +28,12 @@ parameters:
 - name: sonic_slave
   type: string
 
+- name: old_artifact_name
+  type: string
+
+- name: old_linux_deb_pattern
+  type: string
+
 - name: artifact_name
   type: string
 
@@ -56,7 +62,7 @@ jobs:
       source: specific
       project: build
       pipelineId: 499053
-      artifact: ${{ parameters.artifact_name }}
+      artifact: ${{ parameters.old_artifact_name }}
       runVersion: 'specific'
       itemPattern: ${{ parameters.linux_deb_pattern }}
       targetPath: $(Agent.TempDirectory)/
@@ -75,7 +81,8 @@ jobs:
       CONFIGURED_ARCH=${{ parameters.arch }} CONFIGURED_PLATFORM=${{ parameters.platform }} make
     displayName: "Compile sonic kernel"
   - script: |
-      dpkg-deb -x $(Agent.TempDirectory)/${{ parameters.linux_deb_pattern }} $(Agent.TempDirectory)/old
+      set -e
+      dpkg-deb -x $(Agent.TempDirectory)/${{ parameters.old_linux_deb_pattern }} $(Agent.TempDirectory)/old
       dpkg-deb -x $(System.DefaultWorkingDirectory)/${{ parameters.linux_deb_pattern }} $(Agent.TempDirectory)/new
       pip3 install tabulate
       python3 $(System.DefaultWorkingDirectory)/.azure-pipelines/kcfg-diff.py \

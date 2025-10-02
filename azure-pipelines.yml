@@ -17,7 +17,9 @@ stages:
       arch: amd64
       pool: sonicso1ES-amd64
       sonic_slave: sonic-slave-trixie
-      artifact_name: sonic-linux-kernel
+      old_artifact_name: sonic-linux-kernel
+      artifact_name: sonic-linux-kernel.amd64
+      old_linux_deb_pattern: linux-image-*-unsigned_*deb
       linux_deb_pattern: linux-image-*-unsigned_*deb
 
   - template: .azure-pipelines/build-template.yml
@@ -25,7 +27,9 @@ stages:
       arch: amd64
       pool: sonicso1ES-amd64
       sonic_slave: sonic-slave-trixie
-      artifact_name: sonic-linux-kernel
+      old_artifact_name: sonic-linux-kernel
+      artifact_name: sonic-linux-kernel.amd64.secure
+      old_linux_deb_pattern: linux-image-*-unsigned_*deb
       linux_deb_pattern: linux-image-*-unsigned_*deb
       secure_boot: true
 
@@ -34,7 +38,9 @@ stages:
       arch: arm64
       pool: sonicso1ES-arm64
       sonic_slave: sonic-slave-trixie-arm64
+      old_artifact_name: sonic-linux-kernel.arm64
       artifact_name: sonic-linux-kernel.arm64
+      old_linux_deb_pattern: linux-image-*-unsigned_*deb
       linux_deb_pattern: linux-image-*-unsigned_*deb
 
   - template: .azure-pipelines/build-template.yml
@@ -42,7 +48,9 @@ stages:
       arch: armhf
       pool: sonicso1ES-armhf
       sonic_slave: sonic-slave-trixie-armhf
+      old_artifact_name: sonic-linux-kernel.armhf
       artifact_name: sonic-linux-kernel.armhf
+      old_linux_deb_pattern: linux-image-*-unsigned_*deb
       linux_deb_pattern: linux-image-*+deb*-*-armmp_*deb
 
   - template: .azure-pipelines/build-template.yml
@@ -51,6 +59,8 @@ stages:
       platform: pensando
       pool: sonicso1ES-arm64
       sonic_slave: sonic-slave-trixie-arm64
+      old_artifact_name: sonic-linux-kernel.pensando.arm64
       artifact_name: sonic-linux-kernel.pensando.arm64
+      old_linux_deb_pattern: linux-image-*-unsigned_*deb
       linux_deb_pattern: linux-image-*-unsigned_*deb
 
