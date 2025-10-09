@@ -10,6 +10,7 @@ driver-arista-net-tg3-access-regs-indirectly.patch
 driver-arista-pci-reassign-pref-mem.patch
 driver-arista-mmcblk-not-working-on-AMD-platforms.patch
 driver-arista-restrict-eMMC-drive-to-50Mhz-from-userland.patch
+driver-arista-i2c-designware-shutdown.patch
 driver-support-sff-8436-eeprom.patch
 driver-support-sff-8436-eeprom-update.patch
 driver-sff-8436-use-nvmem-framework.patch
@@ -29,12 +30,14 @@ driver-support-optoe-EOF_fix.patch
 driver-support-optoe-chunk-offset-fix.patch
 driver-support-optoe-QSFP_DD.patch
 driver-support-optoe-write-max.patch
+driver-support-optoe-write-max_fix.patch
 driver-support-optoe-twoaddr-a2h-access.patch
 driver-support-optoe-oneaddr-pageable.patch
 driver-support-optoe-update-to-linux-6.1.patch
 driver-support-optoe-dynamic-write-timeout.patch
 driver-support-i2c-bus-imc.patch
 driver-net-tg3-add-param-short-preamble-and-reset.patch
+driver-net-tg3-change-dma-mask-for-57766.patch
 0004-dt-bindings-hwmon-Add-missing-documentation-for-lm75.patch
 0005-dt-bindings-hwmon-Add-tmp75b-to-lm75.txt.patch
 0006-device-tree-bindinds-add-NXP-PCT2075-as-compatible-d.patch
@@ -67,6 +70,10 @@ Support-for-fullcone-nat.patch
 # Trtnetlink-catch-EOPNOTSUPP-errors.patch
 # Tbridge-per-port-multicast-broadcast-flood-flags.patch
 #
+
+0001-efi-memattr-Ignore-table-if-the-size-is-clearly-bogus.patch
+# Backport from v6.14 to v6.1.132 and v6.12.20
+0001-prevent-bridge-link-show-failure-for-non-eswitch-allowed-devices.patch
 
 # Mellanox patches for 5.10
 ###-> mellanox_sdk-start
@@ -109,9 +116,6 @@ Support-for-fullcone-nat.patch
 0033-i2c-mlxcpld-Allow-driver-to-run-on-ARM64-architectur.patch
 0034-i2c-mlxcpld-Add-support-for-extended-transaction-len.patch
 0035-i2c-mlxcpld-Support-PCIe-mapped-register-space.patch
-0036-mlxsw-i2c-Fix-chunk-size-setting-in-output-mailbox-b.patch
-0037-mlxsw-i2c-Limit-single-transaction-buffer-size.patch
-0038-mlxsw-core_hwmon-Adjust-module-label-names-based-on-.patch
 0039-mlxsw-reg-Limit-MTBR-register-payload-to-a-single-da.patch
 0040-mlxsw-core-Extend-allowed-list-of-external-cooling-d.patch
 0041-mlxsw-i2c-Utilize-standard-macros-for-dividing-buffe.patch
@@ -130,8 +134,25 @@ Support-for-fullcone-nat.patch
 0054-platform-mellanox-Introduce-support-for-switches-equ.patch
 0055-mellanox-Relocate-mlx-platform-driver.patch
 0056-Documentation-ABI-Add-new-attribute-for-mlxreg-io-sy.patch
+0057-Documentation-ABI-Add-new-attribute-for-mlxreg-io-sy.patch
 0085-hwmon-mlxreg-fan-Separate-methods-of-fan-setting-com.patch
 0087-platform-mellanox-indicate-deferred-I2C-bus-creation.patch
+0087-platform_data-mlxreg-Add-capability-bit-and-mask-fie.patch
+0088-platform-mellanox-mlxreg-hotplug-Add-support-for-new.patch
+0089-platform-mellanox-mlx-platform-Change-register-name.patch
+0090-platform-mellanox-mlx-platform-Add-support-for-new-X.patch
+0091-platform-mellanox-mlxreg-dpu-Add-initial-support-for.patch
+0092-platform-mellanox-Introduce-support-of-Nvidia-smart-.patch
+0093-hwmon-pmbus-Add-support-for-MPS-Multi-phase-mp2855-c.patch
+0094-i2c-asf-Introduce-MCTP-support-over-ASF-controller.patch
+0095-platform-mellanox-nvsw-sn2201-Add-support-for-new-sy.patch
+0097-platform-mellanox-mlx-platform-Add-support-for-new-N.patch
+0098-platform-mellanox-Downstream-Add-support-for-new-Nvi.patch
+0099-platform-mellanox-Downstream-Add-support-DGX-flavor-.patch
+0100-platform-mellanox-mlxreg-io-Extend-number-of-hwmon-a.patch
+0101-platform_data-mlxreg-Add-fields-for-interrupt-storm-.patch
+0102-platform-mellanox-mlxreg-hotplug-Add-support-for-han.patch
+0103-platform-mellanox-mlx-dpu-improve-interrupt-handling.patch
 8000-mlxsw-Use-weak-reverse-dependencies-for-firmware-fla.patch
 8003-mlxsw-i2c-SONIC-ISSU-Prevent-transaction-execution-f.patch
 8004-mlxsw-minimal-Downstream-Ignore-error-reading-SPAD-r.patch
@@ -142,6 +163,7 @@ Support-for-fullcone-nat.patch
 8009-hwmon-mlxsw-Downstream-Allow-fan-speed-setting-granu.patch
 8010-mlxsw-i2c-Downstream-Add-retry-mechanism-for-failed-.patch
 8011-mlxsw-minimal-Downstream-Disable-ethtool-interface.patch
+8012-hwmon-pmbus-Downstream-Workaround-for-psu-attributes.patch
 ###-> mellanox_hw_mgmt-end
 
 # Cisco patches for 5.10 kernel
@@ -169,9 +191,11 @@ cisco-npu-disable-other-bars.patch
 0009-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
 0010-dts-marvell-Add-support-for-7020-comexpress.patch
 0011-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch
-0012-net-mvpp2-clear-BM-pool-before-initialization.patch
-0013-mmc-sdhci-xenon-fix-PHY-init-clock-stability.patch
-0014-mmc-sdhci-xenon-add-timeout-for-PHY-init-complete.patch
+0015-arm64-dts-marvell-Add-Supermicro-SSE-G3748-board.patch
+0016-arm64-dts-marvell-Add-Wistron-ES-1227-54TS-board.patch
+0017-Extend-driver-to-support-XMC-XM25QH256C-device.patch
+0018-i2c-mv64xxx-kdump-sonic.patch
+0019-mrvl-gicp-clr-irqs-on-probe.patch
 
 # amd-pensando elba support
 0000-Add-support-for-the-TI-TPS53659.patch
@@ -207,6 +231,14 @@ cisco-npu-disable-other-bars.patch
 
 # Security patch
 0001-Change-the-system.map-file-permission-only-readable-.patch
+
+# Micas patches
+0001-fix-os-crash-caused-by-optoe-when-class-switch.patch
+0001-tty-8250-HSUART-DMA-be-deactivated-for-DNV-CPU.patch
+
+# Fix to avoid kernel panic on Kernel 6.1.94
+# https://github.com/sonic-net/sonic-buildimage/issues/20901
+PCI-ASPM-Fix-link-state-exit-during-switch-upstream.patch
 
 #
 #

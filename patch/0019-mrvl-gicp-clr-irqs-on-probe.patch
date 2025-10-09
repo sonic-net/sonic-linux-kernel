@@ -1,0 +1,47 @@
+From 21c4ec02660984feece49f1863245d48fc9774a7 Mon Sep 17 00:00:00 2001
+From: Elad Nachman <enachman@marvell.com>
+Date: Sun, 10 Aug 2025 12:48:23 +0300
+Subject: [PATCH v2 1/1] irqchip/mvebu-gicp: clear pending irqs on init
+
+When a kexec'ed kernel boots up, there might be stale unhandled interrupts
+pending in the interrupt controller. These are delivered as spurious
+interrupts once the boot CPU enables interrupts.
+Clear all pending interrupts when the driver is initialized to prevent
+these spurious interrupts from locking the CPU in an endless loop.
+
+Signed-off-by: Elad Nachman <enachman@marvell.com>
+---
+ drivers/irqchip/irq-mvebu-gicp.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/drivers/irqchip/irq-mvebu-gicp.c b/drivers/irqchip/irq-mvebu-gicp.c
+index d3232d6d8dce..4b2cad09bc71 100644
+--- a/drivers/irqchip/irq-mvebu-gicp.c
++++ b/drivers/irqchip/irq-mvebu-gicp.c
+@@ -172,6 +172,7 @@
+ 	struct device_node *node = pdev->dev.of_node;
+ 	struct device_node *irq_parent_dn;
+ 	int ret, i;
++	void __iomem *base;
+ 
+ 	gicp = devm_kzalloc(&pdev->dev, sizeof(*gicp), GFP_KERNEL);
+ 	if (!gicp)
+@@ -245,6 +246,15 @@
+ 
+ 	platform_set_drvdata(pdev, gicp);
+ 
++	base = ioremap(gicp->res->start, resource_size(gicp->res));
++	if (!base) {
++		dev_err(&pdev->dev, "ioremap() failed. Unable to clear pending interrupts.\n");
++	} else {
++		for (i = 0; i < 64; i++)
++			writel(i, base + GICP_CLRSPI_NSR_OFFSET);
++		iounmap(base);
++	}
++
+ 	return 0;
+ }
+
+-- 
+2.25.1
+ 
