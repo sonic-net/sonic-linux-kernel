@@ -64,7 +64,7 @@ jobs:
       pipelineId: 499053
       artifact: ${{ parameters.old_artifact_name }}
       runVersion: 'specific'
-      itemPattern: ${{ parameters.linux_deb_pattern }}
+      itemPattern: ${{ parameters.old_linux_deb_pattern }}
       targetPath: $(Agent.TempDirectory)/
     displayName: "Download the linux-image artifact from the last build with a different kernel version"
   - script: |
