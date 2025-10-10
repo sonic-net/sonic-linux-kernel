@@ -1,0 +1,56 @@
+From 629588d479e637c6ed7c64fe76b66f1d7f0482fe Mon Sep 17 00:00:00 2001
+From: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+Date: Fri, 15 Oct 2021 11:57:37 -0700
+Subject: [PATCH] mtd: spi nor core driver update to support ACPI table match
+
+Current spi nor core driver does not support ACPI table match.
+Configuration done through ACPI tables is not recognized by driver.
+Cisco 8000 platform configures NOR flash partition information
+through ACPI table which is not recognized by spi nor.
+
+Added support in spi nor core to perform ACPI table match.
+
+Signed-off-by: Madhava Reddy Siddareddygari <msiddare@cisco.com>
+---
+ drivers/mtd/spi-nor/core.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/drivers/mtd/spi-nor/core.c b/drivers/mtd/spi-nor/core.c
+index 2b26a875a..82bbd84a2 100644
+--- a/drivers/mtd/spi-nor/core.c
++++ b/drivers/mtd/spi-nor/core.c
+@@ -21,6 +21,7 @@
+ #include <linux/sizes.h>
+ #include <linux/slab.h>
+ #include <linux/spi/flash.h>
++#include <linux/acpi.h>
+ 
+ #include "core.h"
+ 
+@@ -3480,6 +3481,15 @@ static const struct of_device_id spi_nor_of_table[] = {
+ };
+ MODULE_DEVICE_TABLE(of, spi_nor_of_table);
+ 
++#ifdef CONFIG_ACPI
++static const struct acpi_device_id spi_nor_acpi_table[] = {
++	{ "JEDEC,SPI-NOR", 0 },
++	{ "ACPI0000", 0 },
++	{}
++};
++MODULE_DEVICE_TABLE(acpi, spi_nor_acpi_table);
++#endif
++
+ /*
+  * REVISIT: many of these chips have deep power-down modes, which
+  * should clearly be entered on suspend() to minimize power use.
+@@ -3490,6 +3500,7 @@ static struct spi_mem_driver spi_nor_driver = {
+ 			.name = "spi-nor",
+ 			.of_match_table = spi_nor_of_table,
+ 			.dev_groups = spi_nor_sysfs_groups,
++			.acpi_match_table = ACPI_PTR(spi_nor_acpi_table),
+ 		},
+ 		.id_table = spi_nor_dev_ids,
+ 	},
+-- 
+2.26.2.dirty
+

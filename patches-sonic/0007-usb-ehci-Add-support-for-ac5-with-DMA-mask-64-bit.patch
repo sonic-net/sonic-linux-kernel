@@ -1,0 +1,37 @@
+From ec02d4b124ea5dea90ce76fa3e1030f22c5f9e22 Mon Sep 17 00:00:00 2001
+From: Pavan Naregundi <pnaregundi@marvell.com>
+Date: Mon, 13 Mar 2023 10:01:51 +0000
+Subject: [PATCH] usb:ehci: Add support for ac5 with DMA mask 64-bit
+
+Change DMA bit mask to 64-bit addressing like it is done in K-6.1
+for "ac5-ehci" 98DX25xx already present and supported by Kernel-6.12
+
+Signed-off-by: Yuval Shaia <yshaia@marvell.com>
+Tested-by: Raz Adashi <raza@marvell.com>
+Reviewed-by: Raz Adashi <raza@marvell.com>
+Signed-off-by: Yan Markman <ymarkman@marvell.com>
+---
+ drivers/usb/host/ehci-orion.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/usb/host/ehci-orion.c b/drivers/usb/host/ehci-orion.c
+index ad145a54c..03f04a3da 100644
+--- a/drivers/usb/host/ehci-orion.c
++++ b/drivers/usb/host/ehci-orion.c
+@@ -68,11 +68,11 @@ static struct hc_driver __read_mostly ehci_orion_hc_driver;
+ /*
+  * Legacy DMA mask is 32 bit.
+  * AC5 has the DDR starting at 8GB, hence it requires
+- * a larger (34-bit) DMA mask, in order for DMA allocations
++ * a larger (34-bit or even 64-bit) DMA mask, in order for DMA allocations
+  * to succeed:
+  */
+ static const u64 dma_mask_orion =	DMA_BIT_MASK(32);
+-static const u64 dma_mask_ac5 =		DMA_BIT_MASK(34);
++static const u64 dma_mask_ac5 =		DMA_BIT_MASK(64);
+ 
+ /*
+  * Implement Orion USB controller specification guidelines
+-- 
+2.34.1
+

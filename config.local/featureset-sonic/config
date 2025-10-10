@@ -1,0 +1,19 @@
+CONFIG_LOG_BUF_SHIFT=20
+CONFIG_RTC_INTF_DEV_UIE_EMUL=y
+
+# Unset to enable UBIFS on flash
+CONFIG_MTD_SPI_NOR_USE_4K_SECTORS=n
+###-> mellanox_common-start
+###-> mellanox_common-end
+CONFIG_DRM=n
+CONFIG_VIDEO_DEV=n
+CONFIG_MEDIA_SUPPORT=n
+CONFIG_MEDIA_CONTROLLER=n
+CONFIG_DVB_CORE=n
+CONFIG_MEDIA_TUNER=n
+CONFIG_MEDIA_ATTACH=n
+
+# Disable module compression, since squashfs will do compression anyways
+CONFIG_MODULE_COMPRESS=n
+# Disable strict /dev/mem access checks to allow mmap on PCI resource file
+CONFIG_IO_STRICT_DEVMEM=n
