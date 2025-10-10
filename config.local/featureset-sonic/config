@@ -15,3 +15,5 @@ CONFIG_MEDIA_ATTACH=n
 
 # Disable module compression, since squashfs will do compression anyways
 CONFIG_MODULE_COMPRESS=n
+# Disable strict /dev/mem access checks to allow mmap on PCI resource file
+CONFIG_IO_STRICT_DEVMEM=n
