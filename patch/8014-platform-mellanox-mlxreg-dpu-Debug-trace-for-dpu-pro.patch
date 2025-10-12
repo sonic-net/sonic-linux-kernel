@@ -1,0 +1,32 @@
+From e7838edd2acc793f3b43ab04b3693a340273c330 Mon Sep 17 00:00:00 2001
+From: Ciju Rajan K <crajank@nvidia.com>
+Date: Fri, 19 Sep 2025 09:51:17 +0300
+Subject: platform: mellanox: mlxreg-dpu: Debug trace for dpu probing
+
+Signed-off-by: Ciju Rajan K <crajank@nvidia.com>
+---
+ drivers/platform/mellanox/mlxreg-dpu.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/platform/mellanox/mlxreg-dpu.c b/drivers/platform/mellanox/mlxreg-dpu.c
+index c79531481..1074c4853 100644
+--- a/drivers/platform/mellanox/mlxreg-dpu.c
++++ b/drivers/platform/mellanox/mlxreg-dpu.c
+@@ -537,9 +537,13 @@ static int mlxreg_dpu_probe(struct platform_device *pdev)
+ 	if (!data || !data->hpdev.brdinfo)
+ 		return -EINVAL;
+ 
++	dev_info(&pdev->dev, "Probing for adapter %d\n", data->hpdev.nr);
+ 	data->hpdev.adapter = i2c_get_adapter(data->hpdev.nr);
+-	if (!data->hpdev.adapter)
++	if (!data->hpdev.adapter) {
++		dev_info(&pdev->dev, "Will try a deferred probing for %d\n",
++			data->hpdev.nr);
+ 		return -EPROBE_DEFER;
++	}
+ 
+ 	mlxreg_dpu = devm_kzalloc(&pdev->dev, sizeof(*mlxreg_dpu), GFP_KERNEL);
+ 	if (!mlxreg_dpu)
+-- 
+2.47.2
+
