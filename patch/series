@@ -163,6 +163,8 @@ Support-for-fullcone-nat.patch
 8010-mlxsw-i2c-Downstream-Add-retry-mechanism-for-failed-.patch
 8011-mlxsw-minimal-Downstream-Disable-ethtool-interface.patch
 8012-hwmon-pmbus-Downstream-Workaround-for-psu-attributes.patch
+8013-hwmon-pmbus-mp2975-Clear-interrupts-at-probe.patch
+8014-platform-mellanox-mlxreg-dpu-Debug-trace-for-dpu-pro.patch
 ###-> mellanox_hw_mgmt-end
 
 # Cisco patches for 5.10 kernel
