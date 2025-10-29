@@ -1,0 +1,143 @@
+From 498de92a48a4aadc233cd560414f585601f54e52 Mon Sep 17 00:00:00 2001
+From: Yazen Ghannam <yazen.ghannam@amd.com>
+Date: Tue, 22 Apr 2025 18:48:30 -0500
+Subject: [PATCH 1/2] x86/CPU/AMD: Print the reason for the last reset
+
+[ Upstream commit ab8131028710d009ab93d6bffd2a2749ade909b0 ]
+
+The following register contains bits that indicate the cause for the
+previous reset.
+
+  PMx000000C0 (FCH::PM::S5_RESET_STATUS)
+
+This is useful for debug. The reasons for reset are broken into 6 high level
+categories. Decode it by category and print during boot.
+
+Specifics within a category are split off into debugging documentation.
+
+The register is accessed indirectly through a "PM" port in the FCH. Use
+MMIO access in order to avoid restrictions with legacy port access.
+
+Use a late_initcall() to ensure that MMIO has been set up before trying to
+access the register.
+
+This register was introduced with AMD Family 17h, so avoid access on older
+families. There is no CPUID feature bit for this register.
+
+  [ bp: Simplify the reason dumping loop.
+    - merge a fix to not access an array element after the last one:
+      https://lore.kernel.org/r/20250505133609.83933-1-superm1@kernel.org
+      Reported-by: James Dutton <james.dutton@gmail.com>
+      ]
+
+  [ mingo:
+    - Use consistent .rst formatting
+    - Fix 'Sleep' class field to 'ACPI-State'
+    - Standardize pin messages around the 'tripped' verbiage
+    - Remove reference to ring-buffer printing & simplify the wording
+    - Use curly braces for multi-line conditional statements ]
+
+Signed-off-by: Yazen Ghannam <yazen.ghannam@amd.com>
+Co-developed-by: Mario Limonciello <mario.limonciello@amd.com>
+Signed-off-by: Mario Limonciello <mario.limonciello@amd.com>
+Signed-off-by: Borislav Petkov (AMD) <bp@alien8.de>
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Signed-off-by: Borislav Petkov (AMD) <bp@alien8.de>
+Link: https://lore.kernel.org/20250422234830.2840784-6-superm1@kernel.org
+---
+ arch/x86/include/asm/amd/fch.h | 13 ++++++++
+ arch/x86/kernel/cpu/amd.c      | 54 ++++++++++++++++++++++++++++++++++
+ 2 files changed, 67 insertions(+)
+ create mode 100644 arch/x86/include/asm/amd/fch.h
+
+diff --git a/arch/x86/include/asm/amd/fch.h b/arch/x86/include/asm/amd/fch.h
+new file mode 100644
+index 000000000..2cf5153ed
+--- /dev/null
++++ b/arch/x86/include/asm/amd/fch.h
+@@ -0,0 +1,13 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef _ASM_X86_AMD_FCH_H_
++#define _ASM_X86_AMD_FCH_H_
++
++#define FCH_PM_BASE			0xFED80300
++
++/* Register offsets from PM base: */
++#define FCH_PM_DECODEEN			0x00
++#define FCH_PM_DECODEEN_SMBUS0SEL	GENMASK(20, 19)
++#define FCH_PM_SCRATCH			0x80
++#define FCH_PM_S5_RESET_STATUS		0xC0
++
++#endif /* _ASM_X86_AMD_FCH_H_ */
+diff --git a/arch/x86/kernel/cpu/amd.c b/arch/x86/kernel/cpu/amd.c
+index 37796a1d0..6a2177a22 100644
+--- a/arch/x86/kernel/cpu/amd.c
++++ b/arch/x86/kernel/cpu/amd.c
+@@ -9,6 +9,7 @@
+ #include <linux/sched/clock.h>
+ #include <linux/random.h>
+ #include <linux/topology.h>
++#include <asm/amd/fch.h>
+ #include <asm/processor.h>
+ #include <asm/apic.h>
+ #include <asm/cacheinfo.h>
+@@ -1310,3 +1311,56 @@ void noinstr amd_clear_divider(void)
+ 		     :: "a" (0), "d" (0), "r" (1));
+ }
+ EXPORT_SYMBOL_GPL(amd_clear_divider);
++
++static const char * const s5_reset_reason_txt[] = {
++	[0]  = "thermal pin BP_THERMTRIP_L was tripped",
++	[1]  = "power button was pressed for 4 seconds",
++	[2]  = "shutdown pin was tripped",
++	[4]  = "remote ASF power off command was received",
++	[9]  = "internal CPU thermal limit was tripped",
++	[16] = "system reset pin BP_SYS_RST_L was tripped",
++	[17] = "software issued PCI reset",
++	[18] = "software wrote 0x4 to reset control register 0xCF9",
++	[19] = "software wrote 0x6 to reset control register 0xCF9",
++	[20] = "software wrote 0xE to reset control register 0xCF9",
++	[21] = "ACPI power state transition occurred",
++	[22] = "keyboard reset pin KB_RST_L was tripped",
++	[23] = "internal CPU shutdown event occurred",
++	[24] = "system failed to boot before failed boot timer expired",
++	[25] = "hardware watchdog timer expired",
++	[26] = "remote ASF reset command was received",
++	[27] = "an uncorrected error caused a data fabric sync flood event",
++	[29] = "FCH and MP1 failed warm reset handshake",
++	[30] = "a parity error occurred",
++	[31] = "a software sync flood event occurred",
++};
++
++static __init int print_s5_reset_status_mmio(void)
++{
++	unsigned long value;
++	void __iomem *addr;
++	int i;
++
++	if (!cpu_feature_enabled(X86_FEATURE_ZEN))
++		return 0;
++
++	addr = ioremap(FCH_PM_BASE + FCH_PM_S5_RESET_STATUS, sizeof(value));
++	if (!addr)
++		return 0;
++
++	value = ioread32(addr);
++	iounmap(addr);
++
++	for (i = 0; i < ARRAY_SIZE(s5_reset_reason_txt); i++) {
++		if (!(value & BIT(i)))
++			continue;
++
++		if (s5_reset_reason_txt[i]) {
++			pr_info("x86/amd: Previous system reset reason [0x%08lx]: %s\n",
++				value, s5_reset_reason_txt[i]);
++		}
++	}
++
++	return 0;
++}
++late_initcall(print_s5_reset_status_mmio);
+-- 
+2.39.5
+
