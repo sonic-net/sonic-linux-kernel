@@ -8,7 +8,7 @@
 
 ARCH=amd64
 SECURE_UPGRADE_MODE="no_sign"
-SECURE_UPGRADE_SIGNING_CERT=
+SECURE_UPGRADE_KERNEL_CAFILE=
 if [ $# -ge 1 ]; then
     ARCH=$1
 fi
@@ -20,12 +20,12 @@ if [ $# -ge 3 ]; then
 fi
 
 #  Secure Boot support
-echo "Secure Boot params: SECURE_UPGRADE_MODE=${SECURE_UPGRADE_MODE}, SECURE_UPGRADE_SIGNING_CERT=${SECURE_UPGRADE_SIGNING_CERT}"
+echo "Secure Boot params: SECURE_UPGRADE_MODE=${SECURE_UPGRADE_MODE}, SECURE_UPGRADE_KERNEL_CAFILE=${SECURE_UPGRADE_KERNEL_CAFILE}"
 if [ ${SECURE_UPGRADE_MODE} == "dev" -o ${SECURE_UPGRADE_MODE} == "prod" ]; then
 	echo "Enable secure boot configs"
 
 	if [ ! -f "${SECURE_UPGRADE_SIGNING_CERT}" ]; then
-		echo "ERROR: SECURE_UPGRADE_SIGNING_CERT=${SECURE_UPGRADE_SIGNING_CERT} file does not exist"
+		echo "ERROR: SECURE_UPGRADE_KERNEL_CAFILE=${SECURE_UPGRADE_KERNEL_CAFILE} file does not exist"
 		exit 1
 	fi
 
@@ -34,7 +34,7 @@ if [ ${SECURE_UPGRADE_MODE} == "dev" -o ${SECURE_UPGRADE_MODE} == "prod" ]; then
 	fi
 
 	# save the new pub key in kernel
-	sed -i "s|^CONFIG_SYSTEM_TRUSTED_KEYS=.*|CONFIG_SYSTEM_TRUSTED_KEYS=\"$SECURE_UPGRADE_SIGNING_CERT\"|g" debian/config.local/${ARCH}/config.sonic
+	sed -i "s|^CONFIG_SYSTEM_TRUSTED_KEYS=.*|CONFIG_SYSTEM_TRUSTED_KEYS=\"$SECURE_UPGRADE_KERNEL_CAFILE\"|g" debian/config.local/${ARCH}/config.sonic
 
 	echo "Secure Boot kernel configuration done."
 else

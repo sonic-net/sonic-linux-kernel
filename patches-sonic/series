@@ -10,6 +10,7 @@ driver-arista-net-tg3-access-regs-indirectly.patch
 driver-arista-pci-reassign-pref-mem.patch
 driver-arista-mmcblk-not-working-on-AMD-platforms.patch
 driver-arista-restrict-eMMC-drive-to-50Mhz-from-userland.patch
+driver-arista-i2c-designware-shutdown.patch
 driver-support-sff-8436-eeprom.patch
 driver-support-sff-8436-eeprom-update.patch
 driver-sff-8436-use-nvmem-framework.patch
@@ -53,6 +54,8 @@ driver-net-tg3-change-dma-mask-for-57766.patch
 #
 
 0001-efi-memattr-Ignore-table-if-the-size-is-clearly-bogus.patch
+# Backport from v6.14 to v6.1.132 and v6.12.20
+0001-prevent-bridge-link-show-failure-for-non-eswitch-allowed-devices.patch
 
 # Mellanox patches for 5.10
 # TODO(trixie): update for current version
