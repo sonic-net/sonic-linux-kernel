@@ -22,8 +22,8 @@ diff --git a/drivers/i2c/busses/i2c-designware-platdrv.c b/drivers/i2c/busses/i2
 index 01234567..89abcdef 100644
 --- a/drivers/i2c/busses/i2c-designware-platdrv.c
 +++ b/drivers/i2c/busses/i2c-designware-platdrv.c
-@@ -350,6 +350,21 @@ static int dw_i2c_plat_remove(struct platform_device *pdev)
- 	return 0;
+@@ -333,6 +333,21 @@ static int dw_i2c_plat_remove(struct platform_device *pdev)
+ 	reset_control_assert(dev->rst);
  }
  
 +static void dw_i2c_plat_shutdown(struct platform_device *pdev)
@@ -32,7 +32,7 @@ index 01234567..89abcdef 100644
 +
 +	pm_runtime_get_sync(&pdev->dev);
 +
-+	dev->disable(dev);
++	i2c_dw_disable(dev);
 +
 +	pm_runtime_dont_use_autosuspend(&pdev->dev);
 +	pm_runtime_put_sync(&pdev->dev);
@@ -41,14 +41,14 @@ index 01234567..89abcdef 100644
 +	reset_control_assert(dev->rst);
 +}
 +
- #ifdef CONFIG_PM_SLEEP
- static int dw_i2c_plat_prepare(struct device *dev)
- {
-@@ -425,6 +440,7 @@ MODULE_ALIAS("platform:i2c_designware");
+ static const struct of_device_id dw_i2c_of_match[] = {
+ 	{ .compatible = "snps,designware-i2c", },
+ 	{ .compatible = "mscc,ocelot-i2c", .data = (void *)MODEL_MSCC_OCELOT },
+@@ -371,6 +386,7 @@ MODULE_ALIAS("platform:i2c_designware");
  static struct platform_driver dw_i2c_driver = {
  	.probe = dw_i2c_plat_probe,
- 	.remove = dw_i2c_plat_remove,
+ 	.remove_new = dw_i2c_plat_remove,
 +	.shutdown = dw_i2c_plat_shutdown,
  	.driver		= {
  		.name	= "i2c_designware",
- 		.of_match_table = of_match_ptr(dw_i2c_of_match),
+ 		.of_match_table = dw_i2c_of_match,
