@@ -16,7 +16,7 @@ if [ $# -ge 2 ]; then
     SECURE_UPGRADE_MODE=$2
 fi
 if [ $# -ge 3 ]; then
-    SECURE_UPGRADE_SIGNING_CERT=$3
+    SECURE_UPGRADE_KERNEL_CAFILE=$3
 fi
 
 #  Secure Boot support
@@ -24,7 +24,7 @@ echo "Secure Boot params: SECURE_UPGRADE_MODE=${SECURE_UPGRADE_MODE}, SECURE_UPG
 if [ ${SECURE_UPGRADE_MODE} == "dev" -o ${SECURE_UPGRADE_MODE} == "prod" ]; then
 	echo "Enable secure boot configs"
 
-	if [ ! -f "${SECURE_UPGRADE_SIGNING_CERT}" ]; then
+	if [ ! -f "${SECURE_UPGRADE_KERNEL_CAFILE}" ]; then
 		echo "ERROR: SECURE_UPGRADE_KERNEL_CAFILE=${SECURE_UPGRADE_KERNEL_CAFILE} file does not exist"
 		exit 1
 	fi

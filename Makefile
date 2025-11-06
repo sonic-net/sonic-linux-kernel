@@ -91,7 +91,6 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	patch -p1 -i ../patches-debian/disable-secureboot-config-checks.patch
 
 	# Enable secure boot configs if needed
-	../manage-config $(CONFIGURED_ARCH) $(SECURE_UPGRADE_MODE) $(SECURE_UPGRADE_SIGNING_CERT)
 	../manage-config $(CONFIGURED_ARCH) $(SECURE_UPGRADE_MODE) $(SECURE_UPGRADE_KERNEL_CAFILE)
 
 	# re-generate debian packages and rules with SONiC customizations
