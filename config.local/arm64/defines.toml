@@ -1,0 +1,6 @@
+[[featureset]]
+name = 'sonic'
+[[featureset.flavour]]
+name = 'arm64'
+[featureset.flavour.build]
+config = ['arm64/config.sonic', 'arm64/config.sonic-platform-specific']

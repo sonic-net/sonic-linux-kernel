@@ -1,0 +1,22 @@
+[packages]
+docs = false
+source = false
+tools_unversioned = false
+
+[[featureset]]
+name = 'none'
+enable = false
+
+[[featureset]]
+name = 'rt'
+enable = false
+
+[[featureset]]
+name = 'sonic'
+enable = true
+  [featureset.description]
+  parts = ['sonic']
+  [featureset.description.long]
+  sonic = 'This kernel includes patches that support SONiC.'
+  [featureset.description.short]
+  sonic = 'SONiC Kernel'
