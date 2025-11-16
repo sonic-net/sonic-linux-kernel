@@ -1,6 +1,6 @@
 From d0144bfbcbf78c7577f5e1330aba16f1e5bb4ebe Mon Sep 17 00:00:00 2001
 From: Natarajan Subbiramani <natarajan.subbiramani.ext@nokia.com>
-Date: Mon, 4 Mar 2024 14:22:19 -0500
+Date: Sun, 16 Nov 2025 12:55:20 +0200
 Subject: [PATCH] arm64: dts: marvell: Add DTS for 7215-IXS-A1 board
 
 7215-IXS-A1 is an aggregation switch based on Marvell AlleyCat5X.
@@ -8,10 +8,11 @@ This dts is extracted from Marvell cn9130-crb and removed unused
 nodes along with platform specific changes.
 
 Signed-off-by: Natarajan Subbiramani <natarajan.subbiramani.ext@nokia.com>
+Signed-off-by: Yan Markman <ymarkman@marvell.com>
 Tested-by:  Natarajan Subbiramani <natarajan.subbiramani.ext@nokia.com>
 Reviewed-by: Jon Goldberg <jon.goldberg@nokia.com>
 ---
- arch/arm64/boot/dts/marvell/7215-ixs-a1.dts | 225 ++++++++++++++++++++
+ arch/arm64/boot/dts/marvell/7215-ixs-a1.dts | 221 ++++++++++++++++++++
  arch/arm64/boot/dts/marvell/Makefile        |   1 +
  2 files changed, 226 insertions(+)
  create mode 100644 arch/arm64/boot/dts/marvell/7215-ixs-a1.dts
@@ -21,7 +22,7 @@ new file mode 100644
 index 000000000..fd0e6b395
 --- /dev/null
 +++ b/arch/arm64/boot/dts/marvell/7215-ixs-a1.dts
-@@ -0,0 +1,225 @@
+@@ -0,0 +1,221 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright (C) 2024 Nokia
@@ -57,15 +58,11 @@ index 000000000..fd0e6b395
 +		#size-cells = <0x02>;
 +		ranges;
 +
-+		/delete-node/ psci-area@4000000;
-+
-+		buf1: buffer@4000000 {
++		/* keep psci-area: 04000000 size 0x00200000 */
++		/* keep       tee: 04400000 size 0x01000000 */
++		buf1: buffer@6000000 {
 +			compatible = "shared-dma-pool";
-+			reg = <0x0 0x04000000 0x0 0x02000000>;
-+			no-map;
-+		};
-+		psci-area@6000000 {
-+			reg = <0x0 0x06000000 0x0 0x00200000>;
++			reg = <0x0 0x06000000 0x0 0x02000000>;
 +			no-map;
 +		};
 +	};
