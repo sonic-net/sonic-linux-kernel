@@ -16,11 +16,11 @@ parameters:
 - name: pool
   type: string
   values:
-  - sonicbld-1es
+  - sonicso1ES-amd64
   - sonicbld_8c
-  - sonicbld-arm64
-  - sonicbld-armhf
-  default: sonicbld-1es
+  - sonicso1ES-arm64
+  - sonicso1ES-armhf
+  default: sonicso1ES-amd64
 
 - name: timeout
   type: number
@@ -42,7 +42,7 @@ jobs:
   timeoutInMinutes: ${{ parameters.timeout }}
 
   container:
-    image: sonicdev-microsoft.azurecr.io:443/${{ parameters.sonic_slave }}:bookworm
+    image: sonicdev-microsoft.azurecr.io:443/${{ parameters.sonic_slave }}:202405
 
   steps:
   - checkout: self
