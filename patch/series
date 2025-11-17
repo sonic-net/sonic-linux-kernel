@@ -235,6 +235,10 @@ cisco-npu-disable-other-bars.patch
 0001-fix-os-crash-caused-by-optoe-when-class-switch.patch
 0001-tty-8250-HSUART-DMA-be-deactivated-for-DNV-CPU.patch
 
+# Nexthop patches
+0001-x86-CPU-AMD-Print-the-reason-for-the-last-reset.patch
+0002-x86-CPU-AMD-Ignore-invalid-reset-reason-value.patch
+
 # Fix to avoid kernel panic on Kernel 6.1.94
 # https://github.com/sonic-net/sonic-buildimage/issues/20901
 PCI-ASPM-Fix-link-state-exit-during-switch-upstream.patch
