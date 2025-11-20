@@ -71,7 +71,7 @@ index 000000000..d738a214d
 +		 *  gpios = <&expander0 8 GPIO_ACTIVE_HIGH>;
 +		 *  expander0: pca9555@21 { compatible = "nxp,pca9555";
 +		 */
-+		compatible = "regulator-gpio";
++		compatible = "regulator-fixed"; /* regulator-gpio not on board */
 +		regulator-name = "ap0_sd_vccq";
 +		regulator-min-microvolt = <1800000>;
 +		regulator-max-microvolt = <1800000>;
