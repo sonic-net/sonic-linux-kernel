@@ -14,13 +14,13 @@ SDK WJH-Libs is using following information for shared buffer drops:
 The above metadata is missing when using linux channel (drop monitor).
 This patch is to add the extended information also for linux channel.
 ---
- include/net/devlink.h            |  18 +++++
- include/uapi/linux/net_dropmon.h |   5 ++
- net/core/drop_monitor.c          | 111 +++++++++++++++++++++++++++++++
- 3 files changed, 134 insertions(+)
+ include/net/devlink.h            | 18 ++++++++++++++++++
+ include/uapi/linux/net_dropmon.h | 5 +++++
+ net/core/drop_monitor.c          | 112 +++++++++++++++++++++++++++
+ 3 files changed, 135 insertions(+)
 
 diff --git a/include/net/devlink.h b/include/net/devlink.h
-index ba6b8b0..214edcc 100644
+index db5eff6..6024ce6 100644
 --- a/include/net/devlink.h
 +++ b/include/net/devlink.h
 @@ -21,6 +21,10 @@
@@ -34,7 +34,7 @@ index ba6b8b0..214edcc 100644
  struct devlink;
  struct devlink_linecard;
  
-@@ -711,6 +715,11 @@ struct devlink_health_reporter_ops {
+@@ -753,6 +757,11 @@ struct devlink_health_reporter_ops {
   * @dev_tracker: refcount tracker for @input_dev.
   * @fa_cookie: Flow action user cookie.
   * @trap_type: Trap type.
@@ -46,7 +46,7 @@ index ba6b8b0..214edcc 100644
   */
  struct devlink_trap_metadata {
  	const char *trap_name;
-@@ -721,6 +730,15 @@ struct devlink_trap_metadata {
+@@ -763,6 +772,15 @@ struct devlink_trap_metadata {
  
  	const struct flow_action_cookie *fa_cookie;
  	enum devlink_trap_type trap_type;
@@ -79,10 +79,10 @@ index 84f622a..d6f6399 100644
  	__NET_DM_ATTR_MAX,
  	NET_DM_ATTR_MAX = __NET_DM_ATTR_MAX - 1
 diff --git a/net/core/drop_monitor.c b/net/core/drop_monitor.c
-index f084a4a..0405e10 100644
+index 2e0ae33..b5d8ea3 100644
 --- a/net/core/drop_monitor.c
 +++ b/net/core/drop_monitor.c
-@@ -606,6 +606,36 @@ nla_put_failure:
+@@ -609,6 +609,36 @@ nla_put_failure:
  	return -EMSGSIZE;
  }
  
@@ -119,7 +119,7 @@ index f084a4a..0405e10 100644
  static int net_dm_packet_report_fill(struct sk_buff *msg, struct sk_buff *skb,
  				     size_t payload_len)
  {
-@@ -731,6 +761,16 @@ net_dm_flow_action_cookie_size(const struct devlink_trap_metadata *hw_metadata)
+@@ -749,6 +779,16 @@ net_dm_flow_action_cookie_size(const struct devlink_trap_metadata *hw_metadata)
  	       nla_total_size(hw_metadata->fa_cookie->cookie_len) : 0;
  }
  
@@ -136,7 +136,7 @@ index f084a4a..0405e10 100644
  static size_t
  net_dm_hw_packet_report_size(size_t payload_len,
  			     const struct devlink_trap_metadata *hw_metadata)
-@@ -756,6 +796,16 @@ net_dm_hw_packet_report_size(size_t payload_len,
+@@ -774,6 +814,16 @@ net_dm_hw_packet_report_size(size_t payload_len,
  	       nla_total_size(sizeof(u32)) +
  	       /* NET_DM_ATTR_PROTO */
  	       nla_total_size(sizeof(u16)) +
@@ -153,7 +153,7 @@ index f084a4a..0405e10 100644
  	       /* NET_DM_ATTR_PAYLOAD */
  	       nla_total_size(payload_len);
  }
-@@ -801,6 +851,43 @@ static int net_dm_hw_packet_report_fill(struct sk_buff *msg,
+@@ -819,6 +869,43 @@ static int net_dm_hw_packet_report_fill(struct sk_buff *msg,
  		    hw_metadata->fa_cookie->cookie))
  		goto nla_put_failure;
  
@@ -197,7 +197,7 @@ index f084a4a..0405e10 100644
  	if (nla_put_u64_64bit(msg, NET_DM_ATTR_TIMESTAMP,
  			      ktime_to_ns(skb->tstamp), NET_DM_ATTR_PAD))
  		goto nla_put_failure;
-@@ -867,6 +954,27 @@ net_dm_hw_metadata_copy(const struct devlink_trap_metadata *metadata)
+@@ -885,6 +972,27 @@ net_dm_hw_metadata_copy(const struct devlink_trap_metadata *metadata)
  	netdev_hold(hw_metadata->input_dev, &hw_metadata->dev_tracker,
  		    GFP_ATOMIC);
  
@@ -225,7 +225,7 @@ index f084a4a..0405e10 100644
  	return hw_metadata;
  
  free_trap_name:
-@@ -882,6 +990,10 @@ static void
+@@ -900,6 +1008,10 @@ static void
  net_dm_hw_metadata_free(struct devlink_trap_metadata *hw_metadata)
  {
  	netdev_put(hw_metadata->input_dev, &hw_metadata->dev_tracker);

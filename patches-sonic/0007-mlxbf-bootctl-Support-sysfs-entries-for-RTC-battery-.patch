@@ -1,0 +1,115 @@
+From 224f54a149e3fb3ef5125823ee6847750e05c4b9 Mon Sep 17 00:00:00 2001
+From: Xiangrong Li <xiangrongl@nvidia.com>
+Date: Fri, 24 Jan 2025 14:46:55 +0000
+Subject: [PATCH 07/78] mlxbf-bootctl: Support sysfs entries for RTC battery
+ status
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This patch extends the mlxbf-bootctl driver's sysfs entries
+to support read access for the board's RTC battery status.
+A successful read from this attribute returns the status of
+the board's RTC battery. The RTC battery status register is
+also cleared upon successful read operation.
+
+Signed-off-by: Xiangrong Li <xiangrongl@nvidia.com>
+Reviewed-by: David Thompson <davthompson@nvidia.com>
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Link: https://lore.kernel.org/r/20250124144655.48564-1-xiangrongl@nvidia.com
+Signed-off-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+---
+ .../ABI/testing/sysfs-platform-mellanox-bootctl      | 10 ++++++++++
+ drivers/platform/mellanox/mlxbf-bootctl.c            | 20 ++++++++++++++++++++
+ drivers/platform/mellanox/mlxbf-bootctl.h            |  5 +++++
+ 3 files changed, 35 insertions(+)
+
+diff --git a/Documentation/ABI/testing/sysfs-platform-mellanox-bootctl b/Documentation/ABI/testing/sysfs-platform-mellanox-bootctl
+index 65ed386..09f783f 100644
+--- a/Documentation/ABI/testing/sysfs-platform-mellanox-bootctl
++++ b/Documentation/ABI/testing/sysfs-platform-mellanox-bootctl
+@@ -150,3 +150,13 @@ Description:
+ 		The "mfg_lock" sysfs attribute is write-only.
+                 A successful write to this attribute will latch the
+                 board-level attributes into EEPROM, making them read-only.
++
++What:		/sys/bus/platform/devices/MLNXBF04:00/rtc_battery
++Date:		June 2025
++KernelVersion:	6.15
++Contact:	"Xiangrong Li <xiangrongl@nvidia.com>"
++Description:
++		The "rtc_battery" sysfs attribute is read-only.
++		A successful read from this attribute returns the status of
++		the board's RTC battery. The RTC battery status register is
++		also cleared upon successful read operation.
+diff --git a/drivers/platform/mellanox/mlxbf-bootctl.c b/drivers/platform/mellanox/mlxbf-bootctl.c
+index e8530ef..25ffae1 100644
+--- a/drivers/platform/mellanox/mlxbf-bootctl.c
++++ b/drivers/platform/mellanox/mlxbf-bootctl.c
+@@ -91,6 +91,7 @@ static const char * const mlxbf_rsh_log_level[] = {
+ static DEFINE_MUTEX(icm_ops_lock);
+ static DEFINE_MUTEX(os_up_lock);
+ static DEFINE_MUTEX(mfg_ops_lock);
++static DEFINE_MUTEX(rtc_ops_lock);
+ 
+ /*
+  * Objects are stored within the MFG partition per type.
+@@ -489,6 +490,23 @@ static ssize_t large_icm_store(struct device *dev,
+ 	return res.a0 ? -EPERM : count;
+ }
+ 
++static ssize_t rtc_battery_show(struct device *dev,
++				struct device_attribute *attr,
++				char *buf)
++{
++	struct arm_smccc_res res;
++
++	mutex_lock(&rtc_ops_lock);
++	arm_smccc_smc(MLNX_HANDLE_GET_RTC_LOW_BATT, 0, 0, 0, 0,
++		      0, 0, 0, &res);
++	mutex_unlock(&rtc_ops_lock);
++
++	if (res.a0)
++		return -EPERM;
++
++	return sysfs_emit(buf, "0x%lx\n", res.a1);
++}
++
+ static ssize_t os_up_store(struct device *dev,
+ 			   struct device_attribute *attr,
+ 			   const char *buf, size_t count)
+@@ -906,6 +924,7 @@ static DEVICE_ATTR_RW(sn);
+ static DEVICE_ATTR_RW(uuid);
+ static DEVICE_ATTR_RW(rev);
+ static DEVICE_ATTR_WO(mfg_lock);
++static DEVICE_ATTR_RO(rtc_battery);
+ 
+ static struct attribute *mlxbf_bootctl_attrs[] = {
+ 	&dev_attr_post_reset_wdog.attr,
+@@ -925,6 +944,7 @@ static struct attribute *mlxbf_bootctl_attrs[] = {
+ 	&dev_attr_uuid.attr,
+ 	&dev_attr_rev.attr,
+ 	&dev_attr_mfg_lock.attr,
++	&dev_attr_rtc_battery.attr,
+ 	NULL
+ };
+ 
+diff --git a/drivers/platform/mellanox/mlxbf-bootctl.h b/drivers/platform/mellanox/mlxbf-bootctl.h
+index 1299750..90bbbdc 100644
+--- a/drivers/platform/mellanox/mlxbf-bootctl.h
++++ b/drivers/platform/mellanox/mlxbf-bootctl.h
+@@ -103,6 +103,11 @@
+  */
+ #define MLNX_HANDLE_OS_UP    0x82000014
+ 
++/*
++ * SMC function ID to get and clear the RTC low voltage bit
++ */
++#define MLNX_HANDLE_GET_RTC_LOW_BATT   0x82000023
++
+ /* SMC function IDs for SiP Service queries */
+ #define MLXBF_BOOTCTL_SIP_SVC_CALL_COUNT	0x8200ff00
+ #define MLXBF_BOOTCTL_SIP_SVC_UID		0x8200ff01
+-- 
+2.8.4
+

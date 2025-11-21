@@ -1,0 +1,71 @@
+From 21cb84ee58d84c50143bb6abcf8648777f6134c7 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Fri, 24 Jan 2025 19:26:20 +0200
+Subject: [PATCH 25/78] platform: mellanox: mlx-platform: Cosmetic changes
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Remove redundant spaces.
+
+Reviewed-by: Felix Radensky <fradensky@nvidia.com>
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+Link: https://lore.kernel.org/r/20250124172632.22437-3-vadimp@nvidia.com
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Signed-off-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+---
+ drivers/platform/mellanox/mlx-platform.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/platform/mellanox/mlx-platform.c b/drivers/platform/mellanox/mlx-platform.c
+index cbd5634..cc61f8e 100644
+--- a/drivers/platform/mellanox/mlx-platform.c
++++ b/drivers/platform/mellanox/mlx-platform.c
+@@ -2252,7 +2252,7 @@ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_modular_data = {
+ 	.mask_low = MLXPLAT_CPLD_LOW_AGGR_MASK_LOW,
+ };
+ 
+-/* Platform hotplug for NVLink blade systems family data  */
++/* Platform hotplug for NVLink blade systems family data */
+ static struct mlxreg_core_data mlxplat_mlxcpld_global_wp_items_data[] = {
+ 	{
+ 		.label = "global_wp_grant",
+@@ -2284,7 +2284,7 @@ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_chassis_blade_data = {
+ 	.mask_low = MLXPLAT_CPLD_LOW_AGGR_MASK_LOW,
+ };
+ 
+-/* Platform hotplug for  switch systems family data */
++/* Platform hotplug for switch systems family data */
+ static struct mlxreg_core_data mlxplat_mlxcpld_erot_ap_items_data[] = {
+ 	{
+ 		.label = "erot1_ap",
+@@ -2392,7 +2392,7 @@ static struct mlxreg_core_hotplug_notifier mlxplat_mlxcpld_l1_switch_pwr_events_
+ 	.user_handler = mlxplat_mlxcpld_l1_switch_pwr_events_handler,
+ };
+ 
+-/* Platform hotplug for l1 switch systems family data  */
++/* Platform hotplug for l1 switch systems family data */
+ static struct mlxreg_core_data mlxplat_mlxcpld_l1_switch_pwr_events_items_data[] = {
+ 	{
+ 		.label = "power_button",
+@@ -4406,7 +4406,7 @@ static struct mlxreg_core_platform_data mlxplat_modular_regs_io_data = {
+ 		.counter = ARRAY_SIZE(mlxplat_mlxcpld_modular_regs_io_data),
+ };
+ 
+-/* Platform register access for chassis blade systems family data  */
++/* Platform register access for chassis blade systems family data */
+ static struct mlxreg_core_data mlxplat_mlxcpld_chassis_blade_regs_io_data[] = {
+ 	{
+ 		.label = "cpld1_version",
+@@ -6623,7 +6623,7 @@ static int mlxplat_probe(struct platform_device *pdev)
+ 	}
+ 
+ 	/* Set default registers. */
+-	for (i = 0; i <  mlxplat_regmap_config->num_reg_defaults; i++) {
++	for (i = 0; i < mlxplat_regmap_config->num_reg_defaults; i++) {
+ 		err = regmap_write(priv->regmap,
+ 				   mlxplat_regmap_config->reg_defaults[i].reg,
+ 				   mlxplat_regmap_config->reg_defaults[i].def);
+-- 
+2.8.4
+

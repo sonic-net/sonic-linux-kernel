@@ -1,8 +1,8 @@
-From 646a7ca330eddb18e915380c9e8296a8cbce3c81 Mon Sep 17 00:00:00 2001
+From 807fd2d518ea43c623268edecdc0b58361188af8 Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Wed, 20 Oct 2021 09:49:28 +0000
-Subject: [PATCH backport 6.1.42 40/85] mlxsw: Use weak reverse dependencies
- for firmware flashing selection
+Subject: [PATCH 56/78] mlxsw: Use weak reverse dependencies for firmware
+ flashing selection
 
 Replace configuration options "select" by "imply". It allows to set
 'MLXFW' symbol to 'n' from a direct dependency or with a visible
@@ -17,7 +17,7 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/net/ethernet/mellanox/mlxsw/Kconfig b/drivers/net/ethernet/mellanox/mlxsw/Kconfig
-index a510bf2cff2f..efc7ec8fa33c 100644
+index 74f7e27..ae11732 100644
 --- a/drivers/net/ethernet/mellanox/mlxsw/Kconfig
 +++ b/drivers/net/ethernet/mellanox/mlxsw/Kconfig
 @@ -6,7 +6,7 @@
@@ -30,5 +30,5 @@ index a510bf2cff2f..efc7ec8fa33c 100644
  	help
  	  This driver supports Mellanox Technologies Switch ASICs family.
 -- 
-2.20.1
+2.8.4
 
