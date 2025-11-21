@@ -1,28 +1,39 @@
 .ONESHELL:
 SHELL = /bin/bash
-.SHELLFLAGS += -e
+.SHELLFLAGS += -ex
 
-KERNEL_ABI_MINOR_VERSION = 2
-KVERSION_SHORT ?= 6.1.0-29-$(KERNEL_ABI_MINOR_VERSION)
-KVERSION ?= $(KVERSION_SHORT)-amd64
-KERNEL_VERSION ?= 6.1.123
+KERNEL_VERSION ?= 6.12.41
+KERNEL_ABISUFFIX ?= +deb13
 KERNEL_SUBVERSION ?= 1
+KERNEL_FEATURESET ?= sonic
 CONFIGURED_ARCH ?= amd64
 CONFIGURED_PLATFORM ?= vs
+CROSS_BUILD_ENVIRON ?= n
+SONIC_CONFIG_MAKE_JOBS ?= $(shell nproc)
+KVERSION_SHORT := $(KERNEL_VERSION)$(KERNEL_ABISUFFIX)-$(KERNEL_FEATURESET)
+ifeq ($(CONFIGURED_ARCH), armhf)
+# Override kernel version for ARMHF as it uses arm MP (multi-platform) for short version
+KVERSION ?= $(KVERSION_SHORT)-armmp
+else
+KVERSION ?= $(KVERSION_SHORT)-$(CONFIGURED_ARCH)
+endif
 SECURE_UPGRADE_MODE ?=
 SECURE_UPGRADE_SIGNING_CERT ?=
 SECURE_UPGRADE_KERNEL_CAFILE ?= $(SECURE_UPGRADE_SIGNING_CERT)
 
-LINUX_HEADER_COMMON = linux-headers-$(KVERSION_SHORT)-common_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_all.deb
-LINUX_HEADER_AMD64 = linux-headers-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_$(CONFIGURED_ARCH).deb
+LINUX_HEADER_COMMON = linux-headers-$(KERNEL_VERSION)$(KERNEL_ABISUFFIX)-common-$(KERNEL_FEATURESET)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_all.deb
+LINUX_HEADER_ARCH = linux-headers-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_$(CONFIGURED_ARCH).deb
+LINUX_KBUILD = linux-kbuild-$(KERNEL_VERSION)$(KERNEL_ABISUFFIX)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_$(CONFIGURED_ARCH).deb
 ifeq ($(CONFIGURED_ARCH), armhf)
 	LINUX_IMAGE = linux-image-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_$(CONFIGURED_ARCH).deb
+	KERNEL_FLAVOR_ARCH=armmp
 else
 	LINUX_IMAGE = linux-image-$(KVERSION)-unsigned_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_$(CONFIGURED_ARCH).deb
+	KERNEL_FLAVOR_ARCH=$(CONFIGURED_ARCH)
 endif
 
 MAIN_TARGET = $(LINUX_HEADER_COMMON)
-DERIVED_TARGETS = $(LINUX_HEADER_AMD64) $(LINUX_IMAGE)
+DERIVED_TARGETS = $(LINUX_HEADER_ARCH) $(LINUX_IMAGE) $(LINUX_KBUILD)
 
 DSC_FILE = linux_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION).dsc
 DEBIAN_FILE = linux_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION).debian.tar.xz
@@ -71,49 +82,26 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	dpkg-source -x $(DSC_FILE)
 
 	pushd $(BUILD_DIR)
-	git init
-	git add -f *
-	git commit -qm "check in all loose files and diffs"
 
-	# patching anything that could affect following configuration generation.
-	stg init
-	stg import -s ../patch/preconfig/series
-
-	# re-generate debian/rules.gen, requires kernel-wedge
-	debian/bin/gencontrol.py
-
-	# generate linux build file for amd64_none_amd64
-	DEB_HOST_ARCH=armhf fakeroot make -f debian/rules.gen setup_armhf_none_armmp
-	DEB_HOST_ARCH=arm64 fakeroot make -f debian/rules.gen setup_arm64_none_arm64
-	DEB_HOST_ARCH=amd64 fakeroot make -f debian/rules.gen setup_amd64_none_amd64
-
-	# Applying patches and configuration changes
-	git add debian/build/build_armhf_none_armmp/.config -f
-	git add debian/build/build_arm64_none_arm64/.config -f
-	git add debian/build/build_amd64_none_amd64/.config -f
-	git add debian/config.defines.dump -f
-	git add debian/control -f
-	git add debian/rules.gen -f
-	git add debian/tests/control -f
-	git add debian/*.maintscript -f
-	git add debian/*.bug-presubj -f
-	git commit -m "unmodified debian source"
-
-	# Learning new git repo head (above commit) by calling stg repair.
-	stg repair
-	stg import -s ../patch/series
-
-	# Optionally add/remove kernel options
-	if [ -f ../manage-config ]; then
-		../manage-config $(CONFIGURED_ARCH) $(CONFIGURED_PLATFORM) $(SECURE_UPGRADE_MODE) $(SECURE_UPGRADE_KERNEL_CAFILE)
+	cp -vr ../config.local ../patches-sonic debian/
+	if [[ -f debian/config.local/$(CONFIGURED_ARCH)/config.sonic-$(CONFIGURED_PLATFORM) ]]; then
+		cp debian/config.local/$(CONFIGURED_ARCH)/config.sonic-$(CONFIGURED_PLATFORM) debian/config.local/$(CONFIGURED_ARCH)/config.sonic-platform-specific
 	fi
 
-	# Building a custom kernel from Debian kernel source
-	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) DEB_BUILD_PROFILES=nodoc fakeroot make -f debian/rules -j $(shell nproc) binary-indep
-ifeq ($(CONFIGURED_ARCH), armhf)
-	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none_armmp
+	patch -p1 -i ../patches-debian/disable-secureboot-config-checks.patch
+
+	# Enable secure boot configs if needed
+	../manage-config $(CONFIGURED_ARCH) $(SECURE_UPGRADE_MODE) $(SECURE_UPGRADE_KERNEL_CAFILE)
+
+	# re-generate debian packages and rules with SONiC customizations
+	debian/bin/gencontrol.py
+
+	# TODO(trixie): Make a way to verify that our configs are being set
+
+ifeq ($(CROSS_BUILD_ENVIRON), y)
+	dpkg-buildpackage -b -us -uc -a$(CONFIGURED_ARCH) -Pcross,nocheck,nodoc -j$(SONIC_CONFIG_MAKE_JOBS)
 else
-	ARCH=$(CONFIGURED_ARCH) DEB_HOST_ARCH=$(CONFIGURED_ARCH) fakeroot make -f debian/rules.gen -j $(shell nproc) binary-arch_$(CONFIGURED_ARCH)_none_$(CONFIGURED_ARCH)
+	dpkg-buildpackage -b -us -uc -Pnodoc -j$(SONIC_CONFIG_MAKE_JOBS)
 endif
 	popd
 

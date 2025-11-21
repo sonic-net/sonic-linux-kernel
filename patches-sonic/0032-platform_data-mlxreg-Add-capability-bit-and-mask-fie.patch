@@ -1,0 +1,60 @@
+From aa424ad19acfa09047c184ae619963d51e027a82 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Thu, 24 Aug 2023 13:20:54 +0000
+Subject: [PATCH 32/78] platform_data/mlxreg: Add capability bit and mask
+ fields
+
+Some 'capability' registers can be shared between different resources.
+Add new fields 'capability_bit' and 'capability_mask' to structs
+'mlxreg_core_data' and and 'mlxreg_core_item' for getting only relevant
+capability bits.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+Reviewed-by: Felix Radensky <fradensky@nvidia.com>
+---
+ include/linux/platform_data/mlxreg.h | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/include/linux/platform_data/mlxreg.h b/include/linux/platform_data/mlxreg.h
+index f6cca7a..20f84cf 100644
+--- a/include/linux/platform_data/mlxreg.h
++++ b/include/linux/platform_data/mlxreg.h
+@@ -118,6 +118,8 @@ struct mlxreg_hotplug_device {
+  * @mask: attribute access mask;
+  * @bit: attribute effective bit;
+  * @capability: attribute capability register;
++ * @capability_bit: started bit in attribute capability register;
++ * @capability_mask: mask in attribute capability register;
+  * @reg_prsnt: attribute presence register;
+  * @reg_sync: attribute synch register;
+  * @reg_pwr: attribute power register;
+@@ -138,6 +140,8 @@ struct mlxreg_core_data {
+ 	u32 mask;
+ 	u32 bit;
+ 	u32 capability;
++	u32 capability_bit;
++	u32 capability_mask;
+ 	u32 reg_prsnt;
+ 	u32 reg_sync;
+ 	u32 reg_pwr;
+@@ -162,6 +166,8 @@ struct mlxreg_core_data {
+  * @reg: group interrupt status register;
+  * @mask: group interrupt mask;
+  * @capability: group capability register;
++ * @capability_bit: started bit in attribute capability register;
++ * @capability_mask: mask in attribute capability register;
+  * @cache: last status value for elements fro the same group;
+  * @count: number of available elements in the group;
+  * @ind: element's index inside the group;
+@@ -175,6 +181,8 @@ struct mlxreg_core_item {
+ 	u32 reg;
+ 	u32 mask;
+ 	u32 capability;
++	u32 capability_bit;
++	u32 capability_mask;
+ 	u32 cache;
+ 	u8 count;
+ 	u8 ind;
+-- 
+2.8.4
+

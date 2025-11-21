@@ -1,0 +1,62 @@
+From f6d1e88b0f6809f755fae05b74bafb187db36f64 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Fri, 24 Jan 2025 19:26:21 +0200
+Subject: [PATCH 27/78] platform: mellanox: mlx-platform: Change register name
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Register 0xd9 was repurposed on new systems. Change its name
+to correctly reflect the new functionality.
+
+Reviewed-by: Felix Radensky <fradensky@nvidia.com>
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+Link: https://lore.kernel.org/r/20250124172632.22437-4-vadimp@nvidia.com
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Signed-off-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+---
+ drivers/platform/mellanox/mlx-platform.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/platform/mellanox/mlx-platform.c b/drivers/platform/mellanox/mlx-platform.c
+index a7a4c7f..6f24de1 100644
+--- a/drivers/platform/mellanox/mlx-platform.c
++++ b/drivers/platform/mellanox/mlx-platform.c
+@@ -146,7 +146,7 @@
+ #define MLXPLAT_CPLD_LPC_REG_WD3_TMR_OFFSET	0xd1
+ #define MLXPLAT_CPLD_LPC_REG_WD3_TLEFT_OFFSET	0xd2
+ #define MLXPLAT_CPLD_LPC_REG_WD3_ACT_OFFSET	0xd3
+-#define MLXPLAT_CPLD_LPC_REG_DBG_CTRL_OFFSET	0xd9
++#define MLXPLAT_CPLD_LPC_REG_CPLD6_MVER_OFFSET	0xd9
+ #define MLXPLAT_CPLD_LPC_REG_I2C_CH1_OFFSET	0xdb
+ #define MLXPLAT_CPLD_LPC_REG_I2C_CH2_OFFSET	0xda
+ #define MLXPLAT_CPLD_LPC_REG_I2C_CH3_OFFSET	0xdc
+@@ -5055,7 +5055,6 @@ static bool mlxplat_mlxcpld_writeable_reg(struct device *dev, unsigned int reg)
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_TMR_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_TLEFT_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_ACT_OFFSET:
+-	case MLXPLAT_CPLD_LPC_REG_DBG_CTRL_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_I2C_CH1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_I2C_CH2_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_I2C_CH3_OFFSET:
+@@ -5191,7 +5190,7 @@ static bool mlxplat_mlxcpld_readable_reg(struct device *dev, unsigned int reg)
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_TMR_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_TLEFT_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_ACT_OFFSET:
+-	case MLXPLAT_CPLD_LPC_REG_DBG_CTRL_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD6_MVER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_I2C_CH1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_I2C_CH2_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_I2C_CH3_OFFSET:
+@@ -5348,7 +5347,7 @@ static bool mlxplat_mlxcpld_volatile_reg(struct device *dev, unsigned int reg)
+ 	case MLXPLAT_CPLD_LPC_REG_WD2_TLEFT_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_TMR_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_TLEFT_OFFSET:
+-	case MLXPLAT_CPLD_LPC_REG_DBG_CTRL_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD6_MVER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_I2C_CH1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_I2C_CH2_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_I2C_CH3_OFFSET:
+-- 
+2.8.4
+

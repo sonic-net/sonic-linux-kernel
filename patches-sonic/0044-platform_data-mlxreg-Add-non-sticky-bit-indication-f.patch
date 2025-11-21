@@ -1,0 +1,42 @@
+From da53757b0d6a86d772fd6fe6768c9213d0bb2aa4 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Fri, 6 Sep 2024 13:59:03 +0300
+Subject: [PATCH 44/78] platform_data/mlxreg: Add non-sticky bit indication
+ field
+
+Add non-sticky filed indicating that signal bit is changed to its
+previous value after acknowledging.
+
+Detection of non-sticky signals is to be performed through the reading
+event register, while sticky signals are detected through the reading
+status register.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+Reviewed-by: Felix Radensky <fradensky@nvidia.com>
+---
+ include/linux/platform_data/mlxreg.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/linux/platform_data/mlxreg.h b/include/linux/platform_data/mlxreg.h
+index 84c94b3..fca2d7e43 100644
+--- a/include/linux/platform_data/mlxreg.h
++++ b/include/linux/platform_data/mlxreg.h
+@@ -184,6 +184,7 @@ struct mlxreg_core_data {
+  * @inversed: if 0: 0 for signal status is OK, if 1 - 1 is OK;
+  * @health: true if device has health indication, false in other case;
+  * @storming_bits: interrupt storming bits mask;
++ * @non_sticky: 1 - indicates that signal bit is changed to the previous value after acknowledging;
+  */
+ struct mlxreg_core_item {
+ 	struct mlxreg_core_data *data;
+@@ -200,6 +201,7 @@ struct mlxreg_core_item {
+ 	u8 inversed;
+ 	u8 health;
+ 	u32 storming_bits;
++	u8 non_sticky;
+ };
+ 
+ /**
+-- 
+2.8.4
+

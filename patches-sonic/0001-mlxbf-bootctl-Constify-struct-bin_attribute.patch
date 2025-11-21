@@ -1,0 +1,48 @@
+From cad481488093e440217f6a93e45fe4fa03a77000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Thomas=20Wei=C3=9Fschuh?= <linux@weissschuh.net>
+Date: Sun, 15 Dec 2024 14:25:40 +0100
+Subject: [PATCH 01/78] mlxbf-bootctl: Constify 'struct bin_attribute'
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The sysfs core now allows instances of 'struct bin_attribute' to be
+moved into read-only memory. Make use of that to protect them against
+accidental or malicious modifications.
+
+Signed-off-by: Thomas Weißschuh <linux@weissschuh.net>
+Link: https://lore.kernel.org/r/20241215-sysfs-const-bin_attr-mellanox-v1-1-b6fe4f68e2ca@weissschuh.net
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Signed-off-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+---
+ drivers/platform/mellanox/mlxbf-bootctl.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/platform/mellanox/mlxbf-bootctl.c b/drivers/platform/mellanox/mlxbf-bootctl.c
+index dd5f370..7e246dd 100644
+--- a/drivers/platform/mellanox/mlxbf-bootctl.c
++++ b/drivers/platform/mellanox/mlxbf-bootctl.c
+@@ -939,7 +939,7 @@ MODULE_DEVICE_TABLE(acpi, mlxbf_bootctl_acpi_ids);
+ 
+ static ssize_t mlxbf_bootctl_bootfifo_read(struct file *filp,
+ 					   struct kobject *kobj,
+-					   struct bin_attribute *bin_attr,
++					   const struct bin_attribute *bin_attr,
+ 					   char *buf, loff_t pos,
+ 					   size_t count)
+ {
+@@ -971,9 +971,9 @@ static ssize_t mlxbf_bootctl_bootfifo_read(struct file *filp,
+ 	return p - buf;
+ }
+ 
+-static struct bin_attribute mlxbf_bootctl_bootfifo_sysfs_attr = {
++static const struct bin_attribute mlxbf_bootctl_bootfifo_sysfs_attr = {
+ 	.attr = { .name = "bootfifo", .mode = 0400 },
+-	.read = mlxbf_bootctl_bootfifo_read,
++	.read_new = mlxbf_bootctl_bootfifo_read,
+ };
+ 
+ static bool mlxbf_bootctl_guid_match(const guid_t *guid,
+-- 
+2.8.4
+

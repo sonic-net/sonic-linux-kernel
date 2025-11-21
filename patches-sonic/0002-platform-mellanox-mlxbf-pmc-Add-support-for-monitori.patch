@@ -1,0 +1,126 @@
+From f9a8958b29d408941ad18087f3f2c19f06c820fb Mon Sep 17 00:00:00 2001
+From: Shravan Kumar Ramani <shravankr@nvidia.com>
+Date: Thu, 9 Jan 2025 09:39:21 -0500
+Subject: [PATCH 02/78] platform/mellanox: mlxbf-pmc: Add support for
+ monitoring cycle count
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Add support for programming any counter to monitor the cycle count.
+This will allow the user to repurpose and dedicate any of the counters
+in the block to counting cycles.
+
+Signed-off-by: Shravan Kumar Ramani <shravankr@nvidia.com>
+Reviewed-by: David Thompson <davthompson@nvidia.com>
+Reviewed-by: Vadim Pasternak <vadimp@nvidia.com>
+Link: https://lore.kernel.org/r/bd7747897cf1ce77e2e39e271cac21684830f7e7.1736413033.git.shravankr@nvidia.com
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Signed-off-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+---
+ drivers/platform/mellanox/mlxbf-pmc.c | 61 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 61 insertions(+)
+
+diff --git a/drivers/platform/mellanox/mlxbf-pmc.c b/drivers/platform/mellanox/mlxbf-pmc.c
+index fbb8128..197a98e 100644
+--- a/drivers/platform/mellanox/mlxbf-pmc.c
++++ b/drivers/platform/mellanox/mlxbf-pmc.c
+@@ -88,6 +88,7 @@
+ #define MLXBF_PMC_CRSPACE_PERFMON_CTL(n) (n * MLXBF_PMC_CRSPACE_PERFMON_REG0_SZ)
+ #define MLXBF_PMC_CRSPACE_PERFMON_EN BIT(30)
+ #define MLXBF_PMC_CRSPACE_PERFMON_CLR BIT(28)
++#define MLXBF_PMC_CRSPACE_PERFMON_COUNT_CLOCK(n) (MLXBF_PMC_CRSPACE_PERFMON_CTL(n) + 0x4)
+ #define MLXBF_PMC_CRSPACE_PERFMON_VAL0(n) (MLXBF_PMC_CRSPACE_PERFMON_CTL(n) + 0xc)
+ 
+ /**
+@@ -114,6 +115,7 @@ struct mlxbf_pmc_attribute {
+  * @attr_event: Attributes for "event" sysfs files
+  * @attr_event_list: Attributes for "event_list" sysfs files
+  * @attr_enable: Attributes for "enable" sysfs files
++ * @attr_count_clock: Attributes for "count_clock" sysfs files
+  * @block_attr: All attributes needed for the block
+  * @block_attr_grp: Attribute group for the block
+  */
+@@ -126,6 +128,7 @@ struct mlxbf_pmc_block_info {
+ 	struct mlxbf_pmc_attribute *attr_event;
+ 	struct mlxbf_pmc_attribute attr_event_list;
+ 	struct mlxbf_pmc_attribute attr_enable;
++	struct mlxbf_pmc_attribute attr_count_clock;
+ 	struct attribute *block_attr[MLXBF_PMC_MAX_ATTRS];
+ 	struct attribute_group block_attr_grp;
+ };
+@@ -1763,6 +1766,49 @@ static ssize_t mlxbf_pmc_enable_store(struct device *dev,
+ 	return count;
+ }
+ 
++/* Show function for "count_clock" sysfs files - only for crspace */
++static ssize_t mlxbf_pmc_count_clock_show(struct device *dev,
++					  struct device_attribute *attr, char *buf)
++{
++	struct mlxbf_pmc_attribute *attr_count_clock = container_of(
++		attr, struct mlxbf_pmc_attribute, dev_attr);
++	unsigned int blk_num;
++	u32 reg;
++
++	blk_num = attr_count_clock->nr;
++
++	if (mlxbf_pmc_readl(pmc->block[blk_num].mmio_base +
++			MLXBF_PMC_CRSPACE_PERFMON_COUNT_CLOCK(pmc->block[blk_num].counters),
++			&reg))
++		return -EINVAL;
++
++	return sysfs_emit(buf, "%u\n", reg);
++}
++
++/* Store function for "count_clock" sysfs files - only for crspace */
++static ssize_t mlxbf_pmc_count_clock_store(struct device *dev,
++					   struct device_attribute *attr,
++					   const char *buf, size_t count)
++{
++	struct mlxbf_pmc_attribute *attr_count_clock = container_of(
++		attr, struct mlxbf_pmc_attribute, dev_attr);
++	unsigned int blk_num;
++	u32 reg;
++	int err;
++
++	blk_num = attr_count_clock->nr;
++
++	err = kstrtouint(buf, 0, &reg);
++	if (err < 0)
++		return err;
++
++	mlxbf_pmc_write(pmc->block[blk_num].mmio_base +
++		MLXBF_PMC_CRSPACE_PERFMON_COUNT_CLOCK(pmc->block[blk_num].counters),
++		MLXBF_PMC_WRITE_REG_32, reg);
++
++	return count;
++}
++
+ /* Populate attributes for blocks with counters to monitor performance */
+ static int mlxbf_pmc_init_perftype_counter(struct device *dev, unsigned int blk_num)
+ {
+@@ -1801,6 +1847,21 @@ static int mlxbf_pmc_init_perftype_counter(struct device *dev, unsigned int blk_
+ 		attr = NULL;
+ 	}
+ 
++	if (pmc->block[blk_num].type == MLXBF_PMC_TYPE_CRSPACE) {
++		/* Program crspace counters to count clock cycles using "count_clock" sysfs */
++		attr = &pmc->block[blk_num].attr_count_clock;
++		attr->dev_attr.attr.mode = 0644;
++		attr->dev_attr.show = mlxbf_pmc_count_clock_show;
++		attr->dev_attr.store = mlxbf_pmc_count_clock_store;
++		attr->nr = blk_num;
++		attr->dev_attr.attr.name = devm_kasprintf(dev, GFP_KERNEL,
++							  "count_clock");
++		if (!attr->dev_attr.attr.name)
++			return -ENOMEM;
++		pmc->block[blk_num].block_attr[++i] = &attr->dev_attr.attr;
++		attr = NULL;
++	}
++
+ 	pmc->block[blk_num].attr_counter = devm_kcalloc(
+ 		dev, pmc->block[blk_num].counters,
+ 		sizeof(struct mlxbf_pmc_attribute), GFP_KERNEL);
+-- 
+2.8.4
+

@@ -1,0 +1,86 @@
+From 941fba51fff1bfeb77ad69dba08209de16e375c4 Mon Sep 17 00:00:00 2001
+From: Alok Tiwari <alok.a.tiwari@oracle.com>
+Date: Sun, 22 Jun 2025 00:29:11 -0700
+Subject: [PATCH 11/78] platform/mellanox: Fix spelling and comment clarity in
+ Mellanox drivers
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This commit corrects several minor typographical errors in comments
+and error messages across multiple Mellanox platform driver.
+Fixed spelling of "thresholds", "region", "platform", "default",
+and removed redundant spaces in comment strings and error logs.
+
+These changes are cosmetic and do not affect runtime behavior.
+
+Signed-off-by: Alok Tiwari <alok.a.tiwari@oracle.com>
+Reviewed-by: Vadim Pasternak <vadimp@nvidia.com>
+Reviewed-by: David Thompson <davthompson@nvidia.com>
+Link: https://lore.kernel.org/r/20250622072921.4111552-1-alok.a.tiwari@oracle.com
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Signed-off-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+---
+ drivers/platform/mellanox/mlxbf-tmfifo.c |  2 +-
+ drivers/platform/mellanox/mlxreg-lc.c    | 10 +++++-----
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/platform/mellanox/mlxbf-tmfifo.c b/drivers/platform/mellanox/mlxbf-tmfifo.c
+index d2c27cc..c05cd93 100644
+--- a/drivers/platform/mellanox/mlxbf-tmfifo.c
++++ b/drivers/platform/mellanox/mlxbf-tmfifo.c
+@@ -1288,7 +1288,7 @@ static void mlxbf_tmfifo_get_cfg_mac(u8 *mac)
+ 		ether_addr_copy(mac, mlxbf_tmfifo_net_default_mac);
+ }
+ 
+-/* Set TmFifo thresolds which is used to trigger interrupts. */
++/* Set TmFifo thresholds which is used to trigger interrupts. */
+ static void mlxbf_tmfifo_set_threshold(struct mlxbf_tmfifo *fifo)
+ {
+ 	u64 ctl;
+diff --git a/drivers/platform/mellanox/mlxreg-lc.c b/drivers/platform/mellanox/mlxreg-lc.c
+index 9915267..08d37ef 100644
+--- a/drivers/platform/mellanox/mlxreg-lc.c
++++ b/drivers/platform/mellanox/mlxreg-lc.c
+@@ -57,9 +57,9 @@ enum mlxreg_lc_state {
+  * @dev: platform device;
+  * @lock: line card lock;
+  * @par_regmap: parent device regmap handle;
+- * @data: pltaform core data;
++ * @data: platform core data;
+  * @io_data: register access platform data;
+- * @led_data: LED platform data ;
++ * @led_data: LED platform data;
+  * @mux_data: MUX platform data;
+  * @led: LED device;
+  * @io_regs: register access device;
+@@ -171,7 +171,7 @@ static int mlxreg_lc_chan[] = {
+ 	0x4e, 0x4f
+ };
+ 
+-/* Defaul mux configuration. */
++/* Default mux configuration. */
+ static struct mlxcpld_mux_plat_data mlxreg_lc_mux_data[] = {
+ 	{
+ 		.chan_ids = mlxreg_lc_chan,
+@@ -181,7 +181,7 @@ static struct mlxcpld_mux_plat_data mlxreg_lc_mux_data[] = {
+ 	},
+ };
+ 
+-/* Defaul mux board info. */
++/* Default mux board info. */
+ static struct i2c_board_info mlxreg_lc_mux_brdinfo = {
+ 	I2C_BOARD_INFO("i2c-mux-mlxcpld", 0x32),
+ };
+@@ -758,7 +758,7 @@ mlxreg_lc_config_init(struct mlxreg_lc *mlxreg_lc, void *regmap,
+ 		platform_device_register_resndata(dev, "mlxreg-io", data->hpdev.nr, NULL, 0,
+ 						  mlxreg_lc->io_data, sizeof(*mlxreg_lc->io_data));
+ 		if (IS_ERR(mlxreg_lc->io_regs)) {
+-			dev_err(dev, "Failed to create regio for client %s at bus %d at addr 0x%02x\n",
++			dev_err(dev, "Failed to create region for client %s at bus %d at addr 0x%02x\n",
+ 				data->hpdev.brdinfo->type, data->hpdev.nr,
+ 				data->hpdev.brdinfo->addr);
+ 			err = PTR_ERR(mlxreg_lc->io_regs);
+-- 
+2.8.4
+

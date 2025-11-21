@@ -1,0 +1,87 @@
+From 2b021913a38a7e6821c4ce989742e34d8bf743c8 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Thu, 24 Aug 2023 11:47:54 +0000
+Subject: [PATCH 33/78] platform/mellanox: mlxreg-hotplug: Add support for new
+ flavor of capability registers
+
+Hotplug platform data is common across the various systems, while
+hotplug driver should be able to configure only the instances relevant
+to specific system.
+
+For example, platform hoptplug data might contain descriptions for fan1,
+fan2, ..., fan{n}, while some systems equipped with all 'n' fans,
+others with less.
+Same for power units, power controllers, ASICs and so on.
+
+For detection of the real number of equipped devices capability
+registers are used.
+These registers used to indicate presence of hotplug devices through
+the bitmap.
+
+For some new big modular systems, these registers will provide presence
+by counters.
+
+Use slot parameter to determine whether capability register contains
+bitmask or counter.
+
+Some 'capability' registers can be shared between different resources.
+Use fields 'capability_bit' and 'capability_mask' for getting only
+relevant capability bits.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+Reviewed-by: Felix Radensky <fradensky@nvidia.com>
+---
+ drivers/platform/mellanox/mlxreg-hotplug.c | 23 +++++++++++++++++++++--
+ 1 file changed, 21 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/platform/mellanox/mlxreg-hotplug.c b/drivers/platform/mellanox/mlxreg-hotplug.c
+index 23fdbcb..51dac7e 100644
+--- a/drivers/platform/mellanox/mlxreg-hotplug.c
++++ b/drivers/platform/mellanox/mlxreg-hotplug.c
+@@ -274,6 +274,13 @@ static int mlxreg_hotplug_attr_init(struct mlxreg_hotplug_priv_data *priv)
+ 			if (ret)
+ 				return ret;
+ 
++			if (!regval)
++				continue;
++
++			/* Remove non-relevant bits. */
++			if (item->capability_mask)
++				regval = rol32(regval & item->capability_mask,
++					       item->capability_bit);
+ 			item->mask = GENMASK((regval & item->mask) - 1, 0);
+ 		}
+ 
+@@ -294,7 +301,19 @@ static int mlxreg_hotplug_attr_init(struct mlxreg_hotplug_priv_data *priv)
+ 				if (ret)
+ 					return ret;
+ 
+-				if (!(regval & data->bit)) {
++				/*
++				 * In case slot field is provided, capability
++				 * register contains counter, otherwise bitmask.
++				 * Skip non-relevant entries if slot set and
++				 * exceeds counter. Othewise validate entry by
++				 * matching bitmask.
++				 */
++				if (data->capability_mask)
++					regval = rol32(regval & data->capability_mask,
++						       data->capability_bit);
++				if (data->slot > regval) {
++					break;
++				} else if (!(regval & data->bit) && !data->slot) {
+ 					data++;
+ 					continue;
+ 				}
+@@ -611,7 +630,7 @@ static int mlxreg_hotplug_set_irq(struct mlxreg_hotplug_priv_data *priv)
+ 				if (ret)
+ 					goto out;
+ 
+-				if (!(regval & data->bit))
++				if (!(regval & data->bit) && !data->slot)
+ 					item->mask &= ~BIT(j);
+ 			}
+ 		}
+-- 
+2.8.4
+

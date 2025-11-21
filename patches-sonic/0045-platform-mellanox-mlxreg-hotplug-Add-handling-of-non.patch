@@ -1,0 +1,63 @@
+From b33a8c29d95f0b998f326de0c651e0262cd603cd Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Fri, 6 Sep 2024 14:10:30 +0300
+Subject: [PATCH 45/78] platform/mellanox: mlxreg-hotplug: Add handling of
+ non-sticky signals
+
+Add support for non-sticky signals. For such signal status bit is
+non-sticky and changes to the previous value after acknowledging.
+
+Detection of non-sticky signals is to be performed through the reading
+event register, while sticky signals are detected through the reading
+status register.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+Reviewed-by: Felix Radensky <fradensky@nvidia.com>
+---
+ drivers/platform/mellanox/mlxreg-hotplug.c | 29 +++++++++++++++++++++--------
+ 1 file changed, 21 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/platform/mellanox/mlxreg-hotplug.c b/drivers/platform/mellanox/mlxreg-hotplug.c
+index 2b52610..a395969e 100644
+--- a/drivers/platform/mellanox/mlxreg-hotplug.c
++++ b/drivers/platform/mellanox/mlxreg-hotplug.c
+@@ -379,15 +379,28 @@ mlxreg_hotplug_work_helper(struct mlxreg_hotplug_priv_data *priv,
+ 	if (ret)
+ 		goto out;
+ 
+-	/* Read status. */
+-	ret = regmap_read(priv->regmap, item->reg, &regval);
+-	if (ret)
+-		goto out;
++	if (item->non_sticky) {
++		/* Read event. */
++		ret = regmap_read(priv->regmap, item->reg +
++				   MLXREG_HOTPLUG_EVENT_OFF, &regval);
++		if (ret)
++			goto out;
++
++		/* Set asserted bits. */
++		regval &= item->mask;
++		asserted = regval;
++	} else {
++		/* Read status. */
++		ret = regmap_read(priv->regmap, item->reg, &regval);
++		if (ret)
++			goto out;
++
++		/* Set asserted bits and save last status. */
++		regval &= item->mask;
++		asserted = item->cache ^ regval;
++		item->cache = regval;
++	}
+ 
+-	/* Set asserted bits and save last status. */
+-	regval &= item->mask;
+-	asserted = item->cache ^ regval;
+-	item->cache = regval;
+ 	for_each_set_bit(bit, &asserted, 8) {
+ 		int pos;
+ 
+-- 
+2.8.4
+

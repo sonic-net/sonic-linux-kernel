@@ -1,0 +1,77 @@
+From 6e425aad9eb78283afa517ef648d7539596bc41b Mon Sep 17 00:00:00 2001
+From: Ai Chao <aichao@kylinos.cn>
+Date: Thu, 16 Jan 2025 16:08:35 +0800
+Subject: [PATCH 04/78] platform/mellanox: mlxbf-bootctl: use sysfs_emit()
+ instead of sprintf()
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Follow the advice in Documentation/filesystems/sysfs.rst:
+show() should only use sysfs_emit() or sysfs_emit_at() when formatting
+the value to be returned to user space.
+
+Signed-off-by: Ai Chao <aichao@kylinos.cn>
+Acked-by: Vadim Pasternak <vadimp@nvidia.com>
+Link: https://lore.kernel.org/r/20250116080836.2890442-1-aichao@kylinos.cn
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Signed-off-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+---
+ drivers/platform/mellanox/mlxbf-bootctl.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/platform/mellanox/mlxbf-bootctl.c b/drivers/platform/mellanox/mlxbf-bootctl.c
+index 7e246dd..e8530ef 100644
+--- a/drivers/platform/mellanox/mlxbf-bootctl.c
++++ b/drivers/platform/mellanox/mlxbf-bootctl.c
+@@ -177,7 +177,7 @@ static ssize_t post_reset_wdog_show(struct device *dev,
+ 	if (ret < 0)
+ 		return ret;
+ 
+-	return sprintf(buf, "%d\n", ret);
++	return sysfs_emit(buf, "%d\n", ret);
+ }
+ 
+ static ssize_t post_reset_wdog_store(struct device *dev,
+@@ -206,7 +206,7 @@ static ssize_t mlxbf_bootctl_show(int smc_op, char *buf)
+ 	if (action < 0)
+ 		return action;
+ 
+-	return sprintf(buf, "%s\n", mlxbf_bootctl_action_to_string(action));
++	return sysfs_emit(buf, "%s\n", mlxbf_bootctl_action_to_string(action));
+ }
+ 
+ static int mlxbf_bootctl_store(int smc_op, const char *buf, size_t count)
+@@ -274,14 +274,14 @@ static ssize_t lifecycle_state_show(struct device *dev,
+ 	 * due to using the test bits.
+ 	 */
+ 	if (test_state) {
+-		return sprintf(buf, "%s(test)\n",
++		return sysfs_emit(buf, "%s(test)\n",
+ 			       mlxbf_bootctl_lifecycle_states[lc_state]);
+ 	} else if (use_dev_key &&
+ 		   (lc_state == MLXBF_BOOTCTL_SB_LIFECYCLE_GA_SECURE)) {
+-		return sprintf(buf, "Secured (development)\n");
++		return sysfs_emit(buf, "Secured (development)\n");
+ 	}
+ 
+-	return sprintf(buf, "%s\n", mlxbf_bootctl_lifecycle_states[lc_state]);
++	return sysfs_emit(buf, "%s\n", mlxbf_bootctl_lifecycle_states[lc_state]);
+ }
+ 
+ static ssize_t secure_boot_fuse_state_show(struct device *dev,
+@@ -332,9 +332,9 @@ static ssize_t secure_boot_fuse_state_show(struct device *dev,
+ 			else
+ 				status = valid ? "Invalid" : "Free";
+ 		}
+-		buf_len += sprintf(buf + buf_len, "%d:%s ", key, status);
++		buf_len += sysfs_emit(buf + buf_len, "%d:%s ", key, status);
+ 	}
+-	buf_len += sprintf(buf + buf_len, "\n");
++	buf_len += sysfs_emit(buf + buf_len, "\n");
+ 
+ 	return buf_len;
+ }
+-- 
+2.8.4
+

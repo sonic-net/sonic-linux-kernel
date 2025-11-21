@@ -15,32 +15,52 @@ stages:
   - template: .azure-pipelines/build-template.yml
     parameters:
       arch: amd64
-      sonic_slave: sonic-slave-bookworm
-      artifact_name: sonic-linux-kernel
+      pool: sonicso1ES-amd64
+      sonic_slave: sonic-slave-trixie
+      old_artifact_name: sonic-linux-kernel
+      artifact_name: sonic-linux-kernel.amd64
+      old_linux_deb_pattern: linux-image-*-unsigned_*deb
       linux_deb_pattern: linux-image-*-unsigned_*deb
+
+  - template: .azure-pipelines/build-template.yml
+    parameters:
+      arch: amd64
+      pool: sonicso1ES-amd64
+      sonic_slave: sonic-slave-trixie
+      old_artifact_name: sonic-linux-kernel
+      artifact_name: sonic-linux-kernel.amd64.secure
+      old_linux_deb_pattern: linux-image-*-unsigned_*deb
+      linux_deb_pattern: linux-image-*-unsigned_*deb
+      secure_boot: true
 
   - template: .azure-pipelines/build-template.yml
     parameters:
       arch: arm64
       pool: sonicso1ES-arm64
-      sonic_slave: sonic-slave-bookworm-arm64
+      sonic_slave: sonic-slave-trixie-arm64
+      old_artifact_name: sonic-linux-kernel.arm64
       artifact_name: sonic-linux-kernel.arm64
+      old_linux_deb_pattern: linux-image-*-unsigned_*deb
       linux_deb_pattern: linux-image-*-unsigned_*deb
 
   - template: .azure-pipelines/build-template.yml
     parameters:
       arch: armhf
       pool: sonicso1ES-armhf
-      sonic_slave: sonic-slave-bookworm-armhf
+      sonic_slave: sonic-slave-trixie-armhf
+      old_artifact_name: sonic-linux-kernel.armhf
       artifact_name: sonic-linux-kernel.armhf
-      linux_deb_pattern: linux-image-*-armmp_*deb
+      old_linux_deb_pattern: linux-image-*-armmp_*deb
+      linux_deb_pattern: linux-image-*+deb*-*-armmp_*deb
 
   - template: .azure-pipelines/build-template.yml
     parameters:
       arch: arm64
       platform: pensando
       pool: sonicso1ES-arm64
-      sonic_slave: sonic-slave-bookworm-arm64
+      sonic_slave: sonic-slave-trixie-arm64
+      old_artifact_name: sonic-linux-kernel.pensando.arm64
       artifact_name: sonic-linux-kernel.pensando.arm64
+      old_linux_deb_pattern: linux-image-*-unsigned_*deb
       linux_deb_pattern: linux-image-*-unsigned_*deb
 
