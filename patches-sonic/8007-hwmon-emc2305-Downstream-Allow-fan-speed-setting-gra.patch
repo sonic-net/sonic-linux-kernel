@@ -1,0 +1,50 @@
+From c43e12b088a65e3d4431712f3877969854d7057c Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Thu, 2 Nov 2023 12:18:22 +0000
+Subject: [PATCH 63/78] hwmon: (emc2305): Downstream: Allow fan speed setting
+ granularity of 1 PWM
+
+Currently PWM setting is allowed with 10 percent stepping.
+Such configuration is aligned with thermal drivers, which are used to be
+bound to "emc2305" driver.
+
+This binding happens when the cooling instances created by the driver are
+bound to some kernel thermal driver.
+
+In case system is not using kernel thermal control and the cooling
+instances created by the driver are not bound to any thermal driver, the
+driver still does not allow setting of PWM granularity less than 10
+percent.
+
+Allow setting fan with one percent granularity, thus any user space
+thermal application will be able to set PWM to any allowed value in range
+from 0 PWM to 255 PWM.
+
+Note: this is downstream patch, since it can affect functionality for
+the Nvidia users running kernel thermal control. So, it is not going to be
+submitted to up-stream.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/hwmon/emc2305.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/hwmon/emc2305.c b/drivers/hwmon/emc2305.c
+index 4d39fbd..0066138 100644
+--- a/drivers/hwmon/emc2305.c
++++ b/drivers/hwmon/emc2305.c
+@@ -16,7 +16,11 @@
+ #define EMC2305_REG_VENDOR		0xfe
+ #define EMC2305_FAN_MAX			0xff
+ #define EMC2305_FAN_MIN			0x00
++#ifdef CONFIG_MLXSW_CORE_THERMAL
+ #define EMC2305_FAN_MAX_STATE		10
++#else
++#define EMC2305_FAN_MAX_STATE		255
++#endif
+ #define EMC2305_DEVICE			0x34
+ #define EMC2305_VENDOR			0x5d
+ #define EMC2305_REG_PRODUCT_ID		0xfd
+-- 
+2.8.4
+

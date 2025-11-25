@@ -1,0 +1,36 @@
+From c52801a7e7ac91a3587199a69459d7c6308725a7 Mon Sep 17 00:00:00 2001
+From: root <root@fit-build-116.mtl.labs.mlnx>
+Date: Tue, 5 Apr 2022 21:35:55 +0300
+Subject: [PATCH 59/78] mlxsw: minimal: Downstream: Ignore error reading SPAD
+ register
+
+SPAD register is not supported for IB systems.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/minimal.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/minimal.c b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+index 828c650..6faebeb 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/minimal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+@@ -53,6 +53,7 @@ struct mlxsw_m_port {
+ 
+ static int mlxsw_m_base_mac_get(struct mlxsw_m *mlxsw_m)
+ {
++#if 0
+ 	char spad_pl[MLXSW_REG_SPAD_LEN] = {0};
+ 	int err;
+ 
+@@ -60,6 +61,7 @@ static int mlxsw_m_base_mac_get(struct mlxsw_m *mlxsw_m)
+ 	if (err)
+ 		return err;
+ 	mlxsw_reg_spad_base_mac_memcpy_from(spad_pl, mlxsw_m->base_mac);
++#endif
+ 	return 0;
+ }
+ 
+-- 
+2.8.4
+

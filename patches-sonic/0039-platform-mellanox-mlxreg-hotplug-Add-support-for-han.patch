@@ -1,0 +1,116 @@
+From daa051d1b20b132d7dd8f5b3d1312084f25f392d Mon Sep 17 00:00:00 2001
+From: Roy Cohen <roycohen@nvidia.com>
+Date: Mon, 13 Jan 2025 10:50:25 +0200
+Subject: [PATCH 39/78] platform/mellanox: mlxreg-hotplug: Add support for
+ handling interrupt storm
+
+In case of broken hardware, it is possible that broken device will
+flood interrupt handler with false events.
+For example, if fan or power supply has damaged presence pin, it will
+cause permanent generation of presence in / presence out events.
+As a result, interrupt handler will consume a lot of CPU resources and
+will keep raising "UDEV" events to the user space.
+
+At the same device with damaged pin still will be capable to provide
+telemetry date.
+
+Provide mechanism allowing to detect device causing interrupt flooding
+and mask interrupt for this specific device, to isolate from interrupt
+handling flow.
+
+Use the following criteria: if the specific interrupt was generated 'N'
+time during 'T' seconds, such device is to be considered as broken and
+will be closed for getting interrupts.
+
+User will be notified through the log error and will be instructed to
+replace broken device.
+
+Signed-off-by: Roy Cohen <roycohen@nvidia.com>
+---
+ drivers/platform/mellanox/mlxreg-hotplug.c | 36 +++++++++++++++++++++++++++---
+ 1 file changed, 33 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/platform/mellanox/mlxreg-hotplug.c b/drivers/platform/mellanox/mlxreg-hotplug.c
+index 51dac7e..2b52610 100644
+--- a/drivers/platform/mellanox/mlxreg-hotplug.c
++++ b/drivers/platform/mellanox/mlxreg-hotplug.c
+@@ -11,6 +11,7 @@
+ #include <linux/hwmon-sysfs.h>
+ #include <linux/i2c.h>
+ #include <linux/interrupt.h>
++#include <linux/jiffies.h>
+ #include <linux/module.h>
+ #include <linux/platform_data/mlxreg.h>
+ #include <linux/platform_device.h>
+@@ -30,6 +31,11 @@
+ #define MLXREG_HOTPLUG_ATTRS_MAX	128
+ #define MLXREG_HOTPLUG_NOT_ASSERT	3
+ 
++/* Interrupt storm definitios */
++#define MLXREG_HOTPLUG_WM_COUNTER 100
++/* Time window in milliseconds */
++#define MLXREG_HOTPLUG_WM_WINDOW 3000
++
+ /**
+  * struct mlxreg_hotplug_priv_data - platform private data:
+  * @irq: platform device interrupt number;
+@@ -363,7 +369,7 @@ mlxreg_hotplug_work_helper(struct mlxreg_hotplug_priv_data *priv,
+ 			   struct mlxreg_core_item *item)
+ {
+ 	struct mlxreg_core_data *data;
+-	unsigned long asserted;
++	unsigned long asserted, wmark_low_ts_window;
+ 	u32 regval, bit;
+ 	int ret;
+ 
+@@ -385,11 +391,35 @@ mlxreg_hotplug_work_helper(struct mlxreg_hotplug_priv_data *priv,
+ 	for_each_set_bit(bit, &asserted, 8) {
+ 		int pos;
+ 
++		/* Skip already marked storming bit. */
++		if (item->storming_bits & BIT(bit))
++			continue;
++
+ 		pos = mlxreg_hotplug_item_label_index_get(item->mask, bit);
+ 		if (pos < 0)
+ 			goto out;
+ 
+ 		data = item->data + pos;
++
++		/* Interrupt storm handling logic. */
++		if (data->wmark_low_cntr == 0)
++			data->wmark_low_ts = jiffies;
++
++		data->wmark_low_cntr++;
++		if (data->wmark_low_cntr >= MLXREG_HOTPLUG_WM_COUNTER - 1) {
++			data->wmark_high_ts = jiffies;
++			wmark_low_ts_window = data->wmark_low_ts +
++					      msecs_to_jiffies(MLXREG_HOTPLUG_WM_WINDOW);
++			if (time_after(wmark_low_ts_window, data->wmark_high_ts)) {
++				dev_err(priv->dev, "Storming bit %d (label: %s) - interrupt masked permanently. Replace broken HW.",
++					bit, data->label);
++				/* Mark bit as storming. */
++				item->storming_bits |= BIT(bit);
++			} else {
++				data->wmark_low_cntr = 0;
++			}
++		}
++
+ 		if (regval & BIT(bit)) {
+ 			if (item->inversed)
+ 				mlxreg_hotplug_device_destroy(priv, data, item->kind);
+@@ -409,9 +439,9 @@ mlxreg_hotplug_work_helper(struct mlxreg_hotplug_priv_data *priv,
+ 	if (ret)
+ 		goto out;
+ 
+-	/* Unmask event. */
++	/* Unmask event, exclude storming bits. */
+ 	ret = regmap_write(priv->regmap, item->reg + MLXREG_HOTPLUG_MASK_OFF,
+-			   item->mask);
+++			   item->mask & ~item->storming_bits);
+ 
+  out:
+ 	if (ret)
+-- 
+2.8.4
+
