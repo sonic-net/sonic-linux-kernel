@@ -1,0 +1,128 @@
+From 4355136d6587aa7ce7729aa8f35f898993c5f8a4 Mon Sep 17 00:00:00 2001
+From: Karolina Stolarek <karolina.stolarek@oracle.com>
+Date: Thu, 22 May 2025 18:21:18 -0500
+Subject: [PATCH 05/12] PCI/AER: Check log level once and remember it
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+When reporting an AER error, we check its type multiple times to determine
+the log level for each message. Do this check only in the top-level
+functions (aer_isr_one_error(), pci_print_aer()) and save the level in
+struct aer_err_info.
+
+[bhelgaas: save log level in struct aer_err_info instead of passing it
+as a parameter]
+
+Signed-off-by: Karolina Stolarek <karolina.stolarek@oracle.com>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Tested-by: Krzysztof Wilczyński <kwilczynski@kernel.org>
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Reviewed-by: Kuppuswamy Sathyanarayanan <sathyanarayanan.kuppuswamy@linux.intel.com>
+Reviewed-by: Jonathan Cameron <Jonathan.Cameron@huawei.com>
+Link: https://patch.msgid.link/20250522232339.1525671-13-helgaas@kernel.org
+(cherry picked from commit c8f6791e33a7757025285db26f3b382cdcb7f7cd)
+---
+ drivers/pci/pci.h      |  1 +
+ drivers/pci/pcie/aer.c | 18 +++++++++---------
+ drivers/pci/pcie/dpc.c |  1 +
+ 3 files changed, 11 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/pci/pci.h b/drivers/pci/pci.h
+index 65df6d2ac003..ce78241b6302 100644
+--- a/drivers/pci/pci.h
++++ b/drivers/pci/pci.h
+@@ -505,6 +505,7 @@ static inline bool pci_dev_is_added(const struct pci_dev *dev)
+ struct aer_err_info {
+ 	struct pci_dev *dev[AER_MAX_MULTI_ERR_DEVICES];
+ 	int error_dev_num;
++	const char *level;		/* printk level */
+ 
+ 	unsigned int id:16;
+ 
+diff --git a/drivers/pci/pcie/aer.c b/drivers/pci/pcie/aer.c
+index a10a005ca6e9..82acb7580fd4 100644
+--- a/drivers/pci/pcie/aer.c
++++ b/drivers/pci/pcie/aer.c
+@@ -675,16 +675,14 @@ static void __aer_print_error(struct pci_dev *dev,
+ {
+ 	const char **strings;
+ 	unsigned long status = info->status & ~info->mask;
+-	const char *level, *errmsg;
++	const char *level = info->level;
++	const char *errmsg;
+ 	int i;
+ 
+-	if (info->severity == AER_CORRECTABLE) {
++	if (info->severity == AER_CORRECTABLE)
+ 		strings = aer_correctable_error_string;
+-		level = KERN_WARNING;
+-	} else {
++	else
+ 		strings = aer_uncorrectable_error_string;
+-		level = KERN_ERR;
+-	}
+ 
+ 	for_each_set_bit(i, &status, 32) {
+ 		errmsg = strings[i];
+@@ -700,7 +698,7 @@ void aer_print_error(struct pci_dev *dev, struct aer_err_info *info)
+ {
+ 	int layer, agent;
+ 	int id = pci_dev_id(dev);
+-	const char *level;
++	const char *level = info->level;
+ 
+ 	pci_dev_aer_stats_incr(dev, info);
+ 	trace_aer_event(pci_name(dev), (info->status & ~info->mask),
+@@ -715,8 +713,6 @@ void aer_print_error(struct pci_dev *dev, struct aer_err_info *info)
+ 	layer = AER_GET_LAYER_ERROR(info->severity, info->status);
+ 	agent = AER_GET_AGENT(info->severity, info->status);
+ 
+-	level = (info->severity == AER_CORRECTABLE) ? KERN_WARNING : KERN_ERR;
+-
+ 	pci_printk(level, dev, "PCIe Bus Error: severity=%s, type=%s, (%s)\n",
+ 		   aer_error_severity_string[info->severity],
+ 		   aer_error_layer[layer], aer_agent_string[agent]);
+@@ -774,9 +770,11 @@ void pci_print_aer(struct pci_dev *dev, int aer_severity,
+ 	if (aer_severity == AER_CORRECTABLE) {
+ 		status = aer->cor_status;
+ 		mask = aer->cor_mask;
++		info.level = KERN_WARNING;
+ 	} else {
+ 		status = aer->uncor_status;
+ 		mask = aer->uncor_mask;
++		info.level = KERN_ERR;
+ 		tlp_header_valid = status & AER_LOG_TLP_MASKS;
+ 	}
+ 
+@@ -1291,6 +1289,7 @@ static void aer_isr_one_error(struct aer_rpc *rpc,
+ 	if (e_src->status & PCI_ERR_ROOT_COR_RCV) {
+ 		e_info.id = ERR_COR_ID(e_src->id);
+ 		e_info.severity = AER_CORRECTABLE;
++		e_info.level = KERN_WARNING;
+ 
+ 		if (e_src->status & PCI_ERR_ROOT_MULTI_COR_RCV)
+ 			e_info.multi_error_valid = 1;
+@@ -1304,6 +1303,7 @@ static void aer_isr_one_error(struct aer_rpc *rpc,
+ 
+ 	if (e_src->status & PCI_ERR_ROOT_UNCOR_RCV) {
+ 		e_info.id = ERR_UNCOR_ID(e_src->id);
++		e_info.level = KERN_ERR;
+ 
+ 		if (e_src->status & PCI_ERR_ROOT_FATAL_RCV)
+ 			e_info.severity = AER_FATAL;
+diff --git a/drivers/pci/pcie/dpc.c b/drivers/pci/pcie/dpc.c
+index cdc54315d879..d830696dccec 100644
+--- a/drivers/pci/pcie/dpc.c
++++ b/drivers/pci/pcie/dpc.c
+@@ -254,6 +254,7 @@ static int dpc_get_aer_uncorrect_severity(struct pci_dev *dev,
+ 	else
+ 		info->severity = AER_NONFATAL;
+ 
++	info->level = KERN_ERR;
+ 	return 1;
+ }
+ 
+-- 
+2.47.0
+

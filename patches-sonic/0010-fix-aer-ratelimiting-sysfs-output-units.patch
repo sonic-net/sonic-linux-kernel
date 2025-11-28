@@ -1,0 +1,34 @@
+From f993b05bf9e59ab4a0c41cad1ab956080c5fb027 Mon Sep 17 00:00:00 2001
+From: jamessewart <jamessewart@arista.com>
+Date: Mon, 10 Nov 2025 13:45:50 +0000
+Subject: [PATCH 10/12] fix aer ratelimiting sysfs output units
+
+aer statistics include an interval value that determines the time period over which
+to limit error logging. This is stored in jiffies, but the sysfs file configuring it
+is supposed to expose milliseconds, the store function converts the input to jiffies
+and this change ensures the show implementation converts back to milliseconds
+
+Signed-off-by: James Sewart <jamessewart@arista.com>
+---
+ drivers/pci/pcie/aer.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/pci/pcie/aer.c b/drivers/pci/pcie/aer.c
+index df636016168f..067e305212eb 100644
+--- a/drivers/pci/pcie/aer.c
++++ b/drivers/pci/pcie/aer.c
+@@ -634,8 +634,9 @@ const struct attribute_group aer_stats_attr_group = {
+ 	{								\
+ 		struct pci_dev *pdev = to_pci_dev(dev);			\
+ 									\
+-		return sysfs_emit(buf, "%d\n",				\
+-				  pdev->aer_stats->ratelimit.interval);	\
++		int interval = pdev->aer_stats->ratelimit.interval;	\
++		interval = jiffies_to_msecs(interval);			\
++		return sysfs_emit(buf, "%d\n", interval);		\
+ 	}								\
+ 									\
+ 	static ssize_t							\
+-- 
+2.47.0
+
