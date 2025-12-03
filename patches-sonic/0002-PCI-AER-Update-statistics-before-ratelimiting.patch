@@ -1,0 +1,68 @@
+From dfcd0e7d5008dffb55517a8207d455cab69dc70c Mon Sep 17 00:00:00 2001
+From: Bjorn Helgaas <bhelgaas@google.com>
+Date: Thu, 22 May 2025 18:21:16 -0500
+Subject: [PATCH 02/12] PCI/AER: Update statistics before ratelimiting
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+There are two AER logging entry points:
+
+  - aer_print_error() is used by DPC (dpc_process_error()) and native AER
+    handling (aer_process_err_devices()).
+
+  - pci_print_aer() is used by GHES (aer_recover_work_func()) and CXL
+    (cxl_handle_rdport_errors())
+
+Both use __aer_print_error() to print the AER error bits.  Previously
+__aer_print_error() also incremented the AER statistics via
+pci_dev_aer_stats_incr().
+
+Call pci_dev_aer_stats_incr() early in the entry points instead of in
+__aer_print_error() so we update the statistics even if the actual printing
+of error bits is rate limited by a future change.
+
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Tested-by: Krzysztof Wilczyński <kwilczynski@kernel.org>
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Reviewed-by: Kuppuswamy Sathyanarayanan <sathyanarayanan.kuppuswamy@linux.intel.com>
+Reviewed-by: Jonathan Cameron <Jonathan.Cameron@huawei.com>
+Link: https://patch.msgid.link/20250522232339.1525671-11-helgaas@kernel.org
+(cherry picked from commit 88a7765e62b9e4c79c7ca2c7b749ae04f54a5668)
+---
+ drivers/pci/pcie/aer.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/pci/pcie/aer.c b/drivers/pci/pcie/aer.c
+index 7d7fc4a9fec2..48a33151d145 100644
+--- a/drivers/pci/pcie/aer.c
++++ b/drivers/pci/pcie/aer.c
+@@ -694,7 +694,6 @@ static void __aer_print_error(struct pci_dev *dev,
+ 		pci_printk(level, dev, "   [%2d] %-22s%s\n", i, errmsg,
+ 				info->first_error == i ? " (First)" : "");
+ 	}
+-	pci_dev_aer_stats_incr(dev, info);
+ }
+ 
+ void aer_print_error(struct pci_dev *dev, struct aer_err_info *info)
+@@ -703,6 +702,8 @@ void aer_print_error(struct pci_dev *dev, struct aer_err_info *info)
+ 	int id = pci_dev_id(dev);
+ 	const char *level;
+ 
++	pci_dev_aer_stats_incr(dev, info);
++
+ 	if (!info->status) {
+ 		pci_err(dev, "PCIe Bus Error: severity=%s, type=Inaccessible, (Unregistered Agent ID)\n",
+ 			aer_error_severity_string[info->severity]);
+@@ -783,6 +784,8 @@ void pci_print_aer(struct pci_dev *dev, int aer_severity,
+ 	info.status = status;
+ 	info.mask = mask;
+ 
++	pci_dev_aer_stats_incr(dev, &info);
++
+ 	layer = AER_GET_LAYER_ERROR(aer_severity, status);
+ 	agent = AER_GET_AGENT(aer_severity, status);
+ 
+-- 
+2.47.0
+

@@ -1,0 +1,104 @@
+From 10d088c074f57db7579af27da91cf0f040215b05 Mon Sep 17 00:00:00 2001
+From: Bjorn Helgaas <bhelgaas@google.com>
+Date: Thu, 22 May 2025 18:21:09 -0500
+Subject: [PATCH 07/12] PCI/AER: Factor COR/UNCOR error handling out from
+ aer_isr_one_error()
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+aer_isr_one_error() duplicates the Error Source ID logging and AER error
+processing for Correctable Errors and Uncorrectable Errors.  Factor out the
+duplicated code to aer_isr_one_error_type().
+
+aer_isr_one_error() doesn't need the struct aer_rpc pointer, so pass it the
+Root Port or RCEC pci_dev pointer instead.
+
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Reviewed-by: Jonathan Cameron <Jonathan.Cameron@huawei.com>
+Reviewed-by: Kuppuswamy Sathyanarayanan <sathyanarayanan.kuppuswamy@linux.intel.com>
+Link: https://patch.msgid.link/20250522232339.1525671-4-helgaas@kernel.org
+(cherry picked from commit 6fc4dae74afcf29ef82afbaaa9b082893871eda4)
+---
+ drivers/pci/pcie/aer.c | 36 +++++++++++++++++++++++-------------
+ 1 file changed, 23 insertions(+), 13 deletions(-)
+
+diff --git a/drivers/pci/pcie/aer.c b/drivers/pci/pcie/aer.c
+index 94cdf2e0d329..6ec628965cce 100644
+--- a/drivers/pci/pcie/aer.c
++++ b/drivers/pci/pcie/aer.c
+@@ -1283,17 +1283,32 @@ static inline void aer_process_err_devices(struct aer_err_info *e_info)
+ }
+ 
+ /**
+- * aer_isr_one_error - consume an error detected by root port
+- * @rpc: pointer to the root port which holds an error
++ * aer_isr_one_error_type - consume a Correctable or Uncorrectable Error
++ *			    detected by Root Port or RCEC
++ * @root: pointer to Root Port or RCEC that signaled AER interrupt
++ * @info: pointer to AER error info
++ */
++static void aer_isr_one_error_type(struct pci_dev *root,
++				   struct aer_err_info *info)
++{
++	aer_print_port_info(root, info);
++
++	if (find_source_device(root, info))
++		aer_process_err_devices(info);
++}
++
++/**
++ * aer_isr_one_error - consume error(s) signaled by an AER interrupt from
++ *		       Root Port or RCEC
++ * @root: pointer to Root Port or RCEC that signaled AER interrupt
+  * @e_src: pointer to an error source
+  */
+-static void aer_isr_one_error(struct aer_rpc *rpc,
++static void aer_isr_one_error(struct pci_dev *root,
+ 		struct aer_err_source *e_src)
+ {
+-	struct pci_dev *pdev = rpc->rpd;
+ 	struct aer_err_info e_info;
+ 
+-	pci_rootport_aer_stats_incr(pdev, e_src);
++	pci_rootport_aer_stats_incr(root, e_src);
+ 
+ 	/*
+ 	 * There is a possibility that both correctable error and
+@@ -1308,10 +1323,8 @@ static void aer_isr_one_error(struct aer_rpc *rpc,
+ 			e_info.multi_error_valid = 1;
+ 		else
+ 			e_info.multi_error_valid = 0;
+-		aer_print_port_info(pdev, &e_info);
+ 
+-		if (find_source_device(pdev, &e_info))
+-			aer_process_err_devices(&e_info);
++		aer_isr_one_error_type(root, &e_info);
+ 	}
+ 
+ 	if (e_src->status & PCI_ERR_ROOT_UNCOR_RCV) {
+@@ -1328,10 +1341,7 @@ static void aer_isr_one_error(struct aer_rpc *rpc,
+ 		else
+ 			e_info.multi_error_valid = 0;
+ 
+-		aer_print_port_info(pdev, &e_info);
+-
+-		if (find_source_device(pdev, &e_info))
+-			aer_process_err_devices(&e_info);
++		aer_isr_one_error_type(root, &e_info);
+ 	}
+ }
+ 
+@@ -1352,7 +1362,7 @@ static irqreturn_t aer_isr(int irq, void *context)
+ 		return IRQ_NONE;
+ 
+ 	while (kfifo_get(&rpc->aer_fifo, &e_src))
+-		aer_isr_one_error(rpc, &e_src);
++		aer_isr_one_error(rpc->rpd, &e_src);
+ 	return IRQ_HANDLED;
+ }
+ 
+-- 
+2.47.0
+
