@@ -1,0 +1,46 @@
+From: Chandrasekaran Swaminathan <chander@nexthop.ai>
+Subject: [PATCH] net: ethernet: faraday: Enable ARM64 support for FTGMAC100
+
+The FTGMAC100 driver works correctly on ARM64 platforms, particularly
+on Aspeed AST2700 BMC SoCs. Add ARM64 to the architecture dependencies
+for NET_VENDOR_FARADAY and FTGMAC100, and remove the 64-bit restriction.
+
+Note: FTMAC100 remains ARM (32-bit) only as it does not support 64-bit
+platforms.
+
+Based on AspeedTech-BMC/linux aspeed-master-v6.6 branch.
+
+Signed-off-by: Chandrasekaran Swaminathan <chander@nexthop.ai>
+---
+ drivers/net/ethernet/faraday/Kconfig | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/ethernet/faraday/Kconfig b/drivers/net/ethernet/faraday/Kconfig
+index 1d6e2b7..8f9c3e5 100644
+--- a/drivers/net/ethernet/faraday/Kconfig
++++ b/drivers/net/ethernet/faraday/Kconfig
+@@ -6,7 +6,7 @@
+ config NET_VENDOR_FARADAY
+ 	bool "Faraday devices"
+ 	default y
+-	depends on ARM || COMPILE_TEST
++	depends on ARM || ARM64 || COMPILE_TEST
+ 	help
+ 	  If you have a network (Ethernet) card belonging to this class, say Y.
+
+@@ -28,11 +28,10 @@ config FTMAC100
+
+ config FTGMAC100
+ 	tristate "Faraday FTGMAC100 Gigabit Ethernet support"
+-	depends on ARM || COMPILE_TEST
+-	depends on !64BIT || BROKEN
++	depends on ARM || ARM64 || COMPILE_TEST
+ 	select PHYLIB
+ 	select FIXED_PHY
+-	select MDIO_ASPEED if MACH_ASPEED_G6
++	select MDIO_ASPEED if ARCH_ASPEED
+ 	select CRC32
+ 	help
+ 	  This driver supports the FTGMAC100 Gigabit Ethernet controller
+--
+2.34.1
