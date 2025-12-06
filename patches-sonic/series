@@ -220,7 +220,6 @@ cisco-npu-disable-other-bars.patch
 0012-PCI-AER-Avoid-NULL-pointer-dereference-in-aer_rateli.patch
 
 ###-> aspeed
-aspeed-arm64-faraday-support.patch
 aspeed-ast2700-support.patch
 ###-> aspeed-end
 
