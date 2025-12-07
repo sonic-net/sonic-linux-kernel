@@ -1,5 +1,5 @@
 From: Chander <chander@nexthop.ai>
-Date: Sat, 06 Dec 2025 17:33:51 +0000
+Date: Sun, 07 Dec 2025 01:02:31 +0000
 Subject: [PATCH] Add Aspeed AST2700 support
 
 This patch adds support for Aspeed AST2700 ARM64 SoC including:
@@ -12,7 +12,7 @@ Signed-off-by: Chander <chander@nexthop.ai>
 ---
 diff --git a/arch/arm64/Kconfig.platforms b/arch/arm64/Kconfig.platforms
 --- a/arch/arm64/Kconfig.platforms	2025-08-01 08:48:47.000000000 +0000
-+++ b/arch/arm64/Kconfig.platforms	2025-12-06 17:33:47.019629174 +0000
++++ b/arch/arm64/Kconfig.platforms	2025-12-07 01:02:27.098070449 +0000
 @@ -40,6 +40,12 @@
  	  This enables support for Apple's in-house ARM SoC family, starting
  	  with the Apple M1.
@@ -28,7 +28,7 @@ diff --git a/arch/arm64/Kconfig.platforms b/arch/arm64/Kconfig.platforms
  
 diff --git a/arch/arm64/boot/dts/Makefile b/arch/arm64/boot/dts/Makefile
 --- a/arch/arm64/boot/dts/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/arch/arm64/boot/dts/Makefile	2025-12-06 17:33:47.024629088 +0000
++++ b/arch/arm64/boot/dts/Makefile	2025-12-07 01:02:27.103070363 +0000
 @@ -9,6 +9,7 @@
  subdir-y += apm
  subdir-y += apple
@@ -39,7 +39,7 @@ diff --git a/arch/arm64/boot/dts/Makefile b/arch/arm64/boot/dts/Makefile
  subdir-y += cavium
 diff --git a/arch/arm64/boot/dts/aspeed/Makefile b/arch/arm64/boot/dts/aspeed/Makefile
 --- a/arch/arm64/boot/dts/aspeed/Makefile	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/Makefile	2025-12-06 17:33:32.063886865 +0000
++++ b/arch/arm64/boot/dts/aspeed/Makefile	2025-12-07 01:02:11.774333960 +0000
 @@ -0,0 +1,16 @@
 +# SPDX-License-Identifier: GPL-2.0
 +
@@ -59,7 +59,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/Makefile b/arch/arm64/boot/dts/aspeed/Ma
 +	ast2700-ci-host.dtb
 diff --git a/arch/arm64/boot/dts/aspeed/aspeed-evb-flash-layout-128.dtsi b/arch/arm64/boot/dts/aspeed/aspeed-evb-flash-layout-128.dtsi
 --- a/arch/arm64/boot/dts/aspeed/aspeed-evb-flash-layout-128.dtsi	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/aspeed-evb-flash-layout-128.dtsi	2025-12-06 17:33:32.063886865 +0000
++++ b/arch/arm64/boot/dts/aspeed/aspeed-evb-flash-layout-128.dtsi	2025-12-07 01:02:11.774333960 +0000
 @@ -0,0 +1,32 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +
@@ -95,7 +95,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/aspeed-evb-flash-layout-128.dtsi b/arch/
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/aspeed-evb-flash-layout-256-abr.dtsi b/arch/arm64/boot/dts/aspeed/aspeed-evb-flash-layout-256-abr.dtsi
 --- a/arch/arm64/boot/dts/aspeed/aspeed-evb-flash-layout-256-abr.dtsi	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/aspeed-evb-flash-layout-256-abr.dtsi	2025-12-06 17:33:32.063886865 +0000
++++ b/arch/arm64/boot/dts/aspeed/aspeed-evb-flash-layout-256-abr.dtsi	2025-12-07 01:02:11.774333960 +0000
 @@ -0,0 +1,57 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +
@@ -156,7 +156,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/aspeed-evb-flash-layout-256-abr.dtsi b/a
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/aspeed-g7-pinctrl.dtsi b/arch/arm64/boot/dts/aspeed/aspeed-g7-pinctrl.dtsi
 --- a/arch/arm64/boot/dts/aspeed/aspeed-g7-pinctrl.dtsi	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/aspeed-g7-pinctrl.dtsi	2025-12-06 17:33:32.063886865 +0000
++++ b/arch/arm64/boot/dts/aspeed/aspeed-g7-pinctrl.dtsi	2025-12-07 01:02:11.774333960 +0000
 @@ -0,0 +1,1425 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +// Copyright 2025 ASPEED Corp.
@@ -1585,7 +1585,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/aspeed-g7-pinctrl.dtsi b/arch/arm64/boot
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/aspeed-g7.dtsi b/arch/arm64/boot/dts/aspeed/aspeed-g7.dtsi
 --- a/arch/arm64/boot/dts/aspeed/aspeed-g7.dtsi	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/aspeed-g7.dtsi	2025-12-06 17:33:32.063886865 +0000
++++ b/arch/arm64/boot/dts/aspeed/aspeed-g7.dtsi	2025-12-07 01:02:11.774333960 +0000
 @@ -0,0 +1,2870 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +#include <dt-bindings/clock/aspeed,ast2700-scu.h>
@@ -4459,7 +4459,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/aspeed-g7.dtsi b/arch/arm64/boot/dts/asp
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/aspeed-ltpi0-pinctrl.dtsi b/arch/arm64/boot/dts/aspeed/aspeed-ltpi0-pinctrl.dtsi
 --- a/arch/arm64/boot/dts/aspeed/aspeed-ltpi0-pinctrl.dtsi	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/aspeed-ltpi0-pinctrl.dtsi	2025-12-06 17:33:32.063886865 +0000
++++ b/arch/arm64/boot/dts/aspeed/aspeed-ltpi0-pinctrl.dtsi	2025-12-07 01:02:11.774333960 +0000
 @@ -0,0 +1,409 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -4872,7 +4872,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/aspeed-ltpi0-pinctrl.dtsi b/arch/arm64/b
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/aspeed-ltpi0.dtsi b/arch/arm64/boot/dts/aspeed/aspeed-ltpi0.dtsi
 --- a/arch/arm64/boot/dts/aspeed/aspeed-ltpi0.dtsi	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/aspeed-ltpi0.dtsi	2025-12-06 17:33:32.063886865 +0000
++++ b/arch/arm64/boot/dts/aspeed/aspeed-ltpi0.dtsi	2025-12-07 01:02:11.774333960 +0000
 @@ -0,0 +1,659 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +#include <dt-bindings/clock/aspeed,ast1700-clk.h>
@@ -5535,7 +5535,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/aspeed-ltpi0.dtsi b/arch/arm64/boot/dts/
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/aspeed-ltpi1-pinctrl.dtsi b/arch/arm64/boot/dts/aspeed/aspeed-ltpi1-pinctrl.dtsi
 --- a/arch/arm64/boot/dts/aspeed/aspeed-ltpi1-pinctrl.dtsi	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/aspeed-ltpi1-pinctrl.dtsi	2025-12-06 17:33:32.063886865 +0000
++++ b/arch/arm64/boot/dts/aspeed/aspeed-ltpi1-pinctrl.dtsi	2025-12-07 01:02:11.774333960 +0000
 @@ -0,0 +1,409 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -5948,7 +5948,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/aspeed-ltpi1-pinctrl.dtsi b/arch/arm64/b
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/aspeed-ltpi1.dtsi b/arch/arm64/boot/dts/aspeed/aspeed-ltpi1.dtsi
 --- a/arch/arm64/boot/dts/aspeed/aspeed-ltpi1.dtsi	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/aspeed-ltpi1.dtsi	2025-12-06 17:33:32.063886865 +0000
++++ b/arch/arm64/boot/dts/aspeed/aspeed-ltpi1.dtsi	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,659 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +#include <dt-bindings/clock/aspeed,ast1700-clk.h>
@@ -6611,7 +6611,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/aspeed-ltpi1.dtsi b/arch/arm64/boot/dts/
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/aspeed-ltpi1800.dtsi b/arch/arm64/boot/dts/aspeed/aspeed-ltpi1800.dtsi
 --- a/arch/arm64/boot/dts/aspeed/aspeed-ltpi1800.dtsi	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/aspeed-ltpi1800.dtsi	2025-12-06 17:33:32.063886865 +0000
++++ b/arch/arm64/boot/dts/aspeed/aspeed-ltpi1800.dtsi	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,647 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +#include <dt-bindings/clock/aspeed,ast1800-clk.h>
@@ -7262,7 +7262,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/aspeed-ltpi1800.dtsi b/arch/arm64/boot/d
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-ci-host.dts b/arch/arm64/boot/dts/aspeed/ast2700-ci-host.dts
 --- a/arch/arm64/boot/dts/aspeed/ast2700-ci-host.dts	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-ci-host.dts	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-ci-host.dts	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,97 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -7363,7 +7363,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-ci-host.dts b/arch/arm64/boot/dt
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-dcscm.dts b/arch/arm64/boot/dts/aspeed/ast2700-dcscm.dts
 --- a/arch/arm64/boot/dts/aspeed/ast2700-dcscm.dts	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-dcscm.dts	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-dcscm.dts	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,978 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -8345,7 +8345,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-dcscm.dts b/arch/arm64/boot/dts/
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1700-evb-dual.dts b/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1700-evb-dual.dts
 --- a/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1700-evb-dual.dts	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1700-evb-dual.dts	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1700-evb-dual.dts	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,218 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -8567,7 +8567,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1700-evb-dual.dts b/arc
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1700-evb.dts b/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1700-evb.dts
 --- a/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1700-evb.dts	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1700-evb.dts	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1700-evb.dts	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,456 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -9027,7 +9027,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1700-evb.dts b/arch/arm
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1800-evb.dts b/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1800-evb.dts
 --- a/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1800-evb.dts	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1800-evb.dts	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1800-evb.dts	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,436 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -9467,7 +9467,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-dcscm_ast1800-evb.dts b/arch/arm
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-evb-256-abr.dts b/arch/arm64/boot/dts/aspeed/ast2700-evb-256-abr.dts
 --- a/arch/arm64/boot/dts/aspeed/ast2700-evb-256-abr.dts	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-evb-256-abr.dts	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-evb-256-abr.dts	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,40 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -9511,7 +9511,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-evb-256-abr.dts b/arch/arm64/boo
 +
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-evb-s0.dts b/arch/arm64/boot/dts/aspeed/ast2700-evb-s0.dts
 --- a/arch/arm64/boot/dts/aspeed/ast2700-evb-s0.dts	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-evb-s0.dts	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-evb-s0.dts	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,367 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -9882,7 +9882,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-evb-s0.dts b/arch/arm64/boot/dts
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-evb-s1.dts b/arch/arm64/boot/dts/aspeed/ast2700-evb-s1.dts
 --- a/arch/arm64/boot/dts/aspeed/ast2700-evb-s1.dts	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-evb-s1.dts	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-evb-s1.dts	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,465 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -10351,7 +10351,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-evb-s1.dts b/arch/arm64/boot/dts
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-evb.dts b/arch/arm64/boot/dts/aspeed/ast2700-evb.dts
 --- a/arch/arm64/boot/dts/aspeed/ast2700-evb.dts	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-evb.dts	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-evb.dts	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,1270 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -11625,7 +11625,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-evb.dts b/arch/arm64/boot/dts/as
 +#endif
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-evbeeprom.dts b/arch/arm64/boot/dts/aspeed/ast2700-evbeeprom.dts
 --- a/arch/arm64/boot/dts/aspeed/ast2700-evbeeprom.dts	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-evbeeprom.dts	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-evbeeprom.dts	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,1179 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -12808,7 +12808,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-evbeeprom.dts b/arch/arm64/boot/
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-evbi2c.dts b/arch/arm64/boot/dts/aspeed/ast2700-evbi2c.dts
 --- a/arch/arm64/boot/dts/aspeed/ast2700-evbi2c.dts	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-evbi2c.dts	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-evbi2c.dts	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,1179 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -13991,7 +13991,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-evbi2c.dts b/arch/arm64/boot/dts
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-fpga.dts b/arch/arm64/boot/dts/aspeed/ast2700-fpga.dts
 --- a/arch/arm64/boot/dts/aspeed/ast2700-fpga.dts	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-fpga.dts	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-fpga.dts	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,1132 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -15127,7 +15127,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-fpga.dts b/arch/arm64/boot/dts/a
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-ncsi.dts b/arch/arm64/boot/dts/aspeed/ast2700-ncsi.dts
 --- a/arch/arm64/boot/dts/aspeed/ast2700-ncsi.dts	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-ncsi.dts	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-ncsi.dts	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,52 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -15183,7 +15183,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-ncsi.dts b/arch/arm64/boot/dts/a
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-raw.dts b/arch/arm64/boot/dts/aspeed/ast2700-raw.dts
 --- a/arch/arm64/boot/dts/aspeed/ast2700-raw.dts	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-raw.dts	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-raw.dts	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,220 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -15407,7 +15407,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-raw.dts b/arch/arm64/boot/dts/as
 +
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-reserved-mem.dtsi b/arch/arm64/boot/dts/aspeed/ast2700-reserved-mem.dtsi
 --- a/arch/arm64/boot/dts/aspeed/ast2700-reserved-mem.dtsi	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-reserved-mem.dtsi	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-reserved-mem.dtsi	2025-12-07 01:02:11.775333943 +0000
 @@ -0,0 +1,126 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -15537,7 +15537,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-reserved-mem.dtsi b/arch/arm64/b
 +};
 diff --git a/arch/arm64/boot/dts/aspeed/ast2700-slt.dts b/arch/arm64/boot/dts/aspeed/ast2700-slt.dts
 --- a/arch/arm64/boot/dts/aspeed/ast2700-slt.dts	1970-01-01 00:00:00.000000000 +0000
-+++ b/arch/arm64/boot/dts/aspeed/ast2700-slt.dts	2025-12-06 17:33:32.064886848 +0000
++++ b/arch/arm64/boot/dts/aspeed/ast2700-slt.dts	2025-12-07 01:02:11.776333926 +0000
 @@ -0,0 +1,857 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -16398,7 +16398,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/ast2700-slt.dts b/arch/arm64/boot/dts/as
 +};
 diff --git a/drivers/Makefile b/drivers/Makefile
 --- a/drivers/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/Makefile	2025-12-06 17:33:38.809770631 +0000
++++ b/drivers/Makefile	2025-12-07 01:02:18.863212097 +0000
 @@ -195,3 +195,4 @@
  obj-$(CONFIG_DPLL)		+= dpll/
  
@@ -16406,7 +16406,7 @@ diff --git a/drivers/Makefile b/drivers/Makefile
 +obj-$(CONFIG_JTAG_ASPEED)	+= jtag/
 diff --git a/drivers/bus/Kconfig b/drivers/bus/Kconfig
 --- a/drivers/bus/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/bus/Kconfig	2025-12-06 17:33:34.171850544 +0000
++++ b/drivers/bus/Kconfig	2025-12-07 01:02:14.162292909 +0000
 @@ -261,6 +261,12 @@
  	  configuration. Allows to adjust the priorities of all master
  	  peripherals.
@@ -16422,7 +16422,7 @@ diff --git a/drivers/bus/Kconfig b/drivers/bus/Kconfig
  
 diff --git a/drivers/bus/Makefile b/drivers/bus/Makefile
 --- a/drivers/bus/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/bus/Makefile	2025-12-06 17:33:38.278779780 +0000
++++ b/drivers/bus/Makefile	2025-12-07 01:02:18.345221001 +0000
 @@ -39,6 +39,7 @@
  obj-$(CONFIG_VEXPRESS_CONFIG)	+= vexpress-config.o
  
@@ -16433,7 +16433,7 @@ diff --git a/drivers/bus/Makefile b/drivers/bus/Makefile
  obj-y				+= mhi/
 diff --git a/drivers/bus/aspeed-ltpi.c b/drivers/bus/aspeed-ltpi.c
 --- a/drivers/bus/aspeed-ltpi.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/bus/aspeed-ltpi.c	2025-12-06 17:33:46.635635790 +0000
++++ b/drivers/bus/aspeed-ltpi.c	2025-12-07 01:02:26.739076628 +0000
 @@ -0,0 +1,272 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +// Copyright ASPEED Technology
@@ -16709,7 +16709,7 @@ diff --git a/drivers/bus/aspeed-ltpi.c b/drivers/bus/aspeed-ltpi.c
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/char/hw_random/Kconfig b/drivers/char/hw_random/Kconfig
 --- a/drivers/char/hw_random/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/char/hw_random/Kconfig	2025-12-06 17:33:34.893838104 +0000
++++ b/drivers/char/hw_random/Kconfig	2025-12-07 01:02:14.991278658 +0000
 @@ -286,6 +286,7 @@
  config HW_RANDOM_NOMADIK
  	tristate "ST-Ericsson Nomadik Random Number Generator support"
@@ -16742,7 +16742,7 @@ diff --git a/drivers/char/hw_random/Kconfig b/drivers/char/hw_random/Kconfig
  config UML_RANDOM
 diff --git a/drivers/char/hw_random/Makefile b/drivers/char/hw_random/Makefile
 --- a/drivers/char/hw_random/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/char/hw_random/Makefile	2025-12-06 17:33:39.294762274 +0000
++++ b/drivers/char/hw_random/Makefile	2025-12-07 01:02:19.310204412 +0000
 @@ -50,3 +50,5 @@
  obj-$(CONFIG_HW_RANDOM_POLARFIRE_SOC) += mpfs-rng.o
  obj-$(CONFIG_HW_RANDOM_ROCKCHIP) += rockchip-rng.o
@@ -16751,7 +16751,7 @@ diff --git a/drivers/char/hw_random/Makefile b/drivers/char/hw_random/Makefile
 +obj-$(CONFIG_HW_RANDOM_DWC) += dwc/
 diff --git a/drivers/char/hw_random/aspeed-rng.c b/drivers/char/hw_random/aspeed-rng.c
 --- a/drivers/char/hw_random/aspeed-rng.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/aspeed-rng.c	2025-12-06 17:33:46.761633619 +0000
++++ b/drivers/char/hw_random/aspeed-rng.c	2025-12-07 01:02:26.865074459 +0000
 @@ -0,0 +1,134 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
@@ -16889,7 +16889,7 @@ diff --git a/drivers/char/hw_random/aspeed-rng.c b/drivers/char/hw_random/aspeed
 +MODULE_DESCRIPTION("Aspeed true random number generator driver");
 diff --git a/drivers/char/hw_random/dwc/Kconfig b/drivers/char/hw_random/dwc/Kconfig
 --- a/drivers/char/hw_random/dwc/Kconfig	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/dwc/Kconfig	2025-12-06 17:33:45.235659912 +0000
++++ b/drivers/char/hw_random/dwc/Kconfig	2025-12-07 01:02:25.260102081 +0000
 @@ -0,0 +1,18 @@
 +# SPDX-License-Identifier: GPL-2.0-only
 +#
@@ -16911,7 +16911,7 @@ diff --git a/drivers/char/hw_random/dwc/Kconfig b/drivers/char/hw_random/dwc/Kco
 +
 diff --git a/drivers/char/hw_random/dwc/Makefile b/drivers/char/hw_random/dwc/Makefile
 --- a/drivers/char/hw_random/dwc/Makefile	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/dwc/Makefile	2025-12-06 17:33:45.235659912 +0000
++++ b/drivers/char/hw_random/dwc/Makefile	2025-12-07 01:02:25.260102081 +0000
 @@ -0,0 +1,22 @@
 +# SPDX-License-Identifier: GPL-2.0
 +
@@ -16937,7 +16937,7 @@ diff --git a/drivers/char/hw_random/dwc/Makefile b/drivers/char/hw_random/dwc/Ma
 +		\) -type f -print | xargs rm -rvf
 diff --git a/drivers/char/hw_random/dwc/src/pdu/common/include/elppdu_error.h b/drivers/char/hw_random/dwc/src/pdu/common/include/elppdu_error.h
 --- a/drivers/char/hw_random/dwc/src/pdu/common/include/elppdu_error.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/dwc/src/pdu/common/include/elppdu_error.h	2025-12-06 17:33:45.235659912 +0000
++++ b/drivers/char/hw_random/dwc/src/pdu/common/include/elppdu_error.h	2025-12-07 01:02:25.260102081 +0000
 @@ -0,0 +1,96 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
@@ -17037,7 +17037,7 @@ diff --git a/drivers/char/hw_random/dwc/src/pdu/common/include/elppdu_error.h b/
 +#endif
 diff --git a/drivers/char/hw_random/dwc/src/pdu/common/pdu/pdu_dev32.c b/drivers/char/hw_random/dwc/src/pdu/common/pdu/pdu_dev32.c
 --- a/drivers/char/hw_random/dwc/src/pdu/common/pdu/pdu_dev32.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/dwc/src/pdu/common/pdu/pdu_dev32.c	2025-12-06 17:33:45.235659912 +0000
++++ b/drivers/char/hw_random/dwc/src/pdu/common/pdu/pdu_dev32.c	2025-12-07 01:02:25.261102064 +0000
 @@ -0,0 +1,165 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
@@ -17206,7 +17206,7 @@ diff --git a/drivers/char/hw_random/dwc/src/pdu/common/pdu/pdu_dev32.c b/drivers
 +EXPORT_SYMBOL(pdu_from_dev32_s);
 diff --git a/drivers/char/hw_random/dwc/src/pdu/linux/include/elppdu.h b/drivers/char/hw_random/dwc/src/pdu/linux/include/elppdu.h
 --- a/drivers/char/hw_random/dwc/src/pdu/linux/include/elppdu.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/dwc/src/pdu/linux/include/elppdu.h	2025-12-06 17:33:45.235659912 +0000
++++ b/drivers/char/hw_random/dwc/src/pdu/linux/include/elppdu.h	2025-12-07 01:02:25.261102064 +0000
 @@ -0,0 +1,125 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
@@ -17335,7 +17335,7 @@ diff --git a/drivers/char/hw_random/dwc/src/pdu/linux/include/elppdu.h b/drivers
 +
 diff --git a/drivers/char/hw_random/dwc/src/pdu/linux/kernel/pdu.c b/drivers/char/hw_random/dwc/src/pdu/linux/kernel/pdu.c
 --- a/drivers/char/hw_random/dwc/src/pdu/linux/kernel/pdu.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/dwc/src/pdu/linux/kernel/pdu.c	2025-12-06 17:33:45.236659894 +0000
++++ b/drivers/char/hw_random/dwc/src/pdu/linux/kernel/pdu.c	2025-12-07 01:02:25.261102064 +0000
 @@ -0,0 +1,188 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
@@ -17527,7 +17527,7 @@ diff --git a/drivers/char/hw_random/dwc/src/pdu/linux/kernel/pdu.c b/drivers/cha
 +module_exit(pdu_mod_exit);
 diff --git a/drivers/char/hw_random/dwc/src/pdu/linux/kernel/spacc_mem.c b/drivers/char/hw_random/dwc/src/pdu/linux/kernel/spacc_mem.c
 --- a/drivers/char/hw_random/dwc/src/pdu/linux/kernel/spacc_mem.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/dwc/src/pdu/linux/kernel/spacc_mem.c	2025-12-06 17:33:45.236659894 +0000
++++ b/drivers/char/hw_random/dwc/src/pdu/linux/kernel/spacc_mem.c	2025-12-07 01:02:25.261102064 +0000
 @@ -0,0 +1,191 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
@@ -17722,7 +17722,7 @@ diff --git a/drivers/char/hw_random/dwc/src/pdu/linux/kernel/spacc_mem.c b/drive
 +MODULE_AUTHOR("Synopsys, Inc.");
 diff --git a/drivers/char/hw_random/dwc/src/trng/include/nisttrng.h b/drivers/char/hw_random/dwc/src/trng/include/nisttrng.h
 --- a/drivers/char/hw_random/dwc/src/trng/include/nisttrng.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/dwc/src/trng/include/nisttrng.h	2025-12-06 17:33:45.236659894 +0000
++++ b/drivers/char/hw_random/dwc/src/trng/include/nisttrng.h	2025-12-07 01:02:25.261102064 +0000
 @@ -0,0 +1,63 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
@@ -17789,7 +17789,7 @@ diff --git a/drivers/char/hw_random/dwc/src/trng/include/nisttrng.h b/drivers/ch
 +#endif
 diff --git a/drivers/char/hw_random/dwc/src/trng/include/nisttrng_common.h b/drivers/char/hw_random/dwc/src/trng/include/nisttrng_common.h
 --- a/drivers/char/hw_random/dwc/src/trng/include/nisttrng_common.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/dwc/src/trng/include/nisttrng_common.h	2025-12-06 17:33:45.236659894 +0000
++++ b/drivers/char/hw_random/dwc/src/trng/include/nisttrng_common.h	2025-12-07 01:02:25.261102064 +0000
 @@ -0,0 +1,144 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +// ------------------------------------------------------------------------
@@ -17937,7 +17937,7 @@ diff --git a/drivers/char/hw_random/dwc/src/trng/include/nisttrng_common.h b/dri
 +#endif
 diff --git a/drivers/char/hw_random/dwc/src/trng/include/nisttrng_hw.h b/drivers/char/hw_random/dwc/src/trng/include/nisttrng_hw.h
 --- a/drivers/char/hw_random/dwc/src/trng/include/nisttrng_hw.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/dwc/src/trng/include/nisttrng_hw.h	2025-12-06 17:33:45.236659894 +0000
++++ b/drivers/char/hw_random/dwc/src/trng/include/nisttrng_hw.h	2025-12-07 01:02:25.261102064 +0000
 @@ -0,0 +1,457 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
@@ -18398,7 +18398,7 @@ diff --git a/drivers/char/hw_random/dwc/src/trng/include/nisttrng_hw.h b/drivers
 +#endif
 diff --git a/drivers/char/hw_random/dwc/src/trng/include/nisttrng_private.h b/drivers/char/hw_random/dwc/src/trng/include/nisttrng_private.h
 --- a/drivers/char/hw_random/dwc/src/trng/include/nisttrng_private.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/dwc/src/trng/include/nisttrng_private.h	2025-12-06 17:33:45.236659894 +0000
++++ b/drivers/char/hw_random/dwc/src/trng/include/nisttrng_private.h	2025-12-07 01:02:25.261102064 +0000
 @@ -0,0 +1,89 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
@@ -18491,7 +18491,7 @@ diff --git a/drivers/char/hw_random/dwc/src/trng/include/nisttrng_private.h b/dr
 +#endif
 diff --git a/drivers/char/hw_random/dwc/src/trng/include/synversion.h b/drivers/char/hw_random/dwc/src/trng/include/synversion.h
 --- a/drivers/char/hw_random/dwc/src/trng/include/synversion.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/dwc/src/trng/include/synversion.h	2025-12-06 17:33:45.236659894 +0000
++++ b/drivers/char/hw_random/dwc/src/trng/include/synversion.h	2025-12-07 01:02:25.261102064 +0000
 @@ -0,0 +1,52 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
@@ -18547,7 +18547,7 @@ diff --git a/drivers/char/hw_random/dwc/src/trng/include/synversion.h b/drivers/
 +#endif
 diff --git a/drivers/char/hw_random/dwc/src/trng/kernel/nist_trng.c b/drivers/char/hw_random/dwc/src/trng/kernel/nist_trng.c
 --- a/drivers/char/hw_random/dwc/src/trng/kernel/nist_trng.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/dwc/src/trng/kernel/nist_trng.c	2025-12-06 17:33:45.236659894 +0000
++++ b/drivers/char/hw_random/dwc/src/trng/kernel/nist_trng.c	2025-12-07 01:02:25.261102064 +0000
 @@ -0,0 +1,2170 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
@@ -20721,7 +20721,7 @@ diff --git a/drivers/char/hw_random/dwc/src/trng/kernel/nist_trng.c b/drivers/ch
 +MODULE_AUTHOR("Synopsys, Inc.");
 diff --git a/drivers/char/hw_random/dwc/src/trng/trng/nist_trng.c b/drivers/char/hw_random/dwc/src/trng/trng/nist_trng.c
 --- a/drivers/char/hw_random/dwc/src/trng/trng/nist_trng.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/dwc/src/trng/trng/nist_trng.c	2025-12-06 17:33:45.236659894 +0000
++++ b/drivers/char/hw_random/dwc/src/trng/trng/nist_trng.c	2025-12-07 01:02:25.261102064 +0000
 @@ -0,0 +1,956 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
@@ -21681,7 +21681,7 @@ diff --git a/drivers/char/hw_random/dwc/src/trng/trng/nist_trng.c b/drivers/char
 +EXPORT_SYMBOL(nisttrng_generate);
 diff --git a/drivers/char/hw_random/dwc/src/trng/trng/nist_trng_private.c b/drivers/char/hw_random/dwc/src/trng/trng/nist_trng_private.c
 --- a/drivers/char/hw_random/dwc/src/trng/trng/nist_trng_private.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/char/hw_random/dwc/src/trng/trng/nist_trng_private.c	2025-12-06 17:33:45.236659894 +0000
++++ b/drivers/char/hw_random/dwc/src/trng/trng/nist_trng_private.c	2025-12-07 01:02:25.261102064 +0000
 @@ -0,0 +1,1022 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
@@ -22707,7 +22707,7 @@ diff --git a/drivers/char/hw_random/dwc/src/trng/trng/nist_trng_private.c b/driv
 +}
 diff --git a/drivers/char/ipmi/kcs_bmc_aspeed.c b/drivers/char/ipmi/kcs_bmc_aspeed.c
 --- a/drivers/char/ipmi/kcs_bmc_aspeed.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/char/ipmi/kcs_bmc_aspeed.c	2025-12-06 17:33:46.767633516 +0000
++++ b/drivers/char/ipmi/kcs_bmc_aspeed.c	2025-12-07 01:02:26.871074356 +0000
 @@ -1,13 +1,14 @@
  // SPDX-License-Identifier: GPL-2.0
  /*
@@ -23731,7 +23731,7 @@ diff --git a/drivers/char/ipmi/kcs_bmc_aspeed.c b/drivers/char/ipmi/kcs_bmc_aspe
  MODULE_DESCRIPTION("Aspeed device interface to the KCS BMC device");
 diff --git a/drivers/clk/Kconfig b/drivers/clk/Kconfig
 --- a/drivers/clk/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/clk/Kconfig	2025-12-06 17:33:32.911872254 +0000
++++ b/drivers/clk/Kconfig	2025-12-07 01:02:12.830315807 +0000
 @@ -277,6 +277,20 @@
  	  The G4 and G5 series, including the ast2400 and ast2500, are supported
  	  by this driver.
@@ -23770,7 +23770,7 @@ diff --git a/drivers/clk/Kconfig b/drivers/clk/Kconfig
  	depends on LOONGARCH || COMPILE_TEST
 diff --git a/drivers/clk/Makefile b/drivers/clk/Makefile
 --- a/drivers/clk/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/clk/Makefile	2025-12-06 17:33:36.545809640 +0000
++++ b/drivers/clk/Makefile	2025-12-07 01:02:16.722248902 +0000
 @@ -48,6 +48,8 @@
  obj-$(CONFIG_COMMON_CLK_GEMINI)		+= clk-gemini.o
  obj-$(CONFIG_COMMON_CLK_ASPEED)		+= clk-aspeed.o
@@ -23790,7 +23790,7 @@ diff --git a/drivers/clk/Makefile b/drivers/clk/Makefile
  obj-$(CONFIG_CLK_LS1028A_PLLDIG)	+= clk-plldig.o
 diff --git a/drivers/clk/clk-aspeed.c b/drivers/clk/clk-aspeed.c
 --- a/drivers/clk/clk-aspeed.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/clk/clk-aspeed.c	2025-12-06 17:33:46.336640942 +0000
++++ b/drivers/clk/clk-aspeed.c	2025-12-07 01:02:26.403082410 +0000
 @@ -54,15 +54,15 @@
  	[ASPEED_CLK_GATE_DCLK] =	{  5, -1, "dclk-gate",		NULL,	CLK_IS_CRITICAL }, /* DAC */
  	[ASPEED_CLK_GATE_REFCLK] =	{  6, -1, "refclk-gate",	"clkin", CLK_IS_CRITICAL },
@@ -23821,7 +23821,7 @@ diff --git a/drivers/clk/clk-aspeed.c b/drivers/clk/clk-aspeed.c
  	 * SCUD4 resets start at an offset to separate them from
 diff --git a/drivers/clk/clk-ast1700.c b/drivers/clk/clk-ast1700.c
 --- a/drivers/clk/clk-ast1700.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/clk/clk-ast1700.c	2025-12-06 17:33:46.340640873 +0000
++++ b/drivers/clk/clk-ast1700.c	2025-12-07 01:02:26.408082324 +0000
 @@ -0,0 +1,807 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +// Copyright ASPEED Technology
@@ -24632,7 +24632,7 @@ diff --git a/drivers/clk/clk-ast1700.c b/drivers/clk/clk-ast1700.c
 +
 diff --git a/drivers/clk/clk-ast2600.c b/drivers/clk/clk-ast2600.c
 --- a/drivers/clk/clk-ast2600.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/clk/clk-ast2600.c	2025-12-06 17:33:46.347640752 +0000
++++ b/drivers/clk/clk-ast2600.c	2025-12-07 01:02:26.414082221 +0000
 @@ -19,7 +19,7 @@
   * This includes the gates (configured from aspeed_g6_gates), plus the
   * explicitly-configured clocks (ASPEED_CLK_HPLL and up).
@@ -25160,7 +25160,7 @@ diff --git a/drivers/clk/clk-ast2600.c b/drivers/clk/clk-ast2600.c
  	if (ret)
 diff --git a/drivers/clk/clk-ast2700.c b/drivers/clk/clk-ast2700.c
 --- a/drivers/clk/clk-ast2700.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/clk/clk-ast2700.c	2025-12-06 17:33:46.330641045 +0000
++++ b/drivers/clk/clk-ast2700.c	2025-12-07 01:02:26.397082513 +0000
 @@ -0,0 +1,1334 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
@@ -26498,7 +26498,7 @@ diff --git a/drivers/clk/clk-ast2700.c b/drivers/clk/clk-ast2700.c
 +arch_initcall(clk_ast2700_init);
 diff --git a/drivers/crypto/aspeed/Kconfig b/drivers/crypto/aspeed/Kconfig
 --- a/drivers/crypto/aspeed/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/crypto/aspeed/Kconfig	2025-12-06 17:33:46.808632809 +0000
++++ b/drivers/crypto/aspeed/Kconfig	2025-12-07 01:02:26.906073754 +0000
 @@ -1,26 +1,32 @@
  config CRYPTO_DEV_ASPEED
 -	tristate "Support for Aspeed cryptographic engine driver"
@@ -26603,7 +26603,7 @@ diff --git a/drivers/crypto/aspeed/Kconfig b/drivers/crypto/aspeed/Kconfig
 +endif #CRYPTO_DEV_ASPEED
 diff --git a/drivers/crypto/aspeed/Makefile b/drivers/crypto/aspeed/Makefile
 --- a/drivers/crypto/aspeed/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/crypto/aspeed/Makefile	2025-12-06 17:33:46.808632809 +0000
++++ b/drivers/crypto/aspeed/Makefile	2025-12-07 01:02:26.906073754 +0000
 @@ -1,11 +1,14 @@
  hace-hash-$(CONFIG_CRYPTO_DEV_ASPEED_HACE_HASH) := aspeed-hace-hash.o
  hace-crypto-$(CONFIG_CRYPTO_DEV_ASPEED_HACE_CRYPTO) := aspeed-hace-crypto.o
@@ -26624,7 +26624,7 @@ diff --git a/drivers/crypto/aspeed/Makefile b/drivers/crypto/aspeed/Makefile
 +obj-$(CONFIG_CRYPTO_DEV_ASPEED_ECDSA) += aspeed-ecdsa.o
 diff --git a/drivers/crypto/aspeed/aspeed-acry.c b/drivers/crypto/aspeed/aspeed-acry.c
 --- a/drivers/crypto/aspeed/aspeed-acry.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/crypto/aspeed/aspeed-acry.c	2025-12-06 17:33:46.808632809 +0000
++++ b/drivers/crypto/aspeed/aspeed-acry.c	2025-12-07 01:02:26.906073754 +0000
 @@ -808,7 +808,7 @@
  
  static struct platform_driver aspeed_acry_driver = {
@@ -26636,7 +26636,7 @@ diff --git a/drivers/crypto/aspeed/aspeed-acry.c b/drivers/crypto/aspeed/aspeed-
  		.of_match_table = aspeed_acry_of_matches,
 diff --git a/drivers/crypto/aspeed/aspeed-ecdsa.c b/drivers/crypto/aspeed/aspeed-ecdsa.c
 --- a/drivers/crypto/aspeed/aspeed-ecdsa.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/crypto/aspeed/aspeed-ecdsa.c	2025-12-06 17:33:46.808632809 +0000
++++ b/drivers/crypto/aspeed/aspeed-ecdsa.c	2025-12-07 01:02:26.906073754 +0000
 @@ -0,0 +1,779 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -27419,7 +27419,7 @@ diff --git a/drivers/crypto/aspeed/aspeed-ecdsa.c b/drivers/crypto/aspeed/aspeed
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/crypto/aspeed/aspeed-ecdsa.h b/drivers/crypto/aspeed/aspeed-ecdsa.h
 --- a/drivers/crypto/aspeed/aspeed-ecdsa.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/crypto/aspeed/aspeed-ecdsa.h	2025-12-06 17:33:46.808632809 +0000
++++ b/drivers/crypto/aspeed/aspeed-ecdsa.h	2025-12-07 01:02:26.906073754 +0000
 @@ -0,0 +1,119 @@
 +/* SPDX-License-Identifier: GPL-2.0+ */
 +
@@ -27542,7 +27542,7 @@ diff --git a/drivers/crypto/aspeed/aspeed-ecdsa.h b/drivers/crypto/aspeed/aspeed
 +#endif
 diff --git a/drivers/crypto/aspeed/aspeed-hace-crypto.c b/drivers/crypto/aspeed/aspeed-hace-crypto.c
 --- a/drivers/crypto/aspeed/aspeed-hace-crypto.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/crypto/aspeed/aspeed-hace-crypto.c	2025-12-06 17:33:46.808632809 +0000
++++ b/drivers/crypto/aspeed/aspeed-hace-crypto.c	2025-12-07 01:02:26.906073754 +0000
 @@ -24,6 +24,11 @@
  	dev_dbg((h)->dev, "%s() " fmt, __func__, ##__VA_ARGS__)
  #endif
@@ -27860,7 +27860,7 @@ diff --git a/drivers/crypto/aspeed/aspeed-hace-crypto.c b/drivers/crypto/aspeed/
 +}
 diff --git a/drivers/crypto/aspeed/aspeed-hace-hash.c b/drivers/crypto/aspeed/aspeed-hace-hash.c
 --- a/drivers/crypto/aspeed/aspeed-hace-hash.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/crypto/aspeed/aspeed-hace-hash.c	2025-12-06 17:33:46.809632792 +0000
++++ b/drivers/crypto/aspeed/aspeed-hace-hash.c	2025-12-07 01:02:26.906073754 +0000
 @@ -138,21 +138,13 @@
  		return -EINVAL;
  	}
@@ -28335,7 +28335,7 @@ diff --git a/drivers/crypto/aspeed/aspeed-hace-hash.c b/drivers/crypto/aspeed/as
 +}
 diff --git a/drivers/crypto/aspeed/aspeed-hace.c b/drivers/crypto/aspeed/aspeed-hace.c
 --- a/drivers/crypto/aspeed/aspeed-hace.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/crypto/aspeed/aspeed-hace.c	2025-12-06 17:33:46.809632792 +0000
++++ b/drivers/crypto/aspeed/aspeed-hace.c	2025-12-07 01:02:26.906073754 +0000
 @@ -6,15 +6,18 @@
  #include "aspeed-hace.h"
  #include <crypto/engine.h>
@@ -28667,7 +28667,7 @@ diff --git a/drivers/crypto/aspeed/aspeed-hace.c b/drivers/crypto/aspeed/aspeed-
  		.of_match_table = aspeed_hace_of_matches,
 diff --git a/drivers/crypto/aspeed/aspeed-hace.h b/drivers/crypto/aspeed/aspeed-hace.h
 --- a/drivers/crypto/aspeed/aspeed-hace.h	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/crypto/aspeed/aspeed-hace.h	2025-12-06 17:33:46.809632792 +0000
++++ b/drivers/crypto/aspeed/aspeed-hace.h	2025-12-07 01:02:26.907073737 +0000
 @@ -10,6 +10,8 @@
  #include <linux/compiler_attributes.h>
  #include <linux/interrupt.h>
@@ -28815,7 +28815,7 @@ diff --git a/drivers/crypto/aspeed/aspeed-hace.h b/drivers/crypto/aspeed/aspeed-
  #endif
 diff --git a/drivers/crypto/aspeed/aspeed-rsss-hash.c b/drivers/crypto/aspeed/aspeed-rsss-hash.c
 --- a/drivers/crypto/aspeed/aspeed-rsss-hash.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/crypto/aspeed/aspeed-rsss-hash.c	2025-12-06 17:33:46.809632792 +0000
++++ b/drivers/crypto/aspeed/aspeed-rsss-hash.c	2025-12-07 01:02:26.907073737 +0000
 @@ -0,0 +1,901 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -29720,7 +29720,7 @@ diff --git a/drivers/crypto/aspeed/aspeed-rsss-hash.c b/drivers/crypto/aspeed/as
 +}
 diff --git a/drivers/crypto/aspeed/aspeed-rsss-rsa.c b/drivers/crypto/aspeed/aspeed-rsss-rsa.c
 --- a/drivers/crypto/aspeed/aspeed-rsss-rsa.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/crypto/aspeed/aspeed-rsss-rsa.c	2025-12-06 17:33:46.810632775 +0000
++++ b/drivers/crypto/aspeed/aspeed-rsss-rsa.c	2025-12-07 01:02:26.907073737 +0000
 @@ -0,0 +1,608 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -30332,7 +30332,7 @@ diff --git a/drivers/crypto/aspeed/aspeed-rsss-rsa.c b/drivers/crypto/aspeed/asp
 +}
 diff --git a/drivers/crypto/aspeed/aspeed-rsss.c b/drivers/crypto/aspeed/aspeed-rsss.c
 --- a/drivers/crypto/aspeed/aspeed-rsss.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/crypto/aspeed/aspeed-rsss.c	2025-12-06 17:33:46.810632775 +0000
++++ b/drivers/crypto/aspeed/aspeed-rsss.c	2025-12-07 01:02:26.907073737 +0000
 @@ -0,0 +1,188 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -30524,7 +30524,7 @@ diff --git a/drivers/crypto/aspeed/aspeed-rsss.c b/drivers/crypto/aspeed/aspeed-
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/crypto/aspeed/aspeed-rsss.h b/drivers/crypto/aspeed/aspeed-rsss.h
 --- a/drivers/crypto/aspeed/aspeed-rsss.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/crypto/aspeed/aspeed-rsss.h	2025-12-06 17:33:46.810632775 +0000
++++ b/drivers/crypto/aspeed/aspeed-rsss.h	2025-12-07 01:02:26.907073737 +0000
 @@ -0,0 +1,275 @@
 +/* SPDX-License-Identifier: GPL-2.0+ */
 +
@@ -30803,7 +30803,7 @@ diff --git a/drivers/crypto/aspeed/aspeed-rsss.h b/drivers/crypto/aspeed/aspeed-
 +#endif /* __ASPEED_RSSS_H__ */
 diff --git a/drivers/edac/Kconfig b/drivers/edac/Kconfig
 --- a/drivers/edac/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/edac/Kconfig	2025-12-06 17:33:46.846632155 +0000
++++ b/drivers/edac/Kconfig	2025-12-07 01:02:26.933073289 +0000
 @@ -520,6 +520,15 @@
  	  First, ECC must be configured in the bootloader. Then, this driver
  	  will expose error counters via the EDAC kernel framework.
@@ -30822,7 +30822,7 @@ diff --git a/drivers/edac/Kconfig b/drivers/edac/Kconfig
  	depends on ARM64 && ((MELLANOX_PLATFORM && ACPI) || COMPILE_TEST)
 diff --git a/drivers/edac/altera_edac.c b/drivers/edac/altera_edac.c
 --- a/drivers/edac/altera_edac.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/edac/altera_edac.c	2025-12-06 17:33:46.846632155 +0000
++++ b/drivers/edac/altera_edac.c	2025-12-07 01:02:26.933073289 +0000
 @@ -128,7 +128,6 @@
  
  	ptemp = dma_alloc_coherent(mci->pdev, 16, &dma_handle, GFP_KERNEL);
@@ -30833,7 +30833,7 @@ diff --git a/drivers/edac/altera_edac.c b/drivers/edac/altera_edac.c
  		return -ENOMEM;
 diff --git a/drivers/edac/edac_mc_sysfs.c b/drivers/edac/edac_mc_sysfs.c
 --- a/drivers/edac/edac_mc_sysfs.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/edac/edac_mc_sysfs.c	2025-12-06 17:33:46.850632086 +0000
++++ b/drivers/edac/edac_mc_sysfs.c	2025-12-07 01:02:26.935073255 +0000
 @@ -305,6 +305,14 @@
  	channel_dimm_label_show, channel_dimm_label_store, 10);
  DEVICE_CHANNEL(ch11_dimm_label, S_IRUGO | S_IWUSR,
@@ -30888,7 +30888,7 @@ diff --git a/drivers/edac/edac_mc_sysfs.c b/drivers/edac/edac_mc_sysfs.c
  
 diff --git a/drivers/edac/i10nm_base.c b/drivers/edac/i10nm_base.c
 --- a/drivers/edac/i10nm_base.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/edac/i10nm_base.c	2025-12-06 17:33:46.852632051 +0000
++++ b/drivers/edac/i10nm_base.c	2025-12-07 01:02:26.936073237 +0000
 @@ -967,6 +967,15 @@
  	return !!GET_BITFIELD(mcmtr, 2, 2);
  }
@@ -30919,7 +30919,7 @@ diff --git a/drivers/edac/i10nm_base.c b/drivers/edac/i10nm_base.c
  		if (res_cfg->type != GNR)
 diff --git a/drivers/edac/synopsys_edac.c b/drivers/edac/synopsys_edac.c
 --- a/drivers/edac/synopsys_edac.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/edac/synopsys_edac.c	2025-12-06 17:33:46.858631948 +0000
++++ b/drivers/edac/synopsys_edac.c	2025-12-07 01:02:26.939073186 +0000
 @@ -332,20 +332,26 @@
  #endif
  };
@@ -31089,7 +31089,7 @@ diff --git a/drivers/edac/synopsys_edac.c b/drivers/edac/synopsys_edac.c
  	mc_init(mci, pdev);
 diff --git a/drivers/fsi/fsi-master-aspeed.c b/drivers/fsi/fsi-master-aspeed.c
 --- a/drivers/fsi/fsi-master-aspeed.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/fsi/fsi-master-aspeed.c	2025-12-06 17:33:46.625635962 +0000
++++ b/drivers/fsi/fsi-master-aspeed.c	2025-12-07 01:02:26.728076817 +0000
 @@ -3,6 +3,7 @@
  // FSI master driver for AST2600
  
@@ -31204,7 +31204,7 @@ diff --git a/drivers/fsi/fsi-master-aspeed.c b/drivers/fsi/fsi-master-aspeed.c
  MODULE_DEVICE_TABLE(of, fsi_master_aspeed_match);
 diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
 --- a/drivers/gpio/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/gpio/Kconfig	2025-12-06 17:33:34.715841171 +0000
++++ b/drivers/gpio/Kconfig	2025-12-07 01:02:14.732283111 +0000
 @@ -180,6 +180,14 @@
  	help
  	  Say Y here to support Aspeed AST2500 SGPIO functionality.
@@ -31222,7 +31222,7 @@ diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
  	default y if ATH79
 diff --git a/drivers/gpio/Makefile b/drivers/gpio/Makefile
 --- a/drivers/gpio/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/gpio/Makefile	2025-12-06 17:33:39.073766082 +0000
++++ b/drivers/gpio/Makefile	2025-12-07 01:02:19.110207851 +0000
 @@ -36,6 +36,7 @@
  obj-$(CONFIG_GPIO_ARIZONA)		+= gpio-arizona.o
  obj-$(CONFIG_GPIO_ASPEED)		+= gpio-aspeed.o
@@ -31233,7 +31233,7 @@ diff --git a/drivers/gpio/Makefile b/drivers/gpio/Makefile
  obj-$(CONFIG_GPIO_BCM_XGS_IPROC)	+= gpio-xgs-iproc.o
 diff --git a/drivers/gpio/gpio-aspeed-ltpi.c b/drivers/gpio/gpio-aspeed-ltpi.c
 --- a/drivers/gpio/gpio-aspeed-ltpi.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/gpio/gpio-aspeed-ltpi.c	2025-12-06 17:33:46.721634308 +0000
++++ b/drivers/gpio/gpio-aspeed-ltpi.c	2025-12-07 01:02:26.825075148 +0000
 @@ -0,0 +1,469 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
@@ -31706,7 +31706,7 @@ diff --git a/drivers/gpio/gpio-aspeed-ltpi.c b/drivers/gpio/gpio-aspeed-ltpi.c
 +MODULE_DESCRIPTION("Aspeed LTPI GPIO Driver");
 diff --git a/drivers/gpio/gpio-aspeed-sgpio.c b/drivers/gpio/gpio-aspeed-sgpio.c
 --- a/drivers/gpio/gpio-aspeed-sgpio.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/gpio/gpio-aspeed-sgpio.c	2025-12-06 17:33:46.716634394 +0000
++++ b/drivers/gpio/gpio-aspeed-sgpio.c	2025-12-07 01:02:26.820075234 +0000
 @@ -18,7 +18,51 @@
  #include <linux/spinlock.h>
  #include <linux/string.h>
@@ -32374,7 +32374,7 @@ diff --git a/drivers/gpio/gpio-aspeed-sgpio.c b/drivers/gpio/gpio-aspeed-sgpio.c
  MODULE_DESCRIPTION("Aspeed Serial GPIO Driver");
 diff --git a/drivers/gpio/gpio-aspeed.c b/drivers/gpio/gpio-aspeed.c
 --- a/drivers/gpio/gpio-aspeed.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/gpio/gpio-aspeed.c	2025-12-06 17:33:46.710634498 +0000
++++ b/drivers/gpio/gpio-aspeed.c	2025-12-07 01:02:26.814075337 +0000
 @@ -30,6 +30,27 @@
  #include <linux/gpio/consumer.h>
  #include "gpiolib.h"
@@ -33451,7 +33451,7 @@ diff --git a/drivers/gpio/gpio-aspeed.c b/drivers/gpio/gpio-aspeed.c
  MODULE_LICENSE("GPL");
 diff --git a/drivers/gpu/drm/aspeed/Kconfig b/drivers/gpu/drm/aspeed/Kconfig
 --- a/drivers/gpu/drm/aspeed/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/gpu/drm/aspeed/Kconfig	2025-12-06 17:33:34.370847115 +0000
++++ b/drivers/gpu/drm/aspeed/Kconfig	2025-12-07 01:02:14.375289248 +0000
 @@ -4,6 +4,7 @@
  	depends on DRM && OF
  	depends on (COMPILE_TEST || ARCH_ASPEED)
@@ -33462,7 +33462,7 @@ diff --git a/drivers/gpu/drm/aspeed/Kconfig b/drivers/gpu/drm/aspeed/Kconfig
  	select DMA_CMA if HAVE_DMA_CONTIGUOUS
 diff --git a/drivers/gpu/drm/aspeed/aspeed_gfx.h b/drivers/gpu/drm/aspeed/aspeed_gfx.h
 --- a/drivers/gpu/drm/aspeed/aspeed_gfx.h	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/gpu/drm/aspeed/aspeed_gfx.h	2025-12-06 17:33:46.653635480 +0000
++++ b/drivers/gpu/drm/aspeed/aspeed_gfx.h	2025-12-07 01:02:26.758076301 +0000
 @@ -8,14 +8,31 @@
  	struct drm_device		drm;
  	void __iomem			*base;
@@ -33557,7 +33557,7 @@ diff --git a/drivers/gpu/drm/aspeed/aspeed_gfx.h b/drivers/gpu/drm/aspeed/aspeed
 +#define DP_1024			0x010a0020 /* 1024 x 768 70Hz */
 diff --git a/drivers/gpu/drm/aspeed/aspeed_gfx_crtc.c b/drivers/gpu/drm/aspeed/aspeed_gfx_crtc.c
 --- a/drivers/gpu/drm/aspeed/aspeed_gfx_crtc.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/gpu/drm/aspeed/aspeed_gfx_crtc.c	2025-12-06 17:33:46.647635583 +0000
++++ b/drivers/gpu/drm/aspeed/aspeed_gfx_crtc.c	2025-12-07 01:02:26.751076421 +0000
 @@ -23,6 +23,40 @@
  	return container_of(pipe, struct aspeed_gfx, pipe);
  }
@@ -33707,7 +33707,7 @@ diff --git a/drivers/gpu/drm/aspeed/aspeed_gfx_crtc.c b/drivers/gpu/drm/aspeed/a
  	reg &= ~CRT_CTRL_VERTICAL_INTR_EN;
 diff --git a/drivers/gpu/drm/aspeed/aspeed_gfx_drv.c b/drivers/gpu/drm/aspeed/aspeed_gfx_drv.c
 --- a/drivers/gpu/drm/aspeed/aspeed_gfx_drv.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/gpu/drm/aspeed/aspeed_gfx_drv.c	2025-12-06 17:33:46.660635359 +0000
++++ b/drivers/gpu/drm/aspeed/aspeed_gfx_drv.c	2025-12-07 01:02:26.764076198 +0000
 @@ -63,6 +63,15 @@
  	u32 vga_scratch_reg;	/* VGA scratch register in SCU */
  	u32 throd_val;		/* Default Threshold Seting */
@@ -34154,7 +34154,7 @@ diff --git a/drivers/gpu/drm/aspeed/aspeed_gfx_drv.c b/drivers/gpu/drm/aspeed/as
  
 diff --git a/drivers/gpu/drm/aspeed/aspeed_gfx_out.c b/drivers/gpu/drm/aspeed/aspeed_gfx_out.c
 --- a/drivers/gpu/drm/aspeed/aspeed_gfx_out.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/gpu/drm/aspeed/aspeed_gfx_out.c	2025-12-06 17:33:46.641635687 +0000
++++ b/drivers/gpu/drm/aspeed/aspeed_gfx_out.c	2025-12-07 01:02:26.745076525 +0000
 @@ -10,7 +10,19 @@
  
  static int aspeed_gfx_get_modes(struct drm_connector *connector)
@@ -34178,7 +34178,7 @@ diff --git a/drivers/gpu/drm/aspeed/aspeed_gfx_out.c b/drivers/gpu/drm/aspeed/as
  static const struct
 diff --git a/drivers/hwmon/Kconfig b/drivers/hwmon/Kconfig
 --- a/drivers/hwmon/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/hwmon/Kconfig	2025-12-06 17:33:33.335864948 +0000
++++ b/drivers/hwmon/Kconfig	2025-12-07 01:02:13.276308140 +0000
 @@ -423,6 +423,16 @@
  	  This driver can also be built as a module. If so, the module
  	  will be called aspeed_g6_pwm_tach.
@@ -34198,7 +34198,7 @@ diff --git a/drivers/hwmon/Kconfig b/drivers/hwmon/Kconfig
  	depends on I2C
 diff --git a/drivers/hwmon/Makefile b/drivers/hwmon/Makefile
 --- a/drivers/hwmon/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/hwmon/Makefile	2025-12-06 17:33:37.006801697 +0000
++++ b/drivers/hwmon/Makefile	2025-12-07 01:02:17.201240667 +0000
 @@ -55,6 +55,7 @@
  obj-$(CONFIG_SENSORS_ASC7621)	+= asc7621.o
  obj-$(CONFIG_SENSORS_ASPEED)	+= aspeed-pwm-tacho.o
@@ -34209,7 +34209,7 @@ diff --git a/drivers/hwmon/Makefile b/drivers/hwmon/Makefile
  obj-$(CONFIG_SENSORS_AXI_FAN_CONTROL) += axi-fan-control.o
 diff --git a/drivers/hwmon/aspeed-chassis.c b/drivers/hwmon/aspeed-chassis.c
 --- a/drivers/hwmon/aspeed-chassis.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/hwmon/aspeed-chassis.c	2025-12-06 17:33:46.365640442 +0000
++++ b/drivers/hwmon/aspeed-chassis.c	2025-12-07 01:02:26.435081860 +0000
 @@ -0,0 +1,221 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
@@ -34434,7 +34434,7 @@ diff --git a/drivers/hwmon/aspeed-chassis.c b/drivers/hwmon/aspeed-chassis.c
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/hwmon/aspeed-g6-pwm-tach.c b/drivers/hwmon/aspeed-g6-pwm-tach.c
 --- a/drivers/hwmon/aspeed-g6-pwm-tach.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/hwmon/aspeed-g6-pwm-tach.c	2025-12-06 17:33:46.371640339 +0000
++++ b/drivers/hwmon/aspeed-g6-pwm-tach.c	2025-12-07 01:02:26.441081756 +0000
 @@ -56,6 +56,7 @@
  #include <linux/of_platform.h>
  #include <linux/platform_device.h>
@@ -34582,7 +34582,7 @@ diff --git a/drivers/hwmon/aspeed-g6-pwm-tach.c b/drivers/hwmon/aspeed-g6-pwm-ta
  MODULE_DEVICE_TABLE(of, aspeed_pwm_tach_match);
 diff --git a/drivers/i2c/busses/Kconfig b/drivers/i2c/busses/Kconfig
 --- a/drivers/i2c/busses/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/i2c/busses/Kconfig	2025-12-06 17:33:32.882872754 +0000
++++ b/drivers/i2c/busses/Kconfig	2025-12-07 01:02:12.801316306 +0000
 @@ -411,6 +411,17 @@
  	  This driver can also be built as a module.  If so, the module
  	  will be called i2c-altera.
@@ -34603,7 +34603,7 @@ diff --git a/drivers/i2c/busses/Kconfig b/drivers/i2c/busses/Kconfig
  	depends on ARCH_ASPEED || COMPILE_TEST
 diff --git a/drivers/i2c/busses/Makefile b/drivers/i2c/busses/Makefile
 --- a/drivers/i2c/busses/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/i2c/busses/Makefile	2025-12-06 17:33:36.487810639 +0000
++++ b/drivers/i2c/busses/Makefile	2025-12-07 01:02:16.667249847 +0000
 @@ -39,6 +39,7 @@
  obj-$(CONFIG_I2C_ALTERA)	+= i2c-altera.o
  obj-$(CONFIG_I2C_AMD_MP2)	+= i2c-amd-mp2-pci.o i2c-amd-mp2-plat.o
@@ -34614,7 +34614,7 @@ diff --git a/drivers/i2c/busses/Makefile b/drivers/i2c/busses/Makefile
  ifeq ($(CONFIG_I2C_AT91_SLAVE_EXPERIMENTAL),y)
 diff --git a/drivers/i2c/busses/i2c-ast2600.c b/drivers/i2c/busses/i2c-ast2600.c
 --- a/drivers/i2c/busses/i2c-ast2600.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/i2c/busses/i2c-ast2600.c	2025-12-06 17:33:46.326641114 +0000
++++ b/drivers/i2c/busses/i2c-ast2600.c	2025-12-07 01:02:26.392082600 +0000
 @@ -0,0 +1,2421 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
@@ -37039,7 +37039,7 @@ diff --git a/drivers/i2c/busses/i2c-ast2600.c b/drivers/i2c/busses/i2c-ast2600.c
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/i3c/master/ast2600-i3c-master.c b/drivers/i3c/master/ast2600-i3c-master.c
 --- a/drivers/i3c/master/ast2600-i3c-master.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/i3c/master/ast2600-i3c-master.c	2025-12-06 17:33:46.751633791 +0000
++++ b/drivers/i3c/master/ast2600-i3c-master.c	2025-12-07 01:02:26.854074649 +0000
 @@ -10,6 +10,8 @@
  #include <linux/of.h>
  #include <linux/platform_device.h>
@@ -37694,7 +37694,7 @@ diff --git a/drivers/i3c/master/ast2600-i3c-master.c b/drivers/i3c/master/ast260
  
 diff --git a/drivers/i3c/master/mipi-i3c-hci/vendor_aspeed.h b/drivers/i3c/master/mipi-i3c-hci/vendor_aspeed.h
 --- a/drivers/i3c/master/mipi-i3c-hci/vendor_aspeed.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/i3c/master/mipi-i3c-hci/vendor_aspeed.h	2025-12-06 17:33:46.745633895 +0000
++++ b/drivers/i3c/master/mipi-i3c-hci/vendor_aspeed.h	2025-12-07 01:02:26.847074769 +0000
 @@ -0,0 +1,413 @@
 +/* SPDX-License-Identifier: GPL-2.0+ */
 +#ifndef VENDOR_ASPEED_H
@@ -38111,7 +38111,7 @@ diff --git a/drivers/i3c/master/mipi-i3c-hci/vendor_aspeed.h b/drivers/i3c/maste
 +#endif
 diff --git a/drivers/i3c/mctp/Kconfig b/drivers/i3c/mctp/Kconfig
 --- a/drivers/i3c/mctp/Kconfig	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/i3c/mctp/Kconfig	2025-12-06 17:33:44.965664564 +0000
++++ b/drivers/i3c/mctp/Kconfig	2025-12-07 01:02:25.054105626 +0000
 @@ -0,0 +1,23 @@
 +# SPDX-License-Identifier: GPL-2.0-only
 +config I3C_MCTP
@@ -38138,14 +38138,14 @@ diff --git a/drivers/i3c/mctp/Kconfig b/drivers/i3c/mctp/Kconfig
 +    configured as an I3C Target Device on the I3C Bus.
 diff --git a/drivers/i3c/mctp/Makefile b/drivers/i3c/mctp/Makefile
 --- a/drivers/i3c/mctp/Makefile	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/i3c/mctp/Makefile	2025-12-06 17:33:44.965664564 +0000
++++ b/drivers/i3c/mctp/Makefile	2025-12-07 01:02:25.054105626 +0000
 @@ -0,0 +1,3 @@
 +# SPDX-License-Identifier: GPL-2.0-only
 +obj-$(CONFIG_I3C_MCTP)		+= i3c-mctp.o
 +obj-$(CONFIG_I3C_TARGET_MCTP)	+= i3c-target-mctp.o
 diff --git a/drivers/i3c/mctp/i3c-mctp.c b/drivers/i3c/mctp/i3c-mctp.c
 --- a/drivers/i3c/mctp/i3c-mctp.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/i3c/mctp/i3c-mctp.c	2025-12-06 17:33:44.965664564 +0000
++++ b/drivers/i3c/mctp/i3c-mctp.c	2025-12-07 01:02:25.054105626 +0000
 @@ -0,0 +1,697 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/* Copyright (C) 2022 Intel Corporation.*/
@@ -38846,7 +38846,7 @@ diff --git a/drivers/i3c/mctp/i3c-mctp.c b/drivers/i3c/mctp/i3c-mctp.c
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/i3c/mctp/i3c-target-mctp.c b/drivers/i3c/mctp/i3c-target-mctp.c
 --- a/drivers/i3c/mctp/i3c-target-mctp.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/i3c/mctp/i3c-target-mctp.c	2025-12-06 17:33:44.965664564 +0000
++++ b/drivers/i3c/mctp/i3c-target-mctp.c	2025-12-07 01:02:25.054105626 +0000
 @@ -0,0 +1,485 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/* Copyright (C) 2022 Intel Corporation.*/
@@ -39335,7 +39335,7 @@ diff --git a/drivers/i3c/mctp/i3c-target-mctp.c b/drivers/i3c/mctp/i3c-target-mc
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/iio/adc/aspeed_adc.c b/drivers/iio/adc/aspeed_adc.c
 --- a/drivers/iio/adc/aspeed_adc.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/iio/adc/aspeed_adc.c	2025-12-06 17:33:46.619636066 +0000
++++ b/drivers/iio/adc/aspeed_adc.c	2025-12-07 01:02:26.722076920 +0000
 @@ -72,6 +72,8 @@
  #define ASPEED_ADC_BAT_SENSING_ENABLE		BIT(13)
  #define ASPEED_ADC_CTRL_CHANNEL			GENMASK(31, 16)
@@ -39824,7 +39824,7 @@ diff --git a/drivers/iio/adc/aspeed_adc.c b/drivers/iio/adc/aspeed_adc.c
  MODULE_DEVICE_TABLE(of, aspeed_adc_matches);
 diff --git a/drivers/irqchip/Kconfig b/drivers/irqchip/Kconfig
 --- a/drivers/irqchip/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/irqchip/Kconfig	2025-12-06 17:33:46.818632637 +0000
++++ b/drivers/irqchip/Kconfig	2025-12-07 01:02:26.915073599 +0000
 @@ -506,6 +506,7 @@
  	tristate "i.MX MU used as MSI controller"
  	depends on OF && HAS_IOMEM
@@ -39835,7 +39835,7 @@ diff --git a/drivers/irqchip/Kconfig b/drivers/irqchip/Kconfig
  	select IRQ_DOMAIN_HIERARCHY
 diff --git a/drivers/irqchip/Makefile b/drivers/irqchip/Makefile
 --- a/drivers/irqchip/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/irqchip/Makefile	2025-12-06 17:33:46.818632637 +0000
++++ b/drivers/irqchip/Makefile	2025-12-07 01:02:26.915073599 +0000
 @@ -83,8 +83,7 @@
  obj-$(CONFIG_MVEBU_SEI)			+= irq-mvebu-sei.o
  obj-$(CONFIG_LS_EXTIRQ)			+= irq-ls-extirq.o
@@ -39848,7 +39848,7 @@ diff --git a/drivers/irqchip/Makefile b/drivers/irqchip/Makefile
  obj-$(CONFIG_IRQ_UNIPHIER_AIDET)	+= irq-uniphier-aidet.o
 diff --git a/drivers/irqchip/irq-aspeed-e2m-ic.c b/drivers/irqchip/irq-aspeed-e2m-ic.c
 --- a/drivers/irqchip/irq-aspeed-e2m-ic.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/irqchip/irq-aspeed-e2m-ic.c	2025-12-06 17:33:46.819632620 +0000
++++ b/drivers/irqchip/irq-aspeed-e2m-ic.c	2025-12-07 01:02:26.916073582 +0000
 @@ -0,0 +1,178 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
@@ -40030,7 +40030,7 @@ diff --git a/drivers/irqchip/irq-aspeed-e2m-ic.c b/drivers/irqchip/irq-aspeed-e2
 +		aspeed_ast2700_e2m_ic_of_init);
 diff --git a/drivers/irqchip/irq-aspeed-intc.c b/drivers/irqchip/irq-aspeed-intc.c
 --- a/drivers/irqchip/irq-aspeed-intc.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/irqchip/irq-aspeed-intc.c	2025-12-06 17:33:46.819632620 +0000
++++ b/drivers/irqchip/irq-aspeed-intc.c	2025-12-07 01:02:26.916073582 +0000
 @@ -0,0 +1,188 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
@@ -40222,7 +40222,7 @@ diff --git a/drivers/irqchip/irq-aspeed-intc.c b/drivers/irqchip/irq-aspeed-intc
 +IRQCHIP_DECLARE(ast2700_intc_ic, "aspeed,ast2700-intc-ic", aspeed_intc_ic_of_init);
 diff --git a/drivers/irqchip/irq-aspeed-scu-ic.c b/drivers/irqchip/irq-aspeed-scu-ic.c
 --- a/drivers/irqchip/irq-aspeed-scu-ic.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/irqchip/irq-aspeed-scu-ic.c	2025-12-06 17:33:46.819632620 +0000
++++ b/drivers/irqchip/irq-aspeed-scu-ic.c	2025-12-07 01:02:26.916073582 +0000
 @@ -1,61 +1,76 @@
  // SPDX-License-Identifier: GPL-2.0-or-later
  /*
@@ -40592,8 +40592,8 @@ diff --git a/drivers/irqchip/irq-aspeed-scu-ic.c b/drivers/irqchip/irq-aspeed-sc
 +IRQCHIP_DECLARE(ast2700_scu_ic2, "aspeed,ast2700-scu-ic2", aspeed_scu_ic_of_init);
 +IRQCHIP_DECLARE(ast2700_scu_ic3, "aspeed,ast2700-scu-ic3", aspeed_scu_ic_of_init);
 diff --git a/drivers/irqchip/irq-mvebu-gicp.c b/drivers/irqchip/irq-mvebu-gicp.c
---- a/drivers/irqchip/irq-mvebu-gicp.c	2025-12-06 17:33:21.932061382 +0000
-+++ b/drivers/irqchip/irq-mvebu-gicp.c	2025-12-06 17:33:46.832632396 +0000
+--- a/drivers/irqchip/irq-mvebu-gicp.c	2025-12-07 01:02:03.743472017 +0000
++++ b/drivers/irqchip/irq-mvebu-gicp.c	2025-12-07 01:02:26.923073461 +0000
 @@ -173,7 +173,6 @@
  	struct device_node *node = pdev->dev.of_node;
  	struct device_node *irq_parent_dn;
@@ -40620,7 +40620,7 @@ diff --git a/drivers/irqchip/irq-mvebu-gicp.c b/drivers/irqchip/irq-mvebu-gicp.c
  						   of_node_to_fwnode(node),
 diff --git a/drivers/irqchip/irq-sifive-plic.c b/drivers/irqchip/irq-sifive-plic.c
 --- a/drivers/irqchip/irq-sifive-plic.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/irqchip/irq-sifive-plic.c	2025-12-06 17:33:46.837632310 +0000
++++ b/drivers/irqchip/irq-sifive-plic.c	2025-12-07 01:02:26.926073410 +0000
 @@ -252,11 +252,11 @@
  
  	priv = per_cpu_ptr(&plic_handlers, smp_processor_id())->priv;
@@ -40650,7 +40650,7 @@ diff --git a/drivers/irqchip/irq-sifive-plic.c b/drivers/irqchip/irq-sifive-plic
  		       priv->regs + PRIORITY_BASE + i * PRIORITY_PER_ID);
 diff --git a/drivers/jtag/Kconfig b/drivers/jtag/Kconfig
 --- a/drivers/jtag/Kconfig	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/jtag/Kconfig	2025-12-06 17:33:42.878700522 +0000
++++ b/drivers/jtag/Kconfig	2025-12-07 01:02:22.853143505 +0000
 @@ -0,0 +1,31 @@
 +menuconfig JTAG
 +	tristate "JTAG support"
@@ -40685,13 +40685,13 @@ diff --git a/drivers/jtag/Kconfig b/drivers/jtag/Kconfig
 +	  be called jtag-aspeed.
 diff --git a/drivers/jtag/Makefile b/drivers/jtag/Makefile
 --- a/drivers/jtag/Makefile	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/jtag/Makefile	2025-12-06 17:33:42.878700522 +0000
++++ b/drivers/jtag/Makefile	2025-12-07 01:02:22.853143505 +0000
 @@ -0,0 +1,2 @@
 +obj-$(CONFIG_JTAG)		+= jtag.o
 +obj-$(CONFIG_JTAG_ASPEED)	+= jtag-aspeed.o
 diff --git a/drivers/jtag/jtag-aspeed.c b/drivers/jtag/jtag-aspeed.c
 --- a/drivers/jtag/jtag-aspeed.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/jtag/jtag-aspeed.c	2025-12-06 17:33:46.664635290 +0000
++++ b/drivers/jtag/jtag-aspeed.c	2025-12-07 01:02:26.769076111 +0000
 @@ -0,0 +1,1657 @@
 +// SPDX-License-Identifier: GPL-2.0
 +// Copyright (c) 2018 Mellanox Technologies. All rights reserved.
@@ -42352,7 +42352,7 @@ diff --git a/drivers/jtag/jtag-aspeed.c b/drivers/jtag/jtag-aspeed.c
 +MODULE_LICENSE("GPL v2");
 diff --git a/drivers/jtag/jtag.c b/drivers/jtag/jtag.c
 --- a/drivers/jtag/jtag.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/jtag/jtag.c	2025-12-06 17:33:42.878700522 +0000
++++ b/drivers/jtag/jtag.c	2025-12-07 01:02:22.853143505 +0000
 @@ -0,0 +1,387 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +// Copyright (c) 2018 Mellanox Technologies. All rights reserved.
@@ -42743,7 +42743,7 @@ diff --git a/drivers/jtag/jtag.c b/drivers/jtag/jtag.c
 +MODULE_LICENSE("GPL v2");
 diff --git a/drivers/mailbox/Kconfig b/drivers/mailbox/Kconfig
 --- a/drivers/mailbox/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/mailbox/Kconfig	2025-12-06 17:33:34.689841619 +0000
++++ b/drivers/mailbox/Kconfig	2025-12-07 01:02:14.705283575 +0000
 @@ -295,4 +295,12 @@
  	  acts as an interrupt controller for receiving interrupts from clients.
  	  Say Y here if you want to build this driver.
@@ -42759,7 +42759,7 @@ diff --git a/drivers/mailbox/Kconfig b/drivers/mailbox/Kconfig
  endif
 diff --git a/drivers/mailbox/Makefile b/drivers/mailbox/Makefile
 --- a/drivers/mailbox/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/mailbox/Makefile	2025-12-06 17:33:39.039766668 +0000
++++ b/drivers/mailbox/Makefile	2025-12-07 01:02:19.078208401 +0000
 @@ -64,3 +64,5 @@
  obj-$(CONFIG_QCOM_CPUCP_MBOX)	+= qcom-cpucp-mbox.o
  
@@ -42768,7 +42768,7 @@ diff --git a/drivers/mailbox/Makefile b/drivers/mailbox/Makefile
 +obj-$(CONFIG_AST2700_MBOX)	+= ast2700-mailbox.o
 diff --git a/drivers/mailbox/ast2700-mailbox.c b/drivers/mailbox/ast2700-mailbox.c
 --- a/drivers/mailbox/ast2700-mailbox.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/mailbox/ast2700-mailbox.c	2025-12-06 17:33:46.704634601 +0000
++++ b/drivers/mailbox/ast2700-mailbox.c	2025-12-07 01:02:26.808075440 +0000
 @@ -0,0 +1,235 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
@@ -43007,7 +43007,7 @@ diff --git a/drivers/mailbox/ast2700-mailbox.c b/drivers/mailbox/ast2700-mailbox
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/media/platform/aspeed/aspeed-video.c b/drivers/media/platform/aspeed/aspeed-video.c
 --- a/drivers/media/platform/aspeed/aspeed-video.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/media/platform/aspeed/aspeed-video.c	2025-12-06 17:33:46.799632964 +0000
++++ b/drivers/media/platform/aspeed/aspeed-video.c	2025-12-07 01:02:26.898073891 +0000
 @@ -4,6 +4,7 @@
  
  #include <linux/atomic.h>
@@ -44764,7 +44764,7 @@ diff --git a/drivers/media/platform/aspeed/aspeed-video.c b/drivers/media/platfo
  }
 diff --git a/drivers/mmc/host/sdhci-of-aspeed.c b/drivers/mmc/host/sdhci-of-aspeed.c
 --- a/drivers/mmc/host/sdhci-of-aspeed.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/mmc/host/sdhci-of-aspeed.c	2025-12-06 17:33:46.354640632 +0000
++++ b/drivers/mmc/host/sdhci-of-aspeed.c	2025-12-07 01:02:26.422082083 +0000
 @@ -11,8 +11,10 @@
  #include <linux/module.h>
  #include <linux/of_address.h>
@@ -45415,7 +45415,7 @@ diff --git a/drivers/mmc/host/sdhci-of-aspeed.c b/drivers/mmc/host/sdhci-of-aspe
  		.name	= "sd-controller-aspeed",
 diff --git a/drivers/net/can/Kconfig b/drivers/net/can/Kconfig
 --- a/drivers/net/can/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/net/can/Kconfig	2025-12-06 17:33:33.976853904 +0000
++++ b/drivers/net/can/Kconfig	2025-12-07 01:02:13.948296588 +0000
 @@ -66,6 +66,12 @@
  
  if CAN_NETLINK
@@ -45431,7 +45431,7 @@ diff --git a/drivers/net/can/Kconfig b/drivers/net/can/Kconfig
  	default y
 diff --git a/drivers/net/can/Makefile b/drivers/net/can/Makefile
 --- a/drivers/net/can/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/net/can/Makefile	2025-12-06 17:33:38.041783863 +0000
++++ b/drivers/net/can/Makefile	2025-12-07 01:02:18.108225075 +0000
 @@ -15,6 +15,7 @@
  obj-y				+= usb/
  obj-y				+= softing/
@@ -45442,7 +45442,7 @@ diff --git a/drivers/net/can/Makefile b/drivers/net/can/Makefile
  obj-$(CONFIG_CAN_CAN327)	+= can327.o
 diff --git a/drivers/net/can/aspeed_can.c b/drivers/net/can/aspeed_can.c
 --- a/drivers/net/can/aspeed_can.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/net/can/aspeed_can.c	2025-12-06 17:33:46.613636169 +0000
++++ b/drivers/net/can/aspeed_can.c	2025-12-07 01:02:26.715077041 +0000
 @@ -0,0 +1,1720 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/* ASPEED CAN device driver
@@ -47166,7 +47166,7 @@ diff --git a/drivers/net/can/aspeed_can.c b/drivers/net/can/aspeed_can.c
 +MODULE_DESCRIPTION("ASPEED CAN interface");
 diff --git a/drivers/net/ethernet/faraday/Kconfig b/drivers/net/ethernet/faraday/Kconfig
 --- a/drivers/net/ethernet/faraday/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/net/ethernet/faraday/Kconfig	2025-12-06 17:33:46.814632706 +0000
++++ b/drivers/net/ethernet/faraday/Kconfig	2025-12-07 01:02:26.911073668 +0000
 @@ -6,7 +6,7 @@
  config NET_VENDOR_FARADAY
  	bool "Faraday devices"
@@ -47192,7 +47192,7 @@ diff --git a/drivers/net/ethernet/faraday/Kconfig b/drivers/net/ethernet/faraday
  	  This driver supports the FTGMAC100 Gigabit Ethernet controller
 diff --git a/drivers/net/ethernet/faraday/ftgmac100.c b/drivers/net/ethernet/faraday/ftgmac100.c
 --- a/drivers/net/ethernet/faraday/ftgmac100.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/net/ethernet/faraday/ftgmac100.c	2025-12-06 17:33:46.814632706 +0000
++++ b/drivers/net/ethernet/faraday/ftgmac100.c	2025-12-07 01:02:26.911073668 +0000
 @@ -9,6 +9,7 @@
  #define pr_fmt(fmt)	KBUILD_MODNAME ": " fmt
  
@@ -47521,7 +47521,7 @@ diff --git a/drivers/net/ethernet/faraday/ftgmac100.c b/drivers/net/ethernet/far
  	if (err) {
 diff --git a/drivers/net/ethernet/faraday/ftgmac100.h b/drivers/net/ethernet/faraday/ftgmac100.h
 --- a/drivers/net/ethernet/faraday/ftgmac100.h	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/net/ethernet/faraday/ftgmac100.h	2025-12-06 17:33:46.814632706 +0000
++++ b/drivers/net/ethernet/faraday/ftgmac100.h	2025-12-07 01:02:26.911073668 +0000
 @@ -57,6 +57,13 @@
  #define FTGMAC100_OFFSET_RX_RUNT	0xc0
  #define FTGMAC100_OFFSET_RX_CRCER_FTL	0xc4
@@ -47560,7 +47560,7 @@ diff --git a/drivers/net/ethernet/faraday/ftgmac100.h b/drivers/net/ethernet/far
  #endif /* __FTGMAC100_H */
 diff --git a/drivers/net/mctp/mctp-pcie-vdm.c b/drivers/net/mctp/mctp-pcie-vdm.c
 --- a/drivers/net/mctp/mctp-pcie-vdm.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/net/mctp/mctp-pcie-vdm.c	2025-12-06 17:33:47.717617147 +0000
++++ b/drivers/net/mctp/mctp-pcie-vdm.c	2025-12-07 01:02:27.765058971 +0000
 @@ -0,0 +1,363 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
@@ -47927,7 +47927,7 @@ diff --git a/drivers/net/mctp/mctp-pcie-vdm.c b/drivers/net/mctp/mctp-pcie-vdm.c
 +EXPORT_SYMBOL_GPL(mctp_pcie_vdm_remove_dev);
 diff --git a/drivers/net/mdio/mdio-aspeed.c b/drivers/net/mdio/mdio-aspeed.c
 --- a/drivers/net/mdio/mdio-aspeed.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/net/mdio/mdio-aspeed.c	2025-12-06 17:33:46.609636238 +0000
++++ b/drivers/net/mdio/mdio-aspeed.c	2025-12-07 01:02:26.710077127 +0000
 @@ -62,6 +62,8 @@
  		| FIELD_PREP(ASPEED_MDIO_DATA_MIIRDATA, data);
  
@@ -47939,7 +47939,7 @@ diff --git a/drivers/net/mdio/mdio-aspeed.c b/drivers/net/mdio/mdio-aspeed.c
  				!(ctrl & ASPEED_MDIO_CTRL_FIRE),
 diff --git a/drivers/pci/controller/Kconfig b/drivers/pci/controller/Kconfig
 --- a/drivers/pci/controller/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/pci/controller/Kconfig	2025-12-06 17:33:34.928837501 +0000
++++ b/drivers/pci/controller/Kconfig	2025-12-07 01:02:15.046277713 +0000
 @@ -47,6 +47,15 @@
  
  	  If unsure, say Y if you have an Apple Silicon system.
@@ -47958,7 +47958,7 @@ diff --git a/drivers/pci/controller/Kconfig b/drivers/pci/controller/Kconfig
  	depends on ARCH_VERSATILE || COMPILE_TEST
 diff --git a/drivers/pci/controller/Makefile b/drivers/pci/controller/Makefile
 --- a/drivers/pci/controller/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/pci/controller/Makefile	2025-12-06 17:33:39.347761361 +0000
++++ b/drivers/pci/controller/Makefile	2025-12-07 01:02:19.357203605 +0000
 @@ -39,6 +39,7 @@
  obj-$(CONFIG_PCIE_HISI_ERR) += pcie-hisi-error.o
  obj-$(CONFIG_PCIE_APPLE) += pcie-apple.o
@@ -47969,7 +47969,7 @@ diff --git a/drivers/pci/controller/Makefile b/drivers/pci/controller/Makefile
  obj-y				+= dwc/
 diff --git a/drivers/pci/controller/pcie-aspeed.c b/drivers/pci/controller/pcie-aspeed.c
 --- a/drivers/pci/controller/pcie-aspeed.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/pci/controller/pcie-aspeed.c	2025-12-06 17:33:46.773633412 +0000
++++ b/drivers/pci/controller/pcie-aspeed.c	2025-12-07 01:02:26.876074270 +0000
 @@ -0,0 +1,1185 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -49158,7 +49158,7 @@ diff --git a/drivers/pci/controller/pcie-aspeed.c b/drivers/pci/controller/pcie-
 +module_platform_driver(aspeed_pcie_driver);
 diff --git a/drivers/phy/Kconfig b/drivers/phy/Kconfig
 --- a/drivers/phy/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/phy/Kconfig	2025-12-06 17:33:34.648842325 +0000
++++ b/drivers/phy/Kconfig	2025-12-07 01:02:14.660284348 +0000
 @@ -84,6 +84,7 @@
  
  source "drivers/phy/allwinner/Kconfig"
@@ -49169,7 +49169,7 @@ diff --git a/drivers/phy/Kconfig b/drivers/phy/Kconfig
  source "drivers/phy/freescale/Kconfig"
 diff --git a/drivers/phy/Makefile b/drivers/phy/Makefile
 --- a/drivers/phy/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/phy/Makefile	2025-12-06 17:33:38.990767512 +0000
++++ b/drivers/phy/Makefile	2025-12-07 01:02:19.040209054 +0000
 @@ -13,6 +13,7 @@
  obj-$(CONFIG_PHY_AIROHA_PCIE)		+= phy-airoha-pcie.o
  obj-y					+= allwinner/	\
@@ -49180,7 +49180,7 @@ diff --git a/drivers/phy/Makefile b/drivers/phy/Makefile
  					   freescale/	\
 diff --git a/drivers/phy/aspeed/Kconfig b/drivers/phy/aspeed/Kconfig
 --- a/drivers/phy/aspeed/Kconfig	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/phy/aspeed/Kconfig	2025-12-06 17:33:44.772667889 +0000
++++ b/drivers/phy/aspeed/Kconfig	2025-12-07 01:02:24.852109103 +0000
 @@ -0,0 +1,23 @@
 +# SPDX-License-Identifier: GPL-2.0-only
 +
@@ -49207,7 +49207,7 @@ diff --git a/drivers/phy/aspeed/Kconfig b/drivers/phy/aspeed/Kconfig
 +	  Enable driver support for Aspeed AST2700 PHY USB3.
 diff --git a/drivers/phy/aspeed/Makefile b/drivers/phy/aspeed/Makefile
 --- a/drivers/phy/aspeed/Makefile	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/phy/aspeed/Makefile	2025-12-06 17:33:44.773667872 +0000
++++ b/drivers/phy/aspeed/Makefile	2025-12-07 01:02:24.852109103 +0000
 @@ -0,0 +1,4 @@
 +# SPDX-License-Identifier: GPL-2.0
 +
@@ -49216,7 +49216,7 @@ diff --git a/drivers/phy/aspeed/Makefile b/drivers/phy/aspeed/Makefile
 \ No newline at end of file
 diff --git a/drivers/phy/aspeed/aspeed-sgmii.c b/drivers/phy/aspeed/aspeed-sgmii.c
 --- a/drivers/phy/aspeed/aspeed-sgmii.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/phy/aspeed/aspeed-sgmii.c	2025-12-06 17:33:46.695634756 +0000
++++ b/drivers/phy/aspeed/aspeed-sgmii.c	2025-12-07 01:02:26.798075612 +0000
 @@ -0,0 +1,218 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -49438,7 +49438,7 @@ diff --git a/drivers/phy/aspeed/aspeed-sgmii.c b/drivers/phy/aspeed/aspeed-sgmii
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/phy/aspeed/aspeed-usb-phy3.c b/drivers/phy/aspeed/aspeed-usb-phy3.c
 --- a/drivers/phy/aspeed/aspeed-usb-phy3.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/phy/aspeed/aspeed-usb-phy3.c	2025-12-06 17:33:46.700634670 +0000
++++ b/drivers/phy/aspeed/aspeed-usb-phy3.c	2025-12-07 01:02:26.803075526 +0000
 @@ -0,0 +1,257 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -49699,7 +49699,7 @@ diff --git a/drivers/phy/aspeed/aspeed-usb-phy3.c b/drivers/phy/aspeed/aspeed-us
 +MODULE_AUTHOR("Joe Wang <joe_wang@aspeedtech.com>");
 diff --git a/drivers/pinctrl/aspeed/Kconfig b/drivers/pinctrl/aspeed/Kconfig
 --- a/drivers/pinctrl/aspeed/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/pinctrl/aspeed/Kconfig	2025-12-06 17:33:46.802632913 +0000
++++ b/drivers/pinctrl/aspeed/Kconfig	2025-12-07 01:02:26.901073840 +0000
 @@ -31,3 +31,11 @@
  	help
  	  Say Y here to enable pin controller support for Aspeed's 6th
@@ -49714,7 +49714,7 @@ diff --git a/drivers/pinctrl/aspeed/Kconfig b/drivers/pinctrl/aspeed/Kconfig
 +	  generation SoCs. GPIO is provided by a separate GPIO driver.
 diff --git a/drivers/pinctrl/aspeed/Makefile b/drivers/pinctrl/aspeed/Makefile
 --- a/drivers/pinctrl/aspeed/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/pinctrl/aspeed/Makefile	2025-12-06 17:33:46.802632913 +0000
++++ b/drivers/pinctrl/aspeed/Makefile	2025-12-07 01:02:26.901073840 +0000
 @@ -6,3 +6,4 @@
  obj-$(CONFIG_PINCTRL_ASPEED_G4)	+= pinctrl-aspeed-g4.o
  obj-$(CONFIG_PINCTRL_ASPEED_G5)	+= pinctrl-aspeed-g5.o
@@ -49723,7 +49723,7 @@ diff --git a/drivers/pinctrl/aspeed/Makefile b/drivers/pinctrl/aspeed/Makefile
 \ No newline at end of file
 diff --git a/drivers/pinctrl/aspeed/pinctrl-aspeed-g6.c b/drivers/pinctrl/aspeed/pinctrl-aspeed-g6.c
 --- a/drivers/pinctrl/aspeed/pinctrl-aspeed-g6.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/pinctrl/aspeed/pinctrl-aspeed-g6.c	2025-12-06 17:33:46.803632895 +0000
++++ b/drivers/pinctrl/aspeed/pinctrl-aspeed-g6.c	2025-12-07 01:02:26.902073823 +0000
 @@ -17,6 +17,8 @@
  #include "../pinctrl-utils.h"
  #include "pinctrl-aspeed.h"
@@ -50861,7 +50861,7 @@ diff --git a/drivers/pinctrl/aspeed/pinctrl-aspeed-g6.c b/drivers/pinctrl/aspeed
  	ASPEED_SB_PINCONF(PIN_CONFIG_BIAS_DISABLE,   Y1, Y4, SCU40C, 4),
 diff --git a/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-ltpi.c b/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-ltpi.c
 --- a/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-ltpi.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-ltpi.c	2025-12-06 17:33:46.803632895 +0000
++++ b/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-ltpi.c	2025-12-07 01:02:26.902073823 +0000
 @@ -0,0 +1,1156 @@
 +// SPDX-License-Identifier: GPL-2.0
 +
@@ -52021,7 +52021,7 @@ diff --git a/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-ltpi.c b/drivers/pinctrl/a
 +arch_initcall(aspeed_g7_ltpi_pinctrl_register);
 diff --git a/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-soc0.c b/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-soc0.c
 --- a/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-soc0.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-soc0.c	2025-12-06 17:33:46.803632895 +0000
++++ b/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-soc0.c	2025-12-07 01:02:26.902073823 +0000
 @@ -0,0 +1,503 @@
 +// SPDX-License-Identifier: GPL-2.0
 +
@@ -52528,7 +52528,7 @@ diff --git a/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-soc0.c b/drivers/pinctrl/a
 +arch_initcall(aspeed_g7_soc0_pinctrl_register);
 diff --git a/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-soc1.c b/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-soc1.c
 --- a/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-soc1.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-soc1.c	2025-12-06 17:33:46.803632895 +0000
++++ b/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-soc1.c	2025-12-07 01:02:26.902073823 +0000
 @@ -0,0 +1,2533 @@
 +// SPDX-License-Identifier: GPL-2.0
 +
@@ -55065,7 +55065,7 @@ diff --git a/drivers/pinctrl/aspeed/pinctrl-aspeed-g7-soc1.c b/drivers/pinctrl/a
 +arch_initcall(aspeed_g7_soc1_pinctrl_register);
 diff --git a/drivers/pinctrl/aspeed/pinctrl-aspeed.c b/drivers/pinctrl/aspeed/pinctrl-aspeed.c
 --- a/drivers/pinctrl/aspeed/pinctrl-aspeed.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/pinctrl/aspeed/pinctrl-aspeed.c	2025-12-06 17:33:46.803632895 +0000
++++ b/drivers/pinctrl/aspeed/pinctrl-aspeed.c	2025-12-07 01:02:26.902073823 +0000
 @@ -285,6 +285,32 @@
  	return 0;
  }
@@ -55129,7 +55129,7 @@ diff --git a/drivers/pinctrl/aspeed/pinctrl-aspeed.c b/drivers/pinctrl/aspeed/pi
  			 struct aspeed_pinctrl_data *pdata)
 diff --git a/drivers/pinctrl/aspeed/pinctrl-aspeed.h b/drivers/pinctrl/aspeed/pinctrl-aspeed.h
 --- a/drivers/pinctrl/aspeed/pinctrl-aspeed.h	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/pinctrl/aspeed/pinctrl-aspeed.h	2025-12-06 17:33:46.804632878 +0000
++++ b/drivers/pinctrl/aspeed/pinctrl-aspeed.h	2025-12-07 01:02:26.902073823 +0000
 @@ -70,15 +70,15 @@
  	struct regmap *scu;
  
@@ -55163,7 +55163,7 @@ diff --git a/drivers/pinctrl/aspeed/pinctrl-aspeed.h b/drivers/pinctrl/aspeed/pi
  		struct aspeed_pinctrl_data *pdata);
 diff --git a/drivers/pinctrl/aspeed/pinmux-aspeed.h b/drivers/pinctrl/aspeed/pinmux-aspeed.h
 --- a/drivers/pinctrl/aspeed/pinmux-aspeed.h	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/pinctrl/aspeed/pinmux-aspeed.h	2025-12-06 17:33:46.804632878 +0000
++++ b/drivers/pinctrl/aspeed/pinmux-aspeed.h	2025-12-07 01:02:26.902073823 +0000
 @@ -792,6 +792,33 @@
  		   const struct aspeed_sig_expr *expr, bool enabled);
  };
@@ -55217,7 +55217,7 @@ diff --git a/drivers/pinctrl/aspeed/pinmux-aspeed.h b/drivers/pinctrl/aspeed/pin
  int aspeed_sig_desc_eval(const struct aspeed_sig_desc *desc, bool enabled,
 diff --git a/drivers/pwm/core.c b/drivers/pwm/core.c
 --- a/drivers/pwm/core.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/pwm/core.c	2025-12-06 17:33:47.755616493 +0000
++++ b/drivers/pwm/core.c	2025-12-07 01:02:27.803058317 +0000
 @@ -426,9 +426,8 @@
   * chip. A negative error code is returned if the index is not valid for the
   * specified PWM chip or if the PWM device cannot be requested.
@@ -55240,7 +55240,7 @@ diff --git a/drivers/pwm/core.c b/drivers/pwm/core.c
  of_pwm_xlate_with_flags(struct pwm_chip *chip, const struct of_phandle_args *args)
 diff --git a/drivers/reset/Kconfig b/drivers/reset/Kconfig
 --- a/drivers/reset/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/reset/Kconfig	2025-12-06 17:33:35.021835898 +0000
++++ b/drivers/reset/Kconfig	2025-12-07 01:02:15.142276063 +0000
 @@ -22,6 +22,13 @@
  	  This option enables support for the external reset functions for
  	  peripheral PHYs on the Altera Arria10 System Resource Chip.
@@ -55291,7 +55291,7 @@ diff --git a/drivers/reset/Kconfig b/drivers/reset/Kconfig
  	  BMC SoCs.
 diff --git a/drivers/reset/Makefile b/drivers/reset/Makefile
 --- a/drivers/reset/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/reset/Makefile	2025-12-06 17:33:39.451759569 +0000
++++ b/drivers/reset/Makefile	2025-12-07 01:02:19.444202109 +0000
 @@ -5,6 +5,7 @@
  obj-y += sti/
  obj-y += tegra/
@@ -55302,7 +55302,7 @@ diff --git a/drivers/reset/Makefile b/drivers/reset/Makefile
  obj-$(CONFIG_RESET_BCM6345) += reset-bcm6345.o
 diff --git a/drivers/reset/reset-aspeed.c b/drivers/reset/reset-aspeed.c
 --- a/drivers/reset/reset-aspeed.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/reset/reset-aspeed.c	2025-12-06 17:33:46.785633206 +0000
++++ b/drivers/reset/reset-aspeed.c	2025-12-07 01:02:26.886074098 +0000
 @@ -0,0 +1,310 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
@@ -55616,7 +55616,7 @@ diff --git a/drivers/reset/reset-aspeed.c b/drivers/reset/reset-aspeed.c
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/rtc/rtc-aspeed.c b/drivers/rtc/rtc-aspeed.c
 --- a/drivers/rtc/rtc-aspeed.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/rtc/rtc-aspeed.c	2025-12-06 17:33:46.757633688 +0000
++++ b/drivers/rtc/rtc-aspeed.c	2025-12-07 01:02:26.860074545 +0000
 @@ -10,14 +10,64 @@
  struct aspeed_rtc {
  	struct rtc_device *rtc_dev;
@@ -55920,7 +55920,7 @@ diff --git a/drivers/rtc/rtc-aspeed.c b/drivers/rtc/rtc-aspeed.c
  MODULE_DEVICE_TABLE(of, aspeed_rtc_match);
 diff --git a/drivers/soc/aspeed/Kconfig b/drivers/soc/aspeed/Kconfig
 --- a/drivers/soc/aspeed/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/soc/aspeed/Kconfig	2025-12-06 17:33:46.788633154 +0000
++++ b/drivers/soc/aspeed/Kconfig	2025-12-07 01:02:26.890074029 +0000
 @@ -4,6 +4,12 @@
  
  menu "ASPEED SoC drivers"
@@ -56102,8 +56102,8 @@ diff --git a/drivers/soc/aspeed/Kconfig b/drivers/soc/aspeed/Kconfig
  endif
 diff --git a/drivers/soc/aspeed/Makefile b/drivers/soc/aspeed/Makefile
 --- a/drivers/soc/aspeed/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/soc/aspeed/Makefile	2025-12-06 17:33:46.788633154 +0000
-@@ -1,6 +1,27 @@
++++ b/drivers/soc/aspeed/Makefile	2025-12-07 01:02:26.948073031 +0000
+@@ -1,6 +1,26 @@
  # SPDX-License-Identifier: GPL-2.0-only
 +obj-$(CONFIG_ASPEED_BMC_DEV)		+= aspeed-bmc-dev.o
 +obj-$(CONFIG_ASPEED_HOST_BMC_DEV)	+= aspeed-host-bmc-dev.o
@@ -56116,7 +56116,6 @@ diff --git a/drivers/soc/aspeed/Makefile b/drivers/soc/aspeed/Makefile
 +obj-$(CONFIG_ASPEED_SSP)		+= aspeed-ssp.o
  obj-$(CONFIG_ASPEED_P2A_CTRL)		+= aspeed-p2a-ctrl.o
  obj-$(CONFIG_ASPEED_SOCINFO)		+= aspeed-socinfo.o
-+obj-$(CONFIG_ASPEED_SBC)		+= aspeed-sbc.o
 +obj-$(CONFIG_ASPEED_XDMA)		+= aspeed-xdma.o
 +obj-$(CONFIG_AST2500_ESPI)		+= ast2500-espi.o
 +obj-$(CONFIG_AST2600_ESPI)		+= ast2600-espi.o
@@ -56133,7 +56132,7 @@ diff --git a/drivers/soc/aspeed/Makefile b/drivers/soc/aspeed/Makefile
 +obj-$(CONFIG_AST2700_OTP)		+= ast2700-otp.o
 diff --git a/drivers/soc/aspeed/aspeed-bmc-dev.c b/drivers/soc/aspeed/aspeed-bmc-dev.c
 --- a/drivers/soc/aspeed/aspeed-bmc-dev.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-bmc-dev.c	2025-12-06 17:33:46.788633154 +0000
++++ b/drivers/soc/aspeed/aspeed-bmc-dev.c	2025-12-07 01:02:26.890074029 +0000
 @@ -0,0 +1,699 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +// Copyright (C) ASPEED Technology Inc.
@@ -56836,7 +56835,7 @@ diff --git a/drivers/soc/aspeed/aspeed-bmc-dev.c b/drivers/soc/aspeed/aspeed-bmc
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/soc/aspeed/aspeed-disp-intf.c b/drivers/soc/aspeed/aspeed-disp-intf.c
 --- a/drivers/soc/aspeed/aspeed-disp-intf.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-disp-intf.c	2025-12-06 17:33:46.788633154 +0000
++++ b/drivers/soc/aspeed/aspeed-disp-intf.c	2025-12-07 01:02:26.890074029 +0000
 @@ -0,0 +1,255 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +// Copyright (C) ASPEED Technology Inc.
@@ -57095,7 +57094,7 @@ diff --git a/drivers/soc/aspeed/aspeed-disp-intf.c b/drivers/soc/aspeed/aspeed-d
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/soc/aspeed/aspeed-espi-comm.h b/drivers/soc/aspeed/aspeed-espi-comm.h
 --- a/drivers/soc/aspeed/aspeed-espi-comm.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-espi-comm.h	2025-12-06 17:33:46.788633154 +0000
++++ b/drivers/soc/aspeed/aspeed-espi-comm.h	2025-12-07 01:02:26.890074029 +0000
 @@ -0,0 +1,206 @@
 +/* SPDX-License-Identifier: GPL-2.0+ */
 +/*
@@ -57305,7 +57304,7 @@ diff --git a/drivers/soc/aspeed/aspeed-espi-comm.h b/drivers/soc/aspeed/aspeed-e
 +#endif
 diff --git a/drivers/soc/aspeed/aspeed-host-bmc-dev.c b/drivers/soc/aspeed/aspeed-host-bmc-dev.c
 --- a/drivers/soc/aspeed/aspeed-host-bmc-dev.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-host-bmc-dev.c	2025-12-06 17:33:46.789633137 +0000
++++ b/drivers/soc/aspeed/aspeed-host-bmc-dev.c	2025-12-07 01:02:26.890074029 +0000
 @@ -0,0 +1,1435 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +// Copyright (C) ASPEED Technology Inc.
@@ -58744,7 +58743,7 @@ diff --git a/drivers/soc/aspeed/aspeed-host-bmc-dev.c b/drivers/soc/aspeed/aspee
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/soc/aspeed/aspeed-lpc-ctrl.c b/drivers/soc/aspeed/aspeed-lpc-ctrl.c
 --- a/drivers/soc/aspeed/aspeed-lpc-ctrl.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-lpc-ctrl.c	2025-12-06 17:33:46.789633137 +0000
++++ b/drivers/soc/aspeed/aspeed-lpc-ctrl.c	2025-12-07 01:02:26.890074029 +0000
 @@ -353,7 +353,7 @@
  		.of_match_table = aspeed_lpc_ctrl_match,
  	},
@@ -58756,7 +58755,7 @@ diff --git a/drivers/soc/aspeed/aspeed-lpc-ctrl.c b/drivers/soc/aspeed/aspeed-lp
  module_platform_driver(aspeed_lpc_ctrl_driver);
 diff --git a/drivers/soc/aspeed/aspeed-lpc-mbox.c b/drivers/soc/aspeed/aspeed-lpc-mbox.c
 --- a/drivers/soc/aspeed/aspeed-lpc-mbox.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-lpc-mbox.c	2025-12-06 17:33:46.789633137 +0000
++++ b/drivers/soc/aspeed/aspeed-lpc-mbox.c	2025-12-07 01:02:26.891074012 +0000
 @@ -0,0 +1,406 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
@@ -59166,7 +59165,7 @@ diff --git a/drivers/soc/aspeed/aspeed-lpc-mbox.c b/drivers/soc/aspeed/aspeed-lp
 +MODULE_DESCRIPTION("Aspeed mailbox device driver");
 diff --git a/drivers/soc/aspeed/aspeed-lpc-pcc.c b/drivers/soc/aspeed/aspeed-lpc-pcc.c
 --- a/drivers/soc/aspeed/aspeed-lpc-pcc.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-lpc-pcc.c	2025-12-06 17:33:46.789633137 +0000
++++ b/drivers/soc/aspeed/aspeed-lpc-pcc.c	2025-12-07 01:02:26.891074012 +0000
 @@ -0,0 +1,438 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
@@ -59608,7 +59607,7 @@ diff --git a/drivers/soc/aspeed/aspeed-lpc-pcc.c b/drivers/soc/aspeed/aspeed-lpc
 +MODULE_DESCRIPTION("Driver for Aspeed Post Code Capture");
 diff --git a/drivers/soc/aspeed/aspeed-lpc-snoop.c b/drivers/soc/aspeed/aspeed-lpc-snoop.c
 --- a/drivers/soc/aspeed/aspeed-lpc-snoop.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-lpc-snoop.c	2025-12-06 17:33:46.789633137 +0000
++++ b/drivers/soc/aspeed/aspeed-lpc-snoop.c	2025-12-07 01:02:26.891074012 +0000
 @@ -11,7 +11,7 @@
   */
  
@@ -59983,7 +59982,7 @@ diff --git a/drivers/soc/aspeed/aspeed-lpc-snoop.c b/drivers/soc/aspeed/aspeed-l
  module_platform_driver(aspeed_lpc_snoop_driver);
 diff --git a/drivers/soc/aspeed/aspeed-mbox.c b/drivers/soc/aspeed/aspeed-mbox.c
 --- a/drivers/soc/aspeed/aspeed-mbox.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-mbox.c	2025-12-06 17:33:46.790633119 +0000
++++ b/drivers/soc/aspeed/aspeed-mbox.c	2025-12-07 01:02:26.891074012 +0000
 @@ -0,0 +1,312 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
@@ -60299,7 +60298,7 @@ diff --git a/drivers/soc/aspeed/aspeed-mbox.c b/drivers/soc/aspeed/aspeed-mbox.c
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/soc/aspeed/aspeed-mctp.c b/drivers/soc/aspeed/aspeed-mctp.c
 --- a/drivers/soc/aspeed/aspeed-mctp.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-mctp.c	2025-12-06 17:33:46.790633119 +0000
++++ b/drivers/soc/aspeed/aspeed-mctp.c	2025-12-07 01:02:26.891074012 +0000
 @@ -0,0 +1,2658 @@
 +// SPDX-License-Identifier: GPL-2.0
 +// Copyright (c) 2020, Intel Corporation.
@@ -62961,7 +62960,7 @@ diff --git a/drivers/soc/aspeed/aspeed-mctp.c b/drivers/soc/aspeed/aspeed-mctp.c
 +MODULE_DESCRIPTION("Aspeed MCTP driver");
 diff --git a/drivers/soc/aspeed/aspeed-p2a-ctrl.c b/drivers/soc/aspeed/aspeed-p2a-ctrl.c
 --- a/drivers/soc/aspeed/aspeed-p2a-ctrl.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-p2a-ctrl.c	2025-12-06 17:33:46.790633119 +0000
++++ b/drivers/soc/aspeed/aspeed-p2a-ctrl.c	2025-12-07 01:02:26.891074012 +0000
 @@ -431,7 +431,7 @@
  		.of_match_table = aspeed_p2a_ctrl_match,
  	},
@@ -62973,7 +62972,7 @@ diff --git a/drivers/soc/aspeed/aspeed-p2a-ctrl.c b/drivers/soc/aspeed/aspeed-p2
  module_platform_driver(aspeed_p2a_ctrl_driver);
 diff --git a/drivers/soc/aspeed/aspeed-pcie-mmbi.c b/drivers/soc/aspeed/aspeed-pcie-mmbi.c
 --- a/drivers/soc/aspeed/aspeed-pcie-mmbi.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-pcie-mmbi.c	2025-12-06 17:33:46.790633119 +0000
++++ b/drivers/soc/aspeed/aspeed-pcie-mmbi.c	2025-12-07 01:02:26.891074012 +0000
 @@ -0,0 +1,962 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +// Copyright (C) ASPEED Technology Inc.
@@ -63939,7 +63938,7 @@ diff --git a/drivers/soc/aspeed/aspeed-pcie-mmbi.c b/drivers/soc/aspeed/aspeed-p
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/soc/aspeed/aspeed-pcie-mmbi.h b/drivers/soc/aspeed/aspeed-pcie-mmbi.h
 --- a/drivers/soc/aspeed/aspeed-pcie-mmbi.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-pcie-mmbi.h	2025-12-06 17:33:46.790633119 +0000
++++ b/drivers/soc/aspeed/aspeed-pcie-mmbi.h	2025-12-07 01:02:26.891074012 +0000
 @@ -0,0 +1,141 @@
 +/* SPDX-License-Identifier: GPL-2.0+ */
 +/*
@@ -64082,86 +64081,9 @@ diff --git a/drivers/soc/aspeed/aspeed-pcie-mmbi.h b/drivers/soc/aspeed/aspeed-p
 +};
 +
 +#endif
-diff --git a/drivers/soc/aspeed/aspeed-sbc.c b/drivers/soc/aspeed/aspeed-sbc.c
---- a/drivers/soc/aspeed/aspeed-sbc.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-sbc.c	2025-12-06 17:33:46.790633119 +0000
-@@ -0,0 +1,73 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/* Copyright 2022 IBM Corp. */
-+
-+#include <linux/io.h>
-+#include <linux/of.h>
-+#include <linux/of_address.h>
-+#include <linux/of_platform.h>
-+#include <linux/debugfs.h>
-+
-+#define SEC_STATUS		0x14
-+#define ABR_IMAGE_SOURCE	BIT(13)
-+#define OTP_PROTECTED		BIT(8)
-+#define LOW_SEC_KEY		BIT(7)
-+#define SECURE_BOOT		BIT(6)
-+#define UART_BOOT		BIT(5)
-+
-+struct sbe {
-+	u8 abr_image;
-+	u8 low_security_key;
-+	u8 otp_protected;
-+	u8 secure_boot;
-+	u8 invert;
-+	u8 uart_boot;
-+};
-+
-+static struct sbe sbe;
-+
-+static int __init aspeed_sbc_init(void)
-+{
-+	struct device_node *np;
-+	void __iomem *base;
-+	struct dentry *sbc_dir;
-+	u32 security_status;
-+
-+	/* AST2600 only */
-+	np = of_find_compatible_node(NULL, NULL, "aspeed,ast2600-sbc");
-+	if (!of_device_is_available(np))
-+		return -ENODEV;
-+
-+	base = of_iomap(np, 0);
-+	if (!base) {
-+		of_node_put(np);
-+		return -ENODEV;
-+	}
-+
-+	security_status = readl(base + SEC_STATUS);
-+
-+	iounmap(base);
-+	of_node_put(np);
-+
-+	sbe.abr_image = !!(security_status & ABR_IMAGE_SOURCE);
-+	sbe.low_security_key = !!(security_status & LOW_SEC_KEY);
-+	sbe.otp_protected = !!(security_status & OTP_PROTECTED);
-+	sbe.secure_boot = !!(security_status & SECURE_BOOT);
-+	/* Invert the bit, as 1 is boot from SPI/eMMC */
-+	sbe.uart_boot =  !(security_status & UART_BOOT);
-+
-+	pr_info("AST2600 secure boot %s\n", sbe.secure_boot ? "enabled" : "disabled");
-+
-+	sbc_dir = debugfs_create_dir("sbc", arch_debugfs_dir);
-+	if (IS_ERR(sbc_dir))
-+		return PTR_ERR(sbc_dir);
-+
-+	debugfs_create_u8("abr_image", 0444, sbc_dir, &sbe.abr_image);
-+	debugfs_create_u8("low_security_key", 0444, sbc_dir, &sbe.low_security_key);
-+	debugfs_create_u8("otp_protected", 0444, sbc_dir, &sbe.otp_protected);
-+	debugfs_create_u8("uart_boot", 0444, sbc_dir, &sbe.uart_boot);
-+	debugfs_create_u8("secure_boot", 0444, sbc_dir, &sbe.secure_boot);
-+
-+	return 0;
-+}
-+
-+subsys_initcall(aspeed_sbc_init);
 diff --git a/drivers/soc/aspeed/aspeed-socinfo.c b/drivers/soc/aspeed/aspeed-socinfo.c
 --- a/drivers/soc/aspeed/aspeed-socinfo.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-socinfo.c	2025-12-06 17:33:46.791633102 +0000
++++ b/drivers/soc/aspeed/aspeed-socinfo.c	2025-12-07 01:02:26.891074012 +0000
 @@ -27,6 +27,10 @@
  	{ "AST2620", 0x05010203 },
  	{ "AST2605", 0x05030103 },
@@ -64175,7 +64097,7 @@ diff --git a/drivers/soc/aspeed/aspeed-socinfo.c b/drivers/soc/aspeed/aspeed-soc
  static const char *siliconid_to_name(u32 siliconid)
 diff --git a/drivers/soc/aspeed/aspeed-ssp.c b/drivers/soc/aspeed/aspeed-ssp.c
 --- a/drivers/soc/aspeed/aspeed-ssp.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-ssp.c	2025-12-06 17:33:46.791633102 +0000
++++ b/drivers/soc/aspeed/aspeed-ssp.c	2025-12-07 01:02:26.891074012 +0000
 @@ -0,0 +1,275 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +// Copyright (C) ASPEED Technology Inc.
@@ -64454,7 +64376,7 @@ diff --git a/drivers/soc/aspeed/aspeed-ssp.c b/drivers/soc/aspeed/aspeed-ssp.c
 +MODULE_LICENSE("Dual BSD/GPL");
 diff --git a/drivers/soc/aspeed/aspeed-uart-routing.c b/drivers/soc/aspeed/aspeed-uart-routing.c
 --- a/drivers/soc/aspeed/aspeed-uart-routing.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-uart-routing.c	2025-12-06 17:33:46.791633102 +0000
++++ b/drivers/soc/aspeed/aspeed-uart-routing.c	2025-12-07 01:02:26.892073995 +0000
 @@ -15,20 +15,30 @@
  #define HICRA	0x9c
  
@@ -64925,7 +64847,7 @@ diff --git a/drivers/soc/aspeed/aspeed-uart-routing.c b/drivers/soc/aspeed/aspee
  module_platform_driver(aspeed_uart_routing_driver);
 diff --git a/drivers/soc/aspeed/aspeed-udma.c b/drivers/soc/aspeed/aspeed-udma.c
 --- a/drivers/soc/aspeed/aspeed-udma.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-udma.c	2025-12-06 17:33:46.791633102 +0000
++++ b/drivers/soc/aspeed/aspeed-udma.c	2025-12-07 01:02:26.892073995 +0000
 @@ -0,0 +1,434 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
@@ -65363,7 +65285,7 @@ diff --git a/drivers/soc/aspeed/aspeed-udma.c b/drivers/soc/aspeed/aspeed-udma.c
 +MODULE_DESCRIPTION("Aspeed UDMA Engine Driver");
 diff --git a/drivers/soc/aspeed/aspeed-usb-hp.c b/drivers/soc/aspeed/aspeed-usb-hp.c
 --- a/drivers/soc/aspeed/aspeed-usb-hp.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-usb-hp.c	2025-12-06 17:33:46.791633102 +0000
++++ b/drivers/soc/aspeed/aspeed-usb-hp.c	2025-12-07 01:02:26.892073995 +0000
 @@ -0,0 +1,152 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -65519,7 +65441,7 @@ diff --git a/drivers/soc/aspeed/aspeed-usb-hp.c b/drivers/soc/aspeed/aspeed-usb-
 +MODULE_AUTHOR("Neal Liu <neal_liu@aspeedtech.com>");
 diff --git a/drivers/soc/aspeed/aspeed-usb-phy.c b/drivers/soc/aspeed/aspeed-usb-phy.c
 --- a/drivers/soc/aspeed/aspeed-usb-phy.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-usb-phy.c	2025-12-06 17:33:46.791633102 +0000
++++ b/drivers/soc/aspeed/aspeed-usb-phy.c	2025-12-07 01:02:26.892073995 +0000
 @@ -0,0 +1,112 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -65635,7 +65557,7 @@ diff --git a/drivers/soc/aspeed/aspeed-usb-phy.c b/drivers/soc/aspeed/aspeed-usb
 +MODULE_AUTHOR("Neal Liu <neal_liu@aspeedtech.com>");
 diff --git a/drivers/soc/aspeed/aspeed-xdma.c b/drivers/soc/aspeed/aspeed-xdma.c
 --- a/drivers/soc/aspeed/aspeed-xdma.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/aspeed-xdma.c	2025-12-06 17:33:46.792633085 +0000
++++ b/drivers/soc/aspeed/aspeed-xdma.c	2025-12-07 01:02:26.892073995 +0000
 @@ -0,0 +1,1438 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +// Copyright IBM Corp 2019
@@ -67077,7 +66999,7 @@ diff --git a/drivers/soc/aspeed/aspeed-xdma.c b/drivers/soc/aspeed/aspeed-xdma.c
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/soc/aspeed/ast2500-espi.c b/drivers/soc/aspeed/ast2500-espi.c
 --- a/drivers/soc/aspeed/ast2500-espi.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/ast2500-espi.c	2025-12-06 17:33:46.792633085 +0000
++++ b/drivers/soc/aspeed/ast2500-espi.c	2025-12-07 01:02:26.892073995 +0000
 @@ -0,0 +1,1739 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -68820,7 +68742,7 @@ diff --git a/drivers/soc/aspeed/ast2500-espi.c b/drivers/soc/aspeed/ast2500-espi
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/soc/aspeed/ast2500-espi.h b/drivers/soc/aspeed/ast2500-espi.h
 --- a/drivers/soc/aspeed/ast2500-espi.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/ast2500-espi.h	2025-12-06 17:33:46.792633085 +0000
++++ b/drivers/soc/aspeed/ast2500-espi.h	2025-12-07 01:02:26.892073995 +0000
 @@ -0,0 +1,250 @@
 +/* SPDX-License-Identifier: GPL-2.0+ */
 +/*
@@ -69074,7 +68996,7 @@ diff --git a/drivers/soc/aspeed/ast2500-espi.h b/drivers/soc/aspeed/ast2500-espi
 +#endif
 diff --git a/drivers/soc/aspeed/ast2600-espi.c b/drivers/soc/aspeed/ast2600-espi.c
 --- a/drivers/soc/aspeed/ast2600-espi.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/ast2600-espi.c	2025-12-06 17:33:46.792633085 +0000
++++ b/drivers/soc/aspeed/ast2600-espi.c	2025-12-07 01:02:26.892073995 +0000
 @@ -0,0 +1,2188 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -71266,7 +71188,7 @@ diff --git a/drivers/soc/aspeed/ast2600-espi.c b/drivers/soc/aspeed/ast2600-espi
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/soc/aspeed/ast2600-espi.h b/drivers/soc/aspeed/ast2600-espi.h
 --- a/drivers/soc/aspeed/ast2600-espi.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/ast2600-espi.h	2025-12-06 17:33:46.792633085 +0000
++++ b/drivers/soc/aspeed/ast2600-espi.h	2025-12-07 01:02:26.892073995 +0000
 @@ -0,0 +1,297 @@
 +/* SPDX-License-Identifier: GPL-2.0+ */
 +/*
@@ -71567,7 +71489,7 @@ diff --git a/drivers/soc/aspeed/ast2600-espi.h b/drivers/soc/aspeed/ast2600-espi
 +#endif
 diff --git a/drivers/soc/aspeed/ast2600-otp.c b/drivers/soc/aspeed/ast2600-otp.c
 --- a/drivers/soc/aspeed/ast2600-otp.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/ast2600-otp.c	2025-12-06 17:33:46.793633068 +0000
++++ b/drivers/soc/aspeed/ast2600-otp.c	2025-12-07 01:02:26.893073977 +0000
 @@ -0,0 +1,638 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
@@ -72209,7 +72131,7 @@ diff --git a/drivers/soc/aspeed/ast2600-otp.c b/drivers/soc/aspeed/ast2600-otp.c
 +MODULE_DESCRIPTION("ASPEED OTP Driver");
 diff --git a/drivers/soc/aspeed/ast2700-espi.c b/drivers/soc/aspeed/ast2700-espi.c
 --- a/drivers/soc/aspeed/ast2700-espi.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/ast2700-espi.c	2025-12-06 17:33:46.793633068 +0000
++++ b/drivers/soc/aspeed/ast2700-espi.c	2025-12-07 01:02:26.893073977 +0000
 @@ -0,0 +1,2304 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -74517,7 +74439,7 @@ diff --git a/drivers/soc/aspeed/ast2700-espi.c b/drivers/soc/aspeed/ast2700-espi
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/soc/aspeed/ast2700-espi.h b/drivers/soc/aspeed/ast2700-espi.h
 --- a/drivers/soc/aspeed/ast2700-espi.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/ast2700-espi.h	2025-12-06 17:33:46.793633068 +0000
++++ b/drivers/soc/aspeed/ast2700-espi.h	2025-12-07 01:02:26.893073977 +0000
 @@ -0,0 +1,281 @@
 +/* SPDX-License-Identifier: GPL-2.0+ */
 +/*
@@ -74802,7 +74724,7 @@ diff --git a/drivers/soc/aspeed/ast2700-espi.h b/drivers/soc/aspeed/ast2700-espi
 +#endif
 diff --git a/drivers/soc/aspeed/ast2700-otp.c b/drivers/soc/aspeed/ast2700-otp.c
 --- a/drivers/soc/aspeed/ast2700-otp.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/ast2700-otp.c	2025-12-06 17:33:46.793633068 +0000
++++ b/drivers/soc/aspeed/ast2700-otp.c	2025-12-07 01:02:26.893073977 +0000
 @@ -0,0 +1,565 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -75371,7 +75293,7 @@ diff --git a/drivers/soc/aspeed/ast2700-otp.c b/drivers/soc/aspeed/ast2700-otp.c
 +MODULE_DESCRIPTION("ASPEED OTP Driver");
 diff --git a/drivers/soc/aspeed/ast2700-rtc-over-espi.c b/drivers/soc/aspeed/ast2700-rtc-over-espi.c
 --- a/drivers/soc/aspeed/ast2700-rtc-over-espi.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/ast2700-rtc-over-espi.c	2025-12-06 17:33:46.793633068 +0000
++++ b/drivers/soc/aspeed/ast2700-rtc-over-espi.c	2025-12-07 01:02:26.893073977 +0000
 @@ -0,0 +1,193 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
@@ -75568,7 +75490,7 @@ diff --git a/drivers/soc/aspeed/ast2700-rtc-over-espi.c b/drivers/soc/aspeed/ast
 +MODULE_DESCRIPTION("RTC to eSPI RAM sync driver");
 diff --git a/drivers/soc/aspeed/rvas/Kconfig b/drivers/soc/aspeed/rvas/Kconfig
 --- a/drivers/soc/aspeed/rvas/Kconfig	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/rvas/Kconfig	2025-12-06 17:33:46.793633068 +0000
++++ b/drivers/soc/aspeed/rvas/Kconfig	2025-12-07 01:02:26.893073977 +0000
 @@ -0,0 +1,9 @@
 +menu "ASPEED RVAS drivers"
 +
@@ -75581,14 +75503,14 @@ diff --git a/drivers/soc/aspeed/rvas/Kconfig b/drivers/soc/aspeed/rvas/Kconfig
 +endmenu
 diff --git a/drivers/soc/aspeed/rvas/Makefile b/drivers/soc/aspeed/rvas/Makefile
 --- a/drivers/soc/aspeed/rvas/Makefile	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/rvas/Makefile	2025-12-06 17:33:46.794633050 +0000
++++ b/drivers/soc/aspeed/rvas/Makefile	2025-12-07 01:02:26.893073977 +0000
 @@ -0,0 +1,3 @@
 +obj-$(CONFIG_ASPEED_RVAS) += rvas.o
 +rvas-y := video_main.o hardware_engines.o video_engine.o
 +
 diff --git a/drivers/soc/aspeed/rvas/hardware_engines.c b/drivers/soc/aspeed/rvas/hardware_engines.c
 --- a/drivers/soc/aspeed/rvas/hardware_engines.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/rvas/hardware_engines.c	2025-12-06 17:33:46.794633050 +0000
++++ b/drivers/soc/aspeed/rvas/hardware_engines.c	2025-12-07 01:02:26.893073977 +0000
 @@ -0,0 +1,2201 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -77793,7 +77715,7 @@ diff --git a/drivers/soc/aspeed/rvas/hardware_engines.c b/drivers/soc/aspeed/rva
 +
 diff --git a/drivers/soc/aspeed/rvas/hardware_engines.h b/drivers/soc/aspeed/rvas/hardware_engines.h
 --- a/drivers/soc/aspeed/rvas/hardware_engines.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/rvas/hardware_engines.h	2025-12-06 17:33:46.794633050 +0000
++++ b/drivers/soc/aspeed/rvas/hardware_engines.h	2025-12-07 01:02:26.893073977 +0000
 @@ -0,0 +1,550 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
@@ -78347,7 +78269,7 @@ diff --git a/drivers/soc/aspeed/rvas/hardware_engines.h b/drivers/soc/aspeed/rva
 +#endif // __HARDWAREENGINES_H__
 diff --git a/drivers/soc/aspeed/rvas/video.h b/drivers/soc/aspeed/rvas/video.h
 --- a/drivers/soc/aspeed/rvas/video.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/rvas/video.h	2025-12-06 17:33:46.794633050 +0000
++++ b/drivers/soc/aspeed/rvas/video.h	2025-12-07 01:02:26.893073977 +0000
 @@ -0,0 +1,41 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/******************************************************************************
@@ -78392,7 +78314,7 @@ diff --git a/drivers/soc/aspeed/rvas/video.h b/drivers/soc/aspeed/rvas/video.h
 +#endif // __RVAS_VIDEO_H__
 diff --git a/drivers/soc/aspeed/rvas/video_debug.h b/drivers/soc/aspeed/rvas/video_debug.h
 --- a/drivers/soc/aspeed/rvas/video_debug.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/rvas/video_debug.h	2025-12-06 17:33:46.794633050 +0000
++++ b/drivers/soc/aspeed/rvas/video_debug.h	2025-12-07 01:02:26.894073960 +0000
 @@ -0,0 +1,35 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
@@ -78431,7 +78353,7 @@ diff --git a/drivers/soc/aspeed/rvas/video_debug.h b/drivers/soc/aspeed/rvas/vid
 +#endif // AST_VIDEO_DEBUG_H_
 diff --git a/drivers/soc/aspeed/rvas/video_engine.c b/drivers/soc/aspeed/rvas/video_engine.c
 --- a/drivers/soc/aspeed/rvas/video_engine.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/rvas/video_engine.c	2025-12-06 17:33:46.794633050 +0000
++++ b/drivers/soc/aspeed/rvas/video_engine.c	2025-12-07 01:02:26.894073960 +0000
 @@ -0,0 +1,1338 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -79773,7 +79695,7 @@ diff --git a/drivers/soc/aspeed/rvas/video_engine.c b/drivers/soc/aspeed/rvas/vi
 +}
 diff --git a/drivers/soc/aspeed/rvas/video_engine.h b/drivers/soc/aspeed/rvas/video_engine.h
 --- a/drivers/soc/aspeed/rvas/video_engine.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/rvas/video_engine.h	2025-12-06 17:33:46.795633033 +0000
++++ b/drivers/soc/aspeed/rvas/video_engine.h	2025-12-07 01:02:26.894073960 +0000
 @@ -0,0 +1,270 @@
 +/* SPDX-License-Identifier: GPL-2.0+ */
 +/*
@@ -80047,7 +79969,7 @@ diff --git a/drivers/soc/aspeed/rvas/video_engine.h b/drivers/soc/aspeed/rvas/vi
 +#endif // __VIDEO_ENGINE_H__
 diff --git a/drivers/soc/aspeed/rvas/video_ioctl.h b/drivers/soc/aspeed/rvas/video_ioctl.h
 --- a/drivers/soc/aspeed/rvas/video_ioctl.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/rvas/video_ioctl.h	2025-12-06 17:33:46.795633033 +0000
++++ b/drivers/soc/aspeed/rvas/video_ioctl.h	2025-12-07 01:02:26.894073960 +0000
 @@ -0,0 +1,275 @@
 +/* SPDX-License-Identifier: GPL-2.0+ */
 +/*
@@ -80326,7 +80248,7 @@ diff --git a/drivers/soc/aspeed/rvas/video_ioctl.h b/drivers/soc/aspeed/rvas/vid
 +#endif // _VIDEO_IOCTL_H
 diff --git a/drivers/soc/aspeed/rvas/video_main.c b/drivers/soc/aspeed/rvas/video_main.c
 --- a/drivers/soc/aspeed/rvas/video_main.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/soc/aspeed/rvas/video_main.c	2025-12-06 17:33:46.795633033 +0000
++++ b/drivers/soc/aspeed/rvas/video_main.c	2025-12-07 01:02:26.894073960 +0000
 @@ -0,0 +1,1848 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
@@ -82178,7 +82100,7 @@ diff --git a/drivers/soc/aspeed/rvas/video_main.c b/drivers/soc/aspeed/rvas/vide
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/spi/Kconfig b/drivers/spi/Kconfig
 --- a/drivers/spi/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/spi/Kconfig	2025-12-06 17:33:34.733840861 +0000
++++ b/drivers/spi/Kconfig	2025-12-07 01:02:14.753282750 +0000
 @@ -129,6 +129,16 @@
  	  controller (SPI) for the host firmware. The implementation
  	  only supports SPI NOR.
@@ -82198,7 +82120,7 @@ diff --git a/drivers/spi/Kconfig b/drivers/spi/Kconfig
  	depends on ARCH_AT91 || COMPILE_TEST
 diff --git a/drivers/spi/Makefile b/drivers/spi/Makefile
 --- a/drivers/spi/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/spi/Makefile	2025-12-06 17:33:39.088765824 +0000
++++ b/drivers/spi/Makefile	2025-12-07 01:02:19.126207576 +0000
 @@ -22,6 +22,7 @@
  obj-$(CONFIG_SPI_AR934X)		+= spi-ar934x.o
  obj-$(CONFIG_SPI_ARMADA_3700)		+= spi-armada-3700.o
@@ -82209,7 +82131,7 @@ diff --git a/drivers/spi/Makefile b/drivers/spi/Makefile
  obj-$(CONFIG_SPI_AT91_USART)		+= spi-at91-usart.o
 diff --git a/drivers/spi/spi-aspeed-smc.c b/drivers/spi/spi-aspeed-smc.c
 --- a/drivers/spi/spi-aspeed-smc.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/spi/spi-aspeed-smc.c	2025-12-06 17:33:46.734634084 +0000
++++ b/drivers/spi/spi-aspeed-smc.c	2025-12-07 01:02:26.835074976 +0000
 @@ -7,10 +7,16 @@
   */
  
@@ -84738,7 +84660,7 @@ diff --git a/drivers/spi/spi-aspeed-smc.c b/drivers/spi/spi-aspeed-smc.c
  MODULE_DEVICE_TABLE(of, aspeed_spi_matches);
 diff --git a/drivers/spi/spi-aspeed-txrx.c b/drivers/spi/spi-aspeed-txrx.c
 --- a/drivers/spi/spi-aspeed-txrx.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/spi/spi-aspeed-txrx.c	2025-12-06 17:33:46.726634222 +0000
++++ b/drivers/spi/spi-aspeed-txrx.c	2025-12-07 01:02:26.830075062 +0000
 @@ -0,0 +1,622 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
@@ -85364,7 +85286,7 @@ diff --git a/drivers/spi/spi-aspeed-txrx.c b/drivers/spi/spi-aspeed-txrx.c
 +
 diff --git a/drivers/tty/serial/8250/8250_aspeed.c b/drivers/tty/serial/8250/8250_aspeed.c
 --- a/drivers/tty/serial/8250/8250_aspeed.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/tty/serial/8250/8250_aspeed.c	2025-12-06 17:33:46.631635859 +0000
++++ b/drivers/tty/serial/8250/8250_aspeed.c	2025-12-07 01:02:26.734076714 +0000
 @@ -0,0 +1,524 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
@@ -85892,7 +85814,7 @@ diff --git a/drivers/tty/serial/8250/8250_aspeed.c b/drivers/tty/serial/8250/825
 +MODULE_DESCRIPTION("Aspeed UART Driver");
 diff --git a/drivers/tty/serial/8250/Kconfig b/drivers/tty/serial/8250/Kconfig
 --- a/drivers/tty/serial/8250/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/tty/serial/8250/Kconfig	2025-12-06 17:33:34.103851716 +0000
++++ b/drivers/tty/serial/8250/Kconfig	2025-12-07 01:02:14.086294216 +0000
 @@ -256,6 +256,15 @@
  	  To compile this driver as a module, choose M here: the module
  	  will be called 8250_accent.
@@ -85911,7 +85833,7 @@ diff --git a/drivers/tty/serial/8250/Kconfig b/drivers/tty/serial/8250/Kconfig
  	depends on SERIAL_8250
 diff --git a/drivers/tty/serial/8250/Makefile b/drivers/tty/serial/8250/Makefile
 --- a/drivers/tty/serial/8250/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/tty/serial/8250/Makefile	2025-12-06 17:33:38.187781348 +0000
++++ b/drivers/tty/serial/8250/Makefile	2025-12-07 01:02:18.249222652 +0000
 @@ -21,6 +21,7 @@
  obj-$(CONFIG_SERIAL_8250_ACCENT)	+= 8250_accent.o
  obj-$(CONFIG_SERIAL_8250_ACORN)		+= 8250_acorn.o
@@ -85922,7 +85844,7 @@ diff --git a/drivers/tty/serial/8250/Makefile b/drivers/tty/serial/8250/Makefile
  obj-$(CONFIG_SERIAL_8250_BOCA)		+= 8250_boca.o
 diff --git a/drivers/ufs/host/Kconfig b/drivers/ufs/host/Kconfig
 --- a/drivers/ufs/host/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/ufs/host/Kconfig	2025-12-06 17:33:34.551843997 +0000
++++ b/drivers/ufs/host/Kconfig	2025-12-07 01:02:14.565285982 +0000
 @@ -142,3 +142,12 @@
  
  	  Select this if you have UFS controller on Unisoc chipset.
@@ -85938,7 +85860,7 @@ diff --git a/drivers/ufs/host/Kconfig b/drivers/ufs/host/Kconfig
 +	  If unsure, say N.
 diff --git a/drivers/ufs/host/Makefile b/drivers/ufs/host/Makefile
 --- a/drivers/ufs/host/Makefile	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/ufs/host/Makefile	2025-12-06 17:33:38.853769873 +0000
++++ b/drivers/ufs/host/Makefile	2025-12-07 01:02:18.908211323 +0000
 @@ -12,3 +12,4 @@
  obj-$(CONFIG_SCSI_UFS_RENESAS) += ufs-renesas.o
  obj-$(CONFIG_SCSI_UFS_SPRD) += ufs-sprd.o
@@ -85946,7 +85868,7 @@ diff --git a/drivers/ufs/host/Makefile b/drivers/ufs/host/Makefile
 +obj-$(CONFIG_SCSI_UFS_ASPEED) += ufs-aspeed.o
 diff --git a/drivers/ufs/host/ufs-aspeed.c b/drivers/ufs/host/ufs-aspeed.c
 --- a/drivers/ufs/host/ufs-aspeed.c	1970-01-01 00:00:00.000000000 +0000
-+++ b/drivers/ufs/host/ufs-aspeed.c	2025-12-06 17:33:46.688634877 +0000
++++ b/drivers/ufs/host/ufs-aspeed.c	2025-12-07 01:02:26.792075716 +0000
 @@ -0,0 +1,425 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/* Copyright (C) 2019 ASPEED Technology Inc. */
@@ -86375,7 +86297,7 @@ diff --git a/drivers/ufs/host/ufs-aspeed.c b/drivers/ufs/host/ufs-aspeed.c
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/usb/gadget/udc/aspeed-vhub/Kconfig b/drivers/usb/gadget/udc/aspeed-vhub/Kconfig
 --- a/drivers/usb/gadget/udc/aspeed-vhub/Kconfig	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/usb/gadget/udc/aspeed-vhub/Kconfig	2025-12-06 17:33:46.863631862 +0000
++++ b/drivers/usb/gadget/udc/aspeed-vhub/Kconfig	2025-12-07 01:02:26.944073100 +0000
 @@ -4,5 +4,6 @@
  	depends on ARCH_ASPEED || COMPILE_TEST
  	depends on USB_LIBCOMPOSITE
@@ -86387,7 +86309,7 @@ diff --git a/drivers/usb/gadget/udc/aspeed-vhub/Kconfig b/drivers/usb/gadget/udc
 +	  USB2.0
 diff --git a/drivers/usb/gadget/udc/aspeed-vhub/core.c b/drivers/usb/gadget/udc/aspeed-vhub/core.c
 --- a/drivers/usb/gadget/udc/aspeed-vhub/core.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/usb/gadget/udc/aspeed-vhub/core.c	2025-12-06 17:33:46.864631844 +0000
++++ b/drivers/usb/gadget/udc/aspeed-vhub/core.c	2025-12-07 01:02:26.945073083 +0000
 @@ -23,9 +23,27 @@
  #include <linux/of.h>
  #include <linux/regmap.h>
@@ -86714,7 +86636,7 @@ diff --git a/drivers/usb/gadget/udc/aspeed-vhub/core.c b/drivers/usb/gadget/udc/
  };
 diff --git a/drivers/usb/gadget/udc/aspeed-vhub/dev.c b/drivers/usb/gadget/udc/aspeed-vhub/dev.c
 --- a/drivers/usb/gadget/udc/aspeed-vhub/dev.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/usb/gadget/udc/aspeed-vhub/dev.c	2025-12-06 17:33:46.864631844 +0000
++++ b/drivers/usb/gadget/udc/aspeed-vhub/dev.c	2025-12-07 01:02:26.945073083 +0000
 @@ -116,10 +116,14 @@
  
  	if (wValue == USB_DEVICE_REMOTE_WAKEUP) {
@@ -86743,7 +86665,7 @@ diff --git a/drivers/usb/gadget/udc/aspeed-vhub/dev.c b/drivers/usb/gadget/udc/a
  
 diff --git a/drivers/usb/gadget/udc/aspeed-vhub/epn.c b/drivers/usb/gadget/udc/aspeed-vhub/epn.c
 --- a/drivers/usb/gadget/udc/aspeed-vhub/epn.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/usb/gadget/udc/aspeed-vhub/epn.c	2025-12-06 17:33:46.866631810 +0000
++++ b/drivers/usb/gadget/udc/aspeed-vhub/epn.c	2025-12-07 01:02:26.945073083 +0000
 @@ -340,7 +340,9 @@
  	struct ast_vhub *vhub = ep->vhub;
  	unsigned long flags;
@@ -86846,7 +86768,7 @@ diff --git a/drivers/usb/gadget/udc/aspeed-vhub/epn.c b/drivers/usb/gadget/udc/a
  struct ast_vhub_ep *ast_vhub_alloc_epn(struct ast_vhub_dev *d, u8 addr)
 diff --git a/drivers/usb/gadget/udc/aspeed-vhub/hub.c b/drivers/usb/gadget/udc/aspeed-vhub/hub.c
 --- a/drivers/usb/gadget/udc/aspeed-vhub/hub.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/usb/gadget/udc/aspeed-vhub/hub.c	2025-12-06 17:33:46.867631793 +0000
++++ b/drivers/usb/gadget/udc/aspeed-vhub/hub.c	2025-12-07 01:02:26.945073083 +0000
 @@ -221,9 +221,8 @@
  		EPDBG(ep, "Hub remote wakeup %s\n",
  		      is_set ? "enabled" : "disabled");
@@ -86893,7 +86815,7 @@ diff --git a/drivers/usb/gadget/udc/aspeed-vhub/hub.c b/drivers/usb/gadget/udc/a
  	return ast_vhub_simple_reply(ep,
 diff --git a/drivers/usb/gadget/udc/aspeed-vhub/vhub.h b/drivers/usb/gadget/udc/aspeed-vhub/vhub.h
 --- a/drivers/usb/gadget/udc/aspeed-vhub/vhub.h	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/usb/gadget/udc/aspeed-vhub/vhub.h	2025-12-06 17:33:46.867631793 +0000
++++ b/drivers/usb/gadget/udc/aspeed-vhub/vhub.h	2025-12-07 01:02:26.945073083 +0000
 @@ -199,6 +199,14 @@
  #define VHUB_DSC1_IN_SET_LEN(x)		((x) & 0xfff)
  #define VHUB_DSC1_IN_LEN(x)		((x) & 0xfff)
@@ -86937,7 +86859,7 @@ diff --git a/drivers/usb/gadget/udc/aspeed-vhub/vhub.h b/drivers/usb/gadget/udc/
  	struct usb_device_descriptor	vhub_dev_desc;
 diff --git a/drivers/usb/gadget/udc/aspeed_udc.c b/drivers/usb/gadget/udc/aspeed_udc.c
 --- a/drivers/usb/gadget/udc/aspeed_udc.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/usb/gadget/udc/aspeed_udc.c	2025-12-06 17:33:46.779633309 +0000
++++ b/drivers/usb/gadget/udc/aspeed_udc.c	2025-12-07 01:02:26.882074167 +0000
 @@ -156,7 +156,7 @@
  #define AST_EP_DMA_DESC_PID_DATA1	(2 << 14)
  #define AST_EP_DMA_DESC_PID_MDATA	(3 << 14)
@@ -87130,7 +87052,7 @@ diff --git a/drivers/usb/gadget/udc/aspeed_udc.c b/drivers/usb/gadget/udc/aspeed
  		ep = &udc->ep[i];
 diff --git a/drivers/watchdog/aspeed_wdt.c b/drivers/watchdog/aspeed_wdt.c
 --- a/drivers/watchdog/aspeed_wdt.c	2025-08-01 08:48:47.000000000 +0000
-+++ b/drivers/watchdog/aspeed_wdt.c	2025-12-06 17:33:46.740633981 +0000
++++ b/drivers/watchdog/aspeed_wdt.c	2025-12-07 01:02:26.842074855 +0000
 @@ -35,6 +35,8 @@
  	u32 irq_shift;
  	u32 irq_mask;
@@ -87363,7 +87285,7 @@ diff --git a/drivers/watchdog/aspeed_wdt.c b/drivers/watchdog/aspeed_wdt.c
  	aspeed_wdt_update_bootstatus(pdev, wdt);
 diff --git a/include/dt-bindings/clock/aspeed,ast1700-clk.h b/include/dt-bindings/clock/aspeed,ast1700-clk.h
 --- a/include/dt-bindings/clock/aspeed,ast1700-clk.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/dt-bindings/clock/aspeed,ast1700-clk.h	2025-12-06 17:33:46.961630173 +0000
++++ b/include/dt-bindings/clock/aspeed,ast1700-clk.h	2025-12-07 01:02:27.042071413 +0000
 @@ -0,0 +1,97 @@
 +/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
 +/*
@@ -87464,7 +87386,7 @@ diff --git a/include/dt-bindings/clock/aspeed,ast1700-clk.h b/include/dt-binding
 +#endif
 diff --git a/include/dt-bindings/clock/aspeed,ast1800-clk.h b/include/dt-bindings/clock/aspeed,ast1800-clk.h
 --- a/include/dt-bindings/clock/aspeed,ast1800-clk.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/dt-bindings/clock/aspeed,ast1800-clk.h	2025-12-06 17:33:46.970630018 +0000
++++ b/include/dt-bindings/clock/aspeed,ast1800-clk.h	2025-12-07 01:02:27.052071241 +0000
 @@ -0,0 +1,104 @@
 +/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
 +/*
@@ -87572,7 +87494,7 @@ diff --git a/include/dt-bindings/clock/aspeed,ast1800-clk.h b/include/dt-binding
 +#endif
 diff --git a/include/dt-bindings/clock/aspeed,ast2700-scu.h b/include/dt-bindings/clock/aspeed,ast2700-scu.h
 --- a/include/dt-bindings/clock/aspeed,ast2700-scu.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/dt-bindings/clock/aspeed,ast2700-scu.h	2025-12-06 17:33:46.975629932 +0000
++++ b/include/dt-bindings/clock/aspeed,ast2700-scu.h	2025-12-07 01:02:27.057071155 +0000
 @@ -0,0 +1,167 @@
 +/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
 +/*
@@ -87743,7 +87665,7 @@ diff --git a/include/dt-bindings/clock/aspeed,ast2700-scu.h b/include/dt-binding
 +#endif
 diff --git a/include/dt-bindings/clock/aspeed-clock.h b/include/dt-bindings/clock/aspeed-clock.h
 --- a/include/dt-bindings/clock/aspeed-clock.h	2025-08-01 08:48:47.000000000 +0000
-+++ b/include/dt-bindings/clock/aspeed-clock.h	2025-12-06 17:33:46.966630087 +0000
++++ b/include/dt-bindings/clock/aspeed-clock.h	2025-12-07 01:02:27.047071327 +0000
 @@ -53,5 +53,6 @@
  #define ASPEED_RESET_AHB		8
  #define ASPEED_RESET_CRT1		9
@@ -87753,7 +87675,7 @@ diff --git a/include/dt-bindings/clock/aspeed-clock.h b/include/dt-bindings/cloc
  #endif
 diff --git a/include/dt-bindings/clock/ast2600-clock.h b/include/dt-bindings/clock/ast2600-clock.h
 --- a/include/dt-bindings/clock/ast2600-clock.h	2025-08-01 08:48:47.000000000 +0000
-+++ b/include/dt-bindings/clock/ast2600-clock.h	2025-12-06 17:33:46.979629863 +0000
++++ b/include/dt-bindings/clock/ast2600-clock.h	2025-12-07 01:02:27.061071086 +0000
 @@ -72,7 +72,7 @@
  #define ASPEED_CLK_D1CLK		55
  #define ASPEED_CLK_VCLK			56
@@ -87799,7 +87721,7 @@ diff --git a/include/dt-bindings/clock/ast2600-clock.h b/include/dt-bindings/clo
  #define ASPEED_RESET_AHB		1
 diff --git a/include/dt-bindings/interrupt-controller/aspeed-e2m-ic.h b/include/dt-bindings/interrupt-controller/aspeed-e2m-ic.h
 --- a/include/dt-bindings/interrupt-controller/aspeed-e2m-ic.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/dt-bindings/interrupt-controller/aspeed-e2m-ic.h	2025-12-06 17:33:46.984629777 +0000
++++ b/include/dt-bindings/interrupt-controller/aspeed-e2m-ic.h	2025-12-07 01:02:27.066071000 +0000
 @@ -0,0 +1,21 @@
 +/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
 +/*
@@ -87824,7 +87746,7 @@ diff --git a/include/dt-bindings/interrupt-controller/aspeed-e2m-ic.h b/include/
 +#endif /* _DT_BINDINGS_INTERRUPT_CONTROLLER_ASPEED_E2M_IC_H_ */
 diff --git a/include/dt-bindings/interrupt-controller/aspeed-scu-ic.h b/include/dt-bindings/interrupt-controller/aspeed-scu-ic.h
 --- a/include/dt-bindings/interrupt-controller/aspeed-scu-ic.h	2025-08-01 08:48:47.000000000 +0000
-+++ b/include/dt-bindings/interrupt-controller/aspeed-scu-ic.h	2025-12-06 17:33:46.989629691 +0000
++++ b/include/dt-bindings/interrupt-controller/aspeed-scu-ic.h	2025-12-07 01:02:27.071070914 +0000
 @@ -20,4 +20,18 @@
  #define ASPEED_AST2600_SCU_IC1_LPC_RESET_LO_TO_HI	0
  #define ASPEED_AST2600_SCU_IC1_LPC_RESET_HI_TO_LO	1
@@ -87846,7 +87768,7 @@ diff --git a/include/dt-bindings/interrupt-controller/aspeed-scu-ic.h b/include/
  #endif /* _DT_BINDINGS_INTERRUPT_CONTROLLER_ASPEED_SCU_IC_H_ */
 diff --git a/include/dt-bindings/reset/aspeed,ast1700-reset.h b/include/dt-bindings/reset/aspeed,ast1700-reset.h
 --- a/include/dt-bindings/reset/aspeed,ast1700-reset.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/dt-bindings/reset/aspeed,ast1700-reset.h	2025-12-06 17:33:47.004629432 +0000
++++ b/include/dt-bindings/reset/aspeed,ast1700-reset.h	2025-12-07 01:02:27.084070690 +0000
 @@ -0,0 +1,69 @@
 +/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
 +/*
@@ -87919,7 +87841,7 @@ diff --git a/include/dt-bindings/reset/aspeed,ast1700-reset.h b/include/dt-bindi
 +#endif  /* _MACH_ASPEED_AST1700_RESET_H_ */
 diff --git a/include/dt-bindings/reset/aspeed,ast1800-reset.h b/include/dt-bindings/reset/aspeed,ast1800-reset.h
 --- a/include/dt-bindings/reset/aspeed,ast1800-reset.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/dt-bindings/reset/aspeed,ast1800-reset.h	2025-12-06 17:33:47.014629260 +0000
++++ b/include/dt-bindings/reset/aspeed,ast1800-reset.h	2025-12-07 01:02:27.093070536 +0000
 @@ -0,0 +1,61 @@
 +/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
 +/*
@@ -87984,7 +87906,7 @@ diff --git a/include/dt-bindings/reset/aspeed,ast1800-reset.h b/include/dt-bindi
 +#endif /* _MACH_ASPEED_AST1800_RESET_H_ */
 diff --git a/include/dt-bindings/reset/aspeed,ast2700-scu.h b/include/dt-bindings/reset/aspeed,ast2700-scu.h
 --- a/include/dt-bindings/reset/aspeed,ast2700-scu.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/dt-bindings/reset/aspeed,ast2700-scu.h	2025-12-06 17:33:47.009629346 +0000
++++ b/include/dt-bindings/reset/aspeed,ast2700-scu.h	2025-12-07 01:02:27.088070622 +0000
 @@ -0,0 +1,125 @@
 +/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
 +/*
@@ -88113,7 +88035,7 @@ diff --git a/include/dt-bindings/reset/aspeed,ast2700-scu.h b/include/dt-binding
 +#endif  /* _MACH_ASPEED_AST2700_RESET_H_ */
 diff --git a/include/dt-bindings/watchdog/aspeed-wdt.h b/include/dt-bindings/watchdog/aspeed-wdt.h
 --- a/include/dt-bindings/watchdog/aspeed-wdt.h	2025-08-01 08:48:47.000000000 +0000
-+++ b/include/dt-bindings/watchdog/aspeed-wdt.h	2025-12-06 17:33:46.998629536 +0000
++++ b/include/dt-bindings/watchdog/aspeed-wdt.h	2025-12-07 01:02:27.080070759 +0000
 @@ -89,4 +89,142 @@
  
  #define AST2600_WDT_RESET2_DEFAULT 0x03fffff1
@@ -88259,7 +88181,7 @@ diff --git a/include/dt-bindings/watchdog/aspeed-wdt.h b/include/dt-bindings/wat
  #endif
 diff --git a/include/linux/aspeed-mctp.h b/include/linux/aspeed-mctp.h
 --- a/include/linux/aspeed-mctp.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/linux/aspeed-mctp.h	2025-12-06 17:33:46.952630328 +0000
++++ b/include/linux/aspeed-mctp.h	2025-12-07 01:02:27.033071568 +0000
 @@ -0,0 +1,157 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +/* Copyright (c) 2025 ASPEED Tech */
@@ -88420,7 +88342,7 @@ diff --git a/include/linux/aspeed-mctp.h b/include/linux/aspeed-mctp.h
 +#endif /* __LINUX_ASPEED_MCTP_H */
 diff --git a/include/linux/clk-provider.h b/include/linux/clk-provider.h
 --- a/include/linux/clk-provider.h	2025-08-01 08:48:47.000000000 +0000
-+++ b/include/linux/clk-provider.h	2025-12-06 17:33:47.735616837 +0000
++++ b/include/linux/clk-provider.h	2025-12-07 01:02:27.783058661 +0000
 @@ -623,6 +623,24 @@
  			       NULL, (flags), (reg), (bit_idx),		      \
  			       (clk_gate_flags), (lock))
@@ -88448,7 +88370,7 @@ diff --git a/include/linux/clk-provider.h b/include/linux/clk-provider.h
   * @dev: device that is registering this clock
 diff --git a/include/linux/mctp-pcie-vdm.h b/include/linux/mctp-pcie-vdm.h
 --- a/include/linux/mctp-pcie-vdm.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/linux/mctp-pcie-vdm.h	2025-12-06 17:33:47.708617302 +0000
++++ b/include/linux/mctp-pcie-vdm.h	2025-12-07 01:02:27.757059108 +0000
 @@ -0,0 +1,36 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
@@ -88488,7 +88410,7 @@ diff --git a/include/linux/mctp-pcie-vdm.h b/include/linux/mctp-pcie-vdm.h
 +#endif	/* __LINUX_MCTP_PCIE_VDM_H */
 diff --git a/include/linux/pwm.h b/include/linux/pwm.h
 --- a/include/linux/pwm.h	2025-08-01 08:48:47.000000000 +0000
-+++ b/include/linux/pwm.h	2025-12-06 17:33:47.765616320 +0000
++++ b/include/linux/pwm.h	2025-12-07 01:02:27.813058145 +0000
 @@ -405,6 +405,9 @@
  int __devm_pwmchip_add(struct device *dev, struct pwm_chip *chip, struct module *owner);
  #define devm_pwmchip_add(dev, chip) __devm_pwmchip_add(dev, chip, THIS_MODULE)
@@ -88501,7 +88423,7 @@ diff --git a/include/linux/pwm.h b/include/linux/pwm.h
  struct pwm_device *of_pwm_single_xlate(struct pwm_chip *chip,
 diff --git a/include/linux/soc/aspeed/aspeed-otp.h b/include/linux/soc/aspeed/aspeed-otp.h
 --- a/include/linux/soc/aspeed/aspeed-otp.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/linux/soc/aspeed/aspeed-otp.h	2025-12-06 17:33:46.943630483 +0000
++++ b/include/linux/soc/aspeed/aspeed-otp.h	2025-12-07 01:02:27.024071723 +0000
 @@ -0,0 +1,12 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later WITH Linux-syscall-note */
 +/*
@@ -88517,7 +88439,7 @@ diff --git a/include/linux/soc/aspeed/aspeed-otp.h b/include/linux/soc/aspeed/as
 +#endif /* _LINUX_ASPEED_OTP_H */
 diff --git a/include/linux/soc/aspeed/aspeed-udma.h b/include/linux/soc/aspeed/aspeed-udma.h
 --- a/include/linux/soc/aspeed/aspeed-udma.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/linux/soc/aspeed/aspeed-udma.h	2025-12-06 17:33:46.938630569 +0000
++++ b/include/linux/soc/aspeed/aspeed-udma.h	2025-12-07 01:02:27.019071809 +0000
 @@ -0,0 +1,28 @@
 +#ifndef __ASPEED_UDMA_H__
 +#define __ASPEED_UDMA_H__
@@ -88549,7 +88471,7 @@ diff --git a/include/linux/soc/aspeed/aspeed-udma.h b/include/linux/soc/aspeed/a
 +#endif
 diff --git a/include/soc/aspeed/reset-aspeed.h b/include/soc/aspeed/reset-aspeed.h
 --- a/include/soc/aspeed/reset-aspeed.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/soc/aspeed/reset-aspeed.h	2025-12-06 17:33:46.899631241 +0000
++++ b/include/soc/aspeed/reset-aspeed.h	2025-12-07 01:02:26.979072497 +0000
 @@ -0,0 +1,21 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
@@ -88574,7 +88496,7 @@ diff --git a/include/soc/aspeed/reset-aspeed.h b/include/soc/aspeed/reset-aspeed
 +#endif /* __RESET_ASPEED_H__ */
 diff --git a/include/trace/events/xdma.h b/include/trace/events/xdma.h
 --- a/include/trace/events/xdma.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/trace/events/xdma.h	2025-12-06 17:33:47.725617010 +0000
++++ b/include/trace/events/xdma.h	2025-12-07 01:02:27.773058833 +0000
 @@ -0,0 +1,126 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +
@@ -88704,7 +88626,7 @@ diff --git a/include/trace/events/xdma.h b/include/trace/events/xdma.h
 +#include <trace/define_trace.h>
 diff --git a/include/uapi/linux/aspeed-mctp.h b/include/uapi/linux/aspeed-mctp.h
 --- a/include/uapi/linux/aspeed-mctp.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/uapi/linux/aspeed-mctp.h	2025-12-06 17:33:46.933630656 +0000
++++ b/include/uapi/linux/aspeed-mctp.h	2025-12-07 01:02:27.014071895 +0000
 @@ -0,0 +1,136 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +/* Copyright (c) 2020 Intel Corporation */
@@ -88844,7 +88766,7 @@ diff --git a/include/uapi/linux/aspeed-mctp.h b/include/uapi/linux/aspeed-mctp.h
 +#endif /* _UAPI_LINUX_ASPEED_MCTP_H */
 diff --git a/include/uapi/linux/aspeed-video.h b/include/uapi/linux/aspeed-video.h
 --- a/include/uapi/linux/aspeed-video.h	2025-08-01 08:48:47.000000000 +0000
-+++ b/include/uapi/linux/aspeed-video.h	2025-12-06 17:33:46.909631069 +0000
++++ b/include/uapi/linux/aspeed-video.h	2025-12-07 01:02:26.987072360 +0000
 @@ -8,6 +8,15 @@
  
  #include <linux/v4l2-controls.h>
@@ -88863,7 +88785,7 @@ diff --git a/include/uapi/linux/aspeed-video.h b/include/uapi/linux/aspeed-video
  
 diff --git a/include/uapi/linux/aspeed-xdma.h b/include/uapi/linux/aspeed-xdma.h
 --- a/include/uapi/linux/aspeed-xdma.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/uapi/linux/aspeed-xdma.h	2025-12-06 17:33:46.918630914 +0000
++++ b/include/uapi/linux/aspeed-xdma.h	2025-12-07 01:02:26.996072205 +0000
 @@ -0,0 +1,42 @@
 +/* SPDX-License-Identifier: GPL-2.0+ WITH Linux-syscall-note */
 +/* Copyright IBM Corp 2019 */
@@ -88909,7 +88831,7 @@ diff --git a/include/uapi/linux/aspeed-xdma.h b/include/uapi/linux/aspeed-xdma.h
 +#endif /* _UAPI_LINUX_ASPEED_XDMA_H_ */
 diff --git a/include/uapi/linux/otp_ast2600.h b/include/uapi/linux/otp_ast2600.h
 --- a/include/uapi/linux/otp_ast2600.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/uapi/linux/otp_ast2600.h	2025-12-06 17:33:46.924630811 +0000
++++ b/include/uapi/linux/otp_ast2600.h	2025-12-07 01:02:27.001072119 +0000
 @@ -0,0 +1,39 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later WITH Linux-syscall-note */
 +/*
@@ -88952,7 +88874,7 @@ diff --git a/include/uapi/linux/otp_ast2600.h b/include/uapi/linux/otp_ast2600.h
 +#endif /* _UAPI_LINUX_OTP_AST2600_H */
 diff --git a/include/uapi/linux/otp_ast2700.h b/include/uapi/linux/otp_ast2700.h
 --- a/include/uapi/linux/otp_ast2700.h	1970-01-01 00:00:00.000000000 +0000
-+++ b/include/uapi/linux/otp_ast2700.h	2025-12-06 17:33:46.904631155 +0000
++++ b/include/uapi/linux/otp_ast2700.h	2025-12-07 01:02:26.983072429 +0000
 @@ -0,0 +1,47 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later WITH Linux-syscall-note */
 +/*
@@ -89003,7 +88925,7 @@ diff --git a/include/uapi/linux/otp_ast2700.h b/include/uapi/linux/otp_ast2700.h
 +#endif /* _UAPI_LINUX_OTP_AST2700_H */
 diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
 --- a/include/uapi/linux/videodev2.h	2025-08-01 08:48:47.000000000 +0000
-+++ b/include/uapi/linux/videodev2.h	2025-12-06 17:33:47.745616665 +0000
++++ b/include/uapi/linux/videodev2.h	2025-12-07 01:02:27.793058489 +0000
 @@ -880,6 +880,7 @@
  /* Flags */
  #define V4L2_PIX_FMT_FLAG_PREMUL_ALPHA	0x00000001
