@@ -1,0 +1,38 @@
+From 2f6b30b57d84721ea1f31a22686b57106037a964 Mon Sep 17 00:00:00 2001
+From: Ai Chao <aichao@kylinos.cn>
+Date: Thu, 16 Jan 2025 16:11:29 +0800
+Subject: [PATCH 06/78] platform/mellanox: mlxreg-io: use sysfs_emit() instead
+ of sprintf()
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Follow the advice in Documentation/filesystems/sysfs.rst:
+show() should only use sysfs_emit() or sysfs_emit_at() when formatting
+the value to be returned to user space.
+
+Signed-off-by: Ai Chao <aichao@kylinos.cn>
+Acked-by: Vadim Pasternak <vadimp@nvidia.com>
+Link: https://lore.kernel.org/r/20250116081129.2902274-1-aichao@kylinos.cn
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Signed-off-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+---
+ drivers/platform/mellanox/mlxreg-io.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/platform/mellanox/mlxreg-io.c b/drivers/platform/mellanox/mlxreg-io.c
+index ee7bd62..c502f2b 100644
+--- a/drivers/platform/mellanox/mlxreg-io.c
++++ b/drivers/platform/mellanox/mlxreg-io.c
+@@ -126,7 +126,7 @@ mlxreg_io_attr_show(struct device *dev, struct device_attribute *attr,
+ 
+ 	mutex_unlock(&priv->io_lock);
+ 
+-	return sprintf(buf, "%u\n", regval);
++	return sysfs_emit(buf, "%u\n", regval);
+ 
+ access_error:
+ 	mutex_unlock(&priv->io_lock);
+-- 
+2.8.4
+

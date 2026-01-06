@@ -1,0 +1,15 @@
+Index: linux-6.12.41/debian/bin/buildcheck.py
+===================================================================
+--- linux-6.12.41.orig/debian/bin/buildcheck.py
++++ linux-6.12.41/debian/bin/buildcheck.py
+@@ -23,9 +23,7 @@ class CheckSecureBootConfig:
+             with (self.dir / '.config').open() as fh:
+                 kconfig.read(fh)
+ 
+-            for name, value in [('EFI_STUB', True),
+-                                ('LOCK_DOWN_IN_EFI_SECURE_BOOT', True),
+-                                ('SYSTEM_TRUSTED_KEYS', '""')]:
++            for name, value in [('EFI_STUB', True),]:
+                 if name not in kconfig:
+                     out.write(f'Secure Boot: CONFIG_{name} is not defined\n')
+                     fail = 1

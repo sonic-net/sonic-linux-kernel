@@ -1,0 +1,38 @@
+From 9d23974f2c561e438fdf48266b327e1424884ff3 Mon Sep 17 00:00:00 2001
+From: Ai Chao <aichao@kylinos.cn>
+Date: Thu, 16 Jan 2025 16:10:00 +0800
+Subject: [PATCH 05/78] platform/mellanox: mlxreg-hotplug: use sysfs_emit()
+ instead of sprintf()
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Follow the advice in Documentation/filesystems/sysfs.rst:
+show() should only use sysfs_emit() or sysfs_emit_at() when formatting
+the value to be returned to user space.
+
+Signed-off-by: Ai Chao <aichao@kylinos.cn>
+Acked-by: Vadim Pasternak <vadimp@nvidia.com>
+Link: https://lore.kernel.org/r/20250116081000.2900435-1-aichao@kylinos.cn
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Signed-off-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+---
+ drivers/platform/mellanox/mlxreg-hotplug.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/platform/mellanox/mlxreg-hotplug.c b/drivers/platform/mellanox/mlxreg-hotplug.c
+index 0ce9fff..40d5b99 100644
+--- a/drivers/platform/mellanox/mlxreg-hotplug.c
++++ b/drivers/platform/mellanox/mlxreg-hotplug.c
+@@ -232,7 +232,7 @@ static ssize_t mlxreg_hotplug_attr_show(struct device *dev,
+ 			regval = !!(regval & data->mask);
+ 	}
+ 
+-	return sprintf(buf, "%u\n", regval);
++	return sysfs_emit(buf, "%u\n", regval);
+ }
+ 
+ #define PRIV_ATTR(i) priv->mlxreg_hotplug_attr[i]
+-- 
+2.8.4
+

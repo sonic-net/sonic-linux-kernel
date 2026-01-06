@@ -1,0 +1,63 @@
+From c15263c31b19f0dd2cea9e09b9951613ec459afa Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Mon, 21 Apr 2025 12:20:48 +0300
+Subject: [PATCH 34/78] platform: mellanox: Cosmetic changes to improve code
+ style
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Replace in 'for' loop - /i >= 0 ; i--/i >= 0 ;i--/.
+Replace in 'while' loop - /(--i >= 0)/(--i)/.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Link: https://lore.kernel.org/r/20250421092051.7687-4-vadimp@nvidia.com
+Signed-off-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+---
+ drivers/platform/mellanox/mlx-platform.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/platform/mellanox/mlx-platform.c b/drivers/platform/mellanox/mlx-platform.c
+index 053c8a0..fca8883 100644
+--- a/drivers/platform/mellanox/mlx-platform.c
++++ b/drivers/platform/mellanox/mlx-platform.c
+@@ -7817,7 +7817,7 @@ static int mlxplat_platdevs_init(struct mlxplat_priv *priv)
+ 	while (i--)
+ 		platform_device_unregister(priv->pdev_dpu[i]);
+ fail_platform_wd_register:
+-	while (--i >= 0)
++	while (i--)
+ 		platform_device_unregister(priv->pdev_wd[i]);
+ fail_platform_fan_register:
+ 	if (mlxplat_regs_io)
+@@ -7838,7 +7838,7 @@ static void mlxplat_platdevs_exit(struct mlxplat_priv *priv)
+ 
+ 	for (i = MLXPLAT_CPLD_DPU_MAX_DEVS - 1; i >= 0; i--)
+ 		platform_device_unregister(priv->pdev_dpu[i]);
+-	for (i = MLXPLAT_CPLD_WD_MAX_DEVS - 1; i >= 0 ; i--)
++	for (i = MLXPLAT_CPLD_WD_MAX_DEVS - 1; i >= 0; i--)
+ 		platform_device_unregister(priv->pdev_wd[i]);
+ 	if (priv->pdev_fan)
+ 		platform_device_unregister(priv->pdev_fan);
+@@ -7923,7 +7923,7 @@ static int mlxplat_i2c_mux_topology_init(struct mlxplat_priv *priv)
+ 	return mlxplat_platdevs_init(priv);
+ 
+ fail_platform_mux_register:
+-	while (--i >= 0)
++	while (i--)
+ 		platform_device_unregister(priv->pdev_mux[i]);
+ 	return err;
+ }
+@@ -7932,7 +7932,7 @@ static void mlxplat_i2c_mux_topology_exit(struct mlxplat_priv *priv)
+ {
+ 	int i;
+ 
+-	for (i = mlxplat_mux_num - 1; i >= 0 ; i--) {
++	for (i = mlxplat_mux_num - 1; i >= 0; i--) {
+ 		if (priv->pdev_mux[i])
+ 			platform_device_unregister(priv->pdev_mux[i]);
+ 	}
+-- 
+2.8.4
+

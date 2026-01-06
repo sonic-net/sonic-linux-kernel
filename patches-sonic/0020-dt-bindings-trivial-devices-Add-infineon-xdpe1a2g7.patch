@@ -1,0 +1,28 @@
+From a2f7a59cc93759e1e7cde05831afa049e7413c43 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Mon, 17 Jul 2023 16:24:58 +0000
+Subject: [PATCH 20/78] dt-bindings: trivial-devices: Add infineon,xdpe1a2g7
+
+Add new Infineon Multi-phase Digital VR Controller xdpe1a2g7
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ Documentation/devicetree/bindings/trivial-devices.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/trivial-devices.yaml b/Documentation/devicetree/bindings/trivial-devices.yaml
+index 9bf0fb1..a190c56 100644
+--- a/Documentation/devicetree/bindings/trivial-devices.yaml
++++ b/Documentation/devicetree/bindings/trivial-devices.yaml
+@@ -131,6 +131,8 @@ properties:
+           - infineon,xdp710
+             # Infineon Multi-phase Digital VR Controller xdpe11280
+           - infineon,xdpe11280
++            # Infineon Multi-phase Digital VR Controller xdpe1a2g7
++          - infineon,xdpe1a2g7
+             # Infineon Multi-phase Digital VR Controller xdpe12254
+           - infineon,xdpe12254
+             # Infineon Multi-phase Digital VR Controller xdpe12284
+-- 
+2.8.4
+
