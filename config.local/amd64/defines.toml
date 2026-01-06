@@ -1,0 +1,6 @@
+[[featureset]]
+name = 'sonic'
+[[featureset.flavour]]
+name = 'amd64'
+[featureset.flavour.build]
+config = ['amd64/config.sonic']

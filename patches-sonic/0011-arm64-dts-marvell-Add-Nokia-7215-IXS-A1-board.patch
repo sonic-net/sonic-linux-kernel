@@ -1,0 +1,258 @@
+From d0144bfbcbf78c7577f5e1330aba16f1e5bb4ebe Mon Sep 17 00:00:00 2001
+From: Natarajan Subbiramani <natarajan.subbiramani.ext@nokia.com>
+Date: Sun, 16 Nov 2025 12:55:20 +0200
+Subject: [PATCH] arm64: dts: marvell: Add DTS for 7215-IXS-A1 board
+
+7215-IXS-A1 is an aggregation switch based on Marvell AlleyCat5X.
+This dts is extracted from Marvell cn9130-crb and removed unused
+nodes along with platform specific changes.
+
+Signed-off-by: Natarajan Subbiramani <natarajan.subbiramani.ext@nokia.com>
+Signed-off-by: Yan Markman <ymarkman@marvell.com>
+Tested-by:  Natarajan Subbiramani <natarajan.subbiramani.ext@nokia.com>
+Reviewed-by: Jon Goldberg <jon.goldberg@nokia.com>
+---
+ arch/arm64/boot/dts/marvell/7215-ixs-a1.dts | 221 ++++++++++++++++++++
+ arch/arm64/boot/dts/marvell/Makefile        |   1 +
+ 2 files changed, 226 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/marvell/7215-ixs-a1.dts
+
+diff --git a/arch/arm64/boot/dts/marvell/7215-ixs-a1.dts b/arch/arm64/boot/dts/marvell/7215-ixs-a1.dts
+new file mode 100644
+index 000000000..fd0e6b395
+--- /dev/null
++++ b/arch/arm64/boot/dts/marvell/7215-ixs-a1.dts
+@@ -0,0 +1,221 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * Copyright (C) 2024 Nokia
++ * Copyright (C) 2020 Marvell International Ltd.
++ */
++
++#include "cn9130.dtsi" /* include SoC device tree */
++
++#include <dt-bindings/gpio/gpio.h>
++
++/ {
++	#address-cells = <0x02>;
++	#size-cells = <0x02>;
++	model = "7215 IXS-A1";
++	compatible = "marvell,cn9130\0marvell,armada-ap807-quad\0marvell,armada-ap807";
++
++	aliases {
++		i2c0 = &cp0_i2c0;
++		ethernet0 = &cp0_eth0;
++		ethernet1 = &cp0_eth1;
++		ethernet2 = &cp0_eth2;
++		gpio1 = &cp0_gpio1;
++		gpio2 = &cp0_gpio2;
++	};
++
++	memory@0 {
++		device_type = "memory";
++		reg = <0x0 0x0 0x0 0x80000000>;
++	};
++
++	reserved-memory {
++		#address-cells = <0x02>;
++		#size-cells = <0x02>;
++		ranges;
++
++		/* keep psci-area: 04000000 size 0x00200000 */
++		/* keep       tee: 04400000 size 0x01000000 */
++		buf1: buffer@6000000 {
++			compatible = "shared-dma-pool";
++			reg = <0x0 0x06000000 0x0 0x02000000>;
++			no-map;
++		};
++	};
++
++	mv_dma {
++		compatible = "marvell,mv_dma";
++		memory-region = <&buf1>;
++		status = "okay";
++	};
++
++	cp0_usb3_0_phy0: cp0_usb3_phy0 {
++		compatible = "usb-nop-xceiv";
++	};
++
++	cp0_usb3_0_phy1: cp0_usb3_phy1 {
++		compatible = "usb-nop-xceiv";
++	};
++};
++
++&cp0_syscon0 {
++	cp0_pinctrl: pinctrl {
++		compatible = "marvell,cp115-standalone-pinctrl";
++
++		cp0_i2c0_pins: cp0-i2c-pins-0 {
++			marvell,pins = "mpp37", "mpp38";
++			marvell,function = "i2c0";
++		};
++		cp0_i2c1_pins: cp0-i2c-pins-1 {
++			marvell,pins = "mpp35", "mpp36";
++			marvell,function = "i2c1";
++		};
++		cp0_spi0_pins: cp0-spi-pins-0 {
++			marvell,pins = "mpp13", "mpp14", "mpp15", "mpp16";
++			marvell,function = "spi1";
++		};
++	};
++};
++
++&cp0_gpio1 {
++	status = "okay";
++};
++
++&cp0_gpio2 {
++	status = "okay";
++};
++
++&cp0_pcie0 {
++	status = "okay";
++	num-lanes = <4>;
++	num-viewport = <8>;
++	/* Generic PHY, providing serdes lanes */
++	phys = <&cp0_comphy0 0
++		&cp0_comphy1 0
++		&cp0_comphy2 0
++		&cp0_comphy3 0>;
++	iommu-map =
++		<0x0   &smmu 0x480 0x20>,
++		<0x100 &smmu 0x4a0 0x20>,
++		<0x200 &smmu 0x4c0 0x20>;
++	iommu-map-mask = <0x031f>;
++};
++
++&uart0 {
++	status = "okay";
++};
++
++/* on-board eMMC U6 */
++&ap_sdhci0 {
++	pinctrl-names = "default";
++	bus-width = <8>;
++	status = "okay";
++	non-removable;
++	mmc-ddr-1_8v;
++	mmc-hs200-1_8v;
++};
++
++/*Delete nodes that are not available*/
++/delete-node/ &cp0_rtc;
++/delete-node/ &cp0_sdhci0;
++/delete-node/ &cp0_crypto;
++
++&cp0_i2c0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&cp0_i2c0_pins>;
++	status = "okay";
++	clock-frequency = <100000>;
++	rtc@68 {
++		compatible = "st,m41t11";
++		reg = <0x68>;
++	};
++};
++
++&cp0_i2c1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&cp0_i2c1_pins>;
++	clock-frequency = <100000>;
++	status = "okay";
++};
++
++&cp0_usb3_0 {
++	status = "okay";
++	usb-phy = <&cp0_usb3_0_phy0>;
++	phy-names = "usb";
++};
++
++&cp0_usb3_1 {
++	status = "okay";
++	usb-phy = <&cp0_usb3_0_phy1>;
++	phy-names = "usb";
++};
++
++&cp0_spi1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&cp0_spi0_pins>;
++	reg = <0x700680 0x50>,		/* control */
++	      <0x2000000 0x1000000>;	/* CS0 */
++	status = "okay";
++
++	flash@0 {
++		#address-cells = <0x1>;
++		#size-cells = <0x1>;
++		compatible = "jedec,spi-nor";
++		reg = <0x0>;
++		/* On-board MUX does not allow higher frequencies */
++		spi-max-frequency = <40000000>;
++
++		partitions {
++			compatible = "fixed-partitions";
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			partition@0 {
++				label = "U-Boot";
++				reg = <0x0 0x2f0000>;
++			};
++
++			partition@1 {
++				label = "U-Boot-Env";
++				reg = <0x2f0000 0x10000>;
++			};
++
++			partition@2{
++				label = "Filesystem";
++				reg = <0x300000 0xd00000>;
++			};
++		};
++	};
++};
++
++&cp0_mdio {
++	status = "okay";
++	phy0: ethernet-phy@0 {
++		reg = <0>;
++		/* Management port LED blink activity*/
++		marvell,reg-init = <0x03 0x10 0x0 0x1140>;
++	};
++};
++
++&cp0_xmdio {
++	status = "disabled";
++};
++
++&cp0_ethernet {
++	status = "okay";
++};
++
++&cp0_eth0 {
++	status = "disabled";
++};
++
++&cp0_eth1 {
++	status = "disabled";
++};
++
++&cp0_eth2 {
++	/* This port uses "sgmii" phy-mode */
++	status = "okay";
++	phy = <&phy0>;
++	phys = <&cp0_comphy5 2>;
++	phy-mode = "sgmii";
++};
+diff --git a/arch/arm64/boot/dts/marvell/Makefile b/arch/arm64/boot/dts/marvell/Makefile
+index 062317759..c9d4e7836 100644
+--- a/arch/arm64/boot/dts/marvell/Makefile
++++ b/arch/arm64/boot/dts/marvell/Makefile
+@@ -33,3 +33,4 @@ dtb-$(CONFIG_ARCH_MVEBU) += cn9130-cf-pro.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += cn9131-cf-solidwan.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += cn9132-clearfog.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += armada-7020-comexpress.dtb
++dtb-$(CONFIG_ARCH_MVEBU) += 7215-ixs-a1.dtb
+-- 
+2.34.1
+

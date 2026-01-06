@@ -1,0 +1,56 @@
+From e905a420ecf5b9e2fc526ad6c20150c5c0219c14 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Thu, 8 May 2025 23:31:39 +0300
+Subject: [PATCH 36/78] platform/mellanox: mlxreg-dpu: Fix smatch warnings
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Add missed call to release adapter.
+Remove wrong error pointer conversion.
+
+Fixes: 3e75f2954116 ("platform/mellanox: mlxreg-dpu: Add initial support for Nvidia DPU")
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+Link: https://lore.kernel.org/r/20250508203139.55171-1-vadimp@nvidia.com
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Signed-off-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+---
+ drivers/platform/mellanox/mlxreg-dpu.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/platform/mellanox/mlxreg-dpu.c b/drivers/platform/mellanox/mlxreg-dpu.c
+index 277e4b8..5226010 100644
+--- a/drivers/platform/mellanox/mlxreg-dpu.c
++++ b/drivers/platform/mellanox/mlxreg-dpu.c
+@@ -535,8 +535,10 @@ static int mlxreg_dpu_probe(struct platform_device *pdev)
+ 		return -EPROBE_DEFER;
+ 
+ 	mlxreg_dpu = devm_kzalloc(&pdev->dev, sizeof(*mlxreg_dpu), GFP_KERNEL);
+-	if (!mlxreg_dpu)
+-		return -ENOMEM;
++	if (!mlxreg_dpu) {
++		err = -ENOMEM;
++		goto alloc_fail;
++	}
+ 
+ 	/* Create device at the top of DPU I2C tree. */
+ 	data->hpdev.client = i2c_new_client_device(data->hpdev.adapter,
+@@ -562,7 +564,6 @@ static int mlxreg_dpu_probe(struct platform_device *pdev)
+ 	if (err) {
+ 		dev_err(&pdev->dev, "Failed to sync regmap for client %s at bus %d at addr 0x%02x\n",
+ 			data->hpdev.brdinfo->type, data->hpdev.nr, data->hpdev.brdinfo->addr);
+-		err = PTR_ERR(regmap);
+ 		goto regcache_sync_fail;
+ 	}
+ 
+@@ -581,6 +582,7 @@ static int mlxreg_dpu_probe(struct platform_device *pdev)
+ devm_regmap_init_i2c_fail:
+ 	i2c_unregister_device(data->hpdev.client);
+ i2c_new_device_fail:
++alloc_fail:
+ 	i2c_put_adapter(data->hpdev.adapter);
+ 	return err;
+ }
+-- 
+2.8.4
+
