@@ -8,6 +8,13 @@ trigger:
     include:
       - "*"
 
+variables:
+  - name: BUILD_BRANCH
+    ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
+      value: $(System.PullRequest.TargetBranch)
+    ${{ else }}:
+      value: $(Build.SourceBranchName)
+
 stages:
 - stage: Build
 
@@ -23,7 +30,6 @@ stages:
     parameters:
       arch: arm64
       pool: sonicso1ES-arm64
-      sonic_slave: sonic-slave-bookworm-arm64
       artifact_name: sonic-linux-kernel.arm64
       linux_deb_pattern: linux-image-*-unsigned_*deb
 
@@ -31,7 +37,6 @@ stages:
     parameters:
       arch: armhf
       pool: sonicso1ES-armhf
-      sonic_slave: sonic-slave-bookworm-armhf
       artifact_name: sonic-linux-kernel.armhf
       linux_deb_pattern: linux-image-*-armmp_*deb
 
@@ -40,7 +45,6 @@ stages:
       arch: arm64
       platform: pensando
       pool: sonicso1ES-arm64
-      sonic_slave: sonic-slave-bookworm-arm64
       artifact_name: sonic-linux-kernel.pensando.arm64
       linux_deb_pattern: linux-image-*-unsigned_*deb
 
