@@ -22,7 +22,6 @@ stages:
   - template: .azure-pipelines/build-template.yml
     parameters:
       arch: amd64
-      sonic_slave: sonic-slave-bookworm
       artifact_name: sonic-linux-kernel
       linux_deb_pattern: linux-image-*-unsigned_*deb
 
