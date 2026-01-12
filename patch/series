@@ -219,6 +219,20 @@ cisco-npu-disable-other-bars.patch
 # https://github.com/sonic-net/sonic-buildimage/issues/20901
 revert-456d8aa-to-fix-pcie_aspm_exit_link_status.patch
 
+# PCIe AER printk ratelimiting
+0001-PCI-AER-Simplify-pci_print_aer.patch
+0002-PCI-AER-Update-statistics-before-ratelimiting.patch
+0003-PCI-AER-Trace-error-event-before-ratelimiting.patch
+0004-PCI-AER-Simplify-add_error_device.patch
+0005-PCI-AER-Check-log-level-once-and-remember-it.patch
+0006-PCI-AER-Convert-aer_get_device_error_info-aer_print_.patch
+0001-PCI-AER-Factor-COR-UNCOR-error-handling-out-from-aer.patch
+0007-PCI-AER-Ratelimit-correctable-and-non-fatal-error-lo.patch
+0008-PCI-AER-Add-sysfs-attributes-for-log-ratelimits.patch
+fix-aer-ratelimiting-sysfs-output-units.patch
+0001-PCI-AER-Fix-NULL-pointer-access-by-aer_info.patch
+0002-PCI-AER-Avoid-NULL-pointer-dereference-in-aer_rateli.patch
+
 #
 #
 ############################################################
