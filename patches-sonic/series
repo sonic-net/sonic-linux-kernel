@@ -124,7 +124,6 @@ driver-net-tg3-change-dma-mask-for-57766.patch
 8010-mlxsw-minimal-Downstream-Disable-ethtool-interface.patch
 8011-hwmon-pmbus-Downstream-Workaround-for-psu-attributes.patch
 8013-hwmon-pmbus-mp2975-Clear-interrupts-at-probe.patch
-8014-platform-mellanox-mlxreg-dpu-Debug-trace-for-dpu-pro.patch
 9000-platform-mellanox-Downstream-Add-support-for-new-Nvi.patch
 ###-> mellanox_hw_mgmt-end
 
