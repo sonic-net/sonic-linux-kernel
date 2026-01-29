@@ -1,0 +1,25 @@
+From 7b32abed3ac9eb578e81cece63a508d7a24e2f7d Mon Sep 17 00:00:00 2001
+From: Domingo <domingo@nexthop.ai>
+Date: Mon, 2 Feb 2026 22:57:51 +0000
+Subject: [PATCH] platform_get_irq_optional
+
+---
+ drivers/spi/spi-xilinx.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/spi/spi-xilinx.c b/drivers/spi/spi-xilinx.c
+index f5e41813b958..e124d7e01c47 100644
+--- a/drivers/spi/spi-xilinx.c
++++ b/drivers/spi/spi-xilinx.c
+@@ -470,7 +470,7 @@ static int xilinx_spi_probe(struct platform_device *pdev)
+ 	xspi->bytes_per_word = bits_per_word / 8;
+ 	xspi->buffer_size = xilinx_spi_find_buffer_size(xspi);
+ 
+-	xspi->irq = platform_get_irq(pdev, 0);
++	xspi->irq = platform_get_irq_optional(pdev, 0);
+ 	if (xspi->irq < 0 && xspi->irq != -ENXIO) {
+ 		return xspi->irq;
+ 	} else if (xspi->irq >= 0) {
+-- 
+2.43.0
+
