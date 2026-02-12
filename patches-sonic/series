@@ -195,6 +195,9 @@ cisco-npu-disable-other-bars.patch
 #0028-Create-miniaturised-diafgw-partition-for-128MB-flash.patch
 #0029-pcie-if-hotplug-enabled-do-immediate-reset-on-panic.patch
 
+# amd sfh hid
+0001-amd_sfh_hid_client_init_log_no_error_for_EOPNOTSUPP.patch
+
 # Security patch
 #0001-Change-the-system.map-file-permission-only-readable-.patch
 
