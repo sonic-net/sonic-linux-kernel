@@ -1,0 +1,385 @@
+From fe8cb206bf32a211cdf0675a1a7d3bf484ab660e Mon Sep 17 00:00:00 2001
+From: "Barry Friedman (friedman)" <friedman@cisco.com>
+Date: Fri, 13 Feb 2026 19:51:25 -0800
+Subject: [PATCH] neighbor: Add NTF_EXT_VALIDATED flag for externally validated
+ entries
+
+tl;dr
+=====
+
+Add a new neighbor flag ("extern_valid") that can be used to indicate to
+the kernel that a neighbor entry was learned and determined to be valid
+externally. The kernel will not try to remove or invalidate such an
+entry, leaving these decisions to the user space control plane. This is
+needed for EVPN multi-homing where a neighbor entry for a multi-homed
+host needs to be synced across all the VTEPs among which the host is
+multi-homed.
+
+Background
+==========
+
+In a typical EVPN multi-homing setup each host is multi-homed using a
+set of links called ES (Ethernet Segment, i.e., LAG) to multiple leaf
+switches (VTEPs). VTEPs that are connected to the same ES are called ES
+peers.
+
+When a neighbor entry is learned on a VTEP, it is distributed to both ES
+peers and remote VTEPs using EVPN MAC/IP advertisement routes. ES peers
+use the neighbor entry when routing traffic towards the multi-homed host
+and remote VTEPs use it for ARP/NS suppression.
+
+Motivation
+==========
+
+If the ES link between a host and the VTEP on which the neighbor entry
+was locally learned goes down, the EVPN MAC/IP advertisement route will
+be withdrawn and the neighbor entries will be removed from both ES peers
+and remote VTEPs. Routing towards the multi-homed host and ARP/NS
+suppression can fail until another ES peer locally learns the neighbor
+entry and distributes it via an EVPN MAC/IP advertisement route.
+
+"draft-rbickhart-evpn-ip-mac-proxy-adv-03" [1] suggests avoiding these
+intermittent failures by having the ES peers install the neighbor
+entries as before, but also injecting EVPN MAC/IP advertisement routes
+with a proxy indication. When the previously mentioned ES link goes down
+and the original EVPN MAC/IP advertisement route is withdrawn, the ES
+peers will not withdraw their neighbor entries, but instead start aging
+timers for the proxy indication.
+
+If an ES peer locally learns the neighbor entry (i.e., it becomes
+"reachable"), it will restart its aging timer for the entry and emit an
+EVPN MAC/IP advertisement route without a proxy indication. An ES peer
+will stop its aging timer for the proxy indication if it observes the
+removal of the proxy indication from at least one of the ES peers
+advertising the entry.
+
+In the event that the aging timer for the proxy indication expired, an
+ES peer will withdraw its EVPN MAC/IP advertisement route. If the timer
+expired on all ES peers and they all withdrew their proxy
+advertisements, the neighbor entry will be completely removed from the
+EVPN fabric.
+
+Implementation
+==============
+
+In the above scheme, when the control plane (e.g., FRR) advertises a
+neighbor entry with a proxy indication, it expects the corresponding
+entry in the data plane (i.e., the kernel) to remain valid and not be
+removed due to garbage collection or loss of carrier. The control plane
+also expects the kernel to notify it if the entry was learned locally
+(i.e., became "reachable") so that it will remove the proxy indication
+from the EVPN MAC/IP advertisement route. That is why these entries
+cannot be programmed with dummy states such as "permanent" or "noarp".
+
+Instead, add a new neighbor flag ("extern_valid") which indicates that
+the entry was learned and determined to be valid externally and should
+not be removed or invalidated by the kernel. The kernel can probe the
+entry and notify user space when it becomes "reachable" (it is initially
+installed as "stale"). However, if the kernel does not receive a
+confirmation, have it return the entry to the "stale" state instead of
+the "failed" state.
+
+In other words, an entry marked with the "extern_valid" flag behaves
+like any other dynamically learned entry other than the fact that the
+kernel cannot remove or invalidate it.
+
+One can argue that the "extern_valid" flag should not prevent garbage
+collection and that instead a neighbor entry should be programmed with
+both the "extern_valid" and "extern_learn" flags. There are two reasons
+for not doing that:
+
+1. Unclear why a control plane would like to program an entry that the
+   kernel cannot invalidate but can completely remove.
+
+2. The "extern_learn" flag is used by FRR for neighbor entries learned
+   on remote VTEPs (for ARP/NS suppression) whereas here we are
+   concerned with local entries. This distinction is currently irrelevant
+   for the kernel, but might be relevant in the future.
+
+Given that the flag only makes sense when the neighbor has a valid
+state, reject attempts to add a neighbor with an invalid state and with
+this flag set. For example:
+
+ # ip neigh add 192.0.2.1 nud none dev br0.10 extern_valid
+ Error: Cannot create externally validated neighbor with an invalid state.
+ # ip neigh add 192.0.2.1 lladdr 00:11:22:33:44:55 nud stale dev br0.10 extern_valid
+ # ip neigh replace 192.0.2.1 nud failed dev br0.10 extern_valid
+ Error: Cannot mark neighbor as externally validated with an invalid state.
+
+The above means that a neighbor cannot be created with the
+"extern_valid" flag and flags such as "use" or "managed" as they result
+in a neighbor being created with an invalid state ("none") and
+immediately getting probed:
+
+ # ip neigh add 192.0.2.1 lladdr 00:11:22:33:44:55 nud stale dev br0.10 extern_valid use
+ Error: Cannot create externally validated neighbor with an invalid state.
+
+However, these flags can be used together with "extern_valid" after the
+neighbor was created with a valid state:
+
+ # ip neigh add 192.0.2.1 lladdr 00:11:22:33:44:55 nud stale dev br0.10 extern_valid
+ # ip neigh replace 192.0.2.1 lladdr 00:11:22:33:44:55 nud stale dev br0.10 extern_valid use
+
+One consequence of preventing the kernel from invalidating a neighbor
+entry is that by default it will only try to determine reachability
+using unicast probes. This can be changed using the "mcast_resolicit"
+sysctl:
+
+ # sysctl net.ipv4.neigh.br0/10.mcast_resolicit
+ 0
+ # tcpdump -nn -e -i br0.10 -Q out arp &
+ # ip neigh replace 192.0.2.1 lladdr 00:11:22:33:44:55 nud stale dev br0.10 extern_valid use
+ 62:50:1d:11:93:6f > 00:11:22:33:44:55, ethertype ARP (0x0806), length 42: Request who-has 192.0.2.1 tell 192.0.2.2, length 28
+ 62:50:1d:11:93:6f > 00:11:22:33:44:55, ethertype ARP (0x0806), length 42: Request who-has 192.0.2.1 tell 192.0.2.2, length 28
+ 62:50:1d:11:93:6f > 00:11:22:33:44:55, ethertype ARP (0x0806), length 42: Request who-has 192.0.2.1 tell 192.0.2.2, length 28
+ # sysctl -wq net.ipv4.neigh.br0/10.mcast_resolicit=3
+ # ip neigh replace 192.0.2.1 lladdr 00:11:22:33:44:55 nud stale dev br0.10 extern_valid use
+ 62:50:1d:11:93:6f > 00:11:22:33:44:55, ethertype ARP (0x0806), length 42: Request who-has 192.0.2.1 tell 192.0.2.2, length 28
+ 62:50:1d:11:93:6f > 00:11:22:33:44:55, ethertype ARP (0x0806), length 42: Request who-has 192.0.2.1 tell 192.0.2.2, length 28
+ 62:50:1d:11:93:6f > 00:11:22:33:44:55, ethertype ARP (0x0806), length 42: Request who-has 192.0.2.1 tell 192.0.2.2, length 28
+ 62:50:1d:11:93:6f > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 42: Request who-has 192.0.2.1 tell 192.0.2.2, length 28
+ 62:50:1d:11:93:6f > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 42: Request who-has 192.0.2.1 tell 192.0.2.2, length 28
+ 62:50:1d:11:93:6f > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 42: Request who-has 192.0.2.1 tell 192.0.2.2, length 28
+
+iproute2 patches can be found here [2].
+
+[1] https://datatracker.ietf.org/doc/html/draft-rbickhart-evpn-ip-mac-proxy-adv-03
+[2] https://github.com/idosch/iproute2/tree/submit/extern_valid_v1
+
+Signed-off-by: Ido Schimmel <idosch@nvidia.com>
+Acked-by: Daniel Borkmann <daniel@iogearbox.net>
+Link: https://patch.msgid.link/20250626073111.244534-2-idosch@nvidia.com
+Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+---
+ include/net/neighbour.h        |  5 +-
+ include/uapi/linux/neighbour.h |  5 ++
+ net/core/neighbour.c           | 84 +++++++++++++++++++++++++++++-----
+ 3 files changed, 82 insertions(+), 12 deletions(-)
+
+diff --git a/include/net/neighbour.h b/include/net/neighbour.h
+index 5c6f52831..54c1333a9 100644
+--- a/include/net/neighbour.h
++++ b/include/net/neighbour.h
+@@ -267,14 +267,17 @@ static inline void *neighbour_priv(const struct neighbour *n)
+ #define NEIGH_UPDATE_F_ISROUTER			BIT(6)
+ #define NEIGH_UPDATE_F_ADMIN			BIT(7)
+ #define NEIGH_UPDATE_F_EXT_MH_PEER_SYNC BIT(8)
++#define NEIGH_UPDATE_F_EXT_VALIDATED BIT(9)
+ 
+ /* In-kernel representation for NDA_FLAGS_EXT flags: */
+ #define NTF_OLD_MASK		0xff
+ #define NTF_EXT_SHIFT		8
+-#define NTF_EXT_MASK (NTF_EXT_MANAGED | NTF_EXT_MH_PEER_SYNC)
++#define NTF_EXT_MASK \
++	(NTF_EXT_MANAGED | NTF_EXT_MH_PEER_SYNC | NTF_EXT_EXT_VALIDATED)
+ 
+ #define NTF_MANAGED		(NTF_EXT_MANAGED << NTF_EXT_SHIFT)
+ #define NTF_MH_PEER_SYNC (NTF_EXT_MH_PEER_SYNC << NTF_EXT_SHIFT)
++#define NTF_EXT_VALIDATED (NTF_EXT_EXT_VALIDATED << NTF_EXT_SHIFT)
+ 
+ extern const struct nla_policy nda_policy[];
+ 
+diff --git a/include/uapi/linux/neighbour.h b/include/uapi/linux/neighbour.h
+index dce82ed78..2c897c012 100644
+--- a/include/uapi/linux/neighbour.h
++++ b/include/uapi/linux/neighbour.h
+@@ -55,6 +55,7 @@ enum {
+ #define NTF_EXT_MANAGED		(1 << 0)
+ #define NTF_EXT_LOCKED		(1 << 1)
+ #define NTF_EXT_MH_PEER_SYNC (1 << 2)
++#define NTF_EXT_EXT_VALIDATED (1 << 3)
+ 
+ /*
+  *	Neighbor Cache Entry States.
+@@ -93,6 +94,10 @@ enum {
+  * bridge in response to a host trying to communicate via a locked bridge port
+  * with MAB enabled. Their purpose is to notify user space that a host requires
+  * authentication.
++ *
++ * NTF_EXT_EXT_VALIDATED flagged neighbor entries were externally validated by
++ * a user space control plane. The kernel will not remove or invalidate them,
++ * but it can probe them and notify user space when they become reachable.
+  */
+ 
+ struct nda_cacheinfo {
+diff --git a/net/core/neighbour.c b/net/core/neighbour.c
+index 019aec2ea..888a46faf 100644
+--- a/net/core/neighbour.c
++++ b/net/core/neighbour.c
+@@ -135,11 +135,12 @@ static void neigh_update_gc_list(struct neighbour *n)
+ 	if (n->dead)
+ 		goto out;
+ 
+-	/* remove from the gc list if new state is permanent or if neighbor
+-	 * is externally learned; otherwise entry should be on the gc list
++	/* remove from the gc list if new state is permanent or if neighbor is
++	 * externally learned / validated; otherwise entry should be on the gc
++	 * list
+ 	 */
+ 	exempt_from_gc = n->nud_state & NUD_PERMANENT ||
+-			 n->flags & NTF_EXT_LEARNED;
++			 n->flags & (NTF_EXT_LEARNED | NTF_EXT_VALIDATED);
+ 	on_gc_list = !list_empty(&n->gc_list);
+ 
+ 	if (exempt_from_gc && on_gc_list) {
+@@ -189,6 +190,8 @@ static void neigh_update_flags(struct neighbour *neigh, u32 flags, int *notify,
+ 	ndm_flags |= (flags & NEIGH_UPDATE_F_EXT_MH_PEER_SYNC) ?
+ 			     NTF_MH_PEER_SYNC :
+ 			     0;
++	ndm_flags |=
++		(flags & NEIGH_UPDATE_F_EXT_VALIDATED) ? NTF_EXT_VALIDATED : 0;
+ 
+ 	if ((old_flags ^ ndm_flags) & NTF_EXT_LEARNED) {
+ 		if (ndm_flags & NTF_EXT_LEARNED)
+@@ -214,6 +217,14 @@ static void neigh_update_flags(struct neighbour *neigh, u32 flags, int *notify,
+ 			neigh->flags &= ~NTF_MH_PEER_SYNC;
+ 		*notify = 1;
+ 	}
++	if ((old_flags ^ ndm_flags) & NTF_EXT_VALIDATED) {
++		if (ndm_flags & NTF_EXT_VALIDATED)
++			neigh->flags |= NTF_EXT_VALIDATED;
++		else
++			neigh->flags &= ~NTF_EXT_VALIDATED;
++		*notify = 1;
++		*gc_update = true;
++	}
+ }
+ 
+ static bool neigh_del(struct neighbour *n, struct neighbour __rcu **np,
+@@ -407,7 +418,8 @@ static void neigh_flush_dev(struct neigh_table *tbl, struct net_device *dev,
+ 				np = &n->next;
+ 				continue;
+ 			}
+-			if (skip_perm && n->nud_state & NUD_PERMANENT) {
++			if (skip_perm && (n->nud_state & NUD_PERMANENT ||
++					  n->flags & NTF_EXT_VALIDATED)) {
+ 				np = &n->next;
+ 				continue;
+ 			}
+@@ -997,7 +1009,8 @@ static void neigh_periodic_work(struct work_struct *work)
+ 
+ 			state = n->nud_state;
+ 			if ((state & (NUD_PERMANENT | NUD_IN_TIMER)) ||
+-			    (n->flags & NTF_EXT_LEARNED)) {
++			    (n->flags &
++			     (NTF_EXT_LEARNED | NTF_EXT_VALIDATED))) {
+ 				write_unlock(&n->lock);
+ 				goto next_elt;
+ 			}
+@@ -1154,9 +1167,15 @@ static void neigh_timer_handler(struct timer_list *t)
+ 
+ 	if ((neigh->nud_state & (NUD_INCOMPLETE | NUD_PROBE)) &&
+ 	    atomic_read(&neigh->probes) >= neigh_max_probes(neigh)) {
+-		WRITE_ONCE(neigh->nud_state, NUD_FAILED);
++		if (neigh->nud_state == NUD_PROBE &&
++		    neigh->flags & NTF_EXT_VALIDATED) {
++			WRITE_ONCE(neigh->nud_state, NUD_STALE);
++			neigh->updated = jiffies;
++		} else {
++			WRITE_ONCE(neigh->nud_state, NUD_FAILED);
++			neigh_invalidate(neigh);
++		}
+ 		notify = 1;
+-		neigh_invalidate(neigh);
+ 		goto out;
+ 	}
+ 
+@@ -1304,6 +1323,8 @@ static void neigh_update_hhs(struct neighbour *neigh)
+ 				NTF_ROUTER flag.
+ 	NEIGH_UPDATE_F_ISROUTER	indicates if the neighbour is known as
+ 				a router.
++	NEIGH_UPDATE_F_EXT_VALIDATED means that the entry will not be removed
++				or invalidated.
+ 
+    Caller MUST hold reference count on the entry.
+  */
+@@ -2043,7 +2064,7 @@ static int neigh_add(struct sk_buff *skb, struct nlmsghdr *nlh,
+ 	if (ndm_flags & NTF_PROXY) {
+ 		struct pneigh_entry *pn;
+ 
+-		if (ndm_flags & NTF_MANAGED) {
++		if (ndm_flags & (NTF_MANAGED | NTF_EXT_VALIDATED)) {
+ 			NL_SET_ERR_MSG(extack, "Invalid NTF_* flag combination");
+ 			goto out;
+ 		}
+@@ -2072,8 +2093,9 @@ static int neigh_add(struct sk_buff *skb, struct nlmsghdr *nlh,
+ 	neigh = neigh_lookup(tbl, dst, dev);
+ 	if (neigh == NULL) {
+ 		bool ndm_permanent  = ndm->ndm_state & NUD_PERMANENT;
+-		bool exempt_from_gc = ndm_permanent ||
+-				      ndm_flags & NTF_EXT_LEARNED;
++		bool exempt_from_gc =
++			ndm_permanent ||
++			ndm_flags & (NTF_EXT_LEARNED | NTF_EXT_VALIDATED);
+ 
+ 		if (!(nlh->nlmsg_flags & NLM_F_CREATE)) {
+ 			err = -ENOENT;
+@@ -2084,10 +2106,28 @@ static int neigh_add(struct sk_buff *skb, struct nlmsghdr *nlh,
+ 			err = -EINVAL;
+ 			goto out;
+ 		}
++		if (ndm_flags & NTF_EXT_VALIDATED) {
++			u8 state = ndm->ndm_state;
++
++			/* NTF_USE and NTF_MANAGED will result in the neighbor
++			 * being created with an invalid state (NUD_NONE).
++			 */
++			if (ndm_flags & (NTF_USE | NTF_MANAGED))
++				state = NUD_NONE;
++
++			if (!(state & NUD_VALID)) {
++				NL_SET_ERR_MSG(
++					extack,
++					"Cannot create externally validated neighbor with an invalid state");
++				err = -EINVAL;
++				goto out;
++			}
++		}
+ 
+ 		neigh = ___neigh_create(tbl, dst, dev,
+ 					ndm_flags &
+-					(NTF_EXT_LEARNED | NTF_MANAGED),
++						(NTF_EXT_LEARNED | NTF_MANAGED |
++						 NTF_EXT_VALIDATED),
+ 					exempt_from_gc, true);
+ 		if (IS_ERR(neigh)) {
+ 			err = PTR_ERR(neigh);
+@@ -2099,6 +2139,26 @@ static int neigh_add(struct sk_buff *skb, struct nlmsghdr *nlh,
+ 			neigh_release(neigh);
+ 			goto out;
+ 		}
++		if (ndm_flags & NTF_EXT_VALIDATED) {
++			u8 state = ndm->ndm_state;
++
++			/* NTF_USE and NTF_MANAGED do not update the existing
++			 * state other than clearing it if it was
++			 * NUD_PERMANENT.
++			 */
++			if (ndm_flags & (NTF_USE | NTF_MANAGED))
++				state = READ_ONCE(neigh->nud_state) &
++					~NUD_PERMANENT;
++
++			if (!(state & NUD_VALID)) {
++				NL_SET_ERR_MSG(
++					extack,
++					"Cannot mark neighbor as externally validated with an invalid state");
++				err = -EINVAL;
++				neigh_release(neigh);
++				goto out;
++			}
++		}
+ 
+ 		if (!(nlh->nlmsg_flags & NLM_F_REPLACE))
+ 			flags &= ~(NEIGH_UPDATE_F_OVERRIDE |
+@@ -2117,6 +2177,8 @@ static int neigh_add(struct sk_buff *skb, struct nlmsghdr *nlh,
+ 		flags |= NEIGH_UPDATE_F_USE;
+ 	if (ndm_flags & NTF_MH_PEER_SYNC)
+ 		flags |= NEIGH_UPDATE_F_EXT_MH_PEER_SYNC;
++	if (ndm_flags & NTF_EXT_VALIDATED)
++		flags |= NEIGH_UPDATE_F_EXT_VALIDATED;
+ 
+ 	err = __neigh_update(neigh, lladdr, ndm->ndm_state, flags,
+ 			     NETLINK_CB(skb).portid, extack);
+-- 
+2.34.1
+
