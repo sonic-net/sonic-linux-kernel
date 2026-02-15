@@ -1,6 +1,6 @@
-From aa39d1af8ae72a7a3f6f5337266d69f720a39086 Mon Sep 17 00:00:00 2001
+From 6088f7f169e0676a0184e73991f2d0f925763f71 Mon Sep 17 00:00:00 2001
 From: Wataru Ishida <wataru.ishid@gmail.com>
-Date: Wed, 2 Apr 2025 07:10:10 +0000
+Date: Sun, 15 Feb 2026 22:34:29 +0900
 Subject: [PATCH] optoe: Add CMIS Bank support for transceivers with >8 lanes
 
 This patch adds CMIS Bank support to the 'optoe3' device class in order
@@ -9,18 +9,15 @@ to enable access to CMIS transceivers with more than 8 lanes (e.g., OSFP-XD, CPO
 - Bank support can be enabled only for the 'optoe3' dev class.
 - 'bank_size' sysfs entry is added to enable and configure the size of the bank.
 - By default, bank size is set to 0.
-- When enabling bank by setting a value greater than 1, the 'write_max' value is
-  automatically updated to 2 to comply with CMIS requirements,
-  which mandate that both bank and page values be updated in a single WRITE operation.
-- If the 'write_max' value is already greater than 2, this module keeps the value as is.
 
 Signed-off-by: Wataru Ishida <wataru.ishid@gmail.com>
----
+
+--
  drivers/misc/eeprom/optoe.c | 165 +++++++++++++++++++++++++++++++-----
  1 file changed, 142 insertions(+), 23 deletions(-)
 
 diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
-index 22d2c0cd4..a4def4986 100644
+index ba4ca17..087b093 100644
 --- a/drivers/misc/eeprom/optoe.c
 +++ b/drivers/misc/eeprom/optoe.c
 @@ -101,9 +101,42 @@
@@ -74,7 +71,7 @@ index 22d2c0cd4..a4def4986 100644
  #define OPTOE_PAGE_SIZE 128
 +
 +/*
-+ * 
++ *
 + *
 + */
 +#define OPTOE_DEFAULT_BANK_SIZE       0
@@ -299,15 +296,15 @@ index 22d2c0cd4..a4def4986 100644
  	NULL,
  };
  
-@@ -1027,7 +1146,6 @@ static int optoe_probe(struct i2c_client *client,
- 	struct optoe_data *optoe;
+@@ -1027,7 +1146,6 @@ static int optoe_probe(struct i2c_client *client)
+ 	const struct i2c_device_id *id;
  	int num_addresses = 0;
  	char port_name[MAX_PORT_NAME_LEN];
 -
  	if (client->addr != 0x50) {
  		dev_dbg(&client->dev, "probe, bad i2c addr: 0x%x\n",
  				      client->addr);
-@@ -1108,7 +1226,7 @@ static int optoe_probe(struct i2c_client *client,
+@@ -1109,7 +1227,7 @@ static int optoe_probe(struct i2c_client *client)
  	} else if (strcmp(client->name, "optoe3") == 0) {
  		/* CMIS spec */
  		optoe->dev_class = CMIS_ADDR;
@@ -316,7 +313,7 @@ index 22d2c0cd4..a4def4986 100644
  		num_addresses = 1;
  	} else {     /* those were the only choices */
  		err = -EINVAL;
-@@ -1120,6 +1238,7 @@ static int optoe_probe(struct i2c_client *client,
+@@ -1121,6 +1239,7 @@ static int optoe_probe(struct i2c_client *client)
  	optoe->chip = chip;
  	optoe->num_addresses = num_addresses;
  	optoe->write_timeout = OPTOE_DEFAULT_WRITE_TIMEOUT;
