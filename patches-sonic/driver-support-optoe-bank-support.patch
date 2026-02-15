@@ -1,4 +1,4 @@
-From 526a41f1fc717ddb6cfd600c899254d582735523 Mon Sep 17 00:00:00 2001
+From 0020c4e2164d6b645ce571dc20137266c195012f Mon Sep 17 00:00:00 2001
 From: Wataru Ishida <wataru.ishid@gmail.com>
 Date: Sun, 15 Feb 2026 22:34:29 +0900
 Subject: [PATCH] optoe: Add CMIS Bank support for transceivers with >8 lanes
@@ -13,11 +13,11 @@ to enable access to CMIS transceivers with more than 8 lanes (e.g., OSFP-XD, CPO
 Signed-off-by: Wataru Ishida <wataru.ishid@gmail.com>
 
 ---
- drivers/misc/eeprom/optoe.c | 194 +++++++++++++++++++++++++++++++-----
- 1 file changed, 167 insertions(+), 27 deletions(-)
+ drivers/misc/eeprom/optoe.c | 197 +++++++++++++++++++++++++++++++-----
+ 1 file changed, 170 insertions(+), 27 deletions(-)
 
 diff --git a/drivers/misc/eeprom/optoe.c b/drivers/misc/eeprom/optoe.c
-index ba4ca17..8ba71ef 100644
+index ba4ca17..14b60d9 100644
 --- a/drivers/misc/eeprom/optoe.c
 +++ b/drivers/misc/eeprom/optoe.c
 @@ -101,9 +101,50 @@
@@ -165,7 +165,7 @@ index ba4ca17..8ba71ef 100644
  }
  
  static ssize_t optoe_eeprom_read(struct optoe_data *optoe,
-@@ -511,23 +581,41 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
+@@ -511,23 +581,44 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
  {
  	struct i2c_client *client;
  	ssize_t retval = 0;
@@ -198,8 +198,11 @@ index ba4ca17..8ba71ef 100644
 +		 */
 +		if (bank > 0) {
 +			char buf[2] = {bank, page};
++			unsigned int write_max_orig = optoe->write_max;
++			optoe->write_max = 2; /* ensure both bank and page are written together */
 +			ret = optoe_eeprom_write(optoe, client, buf,
 +				OPTOE_BANK_SELECT_REG, 2);
++			optoe->write_max = write_max_orig;
 +		} else {
 +			ret = optoe_eeprom_write(optoe, client, &page,
 +				OPTOE_PAGE_SELECT_REG, 1);
@@ -216,7 +219,7 @@ index ba4ca17..8ba71ef 100644
  	}
  
  	while (count) {
-@@ -553,13 +641,20 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
+@@ -553,13 +644,23 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
  
  
  	if (page > 0) {
@@ -226,8 +229,11 @@ index ba4ca17..8ba71ef 100644
 -			OPTOE_PAGE_SELECT_REG, 1);
 +		if (bank > 0) {
 +			char buf[2] = {0, 0};
++			unsigned int write_max_orig = optoe->write_max;
++			optoe->write_max = 2; /* ensure both bank and page are written together */
 +			ret = optoe_eeprom_write(optoe, client, buf,
 +				OPTOE_BANK_SELECT_REG, 2);
++			optoe->write_max = write_max_orig;
 +		} else {
 +			page = 0;
 +			ret = optoe_eeprom_write(optoe, client, &page,
@@ -242,7 +248,7 @@ index ba4ca17..8ba71ef 100644
  			/* error only if nothing has been transferred */
  			if (retval == 0)
  				retval = ret;
-@@ -622,8 +717,10 @@ static ssize_t optoe_page_legal(struct optoe_data *optoe,
+@@ -622,8 +723,10 @@ static ssize_t optoe_page_legal(struct optoe_data *optoe,
  		/* if no pages needed, we're good */
  		if ((off + len) <= ONE_ADDR_EEPROM_UNPAGED_SIZE)
  			return len;
@@ -254,7 +260,7 @@ index ba4ca17..8ba71ef 100644
  			return OPTOE_EOF;
  		/* in between, are pages supported? */
  		status = optoe_eeprom_read(optoe, client, &regval,
-@@ -665,7 +762,7 @@ static ssize_t optoe_page_legal(struct optoe_data *optoe,
+@@ -665,7 +768,7 @@ static ssize_t optoe_page_legal(struct optoe_data *optoe,
  			maxlen = ONE_ADDR_EEPROM_UNPAGED_SIZE - off;
  		} else {
  			/* Pages supported, trim len to the end of pages */
@@ -263,7 +269,7 @@ index ba4ca17..8ba71ef 100644
  		}
  		len = (len > maxlen) ? maxlen : len;
  		dev_dbg(&client->dev,
-@@ -995,6 +1092,47 @@ static ssize_t set_port_name(struct device *dev,
+@@ -995,6 +1098,44 @@ static ssize_t set_port_name(struct device *dev,
  	return count;
  }
  
@@ -300,9 +306,6 @@ index ba4ca17..8ba71ef 100644
 +
 +	mutex_lock(&optoe->lock);
 +	optoe->bank_size = bank_size;
-+	if (optoe->bank_size > 0 && optoe->write_max == 1) {
-+		optoe->write_max = 2;
-+	}
 +	mutex_unlock(&optoe->lock);
 +
 +	return count;
@@ -311,7 +314,7 @@ index ba4ca17..8ba71ef 100644
  static DEVICE_ATTR(port_name,  0644, show_port_name, set_port_name);
  #endif  /* if NOT defined EEPROM_CLASS, the common case */
  
-@@ -1003,6 +1141,7 @@ static DEVICE_ATTR(write_timeout, 0644, show_dev_write_timeout_size,
+@@ -1003,6 +1144,7 @@ static DEVICE_ATTR(write_timeout, 0644, show_dev_write_timeout_size,
  static DEVICE_ATTR(write_max, 0644, show_dev_write_max_size,
  					set_dev_write_max_size);
  static DEVICE_ATTR(dev_class,  0644, show_dev_class, set_dev_class);
@@ -319,7 +322,7 @@ index ba4ca17..8ba71ef 100644
  
  static struct attribute *optoe_attrs[] = {
  #ifndef EEPROM_CLASS
-@@ -1011,6 +1150,7 @@ static struct attribute *optoe_attrs[] = {
+@@ -1011,6 +1153,7 @@ static struct attribute *optoe_attrs[] = {
  	&dev_attr_write_timeout.attr,
  	&dev_attr_write_max.attr,
  	&dev_attr_dev_class.attr,
@@ -327,7 +330,7 @@ index ba4ca17..8ba71ef 100644
  	NULL,
  };
  
-@@ -1027,7 +1167,6 @@ static int optoe_probe(struct i2c_client *client)
+@@ -1027,7 +1170,6 @@ static int optoe_probe(struct i2c_client *client)
  	const struct i2c_device_id *id;
  	int num_addresses = 0;
  	char port_name[MAX_PORT_NAME_LEN];
@@ -335,7 +338,7 @@ index ba4ca17..8ba71ef 100644
  	if (client->addr != 0x50) {
  		dev_dbg(&client->dev, "probe, bad i2c addr: 0x%x\n",
  				      client->addr);
-@@ -1109,7 +1248,7 @@ static int optoe_probe(struct i2c_client *client)
+@@ -1109,7 +1251,7 @@ static int optoe_probe(struct i2c_client *client)
  	} else if (strcmp(client->name, "optoe3") == 0) {
  		/* CMIS spec */
  		optoe->dev_class = CMIS_ADDR;
@@ -344,7 +347,7 @@ index ba4ca17..8ba71ef 100644
  		num_addresses = 1;
  	} else {     /* those were the only choices */
  		err = -EINVAL;
-@@ -1121,6 +1260,7 @@ static int optoe_probe(struct i2c_client *client)
+@@ -1121,6 +1263,7 @@ static int optoe_probe(struct i2c_client *client)
  	optoe->chip = chip;
  	optoe->num_addresses = num_addresses;
  	optoe->write_timeout = OPTOE_DEFAULT_WRITE_TIMEOUT;
