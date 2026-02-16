@@ -220,6 +220,7 @@ cisco-npu-disable-other-bars.patch
 
 ###-> aspeed
 aspeed-ast2700-support.patch
+nexthop-ast2700-dts.patch
 ###-> aspeed-end
 
 #
