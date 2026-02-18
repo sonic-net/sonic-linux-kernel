@@ -3,7 +3,7 @@ From: NextHop Build System <build@nexthop.ai>
 Date: Tue, 13 Jan 2026 16:28:15 +0000
 Subject: [PATCH] Add NextHop AST2700 R0 device tree
 
-This adds nh-ast2700-r0.dts for NextHop AST2700 R0 hardware.
+This adds nexthop-b27-r0.dts for NextHop AST2700 based B27 R0 hardware.
 
 Hardware differences from ast2700-evb:
 - MAC0: Fixed-link (1000Mbps) instead of PHY - direct RGMII to BCM switch
@@ -14,9 +14,9 @@ The device tree is based on ast2700-evb.dts with modifications for
 production hardware that does not have PHY chips.
 ---
  arch/arm64/boot/dts/aspeed/Makefile          |   1 +
- arch/arm64/boot/dts/aspeed/nh-ast2700-r0.dts | 930 +++++++++++++++++++
+ arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts | 930 +++++++++++++++++++
  2 files changed, 931 insertions(+)
- create mode 100644 arch/arm64/boot/dts/aspeed/nh-ast2700-r0.dts
+ create mode 100644 arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts
 
 diff --git a/arch/arm64/boot/dts/aspeed/Makefile b/arch/arm64/boot/dts/aspeed/Makefile
 index 4458a1b..486146e 100644
@@ -26,20 +26,20 @@ index 4458a1b..486146e 100644
  
  dtb-$(CONFIG_ARCH_ASPEED) += \
  	ast2700-evb.dtb \
-+	nh-ast2700-r0.dtb \
++	nexthop-b27-r0.dtb \
  	ast2700-raw.dtb \
  	ast2700-evb-s0.dtb \
  	ast2700-evb-s1.dtb \
-diff --git a/arch/arm64/boot/dts/aspeed/nh-ast2700-r0.dts b/arch/arm64/boot/dts/aspeed/nh-ast2700-r0.dts
+diff --git a/arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts b/arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts
 new file mode 100644
 index 0000000..3ca87d4
 --- /dev/null
-+++ b/arch/arm64/boot/dts/aspeed/nh-ast2700-r0.dts
++++ b/arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts
 @@ -0,0 +1,930 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +//
-+// NextHop AST2700 R0 Device Tree
-+// Based on ast2700-evb.dts with modifications for NextHop Chipmunk card
++// NextHop AST2700 based B27 R0 Device Tree
++// Based on ast2700-evb.dts with modifications for NextHop B27 card
 +
 +/dts-v1/;
 +
@@ -52,8 +52,8 @@ index 0000000..3ca87d4
 +#define PCIE2_RC 0	// 1: RC, 0: SGMII
 +
 +/ {
-+	model = "NextHop AST2700 R0";
-+	compatible = "nexthop,nh-ast2700-r0", "aspeed,ast2700-evb", "aspeed,ast2700";
++	model = "NextHop B27 R0";
++	compatible = "nexthop,nexthop-b27-r0", "aspeed,ast2700-evb", "aspeed,ast2700";
 +
 +	chosen {
 +		stdout-path = &uart12;
