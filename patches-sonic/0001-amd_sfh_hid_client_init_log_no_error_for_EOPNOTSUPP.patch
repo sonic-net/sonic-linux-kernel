@@ -1,0 +1,33 @@
+From: Christopher Croy <ccroy@arista.com>
+Date: Mon, 19 Jan 2026 12:00:00 -0000
+Subject: [PATCH] AMD SFH: Do nog log error in the case of EOPNOTSUPP for sfh_init_work
+
+This was originally fixed in https://github.com/torvalds/linux/commit/e51d8d3ea3d773334d2c047c8d1623dba66f592a
+From the commit linked above:
+   "HID: amd_sfh: Don't show client init failed as error when discovery fails
+   When sensor discovery fails, this means that the system doesn't have
+   any sensors connected and a user should only be notified at most one time.
+   A message is already displayed at WARN level of "failed to discover,
+   sensors not enabled".  It's pointless to show that the client init failed
+   at ERR level for the same condition.
+
+   Check the return code and don't display this message in those conditions."
+
+The fix was washed out here: https://github.com/torvalds/linux/commit/2105e8e00da4673266e217653292fef6acefde03
+
+This patch re-introduces the fix.
+
+diff --git a/drivers/hid/amd-sfh-hid/amd_sfh_pcie.c b/drivers/hid/amd-sfh-hid/amd_sfh_pcie.c
+index 01234567..89abcdef
+--- a/drivers/hid/amd-sfh-hid/amd_sfh_pcie.c
++++ b/drivers/hid/amd-sfh-hid/amd_sfh_pcie.c
+@@ -352,7 +352,8 @@
+ 	rc = amd_sfh_hid_client_init(mp2);
+ 	if (rc) {
+ 		amd_sfh_clear_intr(mp2);
+-		dev_err(&pdev->dev, "amd_sfh_hid_client_init failed err %d\n", rc);
++		if (rc != -EOPNOTSUPP)
++			dev_err(&pdev->dev, "amd_sfh_hid_client_init failed err %d\n", rc);
+ 		return;
+ 	}
+ 
