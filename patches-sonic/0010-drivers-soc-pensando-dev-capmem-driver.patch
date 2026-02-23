@@ -1,7 +1,7 @@
-From 445d91826b70df3c5091b2206a8eac18f185f9e9 Mon Sep 17 00:00:00 2001
+From cdc05d9636d8ed577e675bf660ff2f9571cf48d1 Mon Sep 17 00:00:00 2001
 From: Shantanu Shrivastava <shanshri@amd.com>
 Date: Tue, 24 Oct 2023 09:40:49 +0000
-Subject: [PATCH] drivers/soc/pensando: /dev/capmem driver
+Subject: [PATCH 10/27] drivers/soc/pensando: /dev/capmem driver
 
 The capmem driver provides an controlled interface for applications
 to map memory (in preference to /dev/mem).
@@ -13,18 +13,18 @@ Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
  drivers/soc/Makefile                   |   1 +
  drivers/soc/pensando/Kconfig           |   7 +
  drivers/soc/pensando/Makefile          |   6 +
- drivers/soc/pensando/cap_mem.c         | 307 +++++++++++++++++++++++++
- drivers/soc/pensando/capmem_dev.h      |  34 +++
- 6 files changed, 359 insertions(+)
+ drivers/soc/pensando/cap_mem.c         | 306 +++++++++++++++++++++++++++++++++
+ drivers/soc/pensando/capmem_dev.h      |  34 ++++
+ 6 files changed, 358 insertions(+)
  create mode 100644 drivers/soc/pensando/Makefile
  create mode 100644 drivers/soc/pensando/cap_mem.c
  create mode 100644 drivers/soc/pensando/capmem_dev.h
 
 diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
-index 6e0248c30..9bc1a71af 100644
+index b33dedb..1ecd348 100644
 --- a/arch/arm64/boot/dts/pensando/elba.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba.dtsi
-@@ -49,6 +49,10 @@ pmu {
+@@ -49,6 +49,10 @@
  				IRQ_TYPE_LEVEL_LOW)>;
  	};
  
@@ -36,11 +36,11 @@ index 6e0248c30..9bc1a71af 100644
  		compatible = "simple-bus";
  		#address-cells = <2>;
 diff --git a/drivers/soc/Makefile b/drivers/soc/Makefile
-index 69ba6508c..f96e5efa0 100644
+index 2037a86..47ffd83 100644
 --- a/drivers/soc/Makefile
 +++ b/drivers/soc/Makefile
-@@ -22,6 +22,7 @@ obj-y				+= mediatek/
- obj-y				+= microchip/
+@@ -25,6 +25,7 @@ obj-y				+= microchip/
+ obj-y				+= nuvoton/
  obj-y				+= pxa/
  obj-y				+= amlogic/
 +obj-$(CONFIG_ARCH_PENSANDO)	+= pensando/
@@ -48,7 +48,7 @@ index 69ba6508c..f96e5efa0 100644
  obj-y				+= renesas/
  obj-y				+= rockchip/
 diff --git a/drivers/soc/pensando/Kconfig b/drivers/soc/pensando/Kconfig
-index da71e35e9..abe01eac6 100644
+index da71e35..abe01ea 100644
 --- a/drivers/soc/pensando/Kconfig
 +++ b/drivers/soc/pensando/Kconfig
 @@ -8,6 +8,13 @@ config ARCH_PENSANDO_ELBA_SOC
@@ -67,7 +67,7 @@ index da71e35e9..abe01eac6 100644
  endif
 diff --git a/drivers/soc/pensando/Makefile b/drivers/soc/pensando/Makefile
 new file mode 100644
-index 000000000..fcfb67425
+index 0000000..fcfb674
 --- /dev/null
 +++ b/drivers/soc/pensando/Makefile
 @@ -0,0 +1,6 @@
@@ -79,10 +79,10 @@ index 000000000..fcfb67425
 +obj-$(CONFIG_PENSANDO_SOC_CAPMEM) += cap_mem.o
 diff --git a/drivers/soc/pensando/cap_mem.c b/drivers/soc/pensando/cap_mem.c
 new file mode 100644
-index 000000000..50997896d
+index 0000000..04b73e3
 --- /dev/null
 +++ b/drivers/soc/pensando/cap_mem.c
-@@ -0,0 +1,307 @@
+@@ -0,0 +1,306 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Copyright (c) 2018-2022, Pensando Systems Inc.
@@ -172,7 +172,7 @@ index 000000000..50997896d
 +	case CAPMEM_TYPE_DEVICE:
 +		/* register space must be device-mapped */
 +		pgprot = pgprot_device(pgprot);
-+		vma->vm_flags |= VM_IO;
++		vm_flags_set(vma, VM_IO);
 +		break;
 +
 +	case CAPMEM_TYPE_NONCOHERENT:
@@ -365,11 +365,10 @@ index 000000000..50997896d
 +	return misc_register(&cap_mem_dev);
 +}
 +
-+static int capmem_remove(struct platform_device *pdev)
++static void capmem_remove(struct platform_device *pdev)
 +{
 +	dev_info(&pdev->dev, "Unloading capmem driver\n");
 +	misc_deregister(&cap_mem_dev);
-+	return 0;
 +}
 +
 +static const struct of_device_id capmem_of_match[] = {
@@ -392,7 +391,7 @@ index 000000000..50997896d
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/soc/pensando/capmem_dev.h b/drivers/soc/pensando/capmem_dev.h
 new file mode 100644
-index 000000000..ac8547ee1
+index 0000000..ac8547e
 --- /dev/null
 +++ b/drivers/soc/pensando/capmem_dev.h
 @@ -0,0 +1,34 @@
@@ -431,5 +430,5 @@ index 000000000..ac8547ee1
 +
 +#endif
 -- 
-2.39.2
+1.8.3.1
 

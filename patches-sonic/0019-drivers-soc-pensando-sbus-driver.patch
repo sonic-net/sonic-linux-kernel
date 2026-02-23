@@ -1,7 +1,7 @@
-From 6cdc67e96a043c0fe82666c0902c3389541c219f Mon Sep 17 00:00:00 2001
+From ed1d277e2603b83955043941f01ff850bb44de75 Mon Sep 17 00:00:00 2001
 From: Shantanu Shrivastava <shanshri@amd.com>
 Date: Tue, 24 Oct 2023 10:29:44 +0000
-Subject: [PATCH] drivers/soc/pensando sbus driver
+Subject: [PATCH 19/27] drivers/soc/pensando sbus driver
 
 sbus driver provides read/write capability to the devices
 on the sbus rings using ioctl interface to /dev/sbus<n> device.
@@ -9,18 +9,18 @@ on the sbus rings using ioctl interface to /dev/sbus<n> device.
 Signed-off-by: David Clear <dclear@amd.com>
 Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
- arch/arm64/boot/dts/pensando/elba.dtsi |  24 ++
+ arch/arm64/boot/dts/pensando/elba.dtsi |  24 +++
  drivers/soc/pensando/Kconfig           |   7 +
  drivers/soc/pensando/Makefile          |   1 +
- drivers/soc/pensando/sbus.c            | 303 +++++++++++++++++++++++++
- 4 files changed, 335 insertions(+)
+ drivers/soc/pensando/sbus.c            | 305 +++++++++++++++++++++++++++++++++
+ 4 files changed, 337 insertions(+)
  create mode 100644 drivers/soc/pensando/sbus.c
 
 diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
-index 9f0d7879a..9f8e35c41 100644
+index f567386..e9451c2 100644
 --- a/arch/arm64/boot/dts/pensando/elba.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba.dtsi
-@@ -287,5 +287,29 @@ kpcimgr@20000000 {
+@@ -288,5 +288,29 @@
  				0x0 0xc4000000 0x0 0x01000000   /* HWMEM */
  				0x0 0x0        0x0 0x02000000>; /* SHMEM */
  		};
@@ -51,7 +51,7 @@ index 9f0d7879a..9f8e35c41 100644
  	};
  };
 diff --git a/drivers/soc/pensando/Kconfig b/drivers/soc/pensando/Kconfig
-index be2d3dbfa..fd290aac8 100644
+index be2d3db..fd290aa 100644
 --- a/drivers/soc/pensando/Kconfig
 +++ b/drivers/soc/pensando/Kconfig
 @@ -49,6 +49,13 @@ config PENSANDO_SOC_BSM_ENABLE
@@ -69,7 +69,7 @@ index be2d3dbfa..fd290aac8 100644
  
  endif
 diff --git a/drivers/soc/pensando/Makefile b/drivers/soc/pensando/Makefile
-index 5c89a1576..555438a4c 100644
+index 5c89a15..555438a 100644
 --- a/drivers/soc/pensando/Makefile
 +++ b/drivers/soc/pensando/Makefile
 @@ -12,3 +12,4 @@ obj-$(CONFIG_PENSANDO_SOC_PCIE) += kpcimgr.o kpcimgr_sysfs.o
@@ -79,10 +79,10 @@ index 5c89a1576..555438a4c 100644
 +obj-$(CONFIG_PENSANDO_SOC_SBUS) += sbus.o
 diff --git a/drivers/soc/pensando/sbus.c b/drivers/soc/pensando/sbus.c
 new file mode 100644
-index 000000000..2940f8c68
+index 0000000..b796a60
 --- /dev/null
 +++ b/drivers/soc/pensando/sbus.c
-@@ -0,0 +1,303 @@
+@@ -0,0 +1,305 @@
 +/*
 + * Copyright (c) 2022, Pensando Systems Inc.
 + */
@@ -103,6 +103,8 @@ index 000000000..2940f8c68
 +#include <linux/of_address.h>
 +#include <linux/of_platform.h>
 +#include <linux/delay.h>
++#include <linux/platform_device.h>
++#include <linux/device/class.h>
 +
 +#define MAX_DEVICES			4
 +#define SBUS_SBUS_RST			0x20
@@ -313,7 +315,7 @@ index 000000000..2940f8c68
 +
 +		/* Creating struct class */
 +		if ((dev_class =
-+			class_create(THIS_MODULE, "sbus_class")) == NULL) {
++			class_create("sbus_class")) == NULL) {
 +			pr_err("Cannot create the struct class\n");
 +			goto r_class;
 +		}
@@ -356,7 +358,7 @@ index 000000000..2940f8c68
 +/*
 + * Module exit function
 + */
-+static int sbus_remove(struct platform_device *pdev)
++static void sbus_remove(struct platform_device *pdev)
 +{
 +	dev_inst--;
 +
@@ -367,7 +369,7 @@ index 000000000..2940f8c68
 +		pr_debug("Device Driver Remove...Done!!!\n");
 +	}
 +
-+	return 0;
++	return;
 +}
 +
 +static const struct of_device_id sbus_of_match[] = {
@@ -387,5 +389,5 @@ index 000000000..2940f8c68
 +
 +module_platform_driver(sbus_driver);
 -- 
-2.39.2
+1.8.3.1
 
