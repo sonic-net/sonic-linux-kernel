@@ -1,7 +1,7 @@
-From b694a899c6eec8ab6ced01a8ff0558fe55f9b5ca Mon Sep 17 00:00:00 2001
+From df67d4e9ee91c3d2d7b2dd868f18f5a4d2743f0b Mon Sep 17 00:00:00 2001
 From: Shantanu Shrivastava <shanshri@amd.com>
 Date: Tue, 24 Oct 2023 10:23:49 +0000
-Subject: [PATCH] drivers/soc/pensando: kpcimgr driver
+Subject: [PATCH 17/27] drivers/soc/pensando: kpcimgr driver
 
 kpcimgr driver enables the relocation of the module code to handle
 Elba indirect PCIe transactions.
@@ -12,20 +12,20 @@ Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
  arch/arm64/boot/dts/pensando/elba.dtsi |  11 +
  drivers/soc/pensando/Makefile          |   2 +
  drivers/soc/pensando/kpci_constants.h  |  41 ++
- drivers/soc/pensando/kpcimgr.c         | 900 +++++++++++++++++++++++++
- drivers/soc/pensando/kpcimgr_api.h     | 173 +++++
- drivers/soc/pensando/kpcimgr_sysfs.c   | 277 ++++++++
- 6 files changed, 1404 insertions(+)
+ drivers/soc/pensando/kpcimgr.c         | 956 +++++++++++++++++++++++++++++++++
+ drivers/soc/pensando/kpcimgr_api.h     | 179 ++++++
+ drivers/soc/pensando/kpcimgr_sysfs.c   | 277 ++++++++++
+ 6 files changed, 1466 insertions(+)
  create mode 100644 drivers/soc/pensando/kpci_constants.h
  create mode 100644 drivers/soc/pensando/kpcimgr.c
  create mode 100644 drivers/soc/pensando/kpcimgr_api.h
  create mode 100644 drivers/soc/pensando/kpcimgr_sysfs.c
 
 diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
-index ec59d762b..9f0d7879a 100644
+index b6bf8fa..f567386 100644
 --- a/arch/arm64/boot/dts/pensando/elba.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba.dtsi
-@@ -276,5 +276,16 @@ pcie@307c2480 {
+@@ -277,5 +277,16 @@
  			       0x0 0x1400 0x0 0x10		/* WDT0 */
  			       0x0 0x20000000 0x0 0x380000>;	/* PXB Base */
  		};
@@ -43,7 +43,7 @@ index ec59d762b..9f0d7879a 100644
  	};
  };
 diff --git a/drivers/soc/pensando/Makefile b/drivers/soc/pensando/Makefile
-index 675e84d1f..5c89a1576 100644
+index 675e84d..5c89a15 100644
 --- a/drivers/soc/pensando/Makefile
 +++ b/drivers/soc/pensando/Makefile
 @@ -4,9 +4,11 @@
@@ -60,7 +60,7 @@ index 675e84d1f..5c89a1576 100644
  obj-$(CONFIG_PENSANDO_SOC_BSM) += cap_bsm.o
 diff --git a/drivers/soc/pensando/kpci_constants.h b/drivers/soc/pensando/kpci_constants.h
 new file mode 100644
-index 000000000..602da16a0
+index 0000000..602da16
 --- /dev/null
 +++ b/drivers/soc/pensando/kpci_constants.h
 @@ -0,0 +1,41 @@
@@ -107,10 +107,10 @@ index 000000000..602da16a0
 +#define MSI_NVECTORS		2
 diff --git a/drivers/soc/pensando/kpcimgr.c b/drivers/soc/pensando/kpcimgr.c
 new file mode 100644
-index 000000000..e8ceb4263
+index 0000000..e0c3712
 --- /dev/null
 +++ b/drivers/soc/pensando/kpcimgr.c
-@@ -0,0 +1,900 @@
+@@ -0,0 +1,956 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Kernel PCIE Manager Infrastructure
@@ -145,7 +145,7 @@ index 000000000..e8ceb4263
 + * any arm instructions that affect the memory cache.
 + * The memory used for kstate/code/etc is uncached.
 + */
-+void *kpci_memset(void *s, int c, size_t n)
++static void *kpci_memset(void *s, int c, size_t n)
 +{
 +	if (((uintptr_t)s & 0x3) == 0 && (n & 0x3) == 0) {
 +		u32 *p;
@@ -184,7 +184,7 @@ index 000000000..e8ceb4263
 +/*
 + * Normal poll
 + */
-+void kpcimgr_normal_poll(void)
++static void kpcimgr_normal_poll(void)
 +{
 +	void (*poll_fn)(kstate_t *, int, int);
 +	kstate_t *ks = get_kstate();
@@ -347,68 +347,104 @@ index 000000000..e8ceb4263
 +		return -ENODEV;
 +}
 +
++static int compute_code_layout(struct kpcimgr_entry_points_t *ep,
++                               unsigned long *start_addr,
++                               unsigned long *code_size)
++{
++    unsigned long code_start_addr;
++
++    /* Use explicit code_start if provided, otherwise compute from entry points */
++    if (ep->code_start) {
++        code_start_addr = (unsigned long)ep->code_start;
++    } else {
++        /* Fallback: compute from minimum entry point address */
++        unsigned long minaddr = ~0UL;
++        bool have = false;
++        int i;
++
++        for (i = 0; i < K_NUM_ENTRIES; i++) {
++            if (!ep->entry_point[i])
++                continue;
++            have = true;
++            if ((unsigned long)ep->entry_point[i] < minaddr)
++                minaddr = (unsigned long)ep->entry_point[i];
++        }
++
++        if (!have)
++            return -EINVAL;
++
++        code_start_addr = minaddr;
++    }
++
++    if (!ep->code_end ||
++        (unsigned long)ep->code_end <= code_start_addr)
++        return -EINVAL;
++
++    *start_addr = code_start_addr;
++    *code_size  = (unsigned long)ep->code_end - code_start_addr;
++    return 0;
++}
++
 +/*
 + * Examine code and look for calls (BL insn) and data references
 + * (ADRP) to memory addresses outside of the bounds of the module. If
 + * any are found, report them and return an error.
 + */
-+int contains_external_refs(struct module *mod, void *code_end)
++static int contains_external_refs(void *code_start, void *code_end)
 +{
-+	unsigned long start = (unsigned long)mod->core_layout.base;
-+	char code_loc[KSYM_SYMBOL_LEN], target_ref[KSYM_SYMBOL_LEN];
-+	int insn_count, call_count, adrp_count;
-+	unsigned long size, target, insn_addr;
-+	s32 offset;
-+	u32 insn;
++    unsigned long start = (unsigned long)code_start;
++    unsigned long size  = (unsigned long)code_end - start;
++    unsigned long insn_addr, target;
++    int insn_count = 0, call_count = 0, adrp_count = 0;
++    s32 offset;
++    u32 insn;
++    char code_loc[KSYM_SYMBOL_LEN], target_ref[KSYM_SYMBOL_LEN];
 +
-+	size = (unsigned long)code_end - start;
++    for (insn_addr = start;
++         insn_addr < start + size;
++         insn_addr += sizeof(u32)) {
 +
-+	for (insn_addr = start, insn_count = 0, call_count = 0, adrp_count = 0;
-+	     insn_addr < start + size;
-+	     insn_addr += sizeof(u32)) {
-+		if (aarch64_insn_read((void *)insn_addr, &insn)) {
-+			pr_err("Failed to read insn @ %lx\n", insn_addr);
-+			return 1;
-+		}
-+		insn_count++;
++        if (aarch64_insn_read((void *)insn_addr, &insn)) {
++            pr_err("Failed to read insn @ %lx\n", insn_addr);
++            return 1;
++        }
++        insn_count++;
 +
-+		if (aarch64_insn_is_bl(insn)) {
-+			offset = aarch64_get_branch_offset(insn);
-+			target = insn_addr + offset;
++        if (aarch64_insn_is_bl(insn)) {
++            offset = aarch64_get_branch_offset(insn);
++            target = insn_addr + offset;
 +
-+			if (within_module(target, mod))
-+				continue;
++            if (target >= start &&
++                target < (unsigned long)code_end)
++                continue;
 +
-+			sprint_symbol(code_loc, insn_addr);
-+			sprint_symbol(target_ref, target);
-+			pr_err("Found call to %s at %s\n",
-+			       target_ref, code_loc);
++            sprint_symbol(code_loc, insn_addr);
++            sprint_symbol(target_ref, target);
++            pr_err("Found call to %s at %s\n",
++                   target_ref, code_loc);
++            call_count++;
++        }
 +
-+			call_count++;
-+		}
++        if (aarch64_insn_is_adrp(insn)) {
++            offset = aarch64_insn_adrp_get_offset(insn);
++            target = (insn_addr & PAGE_MASK) + offset;
 +
-+		if (aarch64_insn_is_adrp(insn)) {
-+			offset = aarch64_insn_adrp_get_offset(insn);
-+			target = (insn_addr & PAGE_MASK) + offset;
++            if (target >= start &&
++                target < (unsigned long)code_end)
++                continue;
 +
-+			if (within_module(target, mod))
-+				continue;
++            sprint_symbol(code_loc, insn_addr);
++            sprint_symbol(target_ref, target);
++            pr_err("Found approximate reference to %s at %s\n",
++                   target_ref, code_loc);
++            adrp_count++;
++        }
++    }
 +
-+			sprint_symbol(code_loc, insn_addr);
-+			sprint_symbol(target_ref, target);
-+			pr_err("Found approximate reference to %s at %s\n",
-+			       target_ref, code_loc);
-+			pr_err(" (Please check object file for exact reference)\n");
-+			adrp_count++;
-+		}
-+	}
-+	pr_info("processed %d insns, %d extern calls, %d extern adrps\n",
-+		insn_count, call_count, adrp_count);
++    pr_info("processed %d insns, %d extern calls, %d extern adrps\n",
++            insn_count, call_count, adrp_count);
 +
-+	if (call_count > 0 || adrp_count > 0)
-+		return 1;
-+	else
-+		return 0;
++    return (call_count || adrp_count);
 +}
 +
 +/*
@@ -438,35 +474,31 @@ index 000000000..e8ceb4263
 +int kpcimgr_module_register(struct module *mod,
 +			    struct kpcimgr_entry_points_t *ep, int relocate)
 +{
-+	void *code_end = ep->code_end;
 +	kstate_t *ks = get_kstate();
-+	unsigned long start_addr, iflags;
-+	void (*init_fn)(kstate_t *ks);
-+	void (*version_fn)(char **);
-+	char *mod_buildtime;
-+	int i, was_running, nentries;
++    unsigned long start_addr, code_size, iflags;
++    void (*init_fn)(kstate_t *);
++    void (*version_fn)(char **);
++    char *mod_buildtime = "";
++    int i, was_running, nentries;
 +
-+	start_addr = (unsigned long)mod->core_layout.base;
++	if (compute_code_layout(ep, &start_addr, &code_size)) {
++        pr_err("KPCIMGR: invalid code layout for '%s'\n", mod->name);
++        return -EINVAL;
++    }
 +
-+	if (ep->expected_mgr_version != KPCIMGR_KERNEL_VERSION
-+#ifdef PEN_COMPAT_V2
-+	    && ep->expected_mgr_version != 2
-+#endif
-+	   ) {
-+		pr_info("KPCIMGR: '%s' expects kernel version %d, incompatible with version %d\n",
-+			mod->name, ep->expected_mgr_version, KPCIMGR_KERNEL_VERSION);
-+		return -EINVAL;
-+	}
++    if (code_size > KSTATE_CODE_SIZE) {
++        pr_err("KPCIMGR: module '%s' too large\n", mod->name);
++        return -EFBIG;
++    }
 +
-+	if (contains_external_refs(mod, code_end)) {
-+		pr_err("KPCIMGR: relocation failed for '%s'\n", mod->name);
-+		return -ENXIO;
-+	}
-+
-+	if (mod->core_layout.size > KSTATE_CODE_SIZE) {
-+		pr_err("KPCIMGR: module '%s' too large\n", mod->name);
-+		return -EFBIG;
-+	}
++    /* Check for external references - the module must be fully relocatable
++     * for kexec support. Unity builds should have no external refs.
++     */
++    if (contains_external_refs((void *)start_addr, ep->code_end)) {
++        pr_err("KPCIMGR: relocation failed for '%s' - module has external refs\n", mod->name);
++        pr_err("KPCIMGR: hint: use unity build (pciesvc_unity.c) to eliminate cross-file references\n");
++        return -ENXIO;
++    }
 +
 +	was_running = ks->running;
 +	if (was_running) {
@@ -483,27 +515,26 @@ index 000000000..e8ceb4263
 +	}
 +
 +	if (ks->code_base)
-+		module_memfree(ks->code_base);
++		execmem_free(ks->code_base);
 +
 +	if (relocate) {
-+		ks->code_base = module_alloc(mod->core_layout.size);
++        ks->code_base = execmem_alloc(EXECMEM_MODULE_TEXT,
++                              		  PAGE_ALIGN(code_size));
++        if (!ks->code_base)
++            return -ENOMEM;
 +
-+		if (ks->code_base == NULL) {
-+			pr_err("KPCIMGR: module_alloc(%x)\n",
-+			       mod->core_layout.size);
-+			return -ENOMEM;
-+		}
-+		kpci_memcpy(ks->code_base, mod->core_layout.base,
-+			    mod->core_layout.size);
-+		flush_icache_range((long)ks->code_base, (long)ks->code_base + mod->core_layout.size);
-+		set_memory_x((unsigned long)ks->code_base,
-+			     mod->core_layout.size >> PAGE_SHIFT);
-+	} else {
-+		try_module_get(mod);
-+		ks->mod = mod;
-+		ks->code_base = mod->core_layout.base;
-+	}
-+	ks->code_size = mod->core_layout.size;
++        kpci_memcpy(ks->code_base, (void *)start_addr, code_size);
++        flush_icache_range((long)ks->code_base,
++                           (long)ks->code_base + code_size);
++        set_memory_x((unsigned long)ks->code_base,
++                     code_size >> PAGE_SHIFT);
++    } else {
++        try_module_get(mod);
++        ks->mod = mod;
++        ks->code_base = (void *)start_addr;
++    }
++
++    ks->code_size = code_size;
 +
 +#ifdef PEN_COMPAT_V2
 +	nentries = ep->expected_mgr_version == 2 ? 7 : K_NUM_ENTRIES;
@@ -527,9 +558,9 @@ index 000000000..e8ceb4263
 +		version_fn(&mod_buildtime);
 +	}
 +
-+	pr_info("KPCIMGR: module '%s: %s', start=%lx, end=%lx, size=%d\n",
-+		mod->name, mod_buildtime, start_addr,
-+		start_addr + mod->core_layout.size, mod->core_layout.size);
++	pr_info("KPCIMGR: module '%s: %s', start=%lx, end=%lx, size=%lu\n",
++        mod->name, mod_buildtime,
++        start_addr, start_addr + code_size, code_size);
 +
 +	set_init_state(ks);
 +	ks->valid = KSTATE_MAGIC;
@@ -654,9 +685,10 @@ index 000000000..e8ceb4263
 +		}
 +
 +		if (ks->valid == KSTATE_MAGIC) {
-+			ks->code_base = module_alloc(ks->code_size);
++			ks->code_base = execmem_alloc(EXECMEM_MODULE_TEXT,
++                              			  PAGE_ALIGN(ks->code_size));
 +			if (ks->code_base == NULL) {
-+				pr_err("KPCIMGR: module_alloc(%lx) failed\n",
++				pr_err("KPCIMGR: execmem_alloc(%lx) failed\n",
 +				       ks->code_size);
 +				goto errout;
 +			}
@@ -754,7 +786,7 @@ index 000000000..e8ceb4263
 +	return r ? IRQ_HANDLED : IRQ_NONE;
 +}
 +
-+u64 kpcimgr_preg_read(u64 pa)
++static u64 kpcimgr_preg_read(u64 pa)
 +{
 +	u32 val;
 +
@@ -785,27 +817,17 @@ index 000000000..e8ceb4263
 +	return 0;
 +}
 +
-+static void set_msi_msg(struct msi_desc *desc, struct msi_msg *msg)
-+{
-+	kstate_t *ks = get_kstate();
-+	struct msi_info *msi = &ks->msi[desc->msi_index];
-+
-+	msi->msgaddr = ((u64)msg->address_hi << 32) | msg->address_lo;
-+	msi->msgdata = msg->data;
-+}
-+
 +static void free_intrs(struct platform_device *pfdev)
 +{
-+	kstate_t *ks = get_kstate();
-+	struct device *dev = &pfdev->dev;
++    kstate_t *ks = get_kstate();
++    struct device *dev = &pfdev->dev;
 +
-+#if 0
-+	for_each_msi_entry(desc, dev)
-+		free_irq(desc->irq, (void *)ks);
-+#endif
-+	free_irq(msi_get_virq(dev, MSI_INDIRECT_IDX), (void *)ks);
-+	free_irq(msi_get_virq(dev, MSI_NOTIFY_IDX), (void *)ks);
-+	platform_msi_domain_free_irqs(&pfdev->dev);
++    /* 1. Release the handlers first */
++    free_irq(msi_get_virq(dev, MSI_INDIRECT_IDX), (void *)ks);
++    free_irq(msi_get_virq(dev, MSI_NOTIFY_IDX), (void *)ks);
++
++    /* 2. Tear down the MSI descriptors and data structures */
++    platform_device_msi_free_irqs_all(dev);
 +}
 +
 +struct {
@@ -818,39 +840,31 @@ index 000000000..e8ceb4263
 +
 +static int alloc_intrs(struct platform_device *pfdev)
 +{
-+	irqreturn_t (*isr)(int irq, void *arg);
-+	struct device *dev = &pfdev->dev;
-+	kstate_t *ks = get_kstate();
-+	char *name;
-+	int r;
++    struct device *dev = &pfdev->dev;
++    kstate_t *ks = get_kstate();
++    int r;
 +
-+	r = platform_msi_domain_alloc_irqs(dev, MSI_NVECTORS, set_msi_msg);
-+	if (r)
-+		return r;
-+#if 0
-+	for_each_msi_entry(desc, dev) {
-+		isr = kpcimgr_irq_table[desc->msi_index].isr;
-+		name = kpcimgr_irq_table[desc->msi_index].name;
-+		r = devm_request_irq(dev, desc->irq, isr, 0, name, (void *)ks);
-+		if (r)
-+			goto err_out;
-+	}
-+#endif
-+	r = devm_request_irq(dev, msi_get_virq(dev, MSI_INDIRECT_IDX),
-+			kpcimgr_irq_table[MSI_INDIRECT_IDX].isr, 0,
-+			kpcimgr_irq_table[MSI_INDIRECT_IDX].name, (void *)ks);
-+	if (r)
-+		goto err_out;
-+	r = devm_request_irq(dev, msi_get_virq(dev, MSI_NOTIFY_IDX),
-+			kpcimgr_irq_table[MSI_NOTIFY_IDX].isr, 0,
-+			kpcimgr_irq_table[MSI_NOTIFY_IDX].name, (void *)ks);
-+	if (r)
-+		goto err_out;
-+	return 0;
++    /* * REMOVED: msi_domain_alloc_irqs(dev, 0, MSI_NVECTORS);
++     * This is now handled in probe via platform_device_msi_init_and_alloc_irqs.
++     */
++
++    r = devm_request_irq(dev, msi_get_virq(dev, MSI_INDIRECT_IDX),
++            kpcimgr_irq_table[MSI_INDIRECT_IDX].isr, 0,
++            kpcimgr_irq_table[MSI_INDIRECT_IDX].name, (void *)ks);
++    if (r)
++        goto err_out;
++
++    r = devm_request_irq(dev, msi_get_virq(dev, MSI_NOTIFY_IDX),
++            kpcimgr_irq_table[MSI_NOTIFY_IDX].isr, 0,
++            kpcimgr_irq_table[MSI_NOTIFY_IDX].name, (void *)ks);
++    if (r)
++        goto err_out;
++
++    return 0;
 +
 + err_out:
-+	free_intrs(pfdev);
-+	return r;
++    free_intrs(pfdev);
++    return r;
 +}
 +
 +/*
@@ -914,23 +928,54 @@ index 000000000..e8ceb4263
 +	&kpcimgr_fops
 +};
 +
++/* Restore the callback from the original patch */
++static void set_msi_msg(struct msi_desc *desc, struct msi_msg *msg)
++{
++    kstate_t *ks = get_kstate();
++    /* Ensure we don't out-of-bounds the msi array */
++    if (desc->msi_index < MSI_NVECTORS) {
++        struct msi_info *msi = &ks->msi[desc->msi_index];
++        msi->msgaddr = ((u64)msg->address_hi << 32) | msg->address_lo;
++        msi->msgdata = msg->data;
++    }
++}
++
 +static int kpcimgr_probe(struct platform_device *pfdev)
 +{
++    struct device *dev = &pfdev->dev;
 +	kstate_t *ks;
-+	int err;
++    int err;
 +
-+	err = map_resources(pfdev);
-+	if (err)
-+		goto errout;
++    #if IS_ENABLED(CONFIG_OF)
++        of_msi_configure(dev, dev->of_node);
++    #endif
 +
-+	ks = get_kstate();
-+	ks->pfdev = pfdev;
++    /* * IMPORTANT: In 6.12, we must provide the callback to 
++     * handle the specific Elba MSI message format.
++     */
++    err = platform_device_msi_init_and_alloc_irqs(dev, MSI_NVECTORS, set_msi_msg);
++    if (err) {
++        /* If this still returns -22, we need to check the DTS DeviceID 0xf */
++        dev_err(dev, "Failed to initialize MSI interrupts: %d\n", err);
++        return err;
++    }
 +
-+	err = alloc_intrs(ks->pfdev);
-+	if (err) {
-+		pr_err(PFX "alloc intrs: %d\n", err);
-+		goto errout_unmap;
-+	}
++    err = map_resources(pfdev);
++    if (err)
++        goto errout_free_msi;
++
++    ks = get_kstate();
++    ks->pfdev = pfdev;
++
++    /* * Note: Since platform_device_msi_init_and_alloc_irqs already allocated
++     * the IRQs, we just need to request them (attach ISRs).
++     */
++    err = alloc_intrs(ks->pfdev);
++    if (err) {
++        pr_err(PFX "alloc intrs: %d\n", err);
++        goto errout_unmap;
++    }
++
 +
 +	err = misc_register(&kpcimgr_dev);
 +	if (err) {
@@ -958,16 +1003,23 @@ index 000000000..e8ceb4263
 +		(long)ks, (long)ks->code_base);
 +
 +	kpcimgr_sysfs_setup(pfdev);
-+	return 0;
++    return 0;
 +
-+ errout_free_intrs:
-+	free_intrs(pfdev);
++errout_free_intrs:
++    /* This now calls the updated free_intrs which cleans up 
++       both IRQ requests and the MSI descriptors */
++    free_intrs(pfdev);
 +
-+ errout_unmap:
-+	unmap_resources();
++errout_unmap:
++    unmap_resources();
 +
-+ errout:
-+	return err;
++errout_free_msi:
++    /* If map_resources failed before alloc_intrs was called, 
++       we still need to free the MSI structures allocated at the start */
++    if (dev->msi.data)
++        platform_device_msi_free_irqs_all(dev);
++
++    return err;
 +}
 +
 +static const struct of_device_id kpcimgr_of_match[] = {
@@ -983,7 +1035,11 @@ index 000000000..e8ceb4263
 +		.of_match_table = kpcimgr_of_match,
 +	},
 +};
-+builtin_platform_driver(kpcimgr_driver);
++// Remove builtin_platform_driver(kpcimgr_driver);
++static int __init kpcimgr_late_init(void) {
++    return platform_driver_register(&kpcimgr_driver);
++}
++late_initcall(kpcimgr_late_init);
 +
 +/*
 + * Get entry point for pciesvc specific secondary cpu holding pen.
@@ -1013,10 +1069,10 @@ index 000000000..e8ceb4263
 +}
 diff --git a/drivers/soc/pensando/kpcimgr_api.h b/drivers/soc/pensando/kpcimgr_api.h
 new file mode 100644
-index 000000000..07c821926
+index 0000000..7bc7b9e
 --- /dev/null
 +++ b/drivers/soc/pensando/kpcimgr_api.h
-@@ -0,0 +1,173 @@
+@@ -0,0 +1,179 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
@@ -1034,12 +1090,17 @@ index 000000000..07c821926
 +#include <linux/of.h>
 +#include <linux/of_address.h>
 +#include <linux/of_platform.h>
++#include <linux/of_irq.h>
 +#include <linux/interrupt.h>
++#include <linux/irqdomain.h>
 +#include <linux/msi.h>
 +#include <linux/mm.h>
 +#include <linux/kallsyms.h>
 +#include <linux/moduleloader.h>
 +#include <linux/set_memory.h>
++#include <linux/platform_device.h>
++#include <linux/execmem.h>
++#include <linux/vmalloc.h>
 +#include <asm/cacheflush.h>
 +#include <asm/insn.h>
 +#endif
@@ -1063,6 +1124,7 @@ index 000000000..07c821926
 +	int expected_mgr_version;
 +	int lib_version_major;
 +	int lib_version_minor;
++	void *code_start;
 +	void *code_end;
 +	void *entry_point[K_NUM_ENTRIES];
 +};
@@ -1192,7 +1254,7 @@ index 000000000..07c821926
 +#endif
 diff --git a/drivers/soc/pensando/kpcimgr_sysfs.c b/drivers/soc/pensando/kpcimgr_sysfs.c
 new file mode 100644
-index 000000000..fcee544a4
+index 0000000..fcee544
 --- /dev/null
 +++ b/drivers/soc/pensando/kpcimgr_sysfs.c
 @@ -0,0 +1,277 @@
@@ -1474,5 +1536,5 @@ index 000000000..fcee544a4
 +	}
 +}
 -- 
-2.39.2
+1.8.3.1
 

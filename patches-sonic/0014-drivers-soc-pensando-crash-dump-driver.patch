@@ -1,7 +1,7 @@
-From da648535722eb3d5ca494732aebca332e3f0351b Mon Sep 17 00:00:00 2001
+From aca3b7015ba5fb2f3995253409d9d0ace1d5474e Mon Sep 17 00:00:00 2001
 From: Shantanu Shrivastava <shanshri@amd.com>
 Date: Tue, 24 Oct 2023 10:10:44 +0000
-Subject: [PATCH] drivers/soc/pensando: crash dump driver
+Subject: [PATCH 14/27] drivers/soc/pensando: crash dump driver
 
 The crash dump driver writes the kernel message log to
 memory-mapped qspi flash.
@@ -9,18 +9,18 @@ memory-mapped qspi flash.
 Signed-off-by: David Clear <dclear@amd.com>
 Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
- .../boot/dts/pensando/elba-flash-parts.dtsi   |   8 +
- drivers/soc/pensando/Kconfig                  |   7 +
- drivers/soc/pensando/Makefile                 |   1 +
- drivers/soc/pensando/cap_crash.c              | 251 ++++++++++++++++++
+ arch/arm64/boot/dts/pensando/elba-flash-parts.dtsi |   8 +
+ drivers/soc/pensando/Kconfig                       |   7 +
+ drivers/soc/pensando/Makefile                      |   1 +
+ drivers/soc/pensando/cap_crash.c                   | 251 +++++++++++++++++++++
  4 files changed, 267 insertions(+)
  create mode 100644 drivers/soc/pensando/cap_crash.c
 
 diff --git a/arch/arm64/boot/dts/pensando/elba-flash-parts.dtsi b/arch/arm64/boot/dts/pensando/elba-flash-parts.dtsi
-index a9c5d25da..1a25318b5 100644
+index a9c5d25..1a25318 100644
 --- a/arch/arm64/boot/dts/pensando/elba-flash-parts.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba-flash-parts.dtsi
-@@ -106,3 +106,11 @@ partition@ffe0000 {
+@@ -106,3 +106,11 @@
  		};
  	};
  };
@@ -33,7 +33,7 @@ index a9c5d25da..1a25318b5 100644
 +	};
 +};
 diff --git a/drivers/soc/pensando/Kconfig b/drivers/soc/pensando/Kconfig
-index eb1494e94..6f0b1a853 100644
+index eb1494e..6f0b1a8 100644
 --- a/drivers/soc/pensando/Kconfig
 +++ b/drivers/soc/pensando/Kconfig
 @@ -15,6 +15,13 @@ config PENSANDO_SOC_CAPMEM
@@ -51,7 +51,7 @@ index eb1494e94..6f0b1a853 100644
  	bool "Pensando SoC Boot State Machine"
  	depends on OF
 diff --git a/drivers/soc/pensando/Makefile b/drivers/soc/pensando/Makefile
-index bf4f46fee..815ae4563 100644
+index bf4f46f..815ae45 100644
 --- a/drivers/soc/pensando/Makefile
 +++ b/drivers/soc/pensando/Makefile
 @@ -6,4 +6,5 @@ obj-y += cap_soc.o
@@ -62,7 +62,7 @@ index bf4f46fee..815ae4563 100644
  obj-$(CONFIG_PENSANDO_SOC_BSM) += cap_bsm.o
 diff --git a/drivers/soc/pensando/cap_crash.c b/drivers/soc/pensando/cap_crash.c
 new file mode 100644
-index 000000000..dbe8344d7
+index 0000000..385b02d
 --- /dev/null
 +++ b/drivers/soc/pensando/cap_crash.c
 @@ -0,0 +1,251 @@
@@ -282,7 +282,7 @@ index 000000000..dbe8344d7
 +	return err;
 +}
 +
-+static int pcrash_remove(struct platform_device *pdev)
++static void pcrash_remove(struct platform_device *pdev)
 +{
 +	struct device *dev = &pdev->dev;
 +
@@ -292,7 +292,7 @@ index 000000000..dbe8344d7
 +					 &cap_panic_notifier);
 +	vfree(pcrash->panic_buf);
 +	iounmap(pcrash->ctrlbase);
-+	return 0;
++	return;
 +}
 +
 +static const struct of_device_id pcrash_dt_ids[] = {
@@ -318,5 +318,5 @@ index 000000000..dbe8344d7
 +MODULE_ALIAS("platform:" PCRASH_NAME);
 +MODULE_AUTHOR("Rahul Shekhar <rahulshekhar@pensando.io>");
 -- 
-2.39.2
+1.8.3.1
 

@@ -1,7 +1,7 @@
-From 4c968c1ea9f5b87733e0038b2f66a35f48232e6f Mon Sep 17 00:00:00 2001
+From 49829ec689fcab6262c6c37a85ba9e26be0aada2 Mon Sep 17 00:00:00 2001
 From: Shantanu Shrivastava <shanshri@amd.com>
 Date: Tue, 24 Oct 2023 10:07:36 +0000
-Subject: [PATCH] drivers/pensando/soc:Boot State Machine integrtion
+Subject: [PATCH 13/27] drivers/pensando/soc:Boot State Machine integrtion
 
 The Pensando BSM interacts with the boot firmware to provide a level
 of recovery should a Linux image fail to start.  If the BSM is
@@ -12,23 +12,23 @@ image to boot next.
 Signed-off-by: David Clear <dclear@amd.com>
 Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
- arch/arm64/boot/dts/pensando/elba.dtsi |   5 +
- drivers/soc/pensando/Kconfig           |  13 ++
+ arch/arm64/boot/dts/pensando/elba.dtsi |   5 ++
+ drivers/soc/pensando/Kconfig           |  13 +++
  drivers/soc/pensando/Makefile          |   3 +
- drivers/soc/pensando/bsm_dev.h         |  24 ++++
- drivers/soc/pensando/cap_bsm.c         | 159 +++++++++++++++++++++++++
- drivers/soc/pensando/cap_soc.c         |  25 ++++
+ drivers/soc/pensando/bsm_dev.h         |  24 +++++
+ drivers/soc/pensando/cap_bsm.c         | 159 +++++++++++++++++++++++++++++++++
+ drivers/soc/pensando/cap_soc.c         |  25 ++++++
  6 files changed, 229 insertions(+)
  create mode 100644 drivers/soc/pensando/bsm_dev.h
  create mode 100644 drivers/soc/pensando/cap_bsm.c
  create mode 100644 drivers/soc/pensando/cap_soc.c
 
 diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
-index 9182c93aa..e88c2302b 100644
+index d87128c..3060a7f 100644
 --- a/arch/arm64/boot/dts/pensando/elba.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba.dtsi
-@@ -259,5 +259,10 @@ mssoc: mssoc@307c0000 {
- 			compatible = "pensando,mssoc", "syscon";
+@@ -260,5 +260,10 @@
+ 			compatible = "amd,pensando-elba-syscon", "pensando,mssoc", "syscon";
  			reg = <0x0 0x307c0000 0x0 0x3000>;
  		};
 +
@@ -39,7 +39,7 @@ index 9182c93aa..e88c2302b 100644
  	};
  };
 diff --git a/drivers/soc/pensando/Kconfig b/drivers/soc/pensando/Kconfig
-index abe01eac6..eb1494e94 100644
+index abe01ea..eb1494e 100644
 --- a/drivers/soc/pensando/Kconfig
 +++ b/drivers/soc/pensando/Kconfig
 @@ -15,6 +15,19 @@ config PENSANDO_SOC_CAPMEM
@@ -63,7 +63,7 @@ index abe01eac6..eb1494e94 100644
  
  endif
 diff --git a/drivers/soc/pensando/Makefile b/drivers/soc/pensando/Makefile
-index fcfb67425..bf4f46fee 100644
+index fcfb674..bf4f46f 100644
 --- a/drivers/soc/pensando/Makefile
 +++ b/drivers/soc/pensando/Makefile
 @@ -1,6 +1,9 @@
@@ -78,7 +78,7 @@ index fcfb67425..bf4f46fee 100644
 +obj-$(CONFIG_PENSANDO_SOC_BSM) += cap_bsm.o
 diff --git a/drivers/soc/pensando/bsm_dev.h b/drivers/soc/pensando/bsm_dev.h
 new file mode 100644
-index 000000000..7e31269e3
+index 0000000..7e31269
 --- /dev/null
 +++ b/drivers/soc/pensando/bsm_dev.h
 @@ -0,0 +1,24 @@
@@ -108,7 +108,7 @@ index 000000000..7e31269e3
 +#endif
 diff --git a/drivers/soc/pensando/cap_bsm.c b/drivers/soc/pensando/cap_bsm.c
 new file mode 100644
-index 000000000..a55039fbf
+index 0000000..a55039f
 --- /dev/null
 +++ b/drivers/soc/pensando/cap_bsm.c
 @@ -0,0 +1,159 @@
@@ -273,7 +273,7 @@ index 000000000..a55039fbf
 +early_initcall(cap_bsm_init);
 diff --git a/drivers/soc/pensando/cap_soc.c b/drivers/soc/pensando/cap_soc.c
 new file mode 100644
-index 000000000..9942c2034
+index 0000000..9942c20
 --- /dev/null
 +++ b/drivers/soc/pensando/cap_soc.c
 @@ -0,0 +1,25 @@
@@ -303,5 +303,5 @@ index 000000000..9942c2034
 +}
 +EXPORT_SYMBOL_GPL(pensando_fw_kobj_get);
 -- 
-2.39.2
+1.8.3.1
 

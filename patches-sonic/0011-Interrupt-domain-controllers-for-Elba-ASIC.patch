@@ -1,7 +1,7 @@
-From 4b3baeaadc0478e7623b7367d0532b9357f2a608 Mon Sep 17 00:00:00 2001
+From f8f5f8ae9e241e72771f6c28136919cdbfbfd8b3 Mon Sep 17 00:00:00 2001
 From: Shantanu Shrivastava <shanshri@amd.com>
 Date: Tue, 24 Oct 2023 09:49:17 +0000
-Subject: [PATCH] Interrupt domain controllers for Elba ASIC
+Subject: [PATCH 11/27] Interrupt domain controllers for Elba ASIC
 
 This supports using ASIC registers as IRQ chips, one per domain. The
 result is a many level interrupt controller. There are actually three
@@ -14,17 +14,17 @@ Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
  arch/arm64/boot/dts/pensando/elba.dtsi |  16 +
  drivers/irqchip/Kconfig                |  11 +
  drivers/irqchip/Makefile               |   1 +
- drivers/irqchip/irq-pensando.c         | 879 +++++++++++++++++++++++++
- include/linux/irqchip/irq-pensando.h   |  91 +++
+ drivers/irqchip/irq-pensando.c         | 879 +++++++++++++++++++++++++++++++++
+ include/linux/irqchip/irq-pensando.h   |  91 ++++
  5 files changed, 998 insertions(+)
  create mode 100644 drivers/irqchip/irq-pensando.c
  create mode 100644 include/linux/irqchip/irq-pensando.h
 
 diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
-index 9bc1a71af..c0954fc2b 100644
+index 1ecd348..afc9c7c 100644
 --- a/arch/arm64/boot/dts/pensando/elba.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba.dtsi
-@@ -187,6 +187,22 @@ its: interrupt-controller@820000 {
+@@ -188,6 +188,22 @@
  			};
  		};
  
@@ -48,10 +48,10 @@ index 9bc1a71af..c0954fc2b 100644
  			compatible = "pensando,elba-edac-mc";
  			reg = <0x0 0x30500000 0x0 0x100000>;
 diff --git a/drivers/irqchip/Kconfig b/drivers/irqchip/Kconfig
-index a29a426e4..3311e9650 100644
+index a799a89..3f0afa7 100644
 --- a/drivers/irqchip/Kconfig
 +++ b/drivers/irqchip/Kconfig
-@@ -189,6 +189,17 @@ config CLPS711X_IRQCHIP
+@@ -198,6 +198,17 @@ config CLPS711X_IRQCHIP
  	select SPARSE_IRQ
  	default y
  
@@ -70,10 +70,10 @@ index a29a426e4..3311e9650 100644
  	bool
  
 diff --git a/drivers/irqchip/Makefile b/drivers/irqchip/Makefile
-index 87b49a109..316691dbb 100644
+index e3679ec..199883e 100644
 --- a/drivers/irqchip/Makefile
 +++ b/drivers/irqchip/Makefile
-@@ -119,5 +119,6 @@ obj-$(CONFIG_MACH_REALTEK_RTL)		+= irq-realtek-rtl.o
+@@ -124,5 +124,6 @@ obj-$(CONFIG_MACH_REALTEK_RTL)		+= irq-realtek-rtl.o
  obj-$(CONFIG_WPCM450_AIC)		+= irq-wpcm450-aic.o
  obj-$(CONFIG_IRQ_IDT3243X)		+= irq-idt3243x.o
  obj-$(CONFIG_APPLE_AIC)			+= irq-apple-aic.o
@@ -82,7 +82,7 @@ index 87b49a109..316691dbb 100644
  obj-$(CONFIG_SUNPLUS_SP7021_INTC)	+= irq-sp7021-intc.o
 diff --git a/drivers/irqchip/irq-pensando.c b/drivers/irqchip/irq-pensando.c
 new file mode 100644
-index 000000000..5d72d191d
+index 0000000..5d72d19
 --- /dev/null
 +++ b/drivers/irqchip/irq-pensando.c
 @@ -0,0 +1,879 @@
@@ -967,7 +967,7 @@ index 000000000..5d72d191d
 +	soc_probe_csrintr);
 diff --git a/include/linux/irqchip/irq-pensando.h b/include/linux/irqchip/irq-pensando.h
 new file mode 100644
-index 000000000..071691848
+index 0000000..0716918
 --- /dev/null
 +++ b/include/linux/irqchip/irq-pensando.h
 @@ -0,0 +1,91 @@
@@ -1063,5 +1063,5 @@ index 000000000..071691848
 +
 +#endif	/* _LINUX_IRQCHIP_IRQ_CAPRI_H_ */
 -- 
-2.39.2
+1.8.3.1
 
