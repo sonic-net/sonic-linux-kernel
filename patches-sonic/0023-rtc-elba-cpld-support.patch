@@ -1,7 +1,7 @@
-From 2ed50fc27aadf4037d4f57e615ed1943f8d67373 Mon Sep 17 00:00:00 2001
+From eb9a1bfb178e087de1455d3bc37ee49d6d0a3249 Mon Sep 17 00:00:00 2001
 From: Shantanu Shrivastava <shanshri@amd.com>
 Date: Wed, 24 Apr 2024 06:34:10 +0000
-Subject: [PATCH] rtc elba cpld support
+Subject: [PATCH 23/27] rtc elba cpld support
 
 Adding rtc spi driver for cards with rtc on fpga and
 propagated to cpld
@@ -10,18 +10,18 @@ Signed-off-by: Mushtaq Khan <muskhan@amd.com>
 Signed-off-by: Sahil Chaudhari <sahchaud@amd.com>
 Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
- drivers/mfd/pensando-elbasr.c |   4 +
- drivers/rtc/Kconfig           |   9 ++
+ drivers/mfd/pensando-elbasr.c |   4 ++
+ drivers/rtc/Kconfig           |   9 +++
  drivers/rtc/Makefile          |   1 +
- drivers/rtc/rtc-elbacpld.c    | 163 ++++++++++++++++++++++++++++++++++
- 4 files changed, 177 insertions(+)
+ drivers/rtc/rtc-elbacpld.c    | 164 ++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 178 insertions(+)
  create mode 100644 drivers/rtc/rtc-elbacpld.c
 
 diff --git a/drivers/mfd/pensando-elbasr.c b/drivers/mfd/pensando-elbasr.c
-index 4eb12309d..e589634fa 100644
+index 868cb98..8f07c3a 100644
 --- a/drivers/mfd/pensando-elbasr.c
 +++ b/drivers/mfd/pensando-elbasr.c
-@@ -56,6 +56,10 @@ static const struct mfd_cell pensando_elbasr_subdev_info[] = {
+@@ -57,6 +57,10 @@
  		.name = "pensando_elbasr_reset",
  		.of_compatible = "amd,pensando-elbasr-reset",
  	},
@@ -33,10 +33,10 @@ index 4eb12309d..e589634fa 100644
  
  /* Bit masks for spi_device.mode management.  Note that incorrect
 diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
-index bb63edb50..0b58999f5 100644
+index 66eb112..909322d 100644
 --- a/drivers/rtc/Kconfig
 +++ b/drivers/rtc/Kconfig
-@@ -1995,4 +1995,13 @@ config RTC_DRV_POLARFIRE_SOC
+@@ -2059,6 +2059,15 @@ config RTC_DRV_POLARFIRE_SOC
  	  This driver can also be built as a module, if so, the module
  	  will be called "rtc-mpfs".
  
@@ -49,12 +49,14 @@ index bb63edb50..0b58999f5 100644
 +	  over SPI to the system resource chip device registers
 +	  using CS0.
 +
- endif # RTC_CLASS
+ config RTC_DRV_SSD202D
+ 	tristate "SigmaStar SSD202D RTC"
+ 	depends on ARCH_MSTARV7 || COMPILE_TEST
 diff --git a/drivers/rtc/Makefile b/drivers/rtc/Makefile
-index aab22bc63..e47b6cd39 100644
+index f62340e..e4b2fde 100644
 --- a/drivers/rtc/Makefile
 +++ b/drivers/rtc/Makefile
-@@ -64,6 +64,7 @@ obj-$(CONFIG_RTC_DRV_DS1742)	+= rtc-ds1742.o
+@@ -63,6 +63,7 @@ obj-$(CONFIG_RTC_DRV_DS1742)	+= rtc-ds1742.o
  obj-$(CONFIG_RTC_DRV_DS2404)	+= rtc-ds2404.o
  obj-$(CONFIG_RTC_DRV_DS3232)	+= rtc-ds3232.o
  obj-$(CONFIG_RTC_DRV_EFI)	+= rtc-efi.o
@@ -64,10 +66,10 @@ index aab22bc63..e47b6cd39 100644
  obj-$(CONFIG_RTC_DRV_FM3130)	+= rtc-fm3130.o
 diff --git a/drivers/rtc/rtc-elbacpld.c b/drivers/rtc/rtc-elbacpld.c
 new file mode 100644
-index 000000000..69969ffe1
+index 0000000..df66fce
 --- /dev/null
 +++ b/drivers/rtc/rtc-elbacpld.c
-@@ -0,0 +1,163 @@
+@@ -0,0 +1,164 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/* drivers/rtc/rtc-elbacpld.c
 + *
@@ -96,6 +98,7 @@ index 000000000..69969ffe1
 +#include <linux/regmap.h>
 +#include <linux/rtc.h>
 +#include <linux/slab.h>
++#include <linux/platform_device.h>
 +
 +#define RTC_BASE_OFFSET  0xA2
 +/*
@@ -232,5 +235,5 @@ index 000000000..69969ffe1
 +MODULE_LICENSE("GPL v2");
 +MODULE_VERSION("1.0");
 -- 
-2.25.1
+1.8.3.1
 

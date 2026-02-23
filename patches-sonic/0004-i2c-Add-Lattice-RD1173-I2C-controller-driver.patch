@@ -1,7 +1,7 @@
-From 336b180c49f94dfd14ecf8188b3aee2ef38bfc82 Mon Sep 17 00:00:00 2001
+From 480cacf951622a7e37359c85b0101b3115c194a1 Mon Sep 17 00:00:00 2001
 From: Shantanu Shrivastava <shanshri@amd.com>
 Date: Tue, 24 Oct 2023 08:45:12 +0000
-Subject: [PATCH] i2c: Add Lattice RD1173 I2C controller driver
+Subject: [PATCH 04/27] i2c: Add Lattice RD1173 I2C controller driver
 
 The Lattice RD1173 is a pair of I2C controllers accesed via a SPI
 interface.
@@ -11,15 +11,15 @@ Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
  drivers/i2c/busses/Kconfig      |  10 +
  drivers/i2c/busses/Makefile     |   1 +
- drivers/i2c/busses/i2c-rd1173.c | 845 ++++++++++++++++++++++++++++++++
+ drivers/i2c/busses/i2c-rd1173.c | 845 ++++++++++++++++++++++++++++++++++++++++
  3 files changed, 856 insertions(+)
  create mode 100644 drivers/i2c/busses/i2c-rd1173.c
 
 diff --git a/drivers/i2c/busses/Kconfig b/drivers/i2c/busses/Kconfig
-index e50f9603d..f690a03f5 100644
+index 0e679cc..b3cffaa 100644
 --- a/drivers/i2c/busses/Kconfig
 +++ b/drivers/i2c/busses/Kconfig
-@@ -978,6 +978,16 @@ config I2C_QUP
+@@ -1042,6 +1042,16 @@ config I2C_QUP
  	  This driver can also be built as a module.  If so, the module
  	  will be called i2c-qup.
  
@@ -37,10 +37,10 @@ index e50f9603d..f690a03f5 100644
  	tristate "Renesas RIIC adapter"
  	depends on ARCH_RENESAS || COMPILE_TEST
 diff --git a/drivers/i2c/busses/Makefile b/drivers/i2c/busses/Makefile
-index e73cdb1d2..5b5275801 100644
+index ecc07c5..7314ce4 100644
 --- a/drivers/i2c/busses/Makefile
 +++ b/drivers/i2c/busses/Makefile
-@@ -100,6 +100,7 @@ obj-$(CONFIG_I2C_PXA_PCI)	+= i2c-pxa-pci.o
+@@ -101,6 +101,7 @@ obj-$(CONFIG_I2C_PXA_PCI)	+= i2c-pxa-pci.o
  obj-$(CONFIG_I2C_QCOM_CCI)	+= i2c-qcom-cci.o
  obj-$(CONFIG_I2C_QCOM_GENI)	+= i2c-qcom-geni.o
  obj-$(CONFIG_I2C_QUP)		+= i2c-qup.o
@@ -50,7 +50,7 @@ index e73cdb1d2..5b5275801 100644
  obj-$(CONFIG_I2C_RZV2M)		+= i2c-rzv2m.o
 diff --git a/drivers/i2c/busses/i2c-rd1173.c b/drivers/i2c/busses/i2c-rd1173.c
 new file mode 100644
-index 000000000..fc01c4920
+index 0000000..fc01c49
 --- /dev/null
 +++ b/drivers/i2c/busses/i2c-rd1173.c
 @@ -0,0 +1,845 @@
@@ -900,5 +900,5 @@ index 000000000..fc01c4920
 +MODULE_DESCRIPTION("Pensando CPLD Lattice RD1173 SPI to I2C bus adapter");
 +MODULE_LICENSE("GPL");
 -- 
-2.39.2
+1.8.3.1
 

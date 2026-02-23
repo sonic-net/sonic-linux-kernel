@@ -1,7 +1,7 @@
-From c61e591d37d5b3a6071ead5d209013893d398ccd Mon Sep 17 00:00:00 2001
+From 2e997ca00391a982934d65ee275a5bb8d69434ae Mon Sep 17 00:00:00 2001
 From: Shantanu Shrivastava <shanshri@amd.com>
 Date: Tue, 24 Oct 2023 10:12:50 +0000
-Subject: [PATCH] drivers/soc/pensando: Add the Reset Cause driver
+Subject: [PATCH 15/27] drivers/soc/pensando: Add the Reset Cause driver
 
 The reset cause driver exposes sysfs nodes under
 /sys/pensando/firmware/rstcause that report the reason for the last
@@ -13,19 +13,19 @@ Signed-off-by: David Clear <dclear@amd.com>
 Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
  arch/arm64/boot/dts/pensando/elba.dtsi |   5 +
- drivers/soc/pensando/Kconfig           |   7 +
+ drivers/soc/pensando/Kconfig           |   7 ++
  drivers/soc/pensando/Makefile          |   1 +
- drivers/soc/pensando/cap_rstcause.c    | 218 +++++++++++++++++++++++++
- drivers/soc/pensando/cap_rstcause.h    |  15 ++
+ drivers/soc/pensando/cap_rstcause.c    | 218 +++++++++++++++++++++++++++++++++
+ drivers/soc/pensando/cap_rstcause.h    |  15 +++
  5 files changed, 246 insertions(+)
  create mode 100644 drivers/soc/pensando/cap_rstcause.c
  create mode 100644 drivers/soc/pensando/cap_rstcause.h
 
 diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
-index e88c2302b..6be705650 100644
+index 3060a7f..3348473 100644
 --- a/arch/arm64/boot/dts/pensando/elba.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba.dtsi
-@@ -55,6 +55,11 @@ uio_penmsi {
+@@ -55,6 +55,11 @@
  		name = "uio_penmsi";
  	};
  
@@ -38,7 +38,7 @@ index e88c2302b..6be705650 100644
  		compatible = "pensando,capmem";
  	};
 diff --git a/drivers/soc/pensando/Kconfig b/drivers/soc/pensando/Kconfig
-index 6f0b1a853..59c1fa4c6 100644
+index 6f0b1a8..59c1fa4 100644
 --- a/drivers/soc/pensando/Kconfig
 +++ b/drivers/soc/pensando/Kconfig
 @@ -15,6 +15,13 @@ config PENSANDO_SOC_CAPMEM
@@ -56,7 +56,7 @@ index 6f0b1a853..59c1fa4c6 100644
  	tristate "Pensando crash driver"
  	depends on OF
 diff --git a/drivers/soc/pensando/Makefile b/drivers/soc/pensando/Makefile
-index 815ae4563..ea5062fd7 100644
+index 815ae45..ea5062f 100644
 --- a/drivers/soc/pensando/Makefile
 +++ b/drivers/soc/pensando/Makefile
 @@ -6,5 +6,6 @@ obj-y += cap_soc.o
@@ -68,7 +68,7 @@ index 815ae4563..ea5062fd7 100644
  obj-$(CONFIG_PENSANDO_SOC_BSM) += cap_bsm.o
 diff --git a/drivers/soc/pensando/cap_rstcause.c b/drivers/soc/pensando/cap_rstcause.c
 new file mode 100644
-index 000000000..9ef13609d
+index 0000000..4144dc5
 --- /dev/null
 +++ b/drivers/soc/pensando/cap_rstcause.c
 @@ -0,0 +1,218 @@
@@ -256,7 +256,7 @@ index 000000000..9ef13609d
 +	return 0;
 +}
 +
-+static int rstcause_remove(struct platform_device *pdev)
++static void rstcause_remove(struct platform_device *pdev)
 +{
 +	struct cap_rstdev *rdev = platform_get_drvdata(pdev);
 +
@@ -269,7 +269,7 @@ index 000000000..9ef13609d
 +			kobject_put(rdev->pensando_kobj);
 +	}
 +
-+	return 0;
++	return;
 +}
 +
 +static const struct of_device_id rstcause_of_match[] = {
@@ -292,7 +292,7 @@ index 000000000..9ef13609d
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/soc/pensando/cap_rstcause.h b/drivers/soc/pensando/cap_rstcause.h
 new file mode 100644
-index 000000000..12fe87164
+index 0000000..12fe871
 --- /dev/null
 +++ b/drivers/soc/pensando/cap_rstcause.h
 @@ -0,0 +1,15 @@
@@ -312,5 +312,5 @@ index 000000000..12fe87164
 +
 +#endif
 -- 
-2.39.2
+1.8.3.1
 

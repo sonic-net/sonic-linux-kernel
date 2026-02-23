@@ -1,7 +1,7 @@
-From d4756c034d6215f5abcf5d6c9d8c7da1a392a313 Mon Sep 17 00:00:00 2001
+From c478c83c6a7cf3bdd3e7bd6f713e877e53a79d0f Mon Sep 17 00:00:00 2001
 From: Shantanu Shrivastava <shanshri@amd.com>
 Date: Tue, 24 Oct 2023 10:31:58 +0000
-Subject: [PATCH] drivers/soc/pensando:boot_count to sysfs for kdump log
+Subject: [PATCH 20/27] drivers/soc/pensando:boot_count to sysfs for kdump log
 
 Add boot_count to sysfs. Augment the kdump timestamp with
 the boot_count number. Also, adjust the kdump timestamp.
@@ -9,24 +9,44 @@ the boot_count number. Also, adjust the kdump timestamp.
 Signed-off-by: David Clear <dclear@amd.com>
 Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
- drivers/soc/pensando/cap_crash.c  |  4 +++-
- drivers/soc/pensando/cap_reboot.c | 35 +++++++++++++++++++++++++++++--
+ drivers/soc/pensando/cap_crash.c  | 10 +++++++---
+ drivers/soc/pensando/cap_reboot.c | 35 +++++++++++++++++++++++++++++++++--
  drivers/soc/pensando/cap_reboot.h |  3 ++-
- 3 files changed, 38 insertions(+), 4 deletions(-)
+ 3 files changed, 42 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/soc/pensando/cap_crash.c b/drivers/soc/pensando/cap_crash.c
-index dbe8344d7..c8d2852ea 100644
+index 385b02d..ebd9464 100644
 --- a/drivers/soc/pensando/cap_crash.c
 +++ b/drivers/soc/pensando/cap_crash.c
-@@ -12,6 +12,7 @@
+@@ -12,6 +12,8 @@
  #include <linux/panic_notifier.h>
  #include <linux/of.h>
  #include <linux/of_address.h>
++#include <linux/vmalloc.h>
 +#include "cap_reboot.h"
  
  #define PCRASH_NAME	"pensando-crash"
  
-@@ -114,7 +115,8 @@ static int cap_panic_callback(struct notifier_block *nb,
+@@ -73,7 +75,7 @@ static void pcrash_prepare_controller(void)
+ }
+ 
+ static void pcrash_do_dump(struct kmsg_dumper *dumper,
+-			   enum kmsg_dump_reason reason)
++                           struct kmsg_dump_detail *detail)
+ {
+ 	int idx;
+ 	u32 *src;
+@@ -91,7 +93,8 @@ static void pcrash_do_dump(struct kmsg_dumper *dumper,
+ 	 * read first 32bits, if all ff then the new panic data
+ 	 * can be written to the panic buf.
+ 	 */
+-	if (hdr->magic == 0xffffffff) {
++	if (detail->reason == KMSG_DUMP_PANIC &&
++    	hdr->magic == 0xffffffff) {
+ 		kmsg_dump_rewind(&iter);
+ 		kmsg_dump_get_buffer(&iter, false, pcrash->panic_buf,
+ 				pcrash->size - sizeof(struct panicbuf_header), &kmsg_dump_len);
+@@ -114,7 +117,8 @@ static int cap_panic_callback(struct notifier_block *nb,
  
  	ktime_get_real_ts64(&ts);
  	time64_to_tm(ts.tv_sec, 0, &tm);
@@ -37,7 +57,7 @@ index dbe8344d7..c8d2852ea 100644
  		tm.tm_hour, tm.tm_min, tm.tm_sec,
  		ts.tv_nsec / 1000);
 diff --git a/drivers/soc/pensando/cap_reboot.c b/drivers/soc/pensando/cap_reboot.c
-index 42d87f242..d2e1ebf91 100644
+index 42d87f2..d2e1ebf 100644
 --- a/drivers/soc/pensando/cap_reboot.c
 +++ b/drivers/soc/pensando/cap_reboot.c
 @@ -2,7 +2,7 @@
@@ -107,7 +127,7 @@ index 42d87f242..d2e1ebf91 100644
  };
  
 diff --git a/drivers/soc/pensando/cap_reboot.h b/drivers/soc/pensando/cap_reboot.h
-index 8718fff85..e4bd89afe 100644
+index 8718fff..e4bd89a 100644
 --- a/drivers/soc/pensando/cap_reboot.h
 +++ b/drivers/soc/pensando/cap_reboot.h
 @@ -1,11 +1,12 @@
@@ -125,5 +145,5 @@ index 8718fff85..e4bd89afe 100644
  
  #endif
 -- 
-2.39.2
+1.8.3.1
 
