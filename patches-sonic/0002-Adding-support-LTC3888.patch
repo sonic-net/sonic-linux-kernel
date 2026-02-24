@@ -1,7 +1,7 @@
-From 8d398701b1062464c2618b95aed5798dc749a941 Mon Sep 17 00:00:00 2001
+From 1f7f624747ff66df7b9bf02e98541ebb81447f8c Mon Sep 17 00:00:00 2001
 From: Shantanu Shrivastava <shanshri@amd.com>
 Date: Tue, 24 Oct 2023 08:29:14 +0000
-Subject: [PATCH] Adding support LTC3888
+Subject: [PATCH 02/27] Adding support LTC3888
 
 This patch adds support for the LTC3888 VRM.
 
@@ -11,41 +11,41 @@ https://www.analog.com/media/en/technical-documentation/data-sheets/ltc3888-3888
 Signed-off-by: David Clear <dclear@amd.com>
 Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
- drivers/hwmon/pmbus/ltc2978.c | 43 ++++++++++++++++++++++++++++++++++-
+ drivers/hwmon/pmbus/ltc2978.c | 43 ++++++++++++++++++++++++++++++++++++++++++-
  1 file changed, 42 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/hwmon/pmbus/ltc2978.c b/drivers/hwmon/pmbus/ltc2978.c
-index 6d2592731..057278736 100644
+index 73a86f4..6ad6d0d 100644
 --- a/drivers/hwmon/pmbus/ltc2978.c
 +++ b/drivers/hwmon/pmbus/ltc2978.c
-@@ -23,7 +23,8 @@ enum chips {
+@@ -23,7 +23,7 @@ enum chips {
  	/* Managers */
  	ltc2972, ltc2974, ltc2975, ltc2977, ltc2978, ltc2979, ltc2980,
  	/* Controllers */
--	ltc3880, ltc3882, ltc3883, ltc3884, ltc3886, ltc3887, ltc3889, ltc7880,
-+	ltc3880, ltc3882, ltc3883, ltc3884, ltc3886, ltc3887, ltc3888, ltc3889,
-+	ltc7880,
+-	ltc3880, ltc3882, ltc3883, ltc3884, ltc3886, ltc3887, ltc3889, ltc7132, ltc7880,
++	ltc3880, ltc3882, ltc3883, ltc3884, ltc3886, ltc3887, ltc3888, ltc3889, ltc7132, ltc7880,
  	/* Modules */
  	ltm2987, ltm4664, ltm4675, ltm4676, ltm4677, ltm4678, ltm4680, ltm4686,
  	ltm4700,
-@@ -53,6 +54,8 @@ enum chips {
- /* LTC3883, LTC3884, LTC3886, LTC3889 and LTC7880 only */
+@@ -53,6 +53,9 @@ enum chips {
+ /* LTC3883, LTC3884, LTC3886, LTC3889, LTC7132, LTC7880 */
  #define LTC3883_MFR_IIN_PEAK		0xe1
  
 +/* LTC3888 only */
 +#define LTC3888_MFR_TOTAL_IOUT		0xe1
- 
++
  /* LTC2975 only */
  #define LTC2975_MFR_IIN_PEAK		0xc4
-@@ -79,6 +82,8 @@ enum chips {
+ #define LTC2975_MFR_IIN_MIN		0xc5
+@@ -78,6 +81,8 @@ enum chips {
  #define LTC3884_ID			0x4C00
  #define LTC3886_ID			0x4600
  #define LTC3887_ID			0x4700
 +#define LTC3888_ID			0x4800
 +#define LTC3888_ID_D1			0x4880	/* Dash 1 */
- #define LTM2987_ID_A			0x8010	/* A/B for two die IDs */
- #define LTM2987_ID_B			0x8020
  #define LTC3889_ID			0x4900
+ #define LTC7132_ID			0x4CE0
+ #define LTC7880_ID			0x49E0
 @@ -467,6 +472,26 @@ static int ltc3883_read_word_data(struct i2c_client *client, int page,
  	return ret;
  }
@@ -73,15 +73,15 @@ index 6d2592731..057278736 100644
  static int ltc2978_clear_peaks(struct ltc2978_data *data,
  			       struct i2c_client *client, int page)
  {
-@@ -546,6 +571,7 @@ static const struct i2c_device_id ltc2978_id[] = {
+@@ -546,6 +571,7 @@ static int ltc2978_write_word_data(struct i2c_client *client, int page,
  	{"ltc3884", ltc3884},
  	{"ltc3886", ltc3886},
  	{"ltc3887", ltc3887},
 +	{"ltc3888", ltc3888},
  	{"ltc3889", ltc3889},
+ 	{"ltc7132", ltc7132},
  	{"ltc7880", ltc7880},
- 	{"ltm2987", ltm2987},
-@@ -649,6 +675,8 @@ static int ltc2978_get_id(struct i2c_client *client)
+@@ -650,6 +676,8 @@ static int ltc2978_get_id(struct i2c_client *client)
  		return ltc3886;
  	else if (chip_id == LTC3887_ID)
  		return ltc3887;
@@ -89,8 +89,8 @@ index 6d2592731..057278736 100644
 +		return ltc3888;
  	else if (chip_id == LTC3889_ID)
  		return ltc3889;
- 	else if (chip_id == LTC7880_ID)
-@@ -850,6 +878,18 @@ static int ltc2978_probe(struct i2c_client *client)
+ 	else if (chip_id == LTC7132_ID)
+@@ -854,6 +882,18 @@ static int ltc2978_probe(struct i2c_client *client)
  		  | PMBUS_HAVE_POUT
  		  | PMBUS_HAVE_TEMP | PMBUS_HAVE_STATUS_TEMP;
  		break;
@@ -109,14 +109,14 @@ index 6d2592731..057278736 100644
  	default:
  		return -ENODEV;
  	}
-@@ -901,6 +941,7 @@ static const struct of_device_id ltc2978_of_match[] = {
+@@ -905,6 +945,7 @@ static int ltc2978_probe(struct i2c_client *client)
  	{ .compatible = "lltc,ltc3884" },
  	{ .compatible = "lltc,ltc3886" },
  	{ .compatible = "lltc,ltc3887" },
 +	{ .compatible = "lltc,ltc3888" },
  	{ .compatible = "lltc,ltc3889" },
+ 	{ .compatible = "lltc,ltc7132" },
  	{ .compatible = "lltc,ltc7880" },
- 	{ .compatible = "lltc,ltm2987" },
 -- 
-2.39.2
+1.8.3.1
 
