@@ -223,6 +223,11 @@ cisco-npu-disable-other-bars.patch
 aspeed-ast2700-support.patch
 ###-> aspeed-end
 
+# Patches for EVPN MH
+0001-vxlan-bridge-Add-NDA_FLAGS_EXT-support-with-NTF_EXT_.patch
+0001-net-bridge-vxlan-Protocol-field-in-bridge-fdb.patch
+0001-neighbor-Add-NTF_EXT_VALIDATED-flag-for-externally-v.patch
+
 #
 #
 ############################################################
