@@ -1,7 +1,7 @@
-From dd384929d02b47f97f1b347484469e2ad9ab3481 Mon Sep 17 00:00:00 2001
+From 46977f7bd42c255a643ab0ace10021f26de28ceb Mon Sep 17 00:00:00 2001
 From: Shantanu Shrivastava <shanshri@amd.com>
 Date: Tue, 24 Oct 2023 10:37:48 +0000
-Subject: [PATCH] drivers/soc/pensando: penfw driver
+Subject: [PATCH 22/27] drivers/soc/pensando: penfw driver
 
 penfw driver provides sysfs and ioctl interface for the userspace
 to communicate to the bl31 secure monitor
@@ -14,12 +14,12 @@ Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
  arch/arm64/boot/dts/pensando/elba-asic.dts |   8 +
  drivers/soc/pensando/Kconfig               |   6 +
  drivers/soc/pensando/Makefile              |   1 +
- drivers/soc/pensando/penfw.h               |  36 ++
- drivers/soc/pensando/penfw_drv.c           | 145 +++++++
- drivers/soc/pensando/penfw_smc.c           |  63 +++
- drivers/soc/pensando/penfw_sysfs.c         | 438 +++++++++++++++++++++
+ drivers/soc/pensando/penfw.h               |  36 +++
+ drivers/soc/pensando/penfw_drv.c           | 146 ++++++++++
+ drivers/soc/pensando/penfw_smc.c           |  63 +++++
+ drivers/soc/pensando/penfw_sysfs.c         | 438 +++++++++++++++++++++++++++++
  drivers/soc/pensando/penfw_sysfs.h         |  11 +
- 8 files changed, 708 insertions(+)
+ 8 files changed, 709 insertions(+)
  create mode 100644 drivers/soc/pensando/penfw.h
  create mode 100644 drivers/soc/pensando/penfw_drv.c
  create mode 100644 drivers/soc/pensando/penfw_smc.c
@@ -27,10 +27,10 @@ Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
  create mode 100644 drivers/soc/pensando/penfw_sysfs.h
 
 diff --git a/arch/arm64/boot/dts/pensando/elba-asic.dts b/arch/arm64/boot/dts/pensando/elba-asic.dts
-index dfa6deaa0..27a105764 100644
+index dfa6dea..27a1057 100644
 --- a/arch/arm64/boot/dts/pensando/elba-asic.dts
 +++ b/arch/arm64/boot/dts/pensando/elba-asic.dts
-@@ -24,3 +24,11 @@ chosen {
+@@ -24,3 +24,11 @@
  #include "elba-flash-parts.dtsi"
  #include "elba-asic-memory.dtsi"
  #include "elba-mdev.dtsi"
@@ -43,7 +43,7 @@ index dfa6deaa0..27a105764 100644
 +	};
 +};
 diff --git a/drivers/soc/pensando/Kconfig b/drivers/soc/pensando/Kconfig
-index fd290aac8..766924c57 100644
+index fd290aa..766924c 100644
 --- a/drivers/soc/pensando/Kconfig
 +++ b/drivers/soc/pensando/Kconfig
 @@ -49,6 +49,12 @@ config PENSANDO_SOC_BSM_ENABLE
@@ -60,7 +60,7 @@ index fd290aac8..766924c57 100644
  	tristate "Pensando sbus read/write driver"
  	depends on OF
 diff --git a/drivers/soc/pensando/Makefile b/drivers/soc/pensando/Makefile
-index 555438a4c..95689d347 100644
+index 555438a..95689d3 100644
 --- a/drivers/soc/pensando/Makefile
 +++ b/drivers/soc/pensando/Makefile
 @@ -12,4 +12,5 @@ obj-$(CONFIG_PENSANDO_SOC_PCIE) += kpcimgr.o kpcimgr_sysfs.o
@@ -71,7 +71,7 @@ index 555438a4c..95689d347 100644
  obj-$(CONFIG_PENSANDO_SOC_SBUS) += sbus.o
 diff --git a/drivers/soc/pensando/penfw.h b/drivers/soc/pensando/penfw.h
 new file mode 100644
-index 000000000..37ee4c0a8
+index 0000000..37ee4c0
 --- /dev/null
 +++ b/drivers/soc/pensando/penfw.h
 @@ -0,0 +1,36 @@
@@ -113,10 +113,10 @@ index 000000000..37ee4c0a8
 +#endif /* __PENFW_H__ */
 diff --git a/drivers/soc/pensando/penfw_drv.c b/drivers/soc/pensando/penfw_drv.c
 new file mode 100644
-index 000000000..e626ab950
+index 0000000..dbb6787
 --- /dev/null
 +++ b/drivers/soc/pensando/penfw_drv.c
-@@ -0,0 +1,145 @@
+@@ -0,0 +1,146 @@
 +/*
 + * Copyright (c) 2021, Pensando Systems Inc.
 + */
@@ -132,6 +132,7 @@ index 000000000..e626ab950
 +#include <linux/platform_device.h>
 +#include <linux/of.h>
 +#include <linux/arm-smccc.h>
++#include <linux/device/class.h>
 +
 +#include "penfw.h"
 +#include "penfw_sysfs.h"
@@ -204,7 +205,7 @@ index 000000000..e626ab950
 +			 majorNumber);
 +
 +	// register the device class
-+	penfw_class = class_create(THIS_MODULE, CLASS_NAME);
++	penfw_class = class_create(CLASS_NAME);
 +	if (IS_ERR(penfw_class)) {
 +		unregister_chrdev(majorNumber, DEVICE_NAME);
 +		pr_err("penfw: failed to register device class\n");
@@ -233,7 +234,7 @@ index 000000000..e626ab950
 +	return 0;
 +}
 +
-+static int penfw_remove(struct platform_device *pd)
++static void penfw_remove(struct platform_device *pd)
 +{
 +	mutex_destroy(&penfw_mutex);
 +	device_destroy(penfw_class, MKDEV(majorNumber, 0));
@@ -243,7 +244,7 @@ index 000000000..e626ab950
 +	penfw_sysfs_deinit();
 +	pr_info("penfw: Exiting!\n");
 +
-+	return 0;
++	return;
 +}
 +
 +static const struct of_device_id penfw_of_match[] = {
@@ -264,7 +265,7 @@ index 000000000..e626ab950
 +module_platform_driver(penfw_driver);
 diff --git a/drivers/soc/pensando/penfw_smc.c b/drivers/soc/pensando/penfw_smc.c
 new file mode 100644
-index 000000000..94f10eab9
+index 0000000..94f10ea
 --- /dev/null
 +++ b/drivers/soc/pensando/penfw_smc.c
 @@ -0,0 +1,63 @@
@@ -333,7 +334,7 @@ index 000000000..94f10eab9
 +}
 diff --git a/drivers/soc/pensando/penfw_sysfs.c b/drivers/soc/pensando/penfw_sysfs.c
 new file mode 100644
-index 000000000..1745c9047
+index 0000000..1745c90
 --- /dev/null
 +++ b/drivers/soc/pensando/penfw_sysfs.c
 @@ -0,0 +1,438 @@
@@ -777,7 +778,7 @@ index 000000000..1745c9047
 +}
 diff --git a/drivers/soc/pensando/penfw_sysfs.h b/drivers/soc/pensando/penfw_sysfs.h
 new file mode 100644
-index 000000000..46eb64425
+index 0000000..46eb644
 --- /dev/null
 +++ b/drivers/soc/pensando/penfw_sysfs.h
 @@ -0,0 +1,11 @@
@@ -793,5 +794,5 @@ index 000000000..46eb64425
 +
 +#endif /* __PENFW_SYSFS_H__ */
 -- 
-2.39.2
+1.8.3.1
 

@@ -1,7 +1,7 @@
-From 4c704ad5957deb9b656df0c21cd54b87964fe514 Mon Sep 17 00:00:00 2001
+From 5410fd4bcc6ca29a9c3b1ce843c67514a6a72e21 Mon Sep 17 00:00:00 2001
 From: Shantanu Shrivastava <shanshri@amd.com>
 Date: Tue, 24 Oct 2023 09:10:14 +0000
-Subject: [PATCH] Initial support for the Pensando Elba SoC
+Subject: [PATCH 06/27] Initial support for the Pensando Elba SoC
 
 This patch adds initial support for Elba that allows a kernel to boot,
 along with an initial device-tree that is compatible with common
@@ -10,17 +10,16 @@ Pensando PCI cards.
 Signed-off-by: David Clear <dclear@amd.com>
 Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
- arch/arm64/Kconfig.platforms                  |   5 +
- arch/arm64/boot/dts/Makefile                  |   1 +
- arch/arm64/boot/dts/pensando/Makefile         |   7 +
- .../dts/pensando/elba-16core-spin-table.dtsi  |  50 +++++
- arch/arm64/boot/dts/pensando/elba-16core.dtsi | 170 ++++++++++++++
- .../boot/dts/pensando/elba-asic-common.dtsi   |  80 +++++++
- arch/arm64/boot/dts/pensando/elba-asic.dts    |  23 ++
- arch/arm64/boot/dts/pensando/elba.dtsi        | 207 ++++++++++++++++++
- drivers/soc/Kconfig                           |   1 +
- drivers/soc/pensando/Kconfig                  |  13 ++
- 10 files changed, 557 insertions(+)
+ arch/arm64/boot/dts/Makefile                       |   1 +
+ arch/arm64/boot/dts/pensando/Makefile              |   7 +
+ .../boot/dts/pensando/elba-16core-spin-table.dtsi  |  50 +++++
+ arch/arm64/boot/dts/pensando/elba-16core.dtsi      | 170 +++++++++++++++++
+ arch/arm64/boot/dts/pensando/elba-asic-common.dtsi |  80 ++++++++
+ arch/arm64/boot/dts/pensando/elba-asic.dts         |  23 +++
+ arch/arm64/boot/dts/pensando/elba.dtsi             | 208 +++++++++++++++++++++
+ drivers/soc/Kconfig                                |   1 +
+ drivers/soc/pensando/Kconfig                       |  13 ++
+ 9 files changed, 553 insertions(+)
  create mode 100644 arch/arm64/boot/dts/pensando/Makefile
  create mode 100644 arch/arm64/boot/dts/pensando/elba-16core-spin-table.dtsi
  create mode 100644 arch/arm64/boot/dts/pensando/elba-16core.dtsi
@@ -29,27 +28,11 @@ Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
  create mode 100644 arch/arm64/boot/dts/pensando/elba.dtsi
  create mode 100644 drivers/soc/pensando/Kconfig
 
-diff --git a/arch/arm64/Kconfig.platforms b/arch/arm64/Kconfig.platforms
-index 76580b932..1425f8945 100644
---- a/arch/arm64/Kconfig.platforms
-+++ b/arch/arm64/Kconfig.platforms
-@@ -236,6 +236,11 @@ config ARCH_NPCM
- 	  General support for NPCM8xx BMC (Arbel).
- 	  Nuvoton NPCM8xx BMC based on the Cortex A35.
- 
-+config ARCH_PENSANDO
-+	bool "Pensando Platforms"
-+	help
-+	  This enables support for the ARMv8 based Pensando chipsets
-+
- config ARCH_QCOM
- 	bool "Qualcomm Platforms"
- 	select GPIOLIB
 diff --git a/arch/arm64/boot/dts/Makefile b/arch/arm64/boot/dts/Makefile
-index 7b107fa74..950bd0094 100644
+index 21cd3a8..0ea1438 100644
 --- a/arch/arm64/boot/dts/Makefile
 +++ b/arch/arm64/boot/dts/Makefile
-@@ -21,6 +21,7 @@ subdir-y += mediatek
+@@ -22,6 +22,7 @@ subdir-y += mediatek
  subdir-y += microchip
  subdir-y += nuvoton
  subdir-y += nvidia
@@ -59,7 +42,7 @@ index 7b107fa74..950bd0094 100644
  subdir-y += renesas
 diff --git a/arch/arm64/boot/dts/pensando/Makefile b/arch/arm64/boot/dts/pensando/Makefile
 new file mode 100644
-index 000000000..8971be416
+index 0000000..8971be4
 --- /dev/null
 +++ b/arch/arm64/boot/dts/pensando/Makefile
 @@ -0,0 +1,7 @@
@@ -72,7 +55,7 @@ index 000000000..8971be416
 +clean-files	:= *.dtb
 diff --git a/arch/arm64/boot/dts/pensando/elba-16core-spin-table.dtsi b/arch/arm64/boot/dts/pensando/elba-16core-spin-table.dtsi
 new file mode 100644
-index 000000000..ef783fc43
+index 0000000..ef783fc
 --- /dev/null
 +++ b/arch/arm64/boot/dts/pensando/elba-16core-spin-table.dtsi
 @@ -0,0 +1,50 @@
@@ -128,7 +111,7 @@ index 000000000..ef783fc43
 +};
 diff --git a/arch/arm64/boot/dts/pensando/elba-16core.dtsi b/arch/arm64/boot/dts/pensando/elba-16core.dtsi
 new file mode 100644
-index 000000000..bf5da7be7
+index 0000000..bf5da7b
 --- /dev/null
 +++ b/arch/arm64/boot/dts/pensando/elba-16core.dtsi
 @@ -0,0 +1,170 @@
@@ -304,7 +287,7 @@ index 000000000..bf5da7be7
 +};
 diff --git a/arch/arm64/boot/dts/pensando/elba-asic-common.dtsi b/arch/arm64/boot/dts/pensando/elba-asic-common.dtsi
 new file mode 100644
-index 000000000..81057f150
+index 0000000..81057f1
 --- /dev/null
 +++ b/arch/arm64/boot/dts/pensando/elba-asic-common.dtsi
 @@ -0,0 +1,80 @@
@@ -390,7 +373,7 @@ index 000000000..81057f150
 +};
 diff --git a/arch/arm64/boot/dts/pensando/elba-asic.dts b/arch/arm64/boot/dts/pensando/elba-asic.dts
 new file mode 100644
-index 000000000..382b89ef9
+index 0000000..382b89e
 --- /dev/null
 +++ b/arch/arm64/boot/dts/pensando/elba-asic.dts
 @@ -0,0 +1,23 @@
@@ -419,10 +402,10 @@ index 000000000..382b89ef9
 +#include "elba-asic-common.dtsi"
 diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
 new file mode 100644
-index 000000000..e4644dcb3
+index 0000000..b3fa5b1
 --- /dev/null
 +++ b/arch/arm64/boot/dts/pensando/elba.dtsi
-@@ -0,0 +1,207 @@
+@@ -0,0 +1,208 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/* Copyright (c) 2019-2021, Pensando Systems Inc. */
 +
@@ -525,7 +508,7 @@ index 000000000..e4644dcb3
 +		};
 +
 +		qspi: spi@2400 {
-+			compatible = "pensando,elba-qspi";
++			compatible = "amd,pensando-elba-qspi", "cdns,qspi-nor";
 +			#address-cells = <1>;
 +			#size-cells = <0>;
 +			reg = <0x0 0x2400 0x0 0x400>,
@@ -539,8 +522,9 @@ index 000000000..e4644dcb3
 +		};
 +
 +		spi0: spi@2800 {
-+			compatible = "pensando,elba-spi";
++			compatible = "amd,pensando-elba-spi";
 +			reg = <0x0 0x2800 0x0 0x100>;
++			amd,pensando-elba-syscon = <&mssoc>;
 +			pensando,spics = <&mssoc 0x2468 0>;
 +			clocks = <&ahb_clk>;
 +			interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
@@ -609,7 +593,7 @@ index 000000000..e4644dcb3
 +		};
 +
 +		emmc: mmc@30440000 {
-+			compatible = "pensando,elba-emmc", "cdns,sd4hc";
++			compatible = "amd,pensando-elba-sd4hc", "cdns,sd4hc";
 +			clocks = <&emmc_clk>;
 +			interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>;
 +			reg = <0x0 0x30440000 0x0 0x10000
@@ -625,26 +609,26 @@ index 000000000..e4644dcb3
 +		};
 +
 +		mssoc: mssoc@307c0000 {
-+			compatible = "pensando,mssoc", "syscon";
++			compatible = "amd,pensando-elba-syscon", "pensando,mssoc", "syscon";
 +			reg = <0x0 0x307c0000 0x0 0x3000>;
 +		};
 +	};
 +};
 diff --git a/drivers/soc/Kconfig b/drivers/soc/Kconfig
-index e461c0711..8821ce653 100644
+index 6a8daeb..a212e3f 100644
 --- a/drivers/soc/Kconfig
 +++ b/drivers/soc/Kconfig
-@@ -14,6 +14,7 @@ source "drivers/soc/imx/Kconfig"
- source "drivers/soc/ixp4xx/Kconfig"
- source "drivers/soc/litex/Kconfig"
+@@ -18,6 +18,7 @@ source "drivers/soc/loongson/Kconfig"
  source "drivers/soc/mediatek/Kconfig"
-+source "drivers/soc/pensando/Kconfig"
  source "drivers/soc/microchip/Kconfig"
+ source "drivers/soc/nuvoton/Kconfig"
++source "drivers/soc/pensando/Kconfig"
  source "drivers/soc/pxa/Kconfig"
  source "drivers/soc/qcom/Kconfig"
+ source "drivers/soc/renesas/Kconfig"
 diff --git a/drivers/soc/pensando/Kconfig b/drivers/soc/pensando/Kconfig
 new file mode 100644
-index 000000000..da71e35e9
+index 0000000..da71e35
 --- /dev/null
 +++ b/drivers/soc/pensando/Kconfig
 @@ -0,0 +1,13 @@
@@ -662,5 +646,5 @@ index 000000000..da71e35e9
 +
 +endif
 -- 
-2.39.2
+1.8.3.1
 

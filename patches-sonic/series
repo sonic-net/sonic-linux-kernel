@@ -163,37 +163,33 @@ cisco-npu-disable-other-bars.patch
 0022-arm64-dts-marvell-Add-DTS-for-cn9131-db-comexpress-trixie.patch
 
 # amd-pensando elba support
-# TODO(trixie): update for current version
-#0000-Add-support-for-the-TI-TPS53659.patch
-#0001-Adding-support-LTC3888.patch
-#0002-i2c-designware-Support-stuck-SDA-line-recovery.patch
-#0003-i2c-Add-Lattice-RD1173-I2C-controller-driver.patch
-#0004-arm64-traps-Call-platform-handler-for-do_serror.patch
-#0005-add-quirks-for-the-Pensando-controller.patch
-#0006-Pensando-Elba-support-in-the-Cadence-EMMC-host-contr.patch
-#0007-spi-dw-Support-Pensando-Elba-custom-chip-select.patch
-#0008-Initial-support-for-the-Pensando-Elba-SoC.patch
-#0009-drivers-reset-Add-emmc-hardware-reset.patch
-#0010-dts-pensnado-Elba-flash-partitions.patch
-#0011-drivers-edac-Add-Elba-EDAC-support.patch
-#0012-drivers-soc-pensando-dev-capmem-driver.patch
-#0013-Interrupt-domain-controllers-for-Elba-ASIC.patch
-#0014-drivers-uio-UIO-drivers-for-Elba.patch
-#0015-drivers-pensando-soc-Boot-State-Machine-integrtion.patch
-#0016-drivers-soc-pensando-crash-dump-driver.patch
-#0017-drivers-soc-pensando-Add-the-Reset-Cause-driver.patch
-#0018-soc-pensando-pcie-driver.patch
-#0019-drivers-soc-pensando-kpcimgr-driver.patch
-#0020-dts-pensando-add-mnet-and-mcrypt-devices.patch
-#0021-drivers-soc-pensando-sbus-driver.patch
-#0022-drivers-soc-pensando-boot_count-to-sysfs-for-kdump.patch
-#0023-arch-arm64-boot-dts-psci-support.patch
-#0024-drivers-soc-pensando-penfw-driver.patch
-#0025-dts-changes-for-mtfuji-and-lipari.patch
-#0026-Add-support-for-new-qspi-macronix-flash-mx66u1g45g.patch
-#0027-pensando-add-rtc-cpld.patch
-#0028-Create-miniaturised-diafgw-partition-for-128MB-flash.patch
-#0029-pcie-if-hotplug-enabled-do-immediate-reset-on-panic.patch
+0001-Add-support-for-the-TI-TPS53659.patch
+0002-Adding-support-LTC3888.patch
+0003-i2c-designware-Support-stuck-SDA-line-recovery.patch
+0004-i2c-Add-Lattice-RD1173-I2C-controller-driver.patch
+0005-arm64-traps-Call-platform-handler-for-do_serror.patch
+0006-Initial-support-for-the-Pensando-Elba-SoC.patch
+0007-drivers-reset-Add-emmc-hardware-reset.patch
+0008-dts-pensnado-Elba-flash-partitions.patch
+0009-drivers-edac-Add-Elba-EDAC-support.patch
+0010-drivers-soc-pensando-dev-capmem-driver.patch
+0011-Interrupt-domain-controllers-for-Elba-ASIC.patch
+0012-drivers-uio-UIO-drivers-for-Elba.patch
+0013-drivers-pensando-soc-Boot-State-Machine-integrtion.patch
+0014-drivers-soc-pensando-crash-dump-driver.patch
+0015-drivers-soc-pensando-Add-the-Reset-Cause-driver.patch
+0016-soc-pensando-pcie-driver.patch
+0017-drivers-soc-pensando-kpcimgr-driver.patch
+0018-dts-pensando-add-mnet-and-mcrypt-devices-with-reserv.patch
+0019-drivers-soc-pensando-sbus-driver.patch
+0020-drivers-soc-pensando-boot_count-to-sysfs-for-kdump-l.patch
+0021-arch-arm64-boot-dts-psci-support.patch
+0022-drivers-soc-pensando-penfw-driver.patch
+0023-rtc-elba-cpld-support.patch
+0024-dts-changes-for-mtfuji-and-lipari.patch
+0025-Add-support-for-new-qspi-macronix-flash-mx66u1g45g.patch
+0026-Create-miniaturised-diafgw-partition-for-128MB-flash.patch
+0027-pcie-if-hotplug-enabled-do-immediate-reset-on-panic.patch
 
 # amd sfh hid
 0001-amd_sfh_hid_client_init_log_no_error_for_EOPNOTSUPP.patch

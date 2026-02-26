@@ -1,7 +1,7 @@
-From e476a4ae5f2671ccb4488171888e4d76cc8d6a25 Mon Sep 17 00:00:00 2001
+From 3cd452343a6b660a56fbe0f1ab46bb668698e7fd Mon Sep 17 00:00:00 2001
 From: Shantanu Shrivastava <shanshri@amd.com>
 Date: Tue, 24 Oct 2023 10:04:04 +0000
-Subject: [PATCH] drivers/uio: UIO drivers for Elba
+Subject: [PATCH 12/27] drivers/uio: UIO drivers for Elba
 
 Support userspace interrupt drivers for Elba. PCIE events.
 
@@ -9,15 +9,15 @@ Signed-off-by: David Clear <dclear@amd.com>
 Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
 ---
  arch/arm64/boot/dts/pensando/elba.dtsi |  30 ++
- drivers/uio/Kconfig                    |  33 ++
+ drivers/uio/Kconfig                    |  34 ++
  drivers/uio/Makefile                   |   4 +
  drivers/uio/uio_pciemac.c              |  30 ++
- drivers/uio/uio_pengic.c               | 661 +++++++++++++++++++++++++
+ drivers/uio/uio_pengic.c               | 661 +++++++++++++++++++++++++++++++++
  drivers/uio/uio_pengic.h               |  18 +
- drivers/uio/uio_penmsi.c               | 570 +++++++++++++++++++++
+ drivers/uio/uio_penmsi.c               | 539 +++++++++++++++++++++++++++
  drivers/uio/uio_penmsi.h               |  17 +
  drivers/uio/uio_penmsi1.c              |  32 ++
- 9 files changed, 1395 insertions(+)
+ 9 files changed, 1365 insertions(+)
  create mode 100644 drivers/uio/uio_pciemac.c
  create mode 100644 drivers/uio/uio_pengic.c
  create mode 100644 drivers/uio/uio_pengic.h
@@ -26,10 +26,10 @@ Signed-off-by: Shantanu Shrivastava <shanshri@amd.com>
  create mode 100644 drivers/uio/uio_penmsi1.c
 
 diff --git a/arch/arm64/boot/dts/pensando/elba.dtsi b/arch/arm64/boot/dts/pensando/elba.dtsi
-index c0954fc2b..9182c93aa 100644
+index afc9c7c..d87128c 100644
 --- a/arch/arm64/boot/dts/pensando/elba.dtsi
 +++ b/arch/arm64/boot/dts/pensando/elba.dtsi
-@@ -49,6 +49,12 @@ pmu {
+@@ -49,6 +49,12 @@
  				IRQ_TYPE_LEVEL_LOW)>;
  	};
  
@@ -42,7 +42,7 @@ index c0954fc2b..9182c93aa 100644
  	capmem {
  		compatible = "pensando,capmem";
  	};
-@@ -166,6 +172,14 @@ uart0: serial@4800 {
+@@ -167,6 +173,14 @@
  			reg-io-width = <4>;
  		};
  
@@ -57,7 +57,7 @@ index c0954fc2b..9182c93aa 100644
  		gic: interrupt-controller@800000 {
  			compatible = "arm,gic-v3";
  			#interrupt-cells = <3>;
-@@ -203,6 +217,22 @@ pxc0_intr: interrupt-controller@20102200 {
+@@ -204,6 +218,22 @@
  			interrupt-names = "pxc0_intr";
  		};
  
@@ -81,13 +81,14 @@ index c0954fc2b..9182c93aa 100644
  			compatible = "pensando,elba-edac-mc";
  			reg = <0x0 0x30500000 0x0 0x100000>;
 diff --git a/drivers/uio/Kconfig b/drivers/uio/Kconfig
-index 2e16c5338..7d2d292b9 100644
+index b060dcd..c4d8be6 100644
 --- a/drivers/uio/Kconfig
 +++ b/drivers/uio/Kconfig
-@@ -125,6 +125,39 @@ config UIO_FSL_ELBC_GPCM_NETX5152
- 	  Information about this hardware can be found at:
- 	  http://www.hilscher.com/netx
+@@ -164,4 +164,38 @@ config UIO_DFL
+ 	    opae-sdk/tools/libopaeuio/
  
+ 	  If you compile this as a module, it will be called uio_dfl.
++
 +config UIO_PCIEMAC
 +	tristate "Include PCI MAC status driver"
 +	default "y"
@@ -121,15 +122,13 @@ index 2e16c5338..7d2d292b9 100644
 +	depends on ARCH_PENSANDO
 +	default n
 +
- config UIO_PRUSS
- 	tristate "Texas Instruments PRUSS driver"
- 	select GENERIC_ALLOCATOR
+ endif
 diff --git a/drivers/uio/Makefile b/drivers/uio/Makefile
-index f2f416a14..41d4267aa 100644
+index 1c5f3b5..1acc483 100644
 --- a/drivers/uio/Makefile
 +++ b/drivers/uio/Makefile
-@@ -10,5 +10,9 @@ obj-$(CONFIG_UIO_NETX)	+= uio_netx.o
- obj-$(CONFIG_UIO_PRUSS)         += uio_pruss.o
+@@ -9,5 +9,9 @@ obj-$(CONFIG_UIO_PCI_GENERIC)	+= uio_pci_generic.o
+ obj-$(CONFIG_UIO_NETX)	+= uio_netx.o
  obj-$(CONFIG_UIO_MF624)         += uio_mf624.o
  obj-$(CONFIG_UIO_FSL_ELBC_GPCM)	+= uio_fsl_elbc_gpcm.o
 +obj-$(CONFIG_UIO_PENGIC)	+= uio_pengic.o
@@ -140,7 +139,7 @@ index f2f416a14..41d4267aa 100644
  obj-$(CONFIG_UIO_DFL)	+= uio_dfl.o
 diff --git a/drivers/uio/uio_pciemac.c b/drivers/uio/uio_pciemac.c
 new file mode 100644
-index 000000000..b7d89c64a
+index 0000000..b7d89c6
 --- /dev/null
 +++ b/drivers/uio/uio_pciemac.c
 @@ -0,0 +1,30 @@
@@ -176,7 +175,7 @@ index 000000000..b7d89c64a
 +MODULE_AUTHOR("David VomLehn");
 diff --git a/drivers/uio/uio_pengic.c b/drivers/uio/uio_pengic.c
 new file mode 100644
-index 000000000..853b62536
+index 0000000..8c15bff
 --- /dev/null
 +++ b/drivers/uio/uio_pengic.c
 @@ -0,0 +1,661 @@
@@ -795,7 +794,7 @@ index 000000000..853b62536
 + *
 + * @pdev:	Pointer to the platform_device structure to remove
 + */
-+int pengic_remove(struct platform_device *pdev)
++void pengic_remove(struct platform_device *pdev)
 +{
 +	struct pengic_platdata *platdata;
 +	struct uio_info *uio_info;
@@ -817,7 +816,7 @@ index 000000000..853b62536
 +
 +	pm_runtime_disable(&pdev->dev);
 +
-+	return 0;
++	return;
 +}
 +EXPORT_SYMBOL(pengic_remove);
 +
@@ -843,7 +842,7 @@ index 000000000..853b62536
 +MODULE_AUTHOR("David VomLehn");
 diff --git a/drivers/uio/uio_pengic.h b/drivers/uio/uio_pengic.h
 new file mode 100644
-index 000000000..6d1450b3b
+index 0000000..eabcd17
 --- /dev/null
 +++ b/drivers/uio/uio_pengic.h
 @@ -0,0 +1,18 @@
@@ -862,15 +861,15 @@ index 000000000..6d1450b3b
 +
 +int pengic_probe(struct platform_device *pdev);
 +int pengic_probe_enable(struct platform_device *pdev);
-+int pengic_remove(struct platform_device *pdev);
++void pengic_remove(struct platform_device *pdev);
 +
 +#endif /* _UIO_PENGIC_H_ */
 diff --git a/drivers/uio/uio_penmsi.c b/drivers/uio/uio_penmsi.c
 new file mode 100644
-index 000000000..9bab4236d
+index 0000000..28ab905
 --- /dev/null
 +++ b/drivers/uio/uio_penmsi.c
-@@ -0,0 +1,570 @@
+@@ -0,0 +1,539 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Copyright (c) 2020-2021, Pensando Systems Inc.
@@ -893,7 +892,6 @@ index 000000000..9bab4236d
 +
 +#include <linux/platform_data/uio_dmem_genirq.h>
 +#include <linux/platform_device.h>
-+
 +#include <linux/atomic.h>
 +#include <linux/dma-mapping.h>
 +#include <linux/io.h>
@@ -963,7 +961,7 @@ index 000000000..9bab4236d
 + * @init_platdata:	Pointer to the platdata currently being initialized.
 + *			This is only valid while @penmsi_sem is held
 + */
-+static DEFINE_SEMAPHORE(penmsi_sem);
++static DEFINE_SEMAPHORE(penmsi_sem, 1);
 +static DECLARE_WAIT_QUEUE_HEAD(penmsi_wq_head);
 +static DEFINE_SPINLOCK(penmsi_lock);
 +static struct platdata *init_platdata;
@@ -1203,39 +1201,16 @@ index 000000000..9bab4236d
 +}
 +
 +/*
-+ * MSI callback function.
-+ * stores the information it was passed, and queues it on the inuse list.
-+ *
-+ */
-+static void penmsi_callback(struct msi_desc *desc, struct msi_msg *msg)
-+{
-+	struct devdata *devdata;
-+	struct platdata *platdata;
-+	unsigned long flags;
-+
-+	platdata = init_platdata;
-+	devdata = &platdata->devdatas[desc->msi_index];
-+	devdata->msi_msg = *msg;
-+
-+	spin_lock_irqsave(&penmsi_lock, flags);
-+	devdata->have_msi_msg = true;
-+
-+	if (devdata->have_msi_desc)
-+		decrement_pending(platdata);
-+	spin_unlock_irqrestore(&penmsi_lock, flags);
-+}
-+
-+/*
 + * Remove the device completely
 + * @pdev:	Pointer to the struct platform_device we're using
 + */
-+int penmsi_remove(struct platform_device *pdev)
++void penmsi_remove(struct platform_device *pdev)
 +{
 +	struct platdata *platdata;
 +	unsigned int i;
 +
 +	platdata = platform_get_drvdata(pdev);
-+	platform_msi_domain_free_irqs(&pdev->dev);
++	msi_domain_free_irqs_all(&pdev->dev, 0);
 +	del_attrs(platdata);
 +
 +	// FIXME: this needs to use n_valid
@@ -1258,7 +1233,7 @@ index 000000000..9bab4236d
 +
 +	kfree(platdata);
 +
-+	return 0;
++	return;
 +}
 +EXPORT_SYMBOL(penmsi_remove);
 +
@@ -1342,6 +1317,7 @@ index 000000000..9bab4236d
 +/*
 + * penmsi_probe - allocate and initialize state for device
 + */
++int penmsi_probe(struct platform_device *pdev);
 +int penmsi_probe(struct platform_device *pdev)
 +{
 +	struct msi_desc *desc;
@@ -1374,23 +1350,15 @@ index 000000000..9bab4236d
 +	init_platdata = platdata;
 +
 +	/* Kick off work that should result in calling the callback */
-+	rc = platform_msi_domain_alloc_irqs(&pdev->dev, num_interrupts,
-+		penmsi_callback);
++	rc = msi_domain_alloc_irqs(&pdev->dev, 0, num_interrupts);
 +	if (rc != 0) {
-+		dev_err(&pdev->dev,
-+			"platform_msi_domain_alloc_irqs failed: %d\n", rc);
++		dev_err(&pdev->dev, "msi_domain_alloc_irqs failed: %d\n", rc);
 +		goto up_sem;
 +	}
 +
 +	msi_for_each_desc(desc, &pdev->dev, MSI_DESC_ASSOCIATED) {
-+		unsigned long flags;
-+
 +		devdata = &platdata->devdatas[desc->msi_index];
-+		spin_lock_irqsave(&penmsi_lock, flags);
 +		devdata->have_msi_desc = true;
-+		if (devdata->have_msi_msg)
-+			decrement_pending(platdata);
-+		spin_unlock_irqrestore(&penmsi_lock, flags);
 +		rc = penmsi_probe_one(devdata, pdev, desc);
 +		if (rc != 0)
 +			goto free_msis;
@@ -1411,7 +1379,7 @@ index 000000000..9bab4236d
 +	return 0;
 +
 +free_msis:
-+	platform_msi_domain_free_irqs(&pdev->dev);
++	msi_domain_free_irqs_all(&pdev->dev, 0);
 +
 +up_sem:
 +	up(&penmsi_sem);
@@ -1443,7 +1411,7 @@ index 000000000..9bab4236d
 +MODULE_AUTHOR("David VomLehn");
 diff --git a/drivers/uio/uio_penmsi.h b/drivers/uio/uio_penmsi.h
 new file mode 100644
-index 000000000..6cbc4fb74
+index 0000000..b8ce7b5
 --- /dev/null
 +++ b/drivers/uio/uio_penmsi.h
 @@ -0,0 +1,17 @@
@@ -1461,12 +1429,12 @@ index 000000000..6cbc4fb74
 +extern const struct dev_pm_ops penmsi_pm_ops;
 +
 +int penmsi_probe(struct platform_device *pdev);
-+int penmsi_remove(struct platform_device *pdev);
++void penmsi_remove(struct platform_device *pdev);
 +
 +#endif /* _UIO_PENMSI_H_ */
 diff --git a/drivers/uio/uio_penmsi1.c b/drivers/uio/uio_penmsi1.c
 new file mode 100644
-index 000000000..14aec074c
+index 0000000..14aec07
 --- /dev/null
 +++ b/drivers/uio/uio_penmsi1.c
 @@ -0,0 +1,32 @@
@@ -1503,5 +1471,5 @@ index 000000000..14aec074c
 +MODULE_DESCRIPTION("Support userspace I/O for Pensando MSI interrupts");
 +MODULE_AUTHOR("David VomLehn");
 -- 
-2.25.1
+1.8.3.1
 
