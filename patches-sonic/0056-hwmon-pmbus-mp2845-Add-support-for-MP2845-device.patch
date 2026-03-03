@@ -1,0 +1,554 @@
+From 5ba8fda8e39bd295fe065d2c84e60b59e94c2760 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Wed, 3 Dec 2025 17:07:17 +0200
+Subject: [PATCH 1/2] hwmon: (pmbus/mp2845): Add support for MP2845 device
+
+Add support for MPS device MP2845 - Digital Multi-Phase Power
+Controller.
+
+The MP2845 is a Digital, Multi-Phase PWM Controller with PMBus and
+PWM-VID manufactured by Monolithic Power Systems (MPS) designed for
+efficient power management in high-performance computing applications.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/hwmon/pmbus/Kconfig  |   9 +
+ drivers/hwmon/pmbus/Makefile |   1 +
+ drivers/hwmon/pmbus/mp2845.c | 493 +++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 503 insertions(+)
+ create mode 100644 drivers/hwmon/pmbus/mp2845.c
+
+diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
+index 369e409..946613e 100644
+--- a/drivers/hwmon/pmbus/Kconfig
++++ b/drivers/hwmon/pmbus/Kconfig
+@@ -319,6 +319,15 @@ config SENSORS_MAX8688
+ 	  This driver can also be built as a module. If so, the module will
+ 	  be called max8688.
+ 
++config SENSORS_MP2845
++	tristate "MPS MP2845"
++	help
++	  If you say yes here you get hardware monitoring support for MPS
++	  MP2845 Digital Multi-Phase Power Controller.
++
++	  This driver can also be built as a module. If so, the module will
++	  be called mp2845.
++
+ config SENSORS_MP2855
+ 	tristate "MPS MP2855"
+ 	help
+diff --git a/drivers/hwmon/pmbus/Makefile b/drivers/hwmon/pmbus/Makefile
+index a95fc50..c716461 100644
+--- a/drivers/hwmon/pmbus/Makefile
++++ b/drivers/hwmon/pmbus/Makefile
+@@ -34,6 +34,7 @@ obj-$(CONFIG_SENSORS_MAX20751)	+= max20751.o
+ obj-$(CONFIG_SENSORS_MAX31785)	+= max31785.o
+ obj-$(CONFIG_SENSORS_MAX34440)	+= max34440.o
+ obj-$(CONFIG_SENSORS_MAX8688)	+= max8688.o
++obj-$(CONFIG_SENSORS_MP2845)	+= mp2845.o
+ obj-$(CONFIG_SENSORS_MP2855)	+= mp2855.o
+ obj-$(CONFIG_SENSORS_MP2856)	+= mp2856.o
+ obj-$(CONFIG_SENSORS_MP2869)	+= mp2869.o
+diff --git a/drivers/hwmon/pmbus/mp2845.c b/drivers/hwmon/pmbus/mp2845.c
+new file mode 100644
+index 00000000..96d3dc5
+--- /dev/null
++++ b/drivers/hwmon/pmbus/mp2845.c
+@@ -0,0 +1,493 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * Hardware monitoring driver for MPS Digital Controller(MP2845)
++ */
++#include <linux/err.h>
++#include <linux/i2c.h>
++#include <linux/init.h>
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/delay.h>
++#include <linux/bitfield.h>
++#include <linux/hwmon.h>
++#include <linux/hwmon-sysfs.h>
++
++#define MP2845_IOUT_SCALE_MASK1	GENMASK(5, 3)
++#define MP2845_IOUT_SCALE_MASK2	GENMASK(13, 11)
++
++#define MFR_VIN_OV_UV_SET	0x71
++#define MFR_OVUV_OCWARN_THRES	0x75
++#define MFR_TOTAL_OCP_SET	0x76
++#define MFR_PROTECT_STATUS1	0x80
++#define MFR_PROTECT_STATUS2 0x81
++
++#define MP2845_VIN_LIMIT_UINT	125
++#define MP2845_READ_VIN_UINT	3125
++#define MP2845_READ_VIN_DIV	100
++#define MP2845_READ_IOUT_UINT	3125
++#define MP2845_READ_IOUT_DIV	100
++#define MP2845_READ_VOUT_UINT	5
++#define MP2845_TEMP_UINT	1000
++
++#define MFR_READ_VIN	0xA6
++#define MFR_READ_VOUT	0xA7
++#define MFR_READ_IOUT	0xA8
++#define MFR_READ_TEMP	0xA9
++#define MFR_MFG_ID_SCALE_VI1	0x77
++#define MFR_MFG_ID_SCALE_VI2	0x78
++
++struct mp2845_data {
++	struct i2c_client *client;
++	int iout_gain[4];
++	/* lock for preventing concurrency issue */
++	struct mutex lock;
++};
++
++static umode_t mp2845_is_visible(const void *data, enum hwmon_sensor_types type,
++				 u32 attr, int channel)
++{
++	switch (type) {
++	case hwmon_temp:
++	case hwmon_in:
++	case hwmon_curr:
++		return 0444;
++	default:
++		break;
++	}
++
++	return 0;
++}
++
++static int mp2845_read_string(struct device *dev, enum hwmon_sensor_types type,
++			      u32 attr, int channel, const char **str)
++{
++	struct mp2845_data *data;
++	int ret = 0;
++
++	data = dev_get_drvdata(dev);
++
++	mutex_lock(&data->lock);
++
++	switch (type) {
++	case hwmon_in:
++		if (channel == 0)
++			*str = "vin";
++		else if (channel == 1)
++			*str = "vout1";
++		else if (channel == 2)
++			*str = "vout2";
++		else if (channel == 3)
++			*str = "vout3";
++		else
++			*str = "vout4";
++		break;
++	case hwmon_curr:
++		if (channel == 0)
++			*str = "iout1";
++		else if (channel == 1)
++			*str = "iout2";
++		else if (channel == 2)
++			*str = "iout3";
++		else
++			*str = "iout4";
++		break;
++	default:
++		ret = -EINVAL;
++		break;
++	}
++
++	mutex_unlock(&data->lock);
++
++	return ret;
++}
++
++static int mp2845_read(struct device *dev, enum hwmon_sensor_types type,
++		       u32 attr, int channel, long *val)
++{
++	int ret;
++	struct mp2845_data *data;
++
++	data = dev_get_drvdata(dev);
++	if (!data)
++		return -ENOMEM;
++
++	mutex_lock(&data->lock);
++
++	switch (type) {
++	case hwmon_in:
++		if (channel == 0) {
++			if (attr == hwmon_in_input) {
++				ret = i2c_smbus_write_byte_data(data->client, 0, 0);
++				if (ret < 0)
++					break;
++
++				ret = i2c_smbus_read_word_data(data->client, MFR_READ_VIN);
++				if (ret < 0)
++					break;
++
++				*val = DIV_ROUND_CLOSEST((ret & GENMASK(9, 0)) *
++							 MP2845_READ_VIN_UINT,
++							 MP2845_READ_VIN_DIV);
++			} else if (attr == hwmon_in_crit) {
++				ret = i2c_smbus_write_byte_data(data->client, 0, 0);
++				if (ret < 0)
++					break;
++
++				ret = i2c_smbus_read_word_data(data->client, MFR_VIN_OV_UV_SET);
++				if (ret < 0)
++					break;
++
++				*val = FIELD_GET(GENMASK(15, 8), ret) * MP2845_VIN_LIMIT_UINT;
++			} else if (attr == hwmon_in_min) {
++				ret = i2c_smbus_write_byte_data(data->client, 0, 0);
++				if (ret < 0)
++					break;
++
++				ret = i2c_smbus_read_word_data(data->client, MFR_VIN_OV_UV_SET);
++				if (ret < 0)
++					break;
++
++				*val = FIELD_GET(GENMASK(7, 0), ret) * MP2845_VIN_LIMIT_UINT;
++			} else if (attr == hwmon_in_crit_alarm) {
++				ret = i2c_smbus_write_byte_data(data->client, 0, 0);
++				if (ret < 0)
++					break;
++
++				ret = i2c_smbus_read_word_data(data->client, MFR_PROTECT_STATUS2);
++				if (ret < 0)
++					break;
++
++				*val = FIELD_GET(GENMASK(5, 5), ret);
++			} else {
++				ret = i2c_smbus_write_byte_data(data->client, 0, 0);
++				if (ret < 0)
++					break;
++
++				ret = i2c_smbus_read_word_data(data->client, MFR_PROTECT_STATUS2);
++				if (ret < 0)
++					break;
++
++				*val = FIELD_GET(GENMASK(4, 4), ret);
++			}
++		} else {
++			if (attr == hwmon_in_input) {
++				ret = i2c_smbus_write_byte_data(data->client, 0, channel - 1);
++				if (ret < 0)
++					break;
++
++				ret = i2c_smbus_read_word_data(data->client, MFR_READ_VOUT);
++				if (ret < 0)
++					break;
++
++				*val = (ret & GENMASK(9, 0)) * MP2845_READ_VOUT_UINT;
++			} else if (attr == hwmon_in_crit_alarm) {
++				ret = i2c_smbus_write_byte_data(data->client, 0, 0);
++				if (ret < 0)
++					break;
++
++				ret = i2c_smbus_read_word_data(data->client, MFR_PROTECT_STATUS1);
++				if (ret < 0)
++					break;
++
++				if (channel == 1)
++					*val = FIELD_GET(GENMASK(10, 10), ret);
++				else if (channel == 2)
++					*val = FIELD_GET(GENMASK(7, 7), ret);
++				else if (channel == 3)
++					*val = FIELD_GET(GENMASK(4, 4), ret);
++				else
++					*val = FIELD_GET(GENMASK(1, 1), ret);
++			} else {
++				ret = i2c_smbus_write_byte_data(data->client, 0, 0);
++				if (ret < 0)
++					break;
++
++				ret = i2c_smbus_read_word_data(data->client, MFR_PROTECT_STATUS1);
++				if (ret < 0)
++					break;
++
++				if (channel == 1)
++					*val = FIELD_GET(GENMASK(11, 11), ret);
++				else if (channel == 2)
++					*val = FIELD_GET(GENMASK(8, 8), ret);
++				else if (channel == 3)
++					*val = FIELD_GET(GENMASK(5, 5), ret);
++				else
++					*val = FIELD_GET(GENMASK(2, 2), ret);
++			}
++		}
++		break;
++	case hwmon_temp:
++		if (attr == hwmon_temp_input) {
++			ret = i2c_smbus_write_byte_data(data->client, 0, channel);
++			if (ret < 0)
++				break;
++
++			ret = i2c_smbus_read_word_data(data->client, MFR_READ_TEMP);
++			if (ret < 0)
++				break;
++
++			*val = ((ret & GENMASK(7, 0)) - 40) * MP2845_TEMP_UINT;
++		} else {
++			ret = i2c_smbus_write_byte_data(data->client, 0, 0);
++			if (ret < 0)
++				break;
++
++			ret = i2c_smbus_read_word_data(data->client, MFR_PROTECT_STATUS1);
++				if (ret < 0)
++					break;
++
++			if (channel == 0) {
++				*val = FIELD_GET(GENMASK(12, 12), ret);
++			} else if (channel == 1) {
++				*val = FIELD_GET(GENMASK(14, 14), ret);
++			} else if (channel == 2) {
++				ret = i2c_smbus_read_word_data(data->client, MFR_PROTECT_STATUS2);
++				if (ret < 0)
++					break;
++
++				*val = FIELD_GET(GENMASK(0, 0), ret);
++			} else {
++				ret = i2c_smbus_read_word_data(data->client, MFR_PROTECT_STATUS2);
++				if (ret < 0)
++					break;
++
++				*val = FIELD_GET(GENMASK(2, 2), ret);
++			}
++		}
++		break;
++	case hwmon_curr:
++		if (attr == hwmon_curr_input) {
++			ret = i2c_smbus_write_byte_data(data->client, 0, channel);
++			if (ret < 0)
++				break;
++
++			ret = i2c_smbus_read_word_data(data->client, MFR_READ_IOUT);
++			if (ret < 0)
++				break;
++
++			*val = DIV_ROUND_CLOSEST((ret & GENMASK(9, 0)) * data->iout_gain[channel] *
++						 MP2845_READ_IOUT_UINT, MP2845_READ_IOUT_DIV);
++		} else if (attr == hwmon_curr_max) {
++			ret = i2c_smbus_write_byte_data(data->client, 0, channel);
++			if (ret < 0)
++				break;
++
++			ret = i2c_smbus_read_word_data(data->client, MFR_OVUV_OCWARN_THRES);
++			if (ret < 0)
++				break;
++
++			*val = DIV_ROUND_CLOSEST(FIELD_GET(GENMASK(15, 8), ret) *
++						 data->iout_gain[channel] * MP2845_READ_IOUT_UINT *
++						 4 * 2, MP2845_READ_IOUT_DIV);
++		} else if (attr == hwmon_curr_crit) {
++			ret = i2c_smbus_write_byte_data(data->client, 0, channel);
++			if (ret < 0)
++				break;
++
++			ret = i2c_smbus_read_word_data(data->client, MFR_TOTAL_OCP_SET);
++			if (ret < 0)
++				break;
++
++			*val = DIV_ROUND_CLOSEST(FIELD_GET(GENMASK(15, 8), ret) *
++						 data->iout_gain[channel] * MP2845_READ_IOUT_UINT *
++						 4 * 2, MP2845_READ_IOUT_DIV);
++		} else {
++			ret = i2c_smbus_write_byte_data(data->client, 0, 0);
++			if (ret < 0)
++				break;
++
++			ret = i2c_smbus_read_word_data(data->client, MFR_PROTECT_STATUS1);
++			if (ret < 0)
++				break;
++
++			if (channel == 0)
++				*val = FIELD_GET(GENMASK(9, 9), ret);
++			else if (channel == 2)
++				*val = FIELD_GET(GENMASK(6, 6), ret);
++			else if (channel == 3)
++				*val = FIELD_GET(GENMASK(3, 3), ret);
++			else
++				*val = FIELD_GET(GENMASK(0, 0), ret);
++		}
++		break;
++	default:
++		ret = -EINVAL;
++		break;
++	}
++
++	mutex_unlock(&data->lock);
++
++	return ret;
++}
++
++static int
++mp2845_identify_iout_scale(struct mp2845_data *data, int page)
++{
++	int gain;
++	int ret;
++
++	ret = i2c_smbus_write_byte_data(data->client, 0x00, page);
++	if (ret < 0)
++		return ret;
++
++	ret = i2c_smbus_read_word_data(data->client, page == 0 ? MFR_MFG_ID_SCALE_VI2 :
++				       MFR_MFG_ID_SCALE_VI1);
++	if (ret < 0)
++		return ret;
++
++	gain = page == 0 ? FIELD_GET(MP2845_IOUT_SCALE_MASK1, ret) :
++	       FIELD_GET(MP2845_IOUT_SCALE_MASK2, ret);
++	switch (gain) {
++	case 1:
++		data->iout_gain[page] = 1;
++		break;
++	case 2:
++		data->iout_gain[page] = 2;
++		break;
++	case 3:
++		data->iout_gain[page] = 4;
++		break;
++	case 4:
++		data->iout_gain[page] = 8;
++		break;
++	case 5:
++		data->iout_gain[page] = 16;
++		break;
++	case 6:
++		data->iout_gain[page] = 32;
++		break;
++	case 7:
++		data->iout_gain[page] = 64;
++		break;
++	default:
++		data->iout_gain[page] = 1;
++		break;
++	}
++
++	return 0;
++}
++
++static const struct hwmon_channel_info *mp2845_info[] = {
++	HWMON_CHANNEL_INFO(in,
++			   HWMON_I_INPUT | HWMON_I_MIN | HWMON_I_CRIT | HWMON_I_CRIT_ALARM |
++			   HWMON_I_LCRIT_ALARM | HWMON_I_LABEL,
++			   HWMON_I_INPUT | HWMON_I_CRIT_ALARM | HWMON_I_LCRIT_ALARM |
++			   HWMON_I_LABEL,
++			   HWMON_I_INPUT | HWMON_I_CRIT_ALARM | HWMON_I_LCRIT_ALARM |
++			   HWMON_I_LABEL,
++			   HWMON_I_INPUT | HWMON_I_CRIT_ALARM | HWMON_I_LCRIT_ALARM |
++			   HWMON_I_LABEL,
++			   HWMON_I_INPUT | HWMON_I_CRIT_ALARM | HWMON_I_LCRIT_ALARM |
++			   HWMON_I_LABEL),
++	HWMON_CHANNEL_INFO(temp,
++			   HWMON_T_INPUT | HWMON_T_CRIT_ALARM,
++			   HWMON_T_INPUT | HWMON_T_CRIT_ALARM,
++			   HWMON_T_INPUT | HWMON_T_CRIT_ALARM,
++			   HWMON_T_INPUT | HWMON_T_CRIT_ALARM),
++	HWMON_CHANNEL_INFO(curr,
++			   HWMON_C_INPUT | HWMON_C_CRIT | HWMON_C_CRIT_ALARM | HWMON_C_MAX |
++			   HWMON_C_LABEL,
++			   HWMON_C_INPUT | HWMON_C_CRIT | HWMON_C_CRIT_ALARM | HWMON_C_MAX |
++			   HWMON_C_LABEL,
++			   HWMON_C_INPUT | HWMON_C_CRIT | HWMON_C_CRIT_ALARM | HWMON_C_MAX |
++			   HWMON_C_LABEL,
++			   HWMON_C_INPUT | HWMON_C_CRIT | HWMON_C_CRIT_ALARM | HWMON_C_MAX |
++			   HWMON_C_LABEL),
++	NULL
++};
++
++static const struct hwmon_ops mp2845_hwmon_ops = {
++	.is_visible = mp2845_is_visible,
++	.read = mp2845_read,
++	.read_string = mp2845_read_string,
++};
++
++static const struct hwmon_chip_info mp2845_chip_info = {
++	.ops = &mp2845_hwmon_ops,
++	.info = mp2845_info,
++};
++
++static int mp2845_probe(struct i2c_client *client)
++{
++	struct device *dev = &client->dev;
++	struct device *hwmon_dev;
++	struct mp2845_data *data;
++	int ret;
++
++	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA |
++				     I2C_FUNC_SMBUS_WORD_DATA)) {
++		dev_err(dev, "check failed, smbus byte and/or word data not supported!\n");
++		return -ENODEV;
++	}
++
++	data = devm_kzalloc(dev, sizeof(struct mp2845_data), GFP_KERNEL);
++	if (!data)
++		return -ENOMEM;
++
++	mutex_init(&data->lock);
++	data->client = client;
++
++	ret = mp2845_identify_iout_scale(data, 0);
++	if (ret < 0) {
++		dev_err(dev, "unable to identify rail1 iout scale, errno = %d\n", ret);
++		return ret;
++	}
++
++	ret = mp2845_identify_iout_scale(data, 1);
++	if (ret < 0) {
++		dev_err(dev, "unable to identify rail2 iout scale, errno = %d\n", ret);
++		return ret;
++	}
++
++	ret = mp2845_identify_iout_scale(data, 2);
++	if (ret < 0) {
++		dev_err(dev, "unable to identify rail3 iout scale, errno = %d\n", ret);
++		return ret;
++	}
++
++	ret = mp2845_identify_iout_scale(data, 3);
++	if (ret < 0) {
++		dev_err(dev, "unable to identify rail4 iout scale, errno = %d\n", ret);
++		return ret;
++	}
++
++	hwmon_dev = devm_hwmon_device_register_with_info(dev, client->name,
++							 data, &mp2845_chip_info,
++							 NULL);
++	if (IS_ERR(hwmon_dev)) {
++		dev_err(dev, "unable to register mp2845 hwmon device\n");
++		return PTR_ERR(hwmon_dev);
++	}
++
++	dev_info(dev, "%s: sensor '%s'\n", dev_name(hwmon_dev), client->name);
++
++	return 0;
++}
++
++static const struct i2c_device_id mp2845_ids[] = {
++	{"mp2845", 0},
++	{}
++};
++MODULE_DEVICE_TABLE(i2c, mp2845_ids);
++
++static const struct of_device_id __maybe_unused mp2845_of_match[] = {
++	{.compatible = "mps,mp2845"},
++	{}
++};
++MODULE_DEVICE_TABLE(of, mp2845_of_match);
++
++static struct i2c_driver mp2845_driver = {
++	.class		= I2C_CLASS_HWMON,
++	.driver = {
++		.name	= "mp2845",
++		.of_match_table = mp2845_of_match,
++	},
++	.probe		= mp2845_probe,
++	.id_table	= mp2845_ids,
++};
++module_i2c_driver(mp2845_driver);
++
++MODULE_AUTHOR("Noah Wang <Noah.Wang@monolithicpower.com>");
++MODULE_DESCRIPTION("MP2845 driver");
++MODULE_LICENSE("GPL");
+-- 
+2.8.4
+

@@ -1,0 +1,252 @@
+From e5d678169c052940009201338af7832fdc672ca2 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Wed, 3 Dec 2025 19:18:38 +0200
+Subject: [PATCH 2/2] hwmon: (pmbus/mp5926): Add support for device MP5926
+
+Add support for MPS device MP5926.
+
+The MP5926 is a high voltage hot-swap controller capable of operating
+with supplies 8V to 80V. The MP5926 provides a controlled soft start
+during hot insertion to ensure a controlled output voltage ramp occurs.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/hwmon/pmbus/Kconfig  |   9 ++
+ drivers/hwmon/pmbus/Makefile |   1 +
+ drivers/hwmon/pmbus/mp5926.c | 192 +++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 202 insertions(+)
+ create mode 100644 drivers/hwmon/pmbus/mp5926.c
+
+diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
+index 946613e..08c9e7b 100644
+--- a/drivers/hwmon/pmbus/Kconfig
++++ b/drivers/hwmon/pmbus/Kconfig
+@@ -426,6 +426,15 @@ config SENSORS_MP5920
+ 	  This driver can also be built as a module. If so, the module will
+ 	  be called mp5920.
+ 
++config SENSORS_MP5926
++	tristate "MPS MP5926"
++	help
++	  If you say yes here you get hardware monitoring support for MPS
++	  MP5926 Controller.
++
++	  This driver can also be built as a module. If so, the module will
++	  be called mp5926.
++
+ config SENSORS_MP5990
+ 	tristate "MPS MP5990"
+ 	help
+diff --git a/drivers/hwmon/pmbus/Makefile b/drivers/hwmon/pmbus/Makefile
+index c716461..1a641d9 100644
+--- a/drivers/hwmon/pmbus/Makefile
++++ b/drivers/hwmon/pmbus/Makefile
+@@ -45,6 +45,7 @@ obj-$(CONFIG_SENSORS_MP2975)	+= mp2975.o
+ obj-$(CONFIG_SENSORS_MP2993)	+= mp2993.o
+ obj-$(CONFIG_SENSORS_MP5023)	+= mp5023.o
+ obj-$(CONFIG_SENSORS_MP5920)	+= mp5920.o
++obj-$(CONFIG_SENSORS_MP5926)	+= mp5926.o
+ obj-$(CONFIG_SENSORS_MP5990)	+= mp5990.o
+ obj-$(CONFIG_SENSORS_MP9941)	+= mp9941.o
+ obj-$(CONFIG_SENSORS_MPQ7932)	+= mpq7932.o
+diff --git a/drivers/hwmon/pmbus/mp5926.c b/drivers/hwmon/pmbus/mp5926.c
+new file mode 100644
+index 00000000..626d945
+--- /dev/null
++++ b/drivers/hwmon/pmbus/mp5926.c
+@@ -0,0 +1,192 @@
++// SPDX-License-Identifier: GPL-2.0+
++//
++// mp5926.c  - pmbus driver for mps mp5926
++//
++// Copyright 2025 Monolithic Power Systems, Inc
++//
++// Author: Yuxi Wang <Yuxi.Wang@monolithicpower.com>
++
++#include <linux/bitfield.h>
++#include <linux/bits.h>
++#include <linux/i2c.h>
++#include <linux/module.h>
++#include <linux/of_device.h>
++#include <linux/pmbus.h>
++#include "pmbus.h"
++
++/*Common Register*/
++#define PAGE		0x01
++#define EFUSE_CFG	0xCF
++#define I_SCALE_SEL	0xC6
++#define MP5926_FUNC	(PMBUS_HAVE_VIN | PMBUS_HAVE_VOUT | PMBUS_HAVE_IIN | PMBUS_HAVE_PIN | \
++			 PMBUS_HAVE_TEMP | PMBUS_HAVE_STATUS_INPUT | PMBUS_HAVE_STATUS_TEMP | \
++			 PMBUS_HAVE_STATUS_VOUT)
++
++static int mp5926_read_word_data(struct i2c_client *client, int page, int phase, int reg)
++{
++	int ret;
++	s16 exponent;
++	s32 mantissa;
++	s64 val;
++
++	switch (reg) {
++	case PMBUS_READ_VIN...PMBUS_READ_VCAP:
++	case PMBUS_READ_IOUT...PMBUS_READ_TEMPERATURE_1:
++	case PMBUS_READ_PIN:
++	case PMBUS_STATUS_WORD:
++		ret = -ENODATA;
++		break;
++	case PMBUS_READ_VOUT:
++		/* The Vout format used by the chip is linear11 and not linear16.
++		 * So we transform the value into the direct format defined by PMBus.
++		 */
++		ret = i2c_smbus_read_word_data(client, EFUSE_CFG);
++		if (ret < 0)
++			return ret;
++		if (ret & BIT(12)) {
++			ret = i2c_smbus_read_word_data(client, PMBUS_READ_VOUT);
++			if (ret < 0)
++				return ret;
++			exponent = ((s16)ret) >> 11;
++			mantissa = ((s16)((ret & 0x7ff) << 5)) >> 5;
++			val = mantissa * 1000;
++			if (exponent >= 0)
++				val <<= exponent;
++			else
++				val >>= -exponent;
++			return div_s64(val * 10 + 313L, 625L);
++		}
++		ret = -ENODATA;
++		break;
++	default:
++		ret = -EINVAL;
++		break;
++	}
++
++	return ret;
++}
++
++static int mp5926_read_byte_data(struct i2c_client *client, int page, int reg)
++{
++	int ret;
++
++	switch (reg) {
++	case PMBUS_STATUS_BYTE:
++	case PMBUS_STATUS_VOUT:
++	case PMBUS_STATUS_INPUT:
++	case PMBUS_STATUS_TEMPERATURE:
++	case PMBUS_STATUS_CML:
++	case PMBUS_STATUS_MFR_SPECIFIC:
++		ret = -ENODATA;
++		break;
++	default:
++		ret = -EINVAL;
++		break;
++	}
++	return ret;
++}
++
++static struct pmbus_driver_info mp5926_info_linear = {
++	.pages = PAGE,
++	.format[PSC_VOLTAGE_IN] = linear,
++	.format[PSC_CURRENT_IN] = linear,
++	.format[PSC_VOLTAGE_OUT] = direct,
++	.format[PSC_TEMPERATURE] = linear,
++	.format[PSC_POWER] = linear,
++
++	.m[PSC_VOLTAGE_OUT] = 16,
++	.b[PSC_VOLTAGE_OUT] = 0,
++	.R[PSC_VOLTAGE_OUT] = 0,
++
++	.read_word_data = mp5926_read_word_data,
++	.read_byte_data = mp5926_read_byte_data,
++	.func[0] = MP5926_FUNC,
++};
++
++static struct pmbus_driver_info mp5926_info_direct = {
++	.pages = PAGE,
++	.format[PSC_VOLTAGE_IN] = direct,
++	.format[PSC_CURRENT_IN] = direct,
++	.format[PSC_VOLTAGE_OUT] = direct,
++	.format[PSC_TEMPERATURE] = direct,
++	.format[PSC_POWER] = direct,
++
++	.m[PSC_VOLTAGE_IN] = 16,
++	.b[PSC_VOLTAGE_IN] = 0,
++	.R[PSC_VOLTAGE_IN] = 0,
++
++	.m[PSC_CURRENT_IN] = 16,
++	.b[PSC_CURRENT_IN] = 0,
++	.R[PSC_CURRENT_IN] = 0,
++
++	.m[PSC_VOLTAGE_OUT] = 16,
++	.b[PSC_VOLTAGE_OUT] = 0,
++	.R[PSC_VOLTAGE_OUT] = 0,
++
++	.m[PSC_TEMPERATURE] = 4,
++	.b[PSC_TEMPERATURE] = 0,
++	.R[PSC_TEMPERATURE] = 3,
++
++	.m[PSC_POWER] = 25,
++	.b[PSC_POWER] = 0,
++	.R[PSC_POWER] = -2,
++
++	.read_word_data = mp5926_read_word_data,
++	.read_byte_data = mp5926_read_byte_data,
++	.func[0] = MP5926_FUNC,
++};
++
++static int mp5926_probe(struct i2c_client *client)
++{
++	int ret;
++
++	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_READ_BYTE_DATA |
++				     I2C_FUNC_SMBUS_BLOCK_DATA))
++		return -ENODEV;
++
++	ret = i2c_smbus_read_word_data(client, EFUSE_CFG);
++
++	if (ret < 0)
++		return ret;
++
++	if (ret & BIT(12)) {
++		ret = pmbus_do_probe(client, &mp5926_info_linear);
++	} else {
++		ret = i2c_smbus_read_word_data(client, I_SCALE_SEL);
++		if (ret < 0)
++			return ret;
++		if (ret & BIT(6))
++			mp5926_info_direct.m[PSC_CURRENT_IN] = 4;
++		ret = pmbus_do_probe(client, &mp5926_info_direct);
++	}
++	if (!ret)
++		dev_info(&client->dev, "%s chip found\n", client->name);
++	return ret;
++}
++
++static const struct i2c_device_id mp5926_id[] = {
++	{ "mp5926", 0 },
++	{}
++};
++MODULE_DEVICE_TABLE(i2c, mp5926_id);
++
++static const struct of_device_id mp5926_of_match[] = {
++	{ .compatible = "mps,mp5926" },
++	{}
++};
++MODULE_DEVICE_TABLE(of, mp5926_of_match);
++
++static struct i2c_driver mp5926_driver = {
++	.probe = mp5926_probe,
++	.driver = {
++			.name = "mp5926",
++			.of_match_table = mp5926_of_match,
++		   },
++	.id_table = mp5926_id,
++};
++
++module_i2c_driver(mp5926_driver);
++MODULE_AUTHOR("Yuxi Wang <Yuxi.Wang@monolithicpower.com>");
++MODULE_DESCRIPTION("MPS MP5926 HWMON driver");
++MODULE_LICENSE("GPL");
++MODULE_IMPORT_NS(PMBUS);
+-- 
+2.8.4
+
