@@ -1,0 +1,34 @@
+From 61b8e5e26ebe493834f351e55a477575d6ae55c0 Mon Sep 17 00:00:00 2001
+From: Domingo <domingo@nexthop.ai>
+Date: Mon, 26 Jan 2026 23:39:29 +0000
+Subject: [PATCH] Read i2c bus number from platform device id
+
+This is similar to drivers/i2c/busses/i2c-pxa.c and drivers/i2c/busses/i2c-imx.c
+---
+ drivers/i2c/busses/i2c-xiic.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/i2c/busses/i2c-xiic.c b/drivers/i2c/busses/i2c-xiic.c
+index 1d68177241a6..e0737ad1897d 100644
+--- a/drivers/i2c/busses/i2c-xiic.c
++++ b/drivers/i2c/busses/i2c-xiic.c
+@@ -1262,6 +1262,7 @@ static int xiic_i2c_probe(struct platform_device *pdev)
+ 	platform_set_drvdata(pdev, i2c);
+ 	i2c->adap = xiic_adapter;
+ 	i2c_set_adapdata(&i2c->adap, i2c);
++	i2c->adap.nr = pdev->id;
+ 	i2c->adap.dev.parent = &pdev->dev;
+ 	i2c->adap.dev.of_node = pdev->dev.of_node;
+ 	snprintf(i2c->adap.name, sizeof(i2c->adap.name),
+@@ -1319,7 +1320,7 @@ static int xiic_i2c_probe(struct platform_device *pdev)
+ 	}
+ 
+ 	/* add i2c adapter to i2c tree */
+-	ret = i2c_add_adapter(&i2c->adap);
++	ret = i2c_add_numbered_adapter(&i2c->adap);
+ 	if (ret) {
+ 		xiic_deinit(i2c);
+ 		goto err_pm_disable;
+-- 
+2.43.0
+
