@@ -5,7 +5,7 @@ Subject: [PATCH] i2c: smbus: Add disable_spd module parameter to skip
 automatic SPD EEPROM instantiation
 
 In one of the Dell switch platforms(Z9864F), the system EEPROM resides at
-address 0x50 on the DDR SMBus. The automatic SPD scanning grabs this address
+address 0x50 on the DDR SMBUS. The automatic SPD scanning grabs this address
 with the ee1004 driver before the platform driver can claim it with the at24 driver 
 and it breaks system EEPROM access.
 
