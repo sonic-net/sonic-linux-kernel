@@ -53,6 +53,7 @@ driver-net-tg3-change-dma-mask-for-57766.patch
 # Tbridge-per-port-multicast-broadcast-flood-flags.patch
 #
 
+driver-i2c-smbus-add-disable_spd-module-parameter.patch
 0001-efi-memattr-Ignore-table-if-the-size-is-clearly-bogus.patch
 
 # Mellanox patches for 5.10

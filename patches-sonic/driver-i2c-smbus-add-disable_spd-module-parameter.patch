@@ -1,0 +1,48 @@
+From f929033d2ce54b4cb5072f9d594efa24ab3d4ea9 Mon Mar 09 00:00:00 2026
+From: Aravind Mani <aravind.m1@dell.com>
+Date: Mon, 3 Mar 2026 00:00:00 +0000
+Subject: [PATCH] i2c: smbus: Add disable_spd module parameter to skip automatic SPD EEPROM instantiation
+
+In some of the Dell switch platforms, the system EEPROM resides at
+address 0x50 on the DDR SMBUS. The automatic SPD scanning grabs this address
+with the ee1004 driver before the platform driver can claim it with the at24 driver 
+and it breaks system EEPROM access.
+
+Added a module parameter 'disable_spd' (default 0) in i2c-smbus driver.
+By default, it allows automatic SPD EEPROM instantiation.
+When disable_spd flag is set to 1,then the automatic SPD EEPROM instantiation will be disabled. 
+
+Usage:
+   modprobe i2c-smbus disable_spd=1
+   or: echo "options i2c-smbus disable_spd=1" > /etc/modprobe.d/i2c-smbus.conf
+
+Signed-off-by: Aravind Mani <aravind.m1@dell.com>
+---
+ drivers/i2c/i2c-smbus.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+--- a/drivers/i2c/i2c-smbus.c	2026-03-03 21:27:46.766199714 +0530
++++ b/drivers/i2c/i2c-smbus.c	2026-03-03 21:28:00.099400219 +0530
+@@ -362,6 +362,10 @@
+  *  - Only works on systems with 1 to 8 memory slots
+  */
+ #if IS_ENABLED(CONFIG_DMI)
++static bool disable_spd;
++module_param(disable_spd, bool, 0644);
++MODULE_PARM_DESC(disable_spd, "Disable automatic SPD EEPROM instantiation (default: false)");
++
+ void i2c_register_spd(struct i2c_adapter *adap)
+ {
+ 	int n, slot_count = 0, dimm_count = 0;
+@@ -370,6 +374,9 @@
+ 	u64 mem_size;
+ 	const char *name;
+ 
++	if (disable_spd)
++		return;
++
+ 	while ((handle = dmi_memdev_handle(slot_count)) != 0xffff) {
+ 		slot_count++;
+ 
+-- 
+2.39.2
