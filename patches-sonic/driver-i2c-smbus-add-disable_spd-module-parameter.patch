@@ -1,10 +1,9 @@
 From f929033d2ce54b4cb5072f9d594efa24ab3d4ea9 Mon Mar 09 00:00:00 2026
 From: Aravind Mani <aravind.m1@dell.com>
 Date: Mon, 3 Mar 2026 00:00:00 +0000
-Subject: [PATCH] i2c: smbus: Add disable_spd module parameter to skip
-automatic SPD EEPROM instantiation
+Subject: [PATCH] i2c: smbus: Add disable_spd module parameter to skip automatic SPD EEPROM instantiation
 
-In one of the Dell switch platforms(Z9864F), the system EEPROM resides at
+In some of the Dell switch platforms, the system EEPROM resides at
 address 0x50 on the DDR SMBUS. The automatic SPD scanning grabs this address
 with the ee1004 driver before the platform driver can claim it with the at24 driver 
 and it breaks system EEPROM access.
