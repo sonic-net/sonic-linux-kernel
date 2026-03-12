@@ -204,7 +204,7 @@ cisco-npu-disable-other-bars.patch
 # Nexthop patches
 0001-x86-CPU-AMD-Print-the-reason-for-the-last-reset.patch
 0002-x86-CPU-AMD-Ignore-invalid-reset-reason-value.patch
-0003-i2c-xiic-read-i2c-bus-number-from-platform-device-id.patch
+0003-i2c-xiic-generic-property-access-and-non-of-support.patch
 0004-xilinx-spi-platform_get_irq_optional.patch
 
 # Fix to avoid kernel panic on Kernel 6.1.94
