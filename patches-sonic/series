@@ -162,6 +162,7 @@ cisco-npu-disable-other-bars.patch
 0018-drivers-i2c-fix-after-kdump-crash.patch
 0019-irqchip-mvebu-gicp-Clear-pending-interrupts-on-init.patch
 0022-arm64-dts-marvell-Add-DTS-for-cn9131-db-comexpress-trixie.patch
+0025-Kconfig-KEMPLD_DISABLE_ALL-disable-MFD-children-auto.patch
 
 # amd-pensando elba support
 0001-Add-support-for-the-TI-TPS53659.patch
