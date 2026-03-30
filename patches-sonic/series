@@ -231,6 +231,7 @@ cisco-npu-disable-other-bars.patch
 ###-> aspeed
 aspeed-ast2700-support.patch
 nexthop-b27-dts.patch
+0001-Add-device-tree-for-Nokia-BMC-H6-128-platform.patch
 ###-> aspeed-end
 
 #

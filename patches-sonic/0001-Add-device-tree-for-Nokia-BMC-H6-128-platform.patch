@@ -1,0 +1,369 @@
+From fe9bd355064f7d80a7f34ebc81380790fc39693c Mon Sep 17 00:00:00 2001
+From: Natarajan Subbiramani <natarajan.subbiramani@nokia.com>
+Date: Mon, 30 Mar 2026 15:58:14 -0400
+Subject: [PATCH] Add device tree for Nokia BMC H6-128 platform
+
+The device tree is based on ast2700 evb board.
+Hardware deviations from ast2700-evb:
+- Removed unused reserved memory nodes
+- Removed PWM FAN definitions (controlled from HCPU)
+- Customize gpio1 pin and pinctrl definitions.
+- Removed I3C node definitions
+- Removed unused LPC definitions
+- eMMC 8bit bus width
+
+Signed-off-by: Natarajan Subbiramani <natarajan.subbiramani@nokia.com>
+---
+ arch/arm64/boot/dts/aspeed/Makefile           |   3 +-
+ .../dts/aspeed/nokia-ast2700-h6-128-r0.dts    | 329 ++++++++++++++++++
+ 2 files changed, 331 insertions(+), 1 deletion(-)
+ create mode 100644 arch/arm64/boot/dts/aspeed/nokia-ast2700-h6-128-r0.dts
+
+diff --git a/arch/arm64/boot/dts/aspeed/Makefile b/arch/arm64/boot/dts/aspeed/Makefile
+index 1b26168dfcd8..c5a2cc545b75 100644
+--- a/arch/arm64/boot/dts/aspeed/Makefile
++++ b/arch/arm64/boot/dts/aspeed/Makefile
+@@ -14,4 +14,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
+ 	ast2700-evb-256-abr.dtb \
+ 	ast2700-slt.dtb \
+ 	ast2700-fpga.dtb \
+-	ast2700-ci-host.dtb
++	ast2700-ci-host.dtb \
++	nokia-ast2700-h6-128-r0.dtb
+diff --git a/arch/arm64/boot/dts/aspeed/nokia-ast2700-h6-128-r0.dts b/arch/arm64/boot/dts/aspeed/nokia-ast2700-h6-128-r0.dts
+new file mode 100644
+index 000000000000..9aa248e0c4a2
+--- /dev/null
++++ b/arch/arm64/boot/dts/aspeed/nokia-ast2700-h6-128-r0.dts
+@@ -0,0 +1,329 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++// Nokia BMC H6-128 devicetreee based on ast2700-evb.dts
++
++/dts-v1/;
++
++#include "aspeed-g7.dtsi"
++#include <dt-bindings/gpio/aspeed-gpio.h>
++#include <dt-bindings/i2c/i2c.h>
++
++/ {
++	model = "Nokia-BMC-H6-128";
++	compatible = "aspeed,ast2700";
++
++	chosen {
++		stdout-path = "serial12:115200n8";
++	};
++
++	memory@400000000 {
++		device_type = "memory";
++		reg = <0x4 0x00000000 0x0 0x40000000>;
++	};
++
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
++
++		#include "ast2700-reserved-mem.dtsi"
++
++#if 0
++		gfx_memory: framebuffer {
++			size = <0x0 0x01000000>;
++			alignment = <0x0 0x01000000>;
++			compatible = "shared-dma-pool";
++			reusable;
++		};
++#endif
++	};
++};
++
++&uart0 {
++	status = "okay";
++};
++
++&uart2 {
++	status = "okay";
++};
++
++&uart12 {
++	status = "okay";
++};
++
++&fmc {
++	status = "okay";
++	pinctrl-0 = <&pinctrl_fwspi_quad_default>;
++	pinctrl-names = "default";
++
++	flash@0 {
++		status = "okay";
++		m25p,fast-read;
++		label = "bmc";
++		spi-max-frequency = <12500000>;
++		spi-tx-bus-width = <2>;
++		spi-rx-bus-width = <2>;
++		partitions {
++			compatible = "fixed-partitions";
++			#address-cells = <1>;
++			#size-cells = <1>;
++			u-boot@0 {
++				reg = <0x0 0x400000>; // 4MB
++				label = "u-boot";
++			};
++			u-boot-env@400000 {
++				reg = <0x400000 0x20000>; // 128KB
++				label = "u-boot-env";
++			};
++			kernel@420000 {
++				reg = <0x420000 0x900000>; // 9MB
++				label = "kernel";
++			};
++			rofs@d20000 {
++				reg = <0xd20000 0x24a0000>; // 36.625MB
++				label = "rofs";
++			};
++			rwfs@31c0000 {
++				reg = <0x31c0000 0xE40000>; // 14.25MB
++				label = "rwfs";
++			};
++			pfm@4000000 {
++				reg = <0x4000000 0x20000>; // 128KB
++				label = "pfm";
++			};
++			reserved-1@4020000 {
++				reg = <0x4020000 0x200000>; // 2048KB
++				label = "reserved-1";
++			};
++			rc-image@4220000 {
++				reg = <0x4220000 0x3de0000>; // 63360KB
++				label = "rc-image";
++			};
++			image-stg@8000000 {
++				reg = <0x8000000 0x3de0000>; // 63360KB
++				label = "img-stg";
++			};
++			pfr-stg@bde0000 {
++				reg = <0xbde0000 0x100000>; // 1024KB
++				label = "pfr-stg";
++			};
++			cpld-stg@bee0000 {
++				reg = <0xbee0000 0x400000>; // 4096KB
++				label = "cpld-stg";
++			};
++			afm-stg@c2e0000 {
++				reg = <0xc2e0000 0x20000>; // 128KB
++				label = "afm-stg";
++			};
++			afm-rc@c300000 {
++				reg = <0xc300000 0x20000>; // 128KB
++				label = "afm-rc";
++			};
++			reserved-2@c320000 {
++				reg = <0xc320000 0x3ce0000>; // 62336KB
++				label = "reserved-2";
++			};
++		};
++	};
++};
++
++&spi1 {
++	status = "okay";
++	pinctrl-0 = <&pinctrl_spi1_default &pinctrl_spi1_cs1_default>;
++	pinctrl-names = "default";
++
++	flash@0 {
++		status = "okay";
++		m25p,fast-read;
++		label = "bios";
++		spi-max-frequency = <12500000>;
++		spi-tx-bus-width = <2>;
++		spi-rx-bus-width = <2>;
++	};
++};
++
++&spi2 {
++	compatible = "aspeed,ast2700-spi-txrx";
++	pinctrl-0 = <&pinctrl_spi2_default>;
++	pinctrl-names = "default";
++	status = "okay";
++
++	tpm@0 {
++		compatible = "tcg,tpm_tis-spi";
++		spi-max-frequency = <33000000>;
++		reg = <0>;
++		status = "okay";
++	};
++};
++
++&mac0 {
++	status = "okay";
++	use-ncsi;
++	phy-mode = "rmii";
++
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_rmii1_default>;
++};
++
++&mac1 {
++	status = "okay";
++	use-ncsi;
++	phy-mode = "rmii";
++
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_rmii0_default>;
++};
++
++&syscon1 {
++	assigned-clocks = <&syscon1 SCU1_CLK_MACHCLK>,
++			  <&syscon1 SCU1_CLK_RGMII>,
++			  <&syscon1 SCU1_CLK_RMII>;
++	assigned-clock-rates = <200000000>, <125000000>, <50000000>;
++};
++
++&espi0 {
++	status = "okay";
++	perif-dma-mode;
++	perif-mmbi-enable;
++	perif-mmbi-src-addr = <0x0 0xa8000000>;
++	perif-mmbi-tgt-memory = <&espi0_mmbi_memory>;
++	perif-mmbi-instance-num = <0x1>;
++	perif-mcyc-enable;
++	perif-mcyc-src-addr = <0x0 0x98000000>;
++	perif-mcyc-size = <0x0 0x10000>;
++	oob-dma-mode;
++	flash-dma-mode;
++};
++
++&lpc0_kcs3 {
++	status = "okay";
++	kcs-io-addr = <0xca2>;
++	kcs-channel = <3>;
++};
++
++&lpc0_snoop {
++	status = "okay";
++	snoop-ports = <0x80>, <0x81>;
++};
++
++&rtc {
++	status = "okay";
++};
++
++&i2c5 {
++	status = "okay";
++};
++
++&i2c6 {
++	status = "okay";
++};
++
++&i2c7 {
++	status = "okay";
++};
++
++&i2c8 {
++	status = "okay";
++};
++
++&i2c9 {
++	status = "okay";
++};
++
++&i2c10 {
++	status = "okay";
++};
++
++&i2c11 {
++	status = "okay";
++
++	eeprom@50 {
++		compatible = "atmel,24c512";
++		reg = <0x50>;
++	};
++};
++
++&i2c13 {
++	status = "okay";
++
++	eeprom@56 {
++		compatible = "atmel,24c04";
++		reg = <0x56>;
++	};
++};
++
++&i2c14 {
++	status = "okay";
++};
++
++&i2c15 {
++	status = "okay";
++};
++
++&vhuba0 {
++	status = "okay";
++};
++
++&vhubb0 {
++	status = "okay";
++};
++
++&wdt0 {
++	status = "okay";
++};
++
++&wdt1 {
++	status = "okay";
++};
++
++#if 0
++&otp {
++	status = "okay";
++};
++#endif
++
++&gpio1 {
++	gpio-line-names =
++		/*A0-A7*/ "","","","","","","","",
++		/*B0-B7*/ "","","","","","","","",
++		/*C0-C7*/ "","","","","","","","",
++		/*D0-D7*/ "CPLD_UPGRADE_TDO","CPLD_UPGRADE_TMS","CPLD_UPGRADE_TCK","CPLD_UPGRADE_TDI","BMC_CPLD_UPGRADE","","","",
++		/*E0-E7*/ "","","","","CPUBMC_SPIMUX_SEL","","","",
++		/*F0-F7*/ "","","","","","","","",
++		/*G0-G7*/ "","","","","","","","",
++		/*H0-H7*/ "","","","","","","","",
++		/*I0-I7*/ "","","","","","","","",
++		/*J0-J7*/ "","","","","","","","",
++		/*K0-K7*/ "","","","","","","","",
++		/*L0-L7*/ "","","","","","","","",
++		/*M0-M7*/ "","","","","","","","",
++		/*N0-N7*/ "","","","","","","","",
++		/*O0-O7*/ "","","","","","","","",
++		/*P0-P7*/ "","","","","","","","",
++		/*Q0-Q7*/ "","","BMC_MNTRST","BMC_MTCK","BMC_MTMS","BMC_MTDI","BMC_MTDO","",
++		/*R0-R7*/ "","","","","","","","",
++		/*S0-S7*/ "","","","","","","","",
++		/*T0-T7*/ "","","","","","","","",
++		/*U0-U7*/ "","","","","","","","",
++		/*V0-V7*/ "","","","","","","","",
++		/*W0-W7*/ "","","","","","","","",
++		/*X0-X7*/ "","","","","","","","",
++		/*Y0-Y7*/ "","","","","","","","",
++		/*Z0-Z7*/ "","","","","","","","",
++		/*AA0-AA7*/ "","","","","","","","",
++		/*AB0-AB7*/ "","","","","","","","",
++		/*AC0-AC7*/ "","","","","","","","",
++		/*AD0-AD7*/ "","","","","","","","",
++		/*AE0-AE7*/ "","","","","","","","";
++};
++
++&emmc_controller {
++	status = "okay";
++};
++
++&emmc {
++	status = "okay";
++	bus-width = <8>;
++	pinctrl-0 = <&pinctrl_emmcg8_default>;
++	non-removable;
++	max-frequency = <26000000>;
++};
+-- 
+2.25.1
