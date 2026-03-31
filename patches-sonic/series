@@ -205,6 +205,10 @@ cisco-npu-disable-other-bars.patch
 # Nexthop patches
 0001-x86-CPU-AMD-Print-the-reason-for-the-last-reset.patch
 0002-x86-CPU-AMD-Ignore-invalid-reset-reason-value.patch
+0003-xilinx-spi-make-interrupt-optional.patch
+0004-xilinx-spi-platform_get_irq_optional.patch
+0005-xilinx-spi-use-device-property.patch
+
 
 # Fix to avoid kernel panic on Kernel 6.1.94
 # https://github.com/sonic-net/sonic-buildimage/issues/20901

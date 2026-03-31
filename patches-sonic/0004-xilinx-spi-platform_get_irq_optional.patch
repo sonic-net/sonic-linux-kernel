@@ -1,0 +1,35 @@
+From git@z Thu Jan  1 00:00:00 1970
+Subject: [PATCH v3 2/3] spi: xilinx: make irq optional
+From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Date: Mon, 19 Jan 2026 07:06:23 +0000
+Message-Id: <20260119-spi-xilinx-v3-2-4566c33bac0d@nexthop.ai>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Both the hardware and driver already support polling mode. By removing
+the mandatory IRQ requirement during probe, the driver can now fall
+back to polling when an interrupt is unavailable, ensuring
+compatibility with a wider range of systems.
+
+Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+---
+ drivers/spi/spi-xilinx.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/spi/spi-xilinx.c b/drivers/spi/spi-xilinx.c
+index c86dc56f38b4..4aa67fc61cb6 100644
+--- a/drivers/spi/spi-xilinx.c
++++ b/drivers/spi/spi-xilinx.c
+@@ -471,7 +471,7 @@ static int xilinx_spi_probe(struct platform_device *pdev)
+ 	xspi->bytes_per_word = bits_per_word / 8;
+ 	xspi->buffer_size = xilinx_spi_find_buffer_size(xspi);
+ 
+-	xspi->irq = platform_get_irq(pdev, 0);
++	xspi->irq = platform_get_irq_optional(pdev, 0);
+ 	if (xspi->irq < 0 && xspi->irq != -ENXIO) {
+ 		return xspi->irq;
+ 	} else if (xspi->irq >= 0) {
+
+-- 
+2.52.0
