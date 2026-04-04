@@ -277,7 +277,7 @@ Signed-off-by: Nishanth Sampath Kumar <nissampa@cisco.com>
  	err = device_property_read_u32(dev, "size", &byte_len);
  	if (err)
  		byte_len = cdata->byte_len;
-@@ -681,10 +873,30 @@
+@@ -681,10 +873,31 @@
  	regmap_config.val_bits = 8;
  	regmap_config.reg_bits = (flags & AT24_FLAG_ADDR16) ? 16 : 8;
  	regmap_config.disable_locking = true;
@@ -300,6 +300,7 @@ Signed-off-by: Nishanth Sampath Kumar <nissampa@cisco.com>
 +		 */
 +		if (smbus_addr16_fallback || smbus_addr8_fallback) {
 +			struct regmap_config smbus_config = regmap_config;
++
 +			smbus_config.reg_bits = 8;
 +			smbus_config.val_bits = 8;
 +			regmap = devm_regmap_init_i2c(client, &smbus_config);
@@ -310,7 +311,7 @@ Signed-off-by: Nishanth Sampath Kumar <nissampa@cisco.com>
  
  	at24 = devm_kzalloc(dev, struct_size(at24, client_regmaps, num_addresses),
  			    GFP_KERNEL);
-@@ -700,6 +912,9 @@
+@@ -700,6 +913,9 @@
  	at24->num_addresses = num_addresses;
  	at24->offset_adj = at24_get_offset_adj(flags, byte_len);
  	at24->client_regmaps[0] = regmap;
