@@ -7,6 +7,12 @@ trigger:
   branches:
     include:
       - "*"
+variables:
+  - name: BUILD_BRANCH
+    ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
+      value: $(System.PullRequest.TargetBranch)
+    ${{ else }}:
+      value: $(Build.SourceBranchName)
 
 stages:
 - stage: Build
@@ -16,7 +22,6 @@ stages:
     parameters:
       arch: amd64
       pool: sonicso1ES-amd64
-      sonic_slave: sonic-slave-trixie
       old_artifact_name: sonic-linux-kernel
       artifact_name: sonic-linux-kernel.amd64
       old_linux_deb_pattern: linux-image-*-unsigned_*deb
@@ -26,7 +31,6 @@ stages:
     parameters:
       arch: amd64
       pool: sonicso1ES-amd64
-      sonic_slave: sonic-slave-trixie
       old_artifact_name: sonic-linux-kernel
       artifact_name: sonic-linux-kernel.amd64.secure
       old_linux_deb_pattern: linux-image-*-unsigned_*deb
@@ -37,7 +41,6 @@ stages:
     parameters:
       arch: arm64
       pool: sonicso1ES-arm64
-      sonic_slave: sonic-slave-trixie-arm64
       old_artifact_name: sonic-linux-kernel.arm64
       artifact_name: sonic-linux-kernel.arm64
       old_linux_deb_pattern: linux-image-*-unsigned_*deb
@@ -47,7 +50,6 @@ stages:
     parameters:
       arch: armhf
       pool: sonicso1ES-armhf
-      sonic_slave: sonic-slave-trixie-armhf
       old_artifact_name: sonic-linux-kernel.armhf
       artifact_name: sonic-linux-kernel.armhf
       old_linux_deb_pattern: linux-image-*-armmp_*deb
@@ -58,7 +60,6 @@ stages:
       arch: arm64
       platform: pensando
       pool: sonicso1ES-arm64
-      sonic_slave: sonic-slave-trixie-arm64
       old_artifact_name: sonic-linux-kernel.pensando.arm64
       artifact_name: sonic-linux-kernel.pensando.arm64
       old_linux_deb_pattern: linux-image-*-unsigned_*deb
