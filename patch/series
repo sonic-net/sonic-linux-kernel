@@ -237,6 +237,21 @@ cisco-npu-disable-other-bars.patch
 # https://github.com/sonic-net/sonic-buildimage/issues/20901
 PCI-ASPM-Fix-link-state-exit-during-switch-upstream.patch
 
+# QID-45097: Crackarmor fixes
+qsa-2026-apparmor/0001-apparmor-fix-kernel-doc-complaints.patch
+qsa-2026-apparmor/0002-apparmor-Fix-kernel-doc-warnings-in-apparmor-policy..patch
+qsa-2026-apparmor/0003-apparmor-validate-DFA-start-states-are-in-bounds-in-.patch
+qsa-2026-apparmor/0004-apparmor-fix-memory-leak-in-verify_header.patch
+qsa-2026-apparmor/0005-apparmor-replace-recursive-profile-removal-with-iter.patch
+qsa-2026-apparmor/0006-apparmor-fix-limit-the-number-of-levels-of-policy-na.patch
+qsa-2026-apparmor/0007-apparmor-fix-side-effect-bug-in-match_char-macro-usa.patch
+qsa-2026-apparmor/0008-apparmor-fix-missing-bounds-check-on-DEFAULT-table-i.patch
+qsa-2026-apparmor/0009-apparmor-Fix-double-free-of-ns_name-in-aa_replace_pr.patch
+qsa-2026-apparmor/0010-apparmor-fix-unprivileged-local-user-can-do-privileg.patch
+qsa-2026-apparmor/0011-apparmor-fix-differential-encoding-verification.patch
+qsa-2026-apparmor/0012-apparmor-fix-race-on-rawdata-dereference.patch
+qsa-2026-apparmor/0013-apparmor-fix-race-between-freeing-data-and-fs-access.patch
+
 #
 #
 ############################################################
