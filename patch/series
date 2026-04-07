@@ -257,6 +257,21 @@ armhf_secondary_boot_online.patch
 0020-dts-marvell-Add-support-for-7020-comexpress.patch
 0021-arm64-dts-marvell-Add-Nokia-7215-IXS-A1-board.patch
 
+# QSA-2026: Apparmor
+qsa-2026-apparmor/0001-apparmor-fix-kernel-doc-complaints.patch
+qsa-2026-apparmor/0002-apparmor-Fix-kernel-doc-warnings-in-apparmor-policy.patch
+qsa-2026-apparmor/0003-apparmor-validate-DFA-start-states-are-in-bounds-in-.patch
+qsa-2026-apparmor/0004-apparmor-fix-memory-leak-in-verify_header.patch
+qsa-2026-apparmor/0005-apparmor-replace-recursive-profile-removal-with-iter.patch
+qsa-2026-apparmor/0006-apparmor-fix-limit-the-number-of-levels-of-policy-na.patch
+qsa-2026-apparmor/0007-apparmor-fix-side-effect-bug-in-match_char-macro-usa.patch
+qsa-2026-apparmor/0008-apparmor-fix-missing-bounds-check-on-DEFAULT-table-i.patch
+qsa-2026-apparmor/0009-apparmor-Fix-double-free-of-ns_name-in-aa_replace_pr.patch
+qsa-2026-apparmor/0010-apparmor-fix-unprivileged-local-user-can-do-privileg.patch
+qsa-2026-apparmor/0011-apparmor-fix-differential-encoding-verification.patch
+qsa-2026-apparmor/0012-apparmor-fix-race-on-rawdata-dereference.patch
+qsa-2026-apparmor/0013-apparmor-fix-race-between-freeing-data-and-fs-access.patch
+
 #
 #
 ############################################################

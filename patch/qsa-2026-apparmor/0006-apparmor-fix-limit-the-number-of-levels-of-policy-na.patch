@@ -1,0 +1,52 @@
+From 9ad7d6a6fe60245dad53803f8ed6a7359c8b3e2b Mon Sep 17 00:00:00 2001
+From: John Johansen <john.johansen@canonical.com>
+Date: Tue, 3 Mar 2026 11:08:02 -0800
+Subject: [PATCH 06/13] apparmor: fix: limit the number of levels of policy
+ namespaces
+
+Currently the number of policy namespaces is not bounded relying on
+the user namespace limit. However policy namespaces aren't strictly
+tied to user namespaces and it is possible to create them and nest
+them arbitrarily deep which can be used to exhaust system resource.
+
+Hard cap policy namespaces to the same depth as user namespaces.
+
+Fixes: c88d4c7b049e8 ("AppArmor: core policy routines")
+Reported-by: Qualys Security Advisory <qsa@qualys.com>
+Reviewed-by: Ryan Lee <ryan.lee@canonical.com>
+Reviewed-by: Cengiz Can <cengiz.can@canonical.com>
+Signed-off-by: John Johansen <john.johansen@canonical.com>
+---
+ security/apparmor/include/policy_ns.h | 2 ++
+ security/apparmor/policy_ns.c         | 2 ++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/security/apparmor/include/policy_ns.h b/security/apparmor/include/policy_ns.h
+index 3df6f804922d..e5704947e86e 100644
+--- a/security/apparmor/include/policy_ns.h
++++ b/security/apparmor/include/policy_ns.h
+@@ -18,6 +18,8 @@
+ #include "label.h"
+ #include "policy.h"
+ 
++/* Match max depth of user namespaces */
++#define MAX_NS_DEPTH 32
+ 
+ /* struct aa_ns_acct - accounting of profiles in namespace
+  * @max_size: maximum space allowed for all profiles in namespace
+diff --git a/security/apparmor/policy_ns.c b/security/apparmor/policy_ns.c
+index 53d24cf63893..5d342ef078e9 100644
+--- a/security/apparmor/policy_ns.c
++++ b/security/apparmor/policy_ns.c
+@@ -249,6 +249,8 @@ static struct aa_ns *__aa_create_ns(struct aa_ns *parent, const char *name,
+ 	AA_BUG(!name);
+ 	AA_BUG(!mutex_is_locked(&parent->lock));
+ 
++	if (parent->level > MAX_NS_DEPTH)
++		return ERR_PTR(-ENOSPC);
+ 	ns = alloc_ns(parent->base.hname, name);
+ 	if (!ns)
+ 		return ERR_PTR(-ENOMEM);
+-- 
+2.53.0
+
