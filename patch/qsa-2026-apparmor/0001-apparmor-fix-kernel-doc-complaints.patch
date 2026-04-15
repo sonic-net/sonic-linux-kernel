@@ -1,0 +1,66 @@
+From 931da57ad18798616be0a085957cc9d345a79ddc Mon Sep 17 00:00:00 2001
+From: Randy Dunlap <rdunlap@infradead.org>
+Date: Mon, 2 Jan 2023 12:45:12 -0800
+Subject: [PATCH 01/13] apparmor: fix kernel-doc complaints
+
+commit 76862af5d1add618f0cc99868bc729925f9551d2 upstream.
+
+Correct kernel-doc notation to placate kernel-doc W=1 warnings:
+
+security/apparmor/policy.c:439: warning: duplicate section name 'Return'
+security/apparmor/secid.c:57: warning: Cannot understand  *
+security/apparmor/file.c:174: warning: cannot understand function prototype: 'struct aa_perms default_perms = '
+
+Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+Cc: John Johansen <john.johansen@canonical.com>
+Cc: John Johansen <john@apparmor.net>
+Cc: apparmor@lists.ubuntu.com
+Cc: Paul Moore <paul@paul-moore.com>
+Cc: James Morris <jmorris@namei.org>
+Cc: "Serge E. Hallyn" <serge@hallyn.com>
+Signed-off-by: John Johansen <john.johansen@canonical.com>
+[bwh: Backported to 6.1: drop inapplicable changes]
+Signed-off-by: Ben Hutchings <benh@debian.org>
+---
+ security/apparmor/policy.c | 3 +--
+ security/apparmor/secid.c  | 3 +--
+ 2 files changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/security/apparmor/policy.c b/security/apparmor/policy.c
+index 4ee5a450d118..a49d76192d4c 100644
+--- a/security/apparmor/policy.c
++++ b/security/apparmor/policy.c
+@@ -715,7 +715,7 @@ bool aa_current_policy_admin_capable(struct aa_ns *ns)
+ /**
+  * aa_may_manage_policy - can the current task manage policy
+  * @label: label to check if it can manage policy
+- * @op: the policy manipulation operation being done
++ * @mask: contains the policy manipulation operation being done
+  *
+  * Returns: 0 if the task is allowed to manipulate policy else error
+  */
+@@ -770,7 +770,6 @@ static struct aa_profile *__list_lookup_parent(struct list_head *lh,
+  * __replace_profile - replace @old with @new on a list
+  * @old: profile to be replaced  (NOT NULL)
+  * @new: profile to replace @old with  (NOT NULL)
+- * @share_proxy: transfer @old->proxy to @new
+  *
+  * Will duplicate and refcount elements that @new inherits from @old
+  * and will inherit @old children.
+diff --git a/security/apparmor/secid.c b/security/apparmor/secid.c
+index 24a0e23f1b2b..83d3d1e6d9dc 100644
+--- a/security/apparmor/secid.c
++++ b/security/apparmor/secid.c
+@@ -53,8 +53,7 @@ void aa_secid_update(u32 secid, struct aa_label *label)
+ 	xa_unlock_irqrestore(&aa_secids, flags);
+ }
+ 
+-/**
+- *
++/*
+  * see label for inverse aa_label_to_secid
+  */
+ struct aa_label *aa_secid_to_label(u32 secid)
+-- 
+2.53.0
+

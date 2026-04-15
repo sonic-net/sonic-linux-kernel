@@ -1,0 +1,64 @@
+From 05c8275824c0397544a6ac7c90ccda8eff4cef60 Mon Sep 17 00:00:00 2001
+From: Massimiliano Pellizzer <massimiliano.pellizzer@canonical.com>
+Date: Thu, 15 Jan 2026 15:30:50 +0100
+Subject: [PATCH 03/13] apparmor: validate DFA start states are in bounds in
+ unpack_pdb
+
+Start states are read from untrusted data and used as indexes into the
+DFA state tables. The aa_dfa_next() function call in unpack_pdb() will
+access dfa->tables[YYTD_ID_BASE][start], and if the start state exceeds
+the number of states in the DFA, this results in an out-of-bound read.
+
+==================================================================
+ BUG: KASAN: slab-out-of-bounds in aa_dfa_next+0x2a1/0x360
+ Read of size 4 at addr ffff88811956fb90 by task su/1097
+ ...
+
+Reject policies with out-of-bounds start states during unpacking
+to prevent the issue.
+
+Reported-by: Qualys Security Advisory <qsa@qualys.com>
+Fixes: ad5ff3db53c6 ("AppArmor: Add ability to load extended policy")
+Signed-off-by: Massimiliano Pellizzer <massimiliano.pellizzer@canonical.com>
+Signed-off-by: John Johansen <john.johansen@canonical.com>
+[ Salvatore Bonaccorso: Apply backported change as proposed by Qualys
+Security Advisory Team for 6.1.y series without ad596ea74e74 ("apparmor:
+group dfa policydb unpacking") introduced in v6.2-rc1. ]
+---
+ security/apparmor/policy_unpack.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/security/apparmor/policy_unpack.c b/security/apparmor/policy_unpack.c
+index 17601235ff98..9fd5b76893d3 100644
+--- a/security/apparmor/policy_unpack.c
++++ b/security/apparmor/policy_unpack.c
+@@ -827,6 +827,13 @@ static struct aa_profile *unpack_profile(struct aa_ext *e, char **ns_name)
+ 		if (!aa_unpack_u32(e, &profile->policy.start[0], "start"))
+ 			/* default start state */
+ 			profile->policy.start[0] = DFA_START;
++
++		const size_t state_count = profile->policy.dfa->tables[YYTD_ID_BASE]->td_lolen;
++		if (profile->policy.start[0] >= state_count) {
++			info = "invalid policy dfa start state";
++			goto fail;
++		}
++
+ 		/* setup class index */
+ 		for (i = AA_CLASS_FILE; i <= AA_CLASS_LAST; i++) {
+ 			profile->policy.start[i] =
+@@ -850,6 +857,12 @@ static struct aa_profile *unpack_profile(struct aa_ext *e, char **ns_name)
+ 		if (!aa_unpack_u32(e, &profile->file.start, "dfa_start"))
+ 			/* default start state */
+ 			profile->file.start = DFA_START;
++
++		const size_t state_count = profile->file.dfa->tables[YYTD_ID_BASE]->td_lolen;
++		if (profile->file.start >= state_count) {
++			info = "invalid file dfa start state";
++			goto fail;
++		}
+ 	} else if (profile->policy.dfa &&
+ 		   profile->policy.start[AA_CLASS_FILE]) {
+ 		profile->file.dfa = aa_get_dfa(profile->policy.dfa);
+-- 
+2.53.0
+
