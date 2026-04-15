@@ -1,0 +1,49 @@
+From 824b8af8cc8d81ef95d020dcfcd4338249f1f7de Mon Sep 17 00:00:00 2001
+From: Bjorn Helgaas <bhelgaas@google.com>
+Date: Thu, 22 May 2025 18:21:23 -0500
+Subject: [PATCH 04/12] PCI/AER: Simplify add_error_device()
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Return -ENOSPC error early so the usual path through add_error_device() is
+the straightline code.
+
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Reviewed-by: Kuppuswamy Sathyanarayanan <sathyanarayanan.kuppuswamy@linux.intel.com>
+Link: https://patch.msgid.link/20250522232339.1525671-18-helgaas@kernel.org
+(cherry picked from commit d72bae423004aa7b4d94c34a7fd0b48b64305a08)
+---
+ drivers/pci/pcie/aer.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/pci/pcie/aer.c b/drivers/pci/pcie/aer.c
+index 6fc993d05647..a10a005ca6e9 100644
+--- a/drivers/pci/pcie/aer.c
++++ b/drivers/pci/pcie/aer.c
+@@ -811,12 +811,15 @@ EXPORT_SYMBOL_NS_GPL(pci_print_aer, CXL);
+  */
+ static int add_error_device(struct aer_err_info *e_info, struct pci_dev *dev)
+ {
+-	if (e_info->error_dev_num < AER_MAX_MULTI_ERR_DEVICES) {
+-		e_info->dev[e_info->error_dev_num] = pci_dev_get(dev);
+-		e_info->error_dev_num++;
+-		return 0;
+-	}
+-	return -ENOSPC;
++	int i = e_info->error_dev_num;
++
++	if (i >= AER_MAX_MULTI_ERR_DEVICES)
++		return -ENOSPC;
++
++	e_info->dev[i] = pci_dev_get(dev);
++	e_info->error_dev_num++;
++
++	return 0;
+ }
+ 
+ /**
+-- 
+2.47.0
+

@@ -1,0 +1,221 @@
+From 3fff4113090e26cb3de64388bb5e91bfb0d02118 Mon Sep 17 00:00:00 2001
+From: Jon Pan-Doh <pandoh@google.com>
+Date: Thu, 22 May 2025 18:21:24 -0500
+Subject: [PATCH 08/12] PCI/AER: Ratelimit correctable and non-fatal error
+ logging
+
+Spammy devices can flood kernel logs with AER errors and slow/stall
+execution. Add per-device ratelimits for AER correctable and non-fatal
+uncorrectable errors that use the kernel defaults (10 per 5s).  Logging of
+fatal errors is not ratelimited.
+
+There are two AER logging entry points:
+
+  - aer_print_error() is used by DPC and native AER
+
+  - pci_print_aer() is used by GHES and CXL
+
+The native AER aer_print_error() case includes a loop that may log details
+from multiple devices, which are ratelimited individually.  If we log
+details for any device, we also log the Error Source ID from the Root Port
+or RCEC.
+
+If no such device details are found, we still log the Error Source from the
+ERR_* Message, ratelimited by the Root Port or RCEC that received it.
+
+The DPC aer_print_error() case is not ratelimited, since this only happens
+for fatal errors.
+
+The CXL pci_print_aer() case is ratelimited by the Error Source device.
+
+The GHES pci_print_aer() case is via aer_recover_work_func(), which
+searches for the Error Source device.  If the device is not found, there's
+no per-device ratelimit, so we use a system-wide ratelimit that covers all
+error types (correctable, non-fatal, and fatal).
+
+Sargun at Meta reported internally that a flood of AER errors causes RCU
+CPU stall warnings and CSD-lock warnings.
+
+Tested using aer-inject[1]. Sent 11 AER errors. Observed 10 errors logged
+while AER stats (cat /sys/bus/pci/devices/<dev>/aer_dev_correctable) show
+true count of 11.
+
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/gong.chen/aer-inject.git
+
+[bhelgaas: commit log, factor out trace_aer_event() and aer_print_rp_info()
+changes to previous patches, enable Error Source logging if any downstream
+detail will be printed, don't ratelimit fatal errors, "aer_report" ->
+"aer_info", "cor_log_ratelimit" -> "correctable_ratelimit",
+"uncor_log_ratelimit" -> "nonfatal_ratelimit"]
+
+Reported-by: Sargun Dhillon <sargun@meta.com>
+Signed-off-by: Jon Pan-Doh <pandoh@google.com>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Reviewed-by: Kuppuswamy Sathyanarayanan <sathyanarayanan.kuppuswamy@linux.intel.com>
+Link: https://patch.msgid.link/20250522232339.1525671-19-helgaas@kernel.org
+(cherry picked from commit a57f2bfb4a5863f83087867c0e671f2418212d23)
+---
+ drivers/pci/pci.h      |  4 ++-
+ drivers/pci/pcie/aer.c | 68 ++++++++++++++++++++++++++++++++++++++----
+ 2 files changed, 66 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/pci/pci.h b/drivers/pci/pci.h
+index 4f64f3f9cdf5..f4372bb39fe2 100644
+--- a/drivers/pci/pci.h
++++ b/drivers/pci/pci.h
+@@ -504,13 +504,15 @@ static inline bool pci_dev_is_added(const struct pci_dev *dev)
+ 
+ struct aer_err_info {
+ 	struct pci_dev *dev[AER_MAX_MULTI_ERR_DEVICES];
++	int ratelimit_print[AER_MAX_MULTI_ERR_DEVICES];
+ 	int error_dev_num;
+ 	const char *level;		/* printk level */
+ 
+ 	unsigned int id:16;
+ 
+ 	unsigned int severity:2;	/* 0:NONFATAL | 1:FATAL | 2:COR */
+-	unsigned int __pad1:5;
++	unsigned int root_ratelimit_print:1;	/* 0=skip, 1=print */
++	unsigned int __pad1:4;
+ 	unsigned int multi_error_valid:1;
+ 
+ 	unsigned int first_error:5;
+diff --git a/drivers/pci/pcie/aer.c b/drivers/pci/pcie/aer.c
+index 6ec628965cce..8d0152f4fe50 100644
+--- a/drivers/pci/pcie/aer.c
++++ b/drivers/pci/pcie/aer.c
+@@ -27,6 +27,7 @@
+ #include <linux/interrupt.h>
+ #include <linux/delay.h>
+ #include <linux/kfifo.h>
++#include <linux/ratelimit.h>
+ #include <linux/slab.h>
+ #include <acpi/apei.h>
+ #include <acpi/ghes.h>
+@@ -84,6 +85,10 @@ struct aer_stats {
+ 	u64 rootport_total_cor_errs;
+ 	u64 rootport_total_fatal_errs;
+ 	u64 rootport_total_nonfatal_errs;
++
++	/* Ratelimits for errors */
++	struct ratelimit_state correctable_ratelimit;
++	struct ratelimit_state nonfatal_ratelimit;
+ };
+ 
+ #define AER_LOG_TLP_MASKS		(PCI_ERR_UNC_POISON_TLP|	\
+@@ -374,6 +379,11 @@ void pci_aer_init(struct pci_dev *dev)
+ 
+ 	dev->aer_stats = kzalloc(sizeof(struct aer_stats), GFP_KERNEL);
+ 
++	ratelimit_state_init(&dev->aer_stats->correctable_ratelimit,
++			     DEFAULT_RATELIMIT_INTERVAL, DEFAULT_RATELIMIT_BURST);
++	ratelimit_state_init(&dev->aer_stats->nonfatal_ratelimit,
++			     DEFAULT_RATELIMIT_INTERVAL, DEFAULT_RATELIMIT_BURST);
++
+ 	/*
+ 	 * We save/restore PCI_ERR_UNCOR_MASK, PCI_ERR_UNCOR_SEVER,
+ 	 * PCI_ERR_COR_MASK, and PCI_ERR_CAP.  Root and Root Complex Event
+@@ -670,6 +680,18 @@ static void __print_tlp_header(struct pci_dev *dev, struct pcie_tlp_log *t)
+ 		t->dw[0], t->dw[1], t->dw[2], t->dw[3]);
+ }
+ 
++static int aer_ratelimit(struct pci_dev *dev, unsigned int severity)
++{
++	switch (severity) {
++	case AER_NONFATAL:
++		return __ratelimit(&dev->aer_stats->nonfatal_ratelimit);
++	case AER_CORRECTABLE:
++		return __ratelimit(&dev->aer_stats->correctable_ratelimit);
++	default:
++		return 1;	/* Don't ratelimit fatal errors */
++	}
++}
++
+ static void __aer_print_error(struct pci_dev *dev,
+ 			      struct aer_err_info *info)
+ {
+@@ -710,6 +732,9 @@ void aer_print_error(struct aer_err_info *info, int i)
+ 	trace_aer_event(pci_name(dev), (info->status & ~info->mask),
+ 			info->severity, info->tlp_header_valid, &info->tlp);
+ 
++	if (!info->ratelimit_print[i])
++		return;
++
+ 	if (!info->status) {
+ 		pci_err(dev, "PCIe Bus Error: severity=%s, type=Inaccessible, (Unregistered Agent ID)\n",
+ 			aer_error_severity_string[info->severity]);
+@@ -791,6 +816,9 @@ void pci_print_aer(struct pci_dev *dev, int aer_severity,
+ 	trace_aer_event(pci_name(dev), (status & ~mask),
+ 			aer_severity, tlp_header_valid, &aer->header_log);
+ 
++	if (!aer_ratelimit(dev, info.severity))
++		return;
++
+ 	layer = AER_GET_LAYER_ERROR(aer_severity, status);
+ 	agent = AER_GET_AGENT(aer_severity, status);
+ 
+@@ -823,6 +851,18 @@ static int add_error_device(struct aer_err_info *e_info, struct pci_dev *dev)
+ 	e_info->dev[i] = pci_dev_get(dev);
+ 	e_info->error_dev_num++;
+ 
++	/*
++	 * Ratelimit AER log messages.  "dev" is either the source
++	 * identified by the root's Error Source ID or it has an unmasked
++	 * error logged in its own AER Capability.  Messages are emitted
++	 * when "ratelimit_print[i]" is non-zero.  If we will print detail
++	 * for a downstream device, make sure we print the Error Source ID
++	 * from the root as well.
++	 */
++	if (aer_ratelimit(dev, e_info->severity)) {
++		e_info->ratelimit_print[i] = 1;
++		e_info->root_ratelimit_print = 1;
++	}
+ 	return 0;
+ }
+ 
+@@ -1150,9 +1190,10 @@ static void aer_recover_work_func(struct work_struct *work)
+ 		pdev = pci_get_domain_bus_and_slot(entry.domain, entry.bus,
+ 						   entry.devfn);
+ 		if (!pdev) {
+-			pr_err("no pci_dev for %04x:%02x:%02x.%x\n",
+-			       entry.domain, entry.bus,
+-			       PCI_SLOT(entry.devfn), PCI_FUNC(entry.devfn));
++			pr_err_ratelimited("%04x:%02x:%02x.%x: no pci_dev found\n",
++					   entry.domain, entry.bus,
++					   PCI_SLOT(entry.devfn),
++					   PCI_FUNC(entry.devfn));
+ 			continue;
+ 		}
+ 		pci_print_aer(pdev, entry.severity, entry.regs);
+@@ -1291,9 +1332,26 @@ static inline void aer_process_err_devices(struct aer_err_info *e_info)
+ static void aer_isr_one_error_type(struct pci_dev *root,
+ 				   struct aer_err_info *info)
+ {
+-	aer_print_port_info(root, info);
++	bool found;
++
++	found = find_source_device(root, info);
++
++	/*
++	 * If we're going to log error messages, we've already set
++	 * "info->root_ratelimit_print" and "info->ratelimit_print[i]" to
++	 * non-zero (which enables printing) because this is either an
++	 * ERR_FATAL or we found a device with an error logged in its AER
++	 * Capability.
++	 *
++	 * If we didn't find the Error Source device, at least log the
++	 * Requester ID from the ERR_* Message received by the Root Port or
++	 * RCEC, ratelimited by the RP or RCEC.
++	 */
++	if (info->root_ratelimit_print ||
++	    (!found && aer_ratelimit(root, info->severity)))
++		aer_print_port_info(root, info);
+ 
+-	if (find_source_device(root, info))
++	if (found)
+ 		aer_process_err_devices(info);
+ }
+ 
+-- 
+2.47.0
+
