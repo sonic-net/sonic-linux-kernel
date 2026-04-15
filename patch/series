@@ -239,7 +239,7 @@ PCI-ASPM-Fix-link-state-exit-during-switch-upstream.patch
 
 # QID-45097: Crackarmor fixes
 qsa-2026-apparmor/0001-apparmor-fix-kernel-doc-complaints.patch
-qsa-2026-apparmor/0002-apparmor-Fix-kernel-doc-warnings-in-apparmor-policy..patch
+qsa-2026-apparmor/0002-apparmor-Fix-kernel-doc-warnings-in-apparmor-policy.patch
 qsa-2026-apparmor/0003-apparmor-validate-DFA-start-states-are-in-bounds-in-.patch
 qsa-2026-apparmor/0004-apparmor-fix-memory-leak-in-verify_header.patch
 qsa-2026-apparmor/0005-apparmor-replace-recursive-profile-removal-with-iter.patch
