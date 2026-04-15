@@ -1,0 +1,69 @@
+From b6cbde42bc2406d734511a7b28499f9fda4fd91c Mon Sep 17 00:00:00 2001
+From: Bjorn Helgaas <bhelgaas@google.com>
+Date: Thu, 22 May 2025 18:21:17 -0500
+Subject: [PATCH 03/12] PCI/AER: Trace error event before ratelimiting
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+As with the AER statistics, we always want to emit trace events, even if
+the actual dmesg logging is rate limited.
+
+Call trace_aer_event() immediately after pci_dev_aer_stats_incr() so both
+happen before ratelimiting.
+
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Tested-by: Krzysztof Wilczyński <kwilczynski@kernel.org>
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Reviewed-by: Kuppuswamy Sathyanarayanan <sathyanarayanan.kuppuswamy@linux.intel.com>
+Link: https://patch.msgid.link/20250522232339.1525671-12-helgaas@kernel.org
+(cherry picked from commit 6bb4befbd65fa7f99688fb707e376637e5acfe36)
+---
+ drivers/pci/pcie/aer.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/pci/pcie/aer.c b/drivers/pci/pcie/aer.c
+index 48a33151d145..6fc993d05647 100644
+--- a/drivers/pci/pcie/aer.c
++++ b/drivers/pci/pcie/aer.c
+@@ -703,6 +703,8 @@ void aer_print_error(struct pci_dev *dev, struct aer_err_info *info)
+ 	const char *level;
+ 
+ 	pci_dev_aer_stats_incr(dev, info);
++	trace_aer_event(pci_name(dev), (info->status & ~info->mask),
++			info->severity, info->tlp_header_valid, &info->tlp);
+ 
+ 	if (!info->status) {
+ 		pci_err(dev, "PCIe Bus Error: severity=%s, type=Inaccessible, (Unregistered Agent ID)\n",
+@@ -730,9 +732,6 @@ void aer_print_error(struct pci_dev *dev, struct aer_err_info *info)
+ out:
+ 	if (info->id && info->error_dev_num > 1 && info->id == id)
+ 		pci_err(dev, "  Error of this Agent is reported first\n");
+-
+-	trace_aer_event(pci_name(dev), (info->status & ~info->mask),
+-			info->severity, info->tlp_header_valid, &info->tlp);
+ }
+ 
+ static void aer_print_port_info(struct pci_dev *dev, struct aer_err_info *info)
+@@ -785,6 +784,8 @@ void pci_print_aer(struct pci_dev *dev, int aer_severity,
+ 	info.mask = mask;
+ 
+ 	pci_dev_aer_stats_incr(dev, &info);
++	trace_aer_event(pci_name(dev), (status & ~mask),
++			aer_severity, tlp_header_valid, &aer->header_log);
+ 
+ 	layer = AER_GET_LAYER_ERROR(aer_severity, status);
+ 	agent = AER_GET_AGENT(aer_severity, status);
+@@ -800,9 +801,6 @@ void pci_print_aer(struct pci_dev *dev, int aer_severity,
+ 
+ 	if (tlp_header_valid)
+ 		__print_tlp_header(dev, &aer->header_log);
+-
+-	trace_aer_event(pci_name(dev), (status & ~mask),
+-			aer_severity, tlp_header_valid, &aer->header_log);
+ }
+ EXPORT_SYMBOL_NS_GPL(pci_print_aer, CXL);
+ 
+-- 
+2.47.0
+

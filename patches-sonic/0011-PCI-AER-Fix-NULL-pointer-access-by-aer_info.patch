@@ -1,0 +1,36 @@
+From 3b9b13868b3051851850d17adf1c22ac87ece220 Mon Sep 17 00:00:00 2001
+From: Vernon Yang <yanglincheng@kylinos.cn>
+Date: Fri, 5 Sep 2025 02:25:27 +0800
+Subject: [PATCH 11/12] PCI/AER: Fix NULL pointer access by aer_info
+
+The kzalloc(GFP_KERNEL) may return NULL, so all accesses to aer_info->xxx
+will result in kernel panic. Fix it.
+
+Signed-off-by: Vernon Yang <yanglincheng@kylinos.cn>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Link: https://patch.msgid.link/20250904182527.67371-1-vernon2gm@gmail.com
+(cherry picked from commit 0a27bdb14b028fed30a10cec2f945c38cb5ca4fa)
+---
+ drivers/pci/pcie/aer.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/pci/pcie/aer.c b/drivers/pci/pcie/aer.c
+index 067e305212eb..f1886e60f5a2 100644
+--- a/drivers/pci/pcie/aer.c
++++ b/drivers/pci/pcie/aer.c
+@@ -377,7 +377,11 @@ void pci_aer_init(struct pci_dev *dev)
+ 	if (!dev->aer_cap)
+ 		return;
+ 
+-	dev->aer_stats = kzalloc(sizeof(struct aer_stats), GFP_KERNEL);
++	dev->aer_stats = kzalloc(sizeof(*dev->aer_stats), GFP_KERNEL);
++	if (!dev->aer_stats) {
++		dev->aer_cap = 0;
++		return;
++	}
+ 
+ 	ratelimit_state_init(&dev->aer_stats->correctable_ratelimit,
+ 			     DEFAULT_RATELIMIT_INTERVAL, DEFAULT_RATELIMIT_BURST);
+-- 
+2.47.0
+
