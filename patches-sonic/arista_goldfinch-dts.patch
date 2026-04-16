@@ -1,0 +1,394 @@
+From 0d04433bafbc4b7a62f2aa63b622ac2fe5e2a3d1 Mon Sep 17 00:00:00 2001
+From: Prajjwal Singh <prajjwal@arista.com>
+Date: Mon, 4 May 2026 06:45:35 +0000
+Subject: [PATCH] arm64: dts: aspeed: Add Arista Goldfinch R0 device tree
+
+Add device tree for the Arista Goldfinch R0 board based on the Aspeed AST2700 BMC SoC.
+
+Tested by building and booting on Arista Goldfinch - AST2700 eval board.
+
+Signed-off-by: Prajjwal Singh <prajjwal@arista.com>
+---
+ arch/arm64/boot/dts/aspeed/Makefile           |   1 +
+ .../boot/dts/aspeed/arista_goldfinch-r0.dts   | 357 ++++++++++++++++++
+ 2 files changed, 358 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/aspeed/arista_goldfinch-r0.dts
+
+diff --git a/arch/arm64/boot/dts/aspeed/Makefile b/arch/arm64/boot/dts/aspeed/Makefile
+index 5caf80a7f..496ae839d 100644
+--- a/arch/arm64/boot/dts/aspeed/Makefile
++++ b/arch/arm64/boot/dts/aspeed/Makefile
+@@ -4,6 +4,7 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
+ 	ast2700-evb.dtb \
+ 	nexthop-b27-r0.dtb \
+ 	nokia-ast2700-h6-128-r0.dtb \
++	arista_goldfinch-r0.dtb \
+ 	ast2700-raw.dtb \
+ 	ast2700-evb-s0.dtb \
+ 	ast2700-evb-s1.dtb \
+diff --git a/arch/arm64/boot/dts/aspeed/arista_goldfinch-r0.dts b/arch/arm64/boot/dts/aspeed/arista_goldfinch-r0.dts
+new file mode 100644
+index 000000000..a55210a60
+--- /dev/null
++++ b/arch/arm64/boot/dts/aspeed/arista_goldfinch-r0.dts
+@@ -0,0 +1,357 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++// Arista Goldfinch R0 Device Tree
++
++/dts-v1/;
++
++#include "aspeed-g7.dtsi"
++
++/ {
++	model = "Goldfinch";
++	compatible = "arista_goldfinch-r0", "aspeed,ast2700";
++
++	chosen {
++		stdout-path = &uart12;
++	};
++
++	memory@400000000 {
++		device_type = "memory";
++		reg = <0x4 0x00000000 0x0 0x40000000>;
++	};
++
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
++
++		#include "ast2700-reserved-mem.dtsi"
++
++		xdma_memory0: xdma0 {
++			size = <0x0 0x01000000>;
++			alignment = <0x0 0x01000000>;
++			compatible = "shared-dma-pool";
++			no-map;
++		};
++
++		xdma_memory1: xdma1 {
++			size = <0x0 0x01000000>;
++			alignment = <0x0 0x01000000>;
++			compatible = "shared-dma-pool";
++			no-map;
++		};
++	};
++
++	firmware {
++		optee: optee {
++			compatible = "linaro,optee-tz";
++			method = "smc";
++		};
++	};
++
++	iio-hwmon {
++		compatible = "iio-hwmon";
++		status = "okay";
++		io-channels = <&adc0 0>, <&adc0 1>, <&adc0 2>, <&adc0 3>,
++				<&adc0 4>, <&adc0 5>, <&adc0 6>, <&adc0 7>,
++				<&adc1 0>, <&adc1 1>, <&adc1 2>, <&adc1 3>,
++				<&adc1 4>, <&adc1 5>, <&adc1 6>, <&adc1 7>;
++	};
++};
++
++&uart1 {
++	status = "okay";
++};
++
++&uart12 {
++	status = "okay";
++};
++
++&fmc {
++	status = "okay";
++	pinctrl-0 = <&pinctrl_fwspi_quad_default>;
++	pinctrl-names = "default";
++
++	flash@0 {
++		status = "okay";
++		m25p,fast-read;
++		label = "bmc-primary";
++		spi-max-frequency = <50000000>;
++		spi-tx-bus-width = <2>;
++		spi-rx-bus-width = <2>;
++		#include "aspeed-evb-flash-layout-128.dtsi"
++	};
++
++	flash@1 {
++		status = "okay";
++		m25p,fast-read;
++		label = "bmc-secondary";
++		spi-max-frequency = <50000000>;
++		spi-tx-bus-width = <2>;
++		spi-rx-bus-width = <2>;
++	};
++};
++
++&spi1 {
++	status = "okay";
++	pinctrl-0 = <&pinctrl_spi1_default &pinctrl_spi1_cs1_default>;
++	pinctrl-names = "default";
++
++	flash@0 {
++		status = "okay";
++		m25p,fast-read;
++		label = "cpu-boot";
++		spi-max-frequency = <100000000>;
++		spi-tx-bus-width = <2>;
++		spi-rx-bus-width = <2>;
++	};
++
++	flash@1 {
++		status = "okay";
++		m25p,fast-read;
++		label = "switch-card";
++		spi-max-frequency = <100000000>;
++		spi-tx-bus-width = <2>;
++		spi-rx-bus-width = <2>;
++	};
++};
++
++&spi2 {
++	compatible = "aspeed,ast2700-spi-txrx";
++	pinctrl-0 = <&pinctrl_spi2_default>;
++	pinctrl-names = "default";
++	status = "okay";
++
++	spi-aspeed-full-duplex;
++
++	tpm0: tpmdev@0 {
++		compatible = "tcg,tpm_tis-spi";
++		spi-max-frequency = <25000000>;
++		reg = <0>;
++		status = "okay";
++	};
++};
++
++&espi0 {
++	status = "okay";
++	perif-dma-mode;
++	perif-mmbi-enable;
++	perif-mmbi-src-addr = <0x0 0xa8000000>;
++	perif-mmbi-tgt-memory = <&espi0_mmbi_memory>;
++	perif-mmbi-instance-num = <0x1>;
++	perif-mcyc-enable;
++	perif-mcyc-src-addr = <0x0 0x98000000>;
++	perif-mcyc-size = <0x0 0x10000>;
++	perif-rtc-enable;
++	oob-dma-mode;
++	flash-dma-mode;
++};
++
++&rtc_over_espi0 {
++	status = "okay";
++};
++
++&vhuba0 {
++	status = "okay";
++};
++
++&ehci0 {
++	status = "disabled";
++};
++
++&ehci1 {
++	status = "okay";
++};
++
++&emmc_controller {
++	status = "okay";
++	mmc-hs200-1_8v;
++};
++
++&emmc {
++	status = "okay";
++	bus-width = <4>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_emmc_default>;
++	non-removable;
++	max-frequency = <200000000>;
++};
++
++&adc0 {
++	aspeed,int-vref-microvolt = <2500000>;
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_adc0_default &pinctrl_adc1_default
++		&pinctrl_adc2_default &pinctrl_adc3_default
++		&pinctrl_adc4_default &pinctrl_adc5_default
++		&pinctrl_adc6_default &pinctrl_adc7_default>;
++};
++
++&adc1 {
++	aspeed,int-vref-microvolt = <2500000>;
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_adc8_default &pinctrl_adc9_default
++		&pinctrl_adc10_default &pinctrl_adc11_default
++		&pinctrl_adc12_default &pinctrl_adc13_default
++		&pinctrl_adc14_default &pinctrl_adc15_default>;
++};
++
++&chassis {
++	status = "okay";
++};
++
++&rtc {
++	status = "okay";
++};
++
++&jtag0 {
++	status = "okay";
++};
++
++&jtag1 {
++	status = "okay";
++};
++
++&mctp0 {
++	status = "okay";
++	memory-region = <&mctp0_reserved>;
++};
++
++&mctp1 {
++	status = "okay";
++	memory-region = <&mctp1_reserved>;
++};
++
++&mctp2 {
++	status = "okay";
++	memory-region = <&mctp2_reserved>;
++};
++
++&wdt0 {
++	status = "okay";
++};
++
++&wdt1 {
++	status = "okay";
++};
++
++&otp {
++	status = "okay";
++};
++
++&syscon1 {
++	assigned-clocks = <&syscon1 SCU1_CLK_MACHCLK>,
++			  <&syscon1 SCU1_CLK_RGMII>,
++			  <&syscon1 SCU1_CLK_RMII>;
++	assigned-clock-rates = <200000000>, <125000000>, <50000000>;
++};
++
++&mac0 {
++	status = "disabled";
++};
++
++&mac1 {
++	status = "disabled";
++};
++
++&sgmii {
++	status = "okay";
++};
++
++&mac2 {
++	status = "okay";
++	phy-mode = "sgmii";
++	fixed-link {
++		speed = <1000>;
++		full-duplex;
++	};
++};
++
++&i2c0 {
++	status = "okay";
++};
++
++&i2c1 {
++	status = "okay";
++};
++
++&i2c2 {
++	status = "okay";
++};
++
++&i2c3 {
++	status = "okay";
++};
++
++&i2c4 {
++	status = "okay";
++};
++
++&i2c5 {
++	status = "okay";
++};
++
++&i2c6 {
++	status = "okay";
++};
++
++&i2c7 {
++	status = "okay";
++};
++
++&i2c8 {
++	status = "okay";
++};
++
++&i2c9 {
++	status = "okay";
++
++	eeprom@50 {
++		compatible = "atmel,24c512";
++		reg = <0x50>;
++	};
++
++	eeprom@52 {
++		compatible = "atmel,24c512";
++		reg = <0x52>;
++	};
++
++	eeprom@53 {
++		compatible = "atmel,24c512";
++		reg = <0x53>;
++	};
++};
++
++&i2c10 {
++	status = "okay";
++};
++
++&i2c11 {
++	status = "okay";
++};
++
++&i2c12 {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_di2c12_default>;
++};
++
++&i2c13 {
++	status = "okay";
++};
++
++&i2c14 {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_di2c14_default>;
++
++	eeprom@50 {
++		compatible = "atmel,24c512";
++		reg = <0x50>;
++	};
++};
++
++&i2c15 {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_di2c15_default>;
++};
+-- 
+2.47.3
+
