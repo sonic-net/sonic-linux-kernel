@@ -235,6 +235,9 @@ nexthop-b27-dts.patch
 0001-Add-device-tree-for-Nokia-BMC-H6-128-platform.patch
 ###-> aspeed-end
 
+###-> nvidia_aspeed_bmc-start
+###-> nvidia_aspeed_bmc-end
+
 # QID-45097: Crackarmor fixes
 qsa-2026-apparmor/0001-apparmor-validate-DFA-start-states-are-in-bounds-in-.patch
 qsa-2026-apparmor/0002-apparmor-fix-memory-leak-in-verify_header.patch
