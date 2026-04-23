@@ -208,7 +208,7 @@ cisco-npu-disable-other-bars.patch
 0003-xilinx-spi-make-interrupt-optional.patch
 0004-xilinx-spi-platform_get_irq_optional.patch
 0005-xilinx-spi-use-device-property.patch
-
+driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pending 
 
 # Fix to avoid kernel panic on Kernel 6.1.94
 # https://github.com/sonic-net/sonic-buildimage/issues/20901
