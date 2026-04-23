@@ -107,7 +107,7 @@ index ba4ca17..0d575aa 100644
 +
 +	/* Indicates if page restore has failed.
 +	 * If true, the driver doesn't skip writing to page select register
-+	 * even for acesses to page 0.
++	 * even for accesses to page 0.
 +	 */
 +	bool page_restore_failed;
  
@@ -296,7 +296,7 @@ index ba4ca17..0d575aa 100644
 +	struct optoe_data *optoe = i2c_get_clientdata(client);
 +	unsigned int bank_size;
 +
-+	// setting bank size is only supported for the CMIS device
++	/* setting bank size is only supported for the CMIS device */
 +	if (optoe->dev_class != CMIS_ADDR) {
 +		return -EINVAL;
 +	}
@@ -331,14 +331,6 @@ index ba4ca17..0d575aa 100644
  	NULL,
  };
  
-@@ -1027,7 +1171,6 @@ static int optoe_probe(struct i2c_client *client)
- 	const struct i2c_device_id *id;
- 	int num_addresses = 0;
- 	char port_name[MAX_PORT_NAME_LEN];
--
- 	if (client->addr != 0x50) {
- 		dev_dbg(&client->dev, "probe, bad i2c addr: 0x%x\n",
- 				      client->addr);
 @@ -1109,7 +1252,7 @@ static int optoe_probe(struct i2c_client *client)
  	} else if (strcmp(client->name, "optoe3") == 0) {
  		/* CMIS spec */
