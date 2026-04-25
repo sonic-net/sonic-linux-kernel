@@ -1,6 +1,6 @@
-From fe9bd355064f7d80a7f34ebc81380790fc39693c Mon Sep 17 00:00:00 2001
+From 9be07cbc41161d2aaeca2a6e48fd698af24f75ae Mon Sep 17 00:00:00 2001
 From: Natarajan Subbiramani <natarajan.subbiramani@nokia.com>
-Date: Mon, 30 Mar 2026 15:58:14 -0400
+Date: Fri, 24 Apr 2026 10:44:28 -0400
 Subject: [PATCH] Add device tree for Nokia BMC H6-128 platform
 
 The device tree is based on ast2700 evb board.
@@ -14,25 +14,26 @@ Hardware deviations from ast2700-evb:
 
 Signed-off-by: Natarajan Subbiramani <natarajan.subbiramani@nokia.com>
 ---
- arch/arm64/boot/dts/aspeed/Makefile           |   3 +-
+ arch/arm64/boot/dts/aspeed/Makefile           |   1 +
  .../dts/aspeed/nokia-ast2700-h6-128-r0.dts    | 329 ++++++++++++++++++
- 2 files changed, 331 insertions(+), 1 deletion(-)
+ 2 files changed, 330 insertions(+)
  create mode 100644 arch/arm64/boot/dts/aspeed/nokia-ast2700-h6-128-r0.dts
 
 diff --git a/arch/arm64/boot/dts/aspeed/Makefile b/arch/arm64/boot/dts/aspeed/Makefile
-index 1b26168dfcd8..c5a2cc545b75 100644
+index 3e904b273f1f..5caf80a7ff69 100644
 --- a/arch/arm64/boot/dts/aspeed/Makefile
 +++ b/arch/arm64/boot/dts/aspeed/Makefile
-@@ -14,4 +14,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
- 	ast2700-evb-256-abr.dtb \
- 	ast2700-slt.dtb \
- 	ast2700-fpga.dtb \
--	ast2700-ci-host.dtb
-+	ast2700-ci-host.dtb \
-+	nokia-ast2700-h6-128-r0.dtb
+@@ -3,6 +3,7 @@
+ dtb-$(CONFIG_ARCH_ASPEED) += \
+ 	ast2700-evb.dtb \
+ 	nexthop-b27-r0.dtb \
++	nokia-ast2700-h6-128-r0.dtb \
+ 	ast2700-raw.dtb \
+ 	ast2700-evb-s0.dtb \
+ 	ast2700-evb-s1.dtb \
 diff --git a/arch/arm64/boot/dts/aspeed/nokia-ast2700-h6-128-r0.dts b/arch/arm64/boot/dts/aspeed/nokia-ast2700-h6-128-r0.dts
 new file mode 100644
-index 000000000000..9aa248e0c4a2
+index 000000000000..79b5bd7fb94a
 --- /dev/null
 +++ b/arch/arm64/boot/dts/aspeed/nokia-ast2700-h6-128-r0.dts
 @@ -0,0 +1,329 @@
@@ -367,3 +368,4 @@ index 000000000000..9aa248e0c4a2
 +};
 -- 
 2.25.1
+
