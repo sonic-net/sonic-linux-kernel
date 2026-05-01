@@ -62,6 +62,9 @@ driver-i2c-smbus-add-disable_spd-module-parameter.patch
 ###-> mellanox_sdk-start
 0001-psample-define-the-macro-PSAMPLE_MD_EXTENDED_ATTR.patch
 0002-drop_monitor-Extend-WJH-buffer-linux-channel.patch
+0003-drop_monitor-Allow-running-multiple-instances-of-dropwatch.patch
+0004-drop_monitor-Send-hardware-drop-notifications-to-the.patch
+0005-drop_monitor-Do-not-block-a-configuration-change-if-it-is-a.patch
 ###-> mellanox_sdk-end
 
 ###-> mellanox_hw_mgmt-start

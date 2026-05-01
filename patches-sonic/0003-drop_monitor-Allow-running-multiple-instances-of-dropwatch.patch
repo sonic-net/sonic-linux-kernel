@@ -1,0 +1,146 @@
+From b1fe183ad73ab30c6ed6aef7b961e3b440dfa174 Mon Sep 17 00:00:00 2001
+From: Ido Schimmel <idosch@nvidia.com>
+Date: Wed, 11 Feb 2026 18:55:30 +0200
+Subject: [PATCH] drop_monitor: Allow running multiple instances of dropwatch
+
+Despite the fact that the drop_monitor module sends multicast
+notifications, it is not possible to run multiple instances of dropwatch
+since tracing of software / hardware drops can only be enabled once.
+
+Solve this by maintaining a reference count of the number of times that
+software / hardware drop tracing was enabled. Initialize the tracing
+when the reference count is incremented from 0 and tear it down when
+decremented back to 0.
+
+Note that like before, it is not possible to change configuration while
+tracing is enabled.
+
+Signed-off-by: Ido Schimmel <idosch@nvidia.com>
+---
+ net/core/drop_monitor.c | 46 ++++++++++++++++++++---------------------
+ 1 file changed, 23 insertions(+), 23 deletions(-)
+
+diff --git a/net/core/drop_monitor.c b/net/core/drop_monitor.c
+index 60d31c2feed3..29f2b8c6b8b9 100644
+--- a/net/core/drop_monitor.c
++++ b/net/core/drop_monitor.c
+@@ -47,8 +47,8 @@
+  * and the work handle that will send up
+  * netlink alerts
+  */
+-static int trace_state = TRACE_OFF;
+-static bool monitor_hw;
++static refcount_t refcount_sw = REFCOUNT_INIT(0);
++static refcount_t refcount_hw = REFCOUNT_INIT(0);
+ 
+ /* net_dm_mutex
+  *
+@@ -1051,10 +1051,8 @@ static int net_dm_hw_monitor_start(struct netlink_ext_ack *extack)
+ 	const struct net_dm_alert_ops *ops;
+ 	int cpu, rc;
+ 
+-	if (monitor_hw) {
+-		NL_SET_ERR_MSG_MOD(extack, "Hardware monitoring already enabled");
+-		return -EAGAIN;
+-	}
++	if (refcount_inc_not_zero(&refcount_hw))
++		return 0;
+ 
+ 	ops = net_dm_alert_ops_arr[net_dm_alert_mode];
+ 
+@@ -1079,7 +1077,7 @@ static int net_dm_hw_monitor_start(struct netlink_ext_ack *extack)
+ 		goto err_module_put;
+ 	}
+ 
+-	monitor_hw = true;
++	refcount_set(&refcount_hw, 1);
+ 
+ 	return 0;
+ 
+@@ -1107,14 +1105,14 @@ static void net_dm_hw_monitor_stop(struct netlink_ext_ack *extack)
+ 	const struct net_dm_alert_ops *ops;
+ 	int cpu;
+ 
+-	if (!monitor_hw) {
+-		NL_SET_ERR_MSG_MOD(extack, "Hardware monitoring already disabled");
++	/* Don't disable if already disabled. */
++	if (!refcount_read(&refcount_hw))
+ 		return;
+-	}
+ 
+-	ops = net_dm_alert_ops_arr[net_dm_alert_mode];
++	if (!refcount_dec_and_test(&refcount_hw))
++		return;
+ 
+-	monitor_hw = false;
++	ops = net_dm_alert_ops_arr[net_dm_alert_mode];
+ 
+ 	net_dm_hw_probe_unregister(ops);
+ 
+@@ -1141,6 +1139,9 @@ static int net_dm_trace_on_set(struct netlink_ext_ack *extack)
+ 	const struct net_dm_alert_ops *ops;
+ 	int cpu, rc;
+ 
++	if (refcount_inc_not_zero(&refcount_sw))
++		return 0;
++
+ 	ops = net_dm_alert_ops_arr[net_dm_alert_mode];
+ 
+ 	if (!try_module_get(THIS_MODULE)) {
+@@ -1174,6 +1175,8 @@ static int net_dm_trace_on_set(struct netlink_ext_ack *extack)
+ 		goto err_unregister_trace;
+ 	}
+ 
++	refcount_set(&refcount_sw, 1);
++
+ 	return 0;
+ 
+ err_unregister_trace:
+@@ -1197,6 +1200,13 @@ static void net_dm_trace_off_set(void)
+ 	const struct net_dm_alert_ops *ops;
+ 	int cpu;
+ 
++	/* Don't disable if already disabled. */
++	if (!refcount_read(&refcount_sw))
++		return;
++
++	if (!refcount_dec_and_test(&refcount_sw))
++		return;
++
+ 	ops = net_dm_alert_ops_arr[net_dm_alert_mode];
+ 
+ 	unregister_trace_napi_poll(ops->napi_poll_probe, NULL);
+@@ -1224,11 +1234,6 @@ static int set_all_monitor_traces(int state, struct netlink_ext_ack *extack)
+ {
+ 	int rc = 0;
+ 
+-	if (state == trace_state) {
+-		NL_SET_ERR_MSG_MOD(extack, "Trace state already set to requested state");
+-		return -EAGAIN;
+-	}
+-
+ 	switch (state) {
+ 	case TRACE_ON:
+ 		rc = net_dm_trace_on_set(extack);
+@@ -1241,17 +1246,12 @@ static int set_all_monitor_traces(int state, struct netlink_ext_ack *extack)
+ 		break;
+ 	}
+ 
+-	if (!rc)
+-		trace_state = state;
+-	else
+-		rc = -EINPROGRESS;
+-
+ 	return rc;
+ }
+ 
+ static bool net_dm_is_monitoring(void)
+ {
+-	return trace_state == TRACE_ON || monitor_hw;
++	return refcount_read(&refcount_sw) || refcount_read(&refcount_hw);
+ }
+ 
+ static int net_dm_alert_mode_get_from_info(struct genl_info *info,
+-- 
+GitLab
+
