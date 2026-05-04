@@ -1,8 +1,8 @@
-From cb4bbd807ddd09b237809ac19e120ee3235f27e6 Mon Sep 17 00:00:00 2001
+From 270544d85808eae4a873cd2506451a3d96f23678 Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Wed, 30 Jul 2025 20:41:33 +0300
-Subject: [PATCH 47/78] hwmon: mlxreg-fan: Prevent fans from getting stuck at 0
- RPM
+Subject: [PATCH hwmon 2/2] hwmon: mlxreg-fan: Prevent fans from getting stuck
+ at 0 RPM
 
 The fans controlled by the driver can get stuck at 0 RPM if they are
 configured below a 20% duty cycle. The driver tries to avoid this by
@@ -20,12 +20,11 @@ Tested-by: Nikolay Aleksandrov <razor@blackwall.org>
 Signed-off-by: Ido Schimmel <idosch@nvidia.com>
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
 ---
- drivers/hwmon/mlxreg-fan.c                  | 5 ++---
- drivers/platform/mellanox/nvsw-bmc-hid162.c | 2 +-
- 2 files changed, 3 insertions(+), 4 deletions(-)
+ drivers/hwmon/mlxreg-fan.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/hwmon/mlxreg-fan.c b/drivers/hwmon/mlxreg-fan.c
-index 0e9ce70..2cd0b9c 100644
+index 0e9ce70a..2cd0b9cc 100644
 --- a/drivers/hwmon/mlxreg-fan.c
 +++ b/drivers/hwmon/mlxreg-fan.c
 @@ -581,15 +581,14 @@ static int mlxreg_fan_cooling_config(struct device *dev, struct mlxreg_fan *fan)
@@ -46,19 +45,6 @@ index 0e9ce70..2cd0b9c 100644
  	}
  
  	return 0;
-diff --git a/drivers/platform/mellanox/nvsw-bmc-hid162.c b/drivers/platform/mellanox/nvsw-bmc-hid162.c
-index fbc7382..6ebe5be 100644
---- a/drivers/platform/mellanox/nvsw-bmc-hid162.c
-+++ b/drivers/platform/mellanox/nvsw-bmc-hid162.c
-@@ -2012,7 +2012,7 @@ static struct mlxreg_core_data nvsw_bmc_hid180_regio_data[] = {
- 	{
- 		.label = "mcu2_reset",
- 		.reg = NVSW_REG_RESET_GP2_OFFSET,
--		.mask = GENMASK(7, 0) & ~BIT(6),
-+		.mask = GENMASK(7, 0) & ~BIT(7),
- 		.mode = 0644,
- 	},
- 	{
 -- 
-2.8.4
+2.34.1
 
