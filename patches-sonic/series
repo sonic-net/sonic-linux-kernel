@@ -208,8 +208,8 @@ cisco-npu-disable-other-bars.patch
 0003-xilinx-spi-make-interrupt-optional.patch
 0004-xilinx-spi-platform_get_irq_optional.patch
 0005-xilinx-spi-use-device-property.patch
-driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pending
-0001-PM-runtime-Add-new-devm-functions.patch # Backport 69a837b75edc (in v6.12.55+); required by 0010
+driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pending 
+0001-PM-runtime-Add-new-devm-functions.patch
 0007-i2c-xiic-Relocate-xiic_i2c_runtime_suspend-and-xiic_.patch
 0008-i2c-xiic-Add-atomic-transfer-support.patch
 0009-i2c-i2c-xiic-Replace-dev_err-with-dev_err_probe-in-p.patch
