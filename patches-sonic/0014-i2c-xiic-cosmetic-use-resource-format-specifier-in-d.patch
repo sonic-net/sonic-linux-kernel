@@ -1,0 +1,34 @@
+From d902afc2c1847903bafa2d9e5a8f311c8d123fc4 Mon Sep 17 00:00:00 2001
+From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Date: Mon, 23 Feb 2026 15:59:20 +0000
+Subject: [PATCH 14/22] i2c: xiic: cosmetic: use resource format specifier in
+ debug log
+
+Use standard resource format specifier %pR in debug log.
+
+Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Reviewed-by: Andy Shevchenko <andriy.shevchenko@intel.com>
+Signed-off-by: Andi Shyti <andi.shyti@kernel.org>
+Link: https://lore.kernel.org/r/20260223-i2c-xiic-v12-5-b6c9ce4e4f3c@nexthop.ai
+---
+ drivers/i2c/busses/i2c-xiic.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-xiic.c b/drivers/i2c/busses/i2c-xiic.c
+index 6de239d2cfc0..b9880609a92d 100644
+--- a/drivers/i2c/busses/i2c-xiic.c
++++ b/drivers/i2c/busses/i2c-xiic.c
+@@ -1520,8 +1520,8 @@ static int xiic_i2c_probe(struct platform_device *pdev)
+ 			i2c_new_client_device(&i2c->adap, pdata->devices + i);
+ 	}
+ 
+-	dev_dbg(&pdev->dev, "mmio %08lx irq %d scl clock frequency %d\n",
+-		(unsigned long)res->start, irq, i2c->i2c_clk);
++	dev_dbg(dev, "mmio %pR irq %d scl clock frequency %d\n",
++		res, irq, i2c->i2c_clk);
+ 
+ 	return 0;
+ }
+-- 
+2.53.0
+
