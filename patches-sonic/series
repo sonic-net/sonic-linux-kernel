@@ -208,7 +208,18 @@ cisco-npu-disable-other-bars.patch
 0003-xilinx-spi-make-interrupt-optional.patch
 0004-xilinx-spi-platform_get_irq_optional.patch
 0005-xilinx-spi-use-device-property.patch
-driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pending 
+driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pending
+0006-PM-runtime-Add-new-devm-functions.patch # Backport 69a837b75edc (in v6.12.55+); required by 0010
+0007-i2c-xiic-Relocate-xiic_i2c_runtime_suspend-and-xiic_.patch
+0008-i2c-xiic-Add-atomic-transfer-support.patch
+0009-i2c-i2c-xiic-Replace-dev_err-with-dev_err_probe-in-p.patch
+0010-i2c-xiic-switch-to-devres-managed-APIs.patch
+0011-i2c-xiic-remove-duplicate-error-message.patch
+0012-i2c-xiic-switch-to-generic-device-property-accessors.patch
+0013-i2c-xiic-cosmetic-cleanup.patch
+0014-i2c-xiic-cosmetic-use-resource-format-specifier-in-d.patch
+0015-i2c-xiic-use-numbered-adapter-registration.patch
+0016-i2c-xiic-skip-input-clock-setup-on-non-OF-systems.patch
 
 # Fix to avoid kernel panic on Kernel 6.1.94
 # https://github.com/sonic-net/sonic-buildimage/issues/20901

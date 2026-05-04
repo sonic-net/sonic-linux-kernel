@@ -1,0 +1,38 @@
+From 8809c7f8154d8752a3b5ab2f571160cdc413e394 Mon Sep 17 00:00:00 2001
+From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Date: Mon, 23 Feb 2026 15:59:17 +0000
+Subject: [PATCH 11/22] i2c: xiic: remove duplicate error message
+
+The devm_request_threaded_irq() already prints an error message. Remove
+the duplicate.
+
+Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Reviewed-by: Andy Shevchenko <andriy.shevchenko@intel.com>
+Reviewed-by: Andrew Lunn <andrew@lunn.ch>
+Reviewed-by: Jonathan Cameron <jonathan.cameron@huawei.com>
+Signed-off-by: Andi Shyti <andi.shyti@kernel.org>
+Link: https://lore.kernel.org/r/20260223-i2c-xiic-v12-2-b6c9ce4e4f3c@nexthop.ai
+---
+ drivers/i2c/busses/i2c-xiic.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-xiic.c b/drivers/i2c/busses/i2c-xiic.c
+index ea85fc396033..5f141acc5306 100644
+--- a/drivers/i2c/busses/i2c-xiic.c
++++ b/drivers/i2c/busses/i2c-xiic.c
+@@ -1492,11 +1492,8 @@ static int xiic_i2c_probe(struct platform_device *pdev)
+ 	ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
+ 					xiic_process, IRQF_ONESHOT,
+ 					pdev->name, i2c);
+-
+-	if (ret < 0) {
+-		dev_err_probe(&pdev->dev, ret, "Cannot claim IRQ\n");
++	if (ret)
+ 		return ret;
+-	}
+ 
+ 	i2c->singlemaster =
+ 		of_property_read_bool(pdev->dev.of_node, "single-master");
+-- 
+2.53.0
+
