@@ -246,6 +246,11 @@ qsa-2026-apparmor/0008-apparmor-fix-unprivileged-local-user-can-do-privileg.patc
 qsa-2026-apparmor/0009-apparmor-fix-differential-encoding-verification.patch
 qsa-2026-apparmor/0010-apparmor-fix-race-on-rawdata-dereference.patch
 qsa-2026-apparmor/0011-apparmor-fix-race-between-freeing-data-and-fs-access.patch
+# Patches for EVPN MH
+0001-vxlan-bridge-Add-NDA_FLAGS_EXT-support-with-NTF_EXT_.patch
+0002-net-bridge-vxlan-Protocol-field-in-bridge-fdb.patch
+# Drop 0003 when kernel >= 6.12 (merged upstream: torvalds/linux 03dc03fa0432)
+0003-neighbor-Add-NTF_EXT_VALIDATED-flag-for-externally-v.patch
 
 #
 #
