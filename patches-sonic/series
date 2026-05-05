@@ -233,6 +233,7 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 aspeed-ast2700-support.patch
 nexthop-b27-dts.patch
 0001-Add-device-tree-for-Nokia-BMC-H6-128-platform.patch
+arista_goldfinch-dts.patch
 ###-> aspeed-end
 
 # QID-45097: Crackarmor fixes
