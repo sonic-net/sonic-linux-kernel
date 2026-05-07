@@ -1,0 +1,48 @@
+From 93eb370bd91e1f3f9eaa53a1a8fa910903febeed Mon Sep 17 00:00:00 2001
+From: John Johansen <john.johansen@canonical.com>
+Date: Wed, 10 Sep 2025 06:22:17 -0700
+Subject: [PATCH 07/11] apparmor: Fix double free of ns_name in
+ aa_replace_profiles()
+
+if ns_name is NULL after
+1071         error = aa_unpack(udata, &lh, &ns_name);
+
+and if ent->ns_name contains an ns_name in
+1089                 } else if (ent->ns_name) {
+
+then ns_name is assigned the ent->ns_name
+1095                         ns_name = ent->ns_name;
+
+however ent->ns_name is freed at
+1262                 aa_load_ent_free(ent);
+
+and then again when freeing ns_name at
+1270         kfree(ns_name);
+
+Fix this by NULLing out ent->ns_name after it is transferred to ns_name
+
+Fixes: 04dc715e24d08 ("apparmor: audit policy ns specified in policy load")
+Reported-by: Qualys Security Advisory <qsa@qualys.com>
+Tested-by: Salvatore Bonaccorso <carnil@debian.org>
+Reviewed-by: Georgia Garcia <georgia.garcia@canonical.com>
+Reviewed-by: Cengiz Can <cengiz.can@canonical.com>
+Signed-off-by: John Johansen <john.johansen@canonical.com>
+---
+ security/apparmor/policy.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/security/apparmor/policy.c b/security/apparmor/policy.c
+index f6869ea00d1d..9a4e29cdd8c0 100644
+--- a/security/apparmor/policy.c
++++ b/security/apparmor/policy.c
+@@ -1118,6 +1118,7 @@ ssize_t aa_replace_profiles(struct aa_ns *policy_ns, struct aa_label *label,
+ 				goto fail;
+ 			}
+ 			ns_name = ent->ns_name;
++			ent->ns_name = NULL;
+ 		} else
+ 			count++;
+ 	}
+-- 
+2.53.0
+
