@@ -105,3 +105,6 @@ CONFIG_CRYPTO_DEV_ASPEED=y
 # CONFIG_CRYPTO_DEV_ASPEED_RSSS is not set
 # CONFIG_CRYPTO_DEV_ASPEED_ECDSA is not set
 
+###-> nvidia_aspeed_bmc-start
+###-> nvidia_aspeed_bmc-end
+
