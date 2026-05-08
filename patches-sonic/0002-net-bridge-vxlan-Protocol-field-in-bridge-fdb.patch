@@ -527,11 +527,12 @@ index 202d791..689d1b5 100644
  		fdb_notify(br, fdb, RTM_NEWNEIGH, swdev_notify);
  	} else {
  		if (locked &&
-@@ -1512,6 +1540,11 @@ int br_fdb_external_learn_add(struct net_bridge *br, struct net_bridge_port *p,
+@@ -1512,6 +1540,12 @@ int br_fdb_external_learn_add(struct net_bridge *br, struct net_bridge_port *p,
  		    test_and_clear_bit(BR_FDB_DYNAMIC_LEARNED, &fdb->flags))
  			atomic_dec(&br->fdb_n_learned);
  
-+		if (fdb->protocol != protocol) {
++		if (protocol != RTPROT_UNSPEC &&
++		    fdb->protocol != protocol) {
 +			modified = true;
 +			fdb->protocol = protocol;
 +		}
