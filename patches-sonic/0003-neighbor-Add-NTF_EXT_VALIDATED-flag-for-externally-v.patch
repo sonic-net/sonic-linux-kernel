@@ -157,7 +157,7 @@ Signed-off-by: Jakub Kicinski <kuba@kernel.org>
  3 files changed, 82 insertions(+), 12 deletions(-)
 
 diff --git a/include/net/neighbour.h b/include/net/neighbour.h
-index 5c6f52831..54c1333a9 100644
+index 5c6f528..54c1333 100644
 --- a/include/net/neighbour.h
 +++ b/include/net/neighbour.h
 @@ -267,14 +267,17 @@ static inline void *neighbour_priv(const struct neighbour *n)
@@ -180,17 +180,17 @@ index 5c6f52831..54c1333a9 100644
  extern const struct nla_policy nda_policy[];
  
 diff --git a/include/uapi/linux/neighbour.h b/include/uapi/linux/neighbour.h
-index dce82ed78..2c897c012 100644
+index 95b397a..2376de7 100644
 --- a/include/uapi/linux/neighbour.h
 +++ b/include/uapi/linux/neighbour.h
-@@ -55,6 +55,7 @@ enum {
+@@ -54,6 +54,7 @@ enum {
+ /* Extended flags under NDA_FLAGS_EXT: */
  #define NTF_EXT_MANAGED		(1 << 0)
  #define NTF_EXT_LOCKED		(1 << 1)
- #define NTF_EXT_MH_PEER_SYNC (1 << 2)
-+#define NTF_EXT_EXT_VALIDATED (1 << 3)
++#define NTF_EXT_EXT_VALIDATED (1 << 2)
+ #define NTF_EXT_MH_PEER_SYNC (1 << 3)
  
  /*
-  *	Neighbor Cache Entry States.
 @@ -93,6 +94,10 @@ enum {
   * bridge in response to a host trying to communicate via a locked bridge port
   * with MAB enabled. Their purpose is to notify user space that a host requires
@@ -203,7 +203,7 @@ index dce82ed78..2c897c012 100644
  
  struct nda_cacheinfo {
 diff --git a/net/core/neighbour.c b/net/core/neighbour.c
-index 019aec2ea..888a46faf 100644
+index 019aec2..888a46f 100644
 --- a/net/core/neighbour.c
 +++ b/net/core/neighbour.c
 @@ -135,11 +135,12 @@ static void neigh_update_gc_list(struct neighbour *n)
@@ -380,6 +380,3 @@ index 019aec2ea..888a46faf 100644
  
  	err = __neigh_update(neigh, lladdr, ndm->ndm_state, flags,
  			     NETLINK_CB(skb).portid, extack);
--- 
-2.34.1
-

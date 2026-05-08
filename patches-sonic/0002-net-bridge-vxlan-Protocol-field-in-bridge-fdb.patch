@@ -23,11 +23,11 @@ Implementation:
 Signed-off-by: Mrinmoy Ghosh <mrghosh@cisco.com>
 Signed-off-by: Tamer Ahmed <tamerahmed@microsoft.com>
 ---
-Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
-===================================================================
---- linux-6.12.41.orig/drivers/net/vxlan/vxlan_core.c
-+++ linux-6.12.41/drivers/net/vxlan/vxlan_core.c
-@@ -200,6 +200,8 @@ static int vxlan_fdb_info(struct sk_buff
+diff --git a/drivers/net/vxlan/vxlan_core.c b/drivers/net/vxlan/vxlan_core.c
+index 602d926..662c024 100644
+--- a/drivers/net/vxlan/vxlan_core.c
++++ b/drivers/net/vxlan/vxlan_core.c
+@@ -200,6 +200,8 @@ static int vxlan_fdb_info(struct sk_buff *skb, struct vxlan_dev *vxlan,
  			peernet2id(dev_net(vxlan->dev), vxlan->net)))
  		goto nla_put_failure;
  
@@ -36,7 +36,15 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  	if (send_eth && nla_put(skb, NDA_LLADDR, ETH_ALEN, &fdb->eth_addr))
  		goto nla_put_failure;
  	if (nh) {
-@@ -888,7 +890,7 @@ err_inval:
+@@ -250,6 +252,7 @@ static inline size_t vxlan_nlmsg_size(void)
+ {
+ 	return NLMSG_ALIGN(sizeof(struct ndmsg))
+ 		+ nla_total_size(ETH_ALEN) /* NDA_LLADDR */
++		+ nla_total_size(sizeof(__u8)) /* NDA_PROTOCOL */
+ 		+ nla_total_size(sizeof(struct in6_addr)) /* NDA_DST */
+ 		+ nla_total_size(sizeof(__be16)) /* NDA_PORT */
+ 		+ nla_total_size(sizeof(__be32)) /* NDA_VNI */
+@@ -889,7 +892,7 @@ err_inval:
  int vxlan_fdb_create(struct vxlan_dev *vxlan, const u8 *mac,
  		     union vxlan_addr *ip, __u16 state, __be16 port,
  		     __be32 src_vni, __be32 vni, __u32 ifindex, __u16 ndm_flags,
@@ -45,7 +53,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  		     struct netlink_ext_ack *extack, u32 ext_flags)
  {
  	struct vxlan_rdst *rd = NULL;
-@@ -904,6 +906,7 @@ int vxlan_fdb_create(struct vxlan_dev *v
+@@ -905,6 +908,7 @@ int vxlan_fdb_create(struct vxlan_dev *vxlan, const u8 *mac,
  	if (!f)
  		return -ENOMEM;
  
@@ -53,7 +61,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  	if (nhid)
  		rc = vxlan_fdb_nh_update(vxlan, f, nhid, extack);
  	else
-@@ -981,7 +984,7 @@ static int
+@@ -982,7 +986,7 @@ static int
  vxlan_fdb_update_existing(struct vxlan_dev *vxlan, union vxlan_addr *ip,
  			  __u16 state, __u16 flags, __be16 port, __be32 vni,
  			  __u32 ifindex, __u16 ndm_flags, struct vxlan_fdb *f,
@@ -62,19 +70,20 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  			  struct netlink_ext_ack *extack, u32 ext_flags)
  {
  	__u16 fdb_flags = (ndm_flags & ~NTF_USE);
-@@ -1019,6 +1022,11 @@ vxlan_fdb_update_existing(struct vxlan_d
- 			WRITE_ONCE(f->updated, jiffies);
- 			notify = 1;
+@@ -1022,6 +1026,12 @@ vxlan_fdb_update_existing(struct vxlan_dev *vxlan, union vxlan_addr *ip,
  		}
-+		if (protocol != RTPROT_UNSPEC && f->protocol != protocol) {
-+			f->protocol = protocol;
-+			WRITE_ONCE(f->updated, jiffies);
-+			notify = 1;
-+		}
  	}
  
++	if (protocol != RTPROT_UNSPEC && f->protocol != protocol) {
++		f->protocol = protocol;
++		WRITE_ONCE(f->updated, jiffies);
++		notify = 1;
++	}
++
  	if ((old_ext_flags ^ ext_flags) & NTF_EXT_MH_PEER_SYNC) {
-@@ -1088,7 +1096,7 @@ static int vxlan_fdb_update_create(struc
+ 		notify = 1;
+ 		if (ext_flags & NTF_EXT_MH_PEER_SYNC)
+@@ -1089,7 +1099,7 @@ static int vxlan_fdb_update_create(struct vxlan_dev *vxlan, const u8 *mac,
  				   union vxlan_addr *ip, __u16 state,
  				   __u16 flags, __be16 port, __be32 src_vni,
  				   __be32 vni, __u32 ifindex, __u16 ndm_flags,
@@ -83,7 +92,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  				   struct netlink_ext_ack *extack,
  				   u32 ext_flags)
  {
-@@ -1103,7 +1111,8 @@ static int vxlan_fdb_update_create(struc
+@@ -1104,7 +1114,8 @@ static int vxlan_fdb_update_create(struct vxlan_dev *vxlan, const u8 *mac,
  
  	netdev_dbg(vxlan->dev, "add %pM -> %pIS\n", mac, ip);
  	rc = vxlan_fdb_create(vxlan, mac, ip, state, port, src_vni, vni,
@@ -93,7 +102,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  	if (rc < 0)
  		return rc;
  
-@@ -1124,7 +1133,7 @@ err_notify:
+@@ -1125,7 +1136,7 @@ err_notify:
  int vxlan_fdb_update(struct vxlan_dev *vxlan, const u8 *mac,
  		     union vxlan_addr *ip, __u16 state, __u16 flags,
  		     __be16 port, __be32 src_vni, __be32 vni, __u32 ifindex,
@@ -102,7 +111,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  		     struct netlink_ext_ack *extack, u32 ext_flags)
  {
  	struct vxlan_fdb *f;
-@@ -1139,16 +1148,16 @@ int vxlan_fdb_update(struct vxlan_dev *v
+@@ -1140,16 +1151,16 @@ int vxlan_fdb_update(struct vxlan_dev *vxlan, const u8 *mac,
  
  		return vxlan_fdb_update_existing(vxlan, ip, state, flags, port,
  						 vni, ifindex, ndm_flags, f,
@@ -123,7 +132,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  	}
  }
  
-@@ -1162,7 +1171,7 @@ static void vxlan_fdb_dst_destroy(struct
+@@ -1163,7 +1174,7 @@ static void vxlan_fdb_dst_destroy(struct vxlan_dev *vxlan, struct vxlan_fdb *f,
  
  static int vxlan_fdb_parse(struct nlattr *tb[], struct vxlan_dev *vxlan,
  			   union vxlan_addr *ip, __be16 *port, __be32 *src_vni,
@@ -132,7 +141,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  			   struct netlink_ext_ack *extack, u32 *ext_flags)
  {
  	struct net *net = dev_net(vxlan->dev);
-@@ -1252,6 +1261,11 @@ static int vxlan_fdb_parse(struct nlattr
+@@ -1253,6 +1264,11 @@ static int vxlan_fdb_parse(struct nlattr *tb[], struct vxlan_dev *vxlan,
  		*ext_flags = 0;
  	}
  
@@ -144,7 +153,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  	return 0;
  }
  
-@@ -1269,6 +1283,7 @@ static int vxlan_fdb_add(struct ndmsg *n
+@@ -1270,6 +1286,7 @@ static int vxlan_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
  	u32 ifindex, nhid;
  	u32 hash_index;
  	u32 ext_flags;
@@ -152,7 +161,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  	int err;
  
  	if (!(ndm->ndm_state & (NUD_PERMANENT|NUD_REACHABLE))) {
-@@ -1281,7 +1296,7 @@ static int vxlan_fdb_add(struct ndmsg *n
+@@ -1282,7 +1299,7 @@ static int vxlan_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
  		return -EINVAL;
  
  	err = vxlan_fdb_parse(tb, vxlan, &ip, &port, &src_vni, &vni, &ifindex,
@@ -161,7 +170,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  	if (err)
  		return err;
  
-@@ -1293,7 +1308,7 @@ static int vxlan_fdb_add(struct ndmsg *n
+@@ -1294,7 +1311,7 @@ static int vxlan_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
  	err = vxlan_fdb_update(vxlan, addr, &ip, ndm->ndm_state, flags, port,
  			       src_vni, vni, ifindex,
  			       ndm->ndm_flags | NTF_VXLAN_ADDED_BY_USER, nhid,
@@ -170,7 +179,12 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  	spin_unlock_bh(&vxlan->hash_lock[hash_index]);
  
  	return err;
-@@ -1345,10 +1360,11 @@ static int vxlan_fdb_delete(struct ndmsg
+@@ -1342,21 +1359,31 @@ static int vxlan_fdb_delete(struct ndmsg *ndm, struct nlattr *tb[],
+ 	struct vxlan_dev *vxlan = netdev_priv(dev);
+ 	union vxlan_addr ip;
+ 	__be32 src_vni, vni;
++	struct vxlan_fdb *f;
+ 	u32 ifindex, nhid;
  	u32 hash_index;
  	u32 ext_flags;
  	__be16 port;
@@ -183,7 +197,22 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  	if (err)
  		return err;
  
-@@ -1508,7 +1524,8 @@ static bool vxlan_snoop(struct net_devic
+ 	hash_index = fdb_head_index(vxlan, addr, src_vni);
+ 	spin_lock_bh(&vxlan->hash_lock[hash_index]);
++	if (protocol != RTPROT_UNSPEC) {
++		f = vxlan_find_mac(vxlan, addr, src_vni);
++		if (!f || f->protocol != protocol) {
++			err = -ENOENT;
++			goto out;
++		}
++	}
+ 	err = __vxlan_fdb_delete(vxlan, addr, ip, port, src_vni, vni, ifindex,
+ 				 true);
++out:
+ 	spin_unlock_bh(&vxlan->hash_lock[hash_index]);
+ 
+ 	return err;
+@@ -1509,7 +1536,8 @@ static bool vxlan_snoop(struct net_device *dev,
  					 NLM_F_EXCL | NLM_F_CREATE,
  					 vxlan->cfg.dst_port, vni,
  					 vxlan->default_dst.remote_vni, ifindex,
@@ -193,7 +222,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  		spin_unlock(&vxlan->hash_lock[hash_index]);
  	}
  
-@@ -3960,7 +3977,8 @@ static int __vxlan_dev_create(struct net
+@@ -3961,7 +3989,8 @@ static int __vxlan_dev_create(struct net *net, struct net_device *dev,
  				       NUD_REACHABLE | NUD_PERMANENT,
  				       vxlan->cfg.dst_port, dst->remote_vni,
  				       dst->remote_vni, dst->remote_ifindex,
@@ -203,7 +232,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  		if (err)
  			return err;
  	}
-@@ -4393,7 +4411,8 @@ static int vxlan_changelink(struct net_d
+@@ -4394,7 +4423,8 @@ static int vxlan_changelink(struct net_device *dev, struct nlattr *tb[],
  					       NLM_F_APPEND | NLM_F_CREATE,
  					       vxlan->cfg.dst_port, conf.vni,
  					       conf.vni, conf.remote_ifindex,
@@ -213,7 +242,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  			if (err) {
  				spin_unlock_bh(&vxlan->hash_lock[hash_index]);
  				netdev_adjacent_change_abort(dst->remote_dev,
-@@ -4735,6 +4754,7 @@ vxlan_fdb_external_learn_add(struct net_
+@@ -4736,6 +4766,7 @@ vxlan_fdb_external_learn_add(struct net_device *dev,
  	struct vxlan_dev *vxlan = netdev_priv(dev);
  	struct netlink_ext_ack *extack;
  	u32 hash_index;
@@ -221,7 +250,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  	int err;
  
  	hash_index = fdb_head_index(vxlan, fdb_info->eth_addr, fdb_info->vni);
-@@ -4745,8 +4765,8 @@ vxlan_fdb_external_learn_add(struct net_
+@@ -4746,8 +4777,8 @@ vxlan_fdb_external_learn_add(struct net_device *dev,
  			       NUD_REACHABLE, NLM_F_CREATE | NLM_F_REPLACE,
  			       fdb_info->remote_port, fdb_info->vni,
  			       fdb_info->remote_vni, fdb_info->remote_ifindex,
@@ -232,10 +261,10 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_core.c
  	spin_unlock_bh(&vxlan->hash_lock[hash_index]);
  
  	return err;
-Index: linux-6.12.41/drivers/net/vxlan/vxlan_private.h
-===================================================================
---- linux-6.12.41.orig/drivers/net/vxlan/vxlan_private.h
-+++ linux-6.12.41/drivers/net/vxlan/vxlan_private.h
+diff --git a/drivers/net/vxlan/vxlan_private.h b/drivers/net/vxlan/vxlan_private.h
+index 7789af6..77ffbc8 100644
+--- a/drivers/net/vxlan/vxlan_private.h
++++ b/drivers/net/vxlan/vxlan_private.h
 @@ -36,6 +36,7 @@ struct vxlan_fdb {
  	__be32		  vni;
  	u16		  flags;	/* see ndm_flags and below */
@@ -244,7 +273,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_private.h
  	struct list_head  nh_list;
  	struct nexthop __rcu *nh;
  	struct vxlan_dev  __rcu *vdev;
-@@ -179,7 +180,7 @@ vxlan_vnifilter_lookup(struct vxlan_dev
+@@ -179,7 +180,7 @@ vxlan_vnifilter_lookup(struct vxlan_dev *vxlan, __be32 vni)
  int vxlan_fdb_create(struct vxlan_dev *vxlan, const u8 *mac,
  		     union vxlan_addr *ip, __u16 state, __be16 port,
  		     __be32 src_vni, __be32 vni, __u32 ifindex, __u16 ndm_flags,
@@ -253,7 +282,7 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_private.h
  		     struct netlink_ext_ack *extack, u32 ext_flags);
  int __vxlan_fdb_delete(struct vxlan_dev *vxlan,
  		       const unsigned char *addr, union vxlan_addr ip,
-@@ -190,7 +191,7 @@ u32 fdb_head_index(struct vxlan_dev *vxl
+@@ -190,7 +191,7 @@ u32 fdb_head_index(struct vxlan_dev *vxlan, const u8 *mac, __be32 vni);
  int vxlan_fdb_update(struct vxlan_dev *vxlan, const u8 *mac,
  		     union vxlan_addr *ip, __u16 state, __u16 flags,
  		     __be16 port, __be32 src_vni, __be32 vni, __u32 ifindex,
@@ -262,11 +291,11 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_private.h
  		     struct netlink_ext_ack *extack, u32 ext_flags);
  void vxlan_xmit_one(struct sk_buff *skb, struct net_device *dev,
  		    __be32 default_vni, struct vxlan_rdst *rdst, bool did_rsc);
-Index: linux-6.12.41/drivers/net/vxlan/vxlan_vnifilter.c
-===================================================================
---- linux-6.12.41.orig/drivers/net/vxlan/vxlan_vnifilter.c
-+++ linux-6.12.41/drivers/net/vxlan/vxlan_vnifilter.c
-@@ -493,8 +493,8 @@ static int vxlan_update_default_fdb_entr
+diff --git a/drivers/net/vxlan/vxlan_vnifilter.c b/drivers/net/vxlan/vxlan_vnifilter.c
+index ad1a462..f8396be 100644
+--- a/drivers/net/vxlan/vxlan_vnifilter.c
++++ b/drivers/net/vxlan/vxlan_vnifilter.c
+@@ -493,8 +493,8 @@ static int vxlan_update_default_fdb_entry(struct vxlan_dev *vxlan, __be32 vni,
  				       NUD_REACHABLE | NUD_PERMANENT,
  				       NLM_F_APPEND | NLM_F_CREATE,
  				       vxlan->cfg.dst_port, vni, vni,
@@ -277,11 +306,11 @@ Index: linux-6.12.41/drivers/net/vxlan/vxlan_vnifilter.c
  		if (err) {
  			spin_unlock_bh(&vxlan->hash_lock[hash_index]);
  			return err;
-Index: linux-6.12.41/net/bridge/br.c
-===================================================================
---- linux-6.12.41.orig/net/bridge/br.c
-+++ linux-6.12.41/net/bridge/br.c
-@@ -166,8 +166,8 @@ static int br_switchdev_event(struct not
+diff --git a/net/bridge/br.c b/net/bridge/br.c
+index 6b8c782..94ea448 100644
+--- a/net/bridge/br.c
++++ b/net/bridge/br.c
+@@ -166,8 +166,8 @@ static int br_switchdev_event(struct notifier_block *unused,
  	case SWITCHDEV_FDB_ADD_TO_BRIDGE:
  		fdb_info = ptr;
  		err = br_fdb_external_learn_add(br, p, fdb_info->addr,
@@ -292,11 +321,11 @@ Index: linux-6.12.41/net/bridge/br.c
  		if (err) {
  			err = notifier_from_errno(err);
  			break;
-Index: linux-6.12.41/net/bridge/br_fdb.c
-===================================================================
---- linux-6.12.41.orig/net/bridge/br_fdb.c
-+++ linux-6.12.41/net/bridge/br_fdb.c
-@@ -132,6 +132,8 @@ static int fdb_fill_info(struct sk_buff
+diff --git a/net/bridge/br_fdb.c b/net/bridge/br_fdb.c
+index 202d791..689d1b5 100644
+--- a/net/bridge/br_fdb.c
++++ b/net/bridge/br_fdb.c
+@@ -132,6 +132,8 @@ static int fdb_fill_info(struct sk_buff *skb, const struct net_bridge *br,
  		goto nla_put_failure;
  	if (nla_put_u32(skb, NDA_MASTER, br->dev->ifindex))
  		goto nla_put_failure;
@@ -305,7 +334,36 @@ Index: linux-6.12.41/net/bridge/br_fdb.c
  	if (nla_put_u32(skb, NDA_FLAGS_EXT, ext_flags))
  		goto nla_put_failure;
  
-@@ -1163,7 +1165,8 @@ static int fdb_add_entry(struct net_brid
+@@ -176,6 +178,7 @@ static inline size_t fdb_nlmsg_size(void)
+ 	return NLMSG_ALIGN(sizeof(struct ndmsg))
+ 		+ nla_total_size(ETH_ALEN) /* NDA_LLADDR */
+ 		+ nla_total_size(sizeof(u32)) /* NDA_MASTER */
++		+ nla_total_size(sizeof(u8)) /* NDA_PROTOCOL */
+ 		+ nla_total_size(sizeof(u32)) /* NDA_FLAGS_EXT */
+ 		+ nla_total_size(sizeof(u16)) /* NDA_VLAN */
+ 		+ nla_total_size(sizeof(struct nda_cacheinfo))
+@@ -1066,7 +1069,7 @@ static bool fdb_handle_notify(struct net_bridge_fdb_entry *fdb, u8 notify)
+ /* Update (create or replace) forwarding database entry */
+ static int fdb_add_entry(struct net_bridge *br, struct net_bridge_port *source,
+ 			 const u8 *addr, struct ndmsg *ndm, u16 flags, u16 vid,
+-			 struct nlattr *nfea_tb[])
++			 u8 protocol, struct nlattr *nfea_tb[])
+ {
+ 	bool is_sticky = !!(ndm->ndm_flags & NTF_STICKY);
+ 	bool refresh = !nfea_tb[NFEA_DONT_REFRESH];
+@@ -1122,6 +1125,11 @@ static int fdb_add_entry(struct net_bridge *br, struct net_bridge_port *source,
+ 			atomic_dec(&br->fdb_n_learned);
+ 	}
+ 
++	if (fdb->protocol != protocol) {
++		fdb->protocol = protocol;
++		modified = true;
++	}
++
+ 	if (fdb_to_nud(br, fdb) != state) {
+ 		if (state & NUD_PERMANENT) {
+ 			set_bit(BR_FDB_LOCAL, &fdb->flags);
+@@ -1163,7 +1171,8 @@ static int fdb_add_entry(struct net_bridge *br, struct net_bridge_port *source,
  
  static int __br_fdb_add(struct ndmsg *ndm, struct net_bridge *br,
  			struct net_bridge_port *p, const unsigned char *addr,
@@ -315,7 +373,7 @@ Index: linux-6.12.41/net/bridge/br_fdb.c
  			struct netlink_ext_ack *extack, u32 ext_flags)
  {
  	int err = 0;
-@@ -1188,8 +1191,8 @@ static int __br_fdb_add(struct ndmsg *nd
+@@ -1188,11 +1197,12 @@ static int __br_fdb_add(struct ndmsg *ndm, struct net_bridge *br,
  					   "FDB entry towards bridge must be permanent");
  			return -EINVAL;
  		}
@@ -325,8 +383,13 @@ Index: linux-6.12.41/net/bridge/br_fdb.c
 +						false, true, ext_flags);
  	} else {
  		spin_lock_bh(&br->hash_lock);
- 		err = fdb_add_entry(br, p, addr, ndm, nlh_flags, vid, nfea_tb);
-@@ -1215,6 +1218,7 @@ int br_fdb_add(struct ndmsg *ndm, struct
+-		err = fdb_add_entry(br, p, addr, ndm, nlh_flags, vid, nfea_tb);
++		err = fdb_add_entry(br, p, addr, ndm, nlh_flags, vid,
++				    protocol, nfea_tb);
+ 		spin_unlock_bh(&br->hash_lock);
+ 	}
+ 
+@@ -1215,6 +1225,7 @@ int br_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
  	struct net_bridge_port *p = NULL;
  	struct net_bridge_vlan *v;
  	struct net_bridge *br = NULL;
@@ -334,7 +397,17 @@ Index: linux-6.12.41/net/bridge/br_fdb.c
  	u32 ext_flags = 0;
  	int err = 0;
  
-@@ -1273,11 +1277,11 @@ int br_fdb_add(struct ndmsg *ndm, struct
+@@ -1247,6 +1258,9 @@ int br_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
+ 	if (tb[NDA_FLAGS_EXT])
+ 		ext_flags = nla_get_u32(tb[NDA_FLAGS_EXT]);
+ 
++	if (tb[NDA_PROTOCOL])
++		protocol = nla_get_u8(tb[NDA_PROTOCOL]);
++
+ 	if (ext_flags & NTF_EXT_LOCKED) {
+ 		NL_SET_ERR_MSG_MOD(extack, "Cannot add FDB entry with \"locked\" flag set");
+ 		return -EINVAL;
+@@ -1273,11 +1287,11 @@ int br_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
  		}
  
  		/* VID was specified, so use it. */
@@ -350,7 +423,7 @@ Index: linux-6.12.41/net/bridge/br_fdb.c
  		if (err || !vg || !vg->num_vlans)
  			goto out;
  
-@@ -1289,7 +1293,8 @@ int br_fdb_add(struct ndmsg *ndm, struct
+@@ -1289,7 +1303,8 @@ int br_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
  			if (!br_vlan_should_use(v))
  				continue;
  			err = __br_fdb_add(ndm, br, p, addr, nlh_flags, v->vid,
@@ -360,7 +433,7 @@ Index: linux-6.12.41/net/bridge/br_fdb.c
  			if (err)
  				goto out;
  		}
-@@ -1301,7 +1306,7 @@ out:
+@@ -1301,7 +1316,7 @@ out:
  
  static int fdb_delete_by_addr_and_port(struct net_bridge *br,
  				       const struct net_bridge_port *p,
@@ -369,22 +442,22 @@ Index: linux-6.12.41/net/bridge/br_fdb.c
  {
  	struct net_bridge_fdb_entry *fdb;
  
-@@ -1309,6 +1314,14 @@ static int fdb_delete_by_addr_and_port(s
+@@ -1309,6 +1324,14 @@ static int fdb_delete_by_addr_and_port(struct net_bridge *br,
  	if (!fdb || READ_ONCE(fdb->dst) != p)
  		return -ENOENT;
  
-+	/* If the delete comes from a different protocol type,
-+	* that type is used in the notification as some software
-+	* may be expecting multiple deletes (control learned +
-+	* hardware datapath learned)
-+	*/
-+	if (protocol != RTPROT_UNSPEC)
-+		fdb->protocol = protocol;
++	/* If a protocol was provided, delete only matching entries so
++	 * independent control-plane and data-plane FDB entries can
++	 * coexist without a delete for one protocol removing the other.
++	 */
++	if (protocol != RTPROT_UNSPEC &&
++	    fdb->protocol != protocol)
++		return -ENOENT;
 +
  	fdb_delete(br, fdb, true);
  
  	return 0;
-@@ -1316,12 +1329,12 @@ static int fdb_delete_by_addr_and_port(s
+@@ -1316,12 +1339,12 @@ static int fdb_delete_by_addr_and_port(struct net_bridge *br,
  
  static int __br_fdb_delete(struct net_bridge *br,
  			   const struct net_bridge_port *p,
@@ -399,7 +472,7 @@ Index: linux-6.12.41/net/bridge/br_fdb.c
  	spin_unlock_bh(&br->hash_lock);
  
  	return err;
-@@ -1335,10 +1348,14 @@ int br_fdb_delete(struct ndmsg *ndm, str
+@@ -1335,10 +1358,14 @@ int br_fdb_delete(struct ndmsg *ndm, struct nlattr *tb[],
  {
  	struct net_bridge_vlan_group *vg;
  	struct net_bridge_port *p = NULL;
@@ -414,7 +487,7 @@ Index: linux-6.12.41/net/bridge/br_fdb.c
  	if (netif_is_bridge_master(dev)) {
  		br = netdev_priv(dev);
  		vg = br_vlan_group(br);
-@@ -1360,17 +1377,17 @@ int br_fdb_delete(struct ndmsg *ndm, str
+@@ -1360,17 +1387,17 @@ int br_fdb_delete(struct ndmsg *ndm, struct nlattr *tb[],
  			return -EINVAL;
  		}
  
@@ -435,7 +508,7 @@ Index: linux-6.12.41/net/bridge/br_fdb.c
  		}
  	}
  
-@@ -1430,8 +1447,8 @@ void br_fdb_unsync_static(struct net_bri
+@@ -1430,8 +1457,8 @@ void br_fdb_unsync_static(struct net_bridge *br, struct net_bridge_port *p)
  }
  
  int br_fdb_external_learn_add(struct net_bridge *br, struct net_bridge_port *p,
@@ -446,7 +519,7 @@ Index: linux-6.12.41/net/bridge/br_fdb.c
  {
  	struct net_bridge_fdb_entry *fdb;
  	bool modified = false;
-@@ -1465,6 +1482,7 @@ int br_fdb_external_learn_add(struct net
+@@ -1465,6 +1492,7 @@ int br_fdb_external_learn_add(struct net_bridge *br, struct net_bridge_port *p,
  			err = -ENOMEM;
  			goto err_unlock;
  		}
@@ -454,7 +527,7 @@ Index: linux-6.12.41/net/bridge/br_fdb.c
  		fdb_notify(br, fdb, RTM_NEWNEIGH, swdev_notify);
  	} else {
  		if (locked &&
-@@ -1512,6 +1530,11 @@ int br_fdb_external_learn_add(struct net
+@@ -1512,6 +1540,11 @@ int br_fdb_external_learn_add(struct net_bridge *br, struct net_bridge_port *p,
  		    test_and_clear_bit(BR_FDB_DYNAMIC_LEARNED, &fdb->flags))
  			atomic_dec(&br->fdb_n_learned);
  
@@ -466,10 +539,10 @@ Index: linux-6.12.41/net/bridge/br_fdb.c
  		if (modified)
  			fdb_notify(br, fdb, RTM_NEWNEIGH, swdev_notify);
  	}
-Index: linux-6.12.41/net/bridge/br_private.h
-===================================================================
---- linux-6.12.41.orig/net/bridge/br_private.h
-+++ linux-6.12.41/net/bridge/br_private.h
+diff --git a/net/bridge/br_private.h b/net/bridge/br_private.h
+index 2376178..c69efd1 100644
+--- a/net/bridge/br_private.h
++++ b/net/bridge/br_private.h
 @@ -292,6 +292,7 @@ struct net_bridge_fdb_entry {
  	struct net_bridge_fdb_key	key;
  	struct hlist_node		fdb_node;
@@ -478,7 +551,7 @@ Index: linux-6.12.41/net/bridge/br_private.h
  
  	/* write-heavy members should not affect lookups */
  	unsigned long			updated ____cacheline_aligned_in_smp;
-@@ -869,8 +870,8 @@ int br_fdb_get(struct sk_buff *skb, stru
+@@ -869,8 +870,8 @@ int br_fdb_get(struct sk_buff *skb, struct nlattr *tb[], struct net_device *dev,
  int br_fdb_sync_static(struct net_bridge *br, struct net_bridge_port *p);
  void br_fdb_unsync_static(struct net_bridge *br, struct net_bridge_port *p);
  int br_fdb_external_learn_add(struct net_bridge *br, struct net_bridge_port *p,

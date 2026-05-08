@@ -38,7 +38,15 @@ index 1a7077093..de1b3fa96 100644
  	ci.ndm_used	 = jiffies_to_clock_t(now - READ_ONCE(fdb->used));
  	ci.ndm_confirmed = 0;
  	ci.ndm_updated	 = jiffies_to_clock_t(now - READ_ONCE(fdb->updated));
-@@ -791,7 +794,7 @@ static int vxlan_gpe_gro_complete(struct sock *sk, struct sk_buff *skb, int nhof
+@@ -252,6 +255,7 @@ static inline size_t vxlan_nlmsg_size(void)
+ 		+ nla_total_size(sizeof(__be32)) /* NDA_VNI */
+ 		+ nla_total_size(sizeof(__u32)) /* NDA_IFINDEX */
+ 		+ nla_total_size(sizeof(__s32)) /* NDA_LINK_NETNSID */
++		+ nla_total_size(sizeof(__u32)) /* NDA_FLAGS_EXT */
+ 		+ nla_total_size(sizeof(struct nda_cacheinfo));
+ }
+ 
+@@ -791,7 +795,7 @@ static int vxlan_gpe_gro_complete(struct sock *sk, struct sk_buff *skb, int nhof
  
  static struct vxlan_fdb *vxlan_fdb_alloc(struct vxlan_dev *vxlan, const u8 *mac,
  					 __u16 state, __be32 src_vni,
@@ -434,7 +442,7 @@ index 5e67a7eaf..dce82ed78 100644
  /* Extended flags under NDA_FLAGS_EXT: */
  #define NTF_EXT_MANAGED		(1 << 0)
  #define NTF_EXT_LOCKED		(1 << 1)
-+#define NTF_EXT_MH_PEER_SYNC (1 << 2)
++#define NTF_EXT_MH_PEER_SYNC (1 << 3)
  
  /*
   *	Neighbor Cache Entry States.
