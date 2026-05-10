@@ -1,0 +1,34 @@
+From git@z Thu Jan  1 00:00:00 1970
+Subject: [PATCH v3 1/3] spi: dt-bindings: xilinx: make interrupts optional
+From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Date: Mon, 19 Jan 2026 07:06:22 +0000
+Message-Id: <20260119-spi-xilinx-v3-1-4566c33bac0d@nexthop.ai>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Both the hardware and driver already support polling mode. By removing
+the mandatory IRQ requirement during probe, the driver can now fall
+back to polling when an interrupt is unavailable, ensuring
+compatibility with a wider range of systems.
+
+Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+---
+ Documentation/devicetree/bindings/spi/spi-xilinx.yaml | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/Documentation/devicetree/bindings/spi/spi-xilinx.yaml b/Documentation/devicetree/bindings/spi/spi-xilinx.yaml
+index 4beb3af0416d..24e62530d432 100644
+--- a/Documentation/devicetree/bindings/spi/spi-xilinx.yaml
++++ b/Documentation/devicetree/bindings/spi/spi-xilinx.yaml
+@@ -38,7 +38,6 @@ properties:
+ required:
+   - compatible
+   - reg
+-  - interrupts
+ 
+ unevaluatedProperties: false
+ 
+
+-- 
+2.52.0

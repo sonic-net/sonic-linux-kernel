@@ -1,0 +1,41 @@
+From git@z Thu Jan  1 00:00:00 1970
+Subject: [PATCH v3 3/3] spi: xilinx: use device property accessors.
+From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Date: Mon, 19 Jan 2026 07:06:24 +0000
+Message-Id: <20260119-spi-xilinx-v3-3-4566c33bac0d@nexthop.ai>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Make the driver work on non-OF platforms.
+
+Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+---
+ drivers/spi/spi-xilinx.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/spi/spi-xilinx.c b/drivers/spi/spi-xilinx.c
+index 4aa67fc61cb6..9fb1da2fcce4 100644
+--- a/drivers/spi/spi-xilinx.c
++++ b/drivers/spi/spi-xilinx.c
+@@ -405,11 +405,11 @@ static int xilinx_spi_probe(struct platform_device *pdev)
+ 		bits_per_word = pdata->bits_per_word;
+ 		force_irq = pdata->force_irq;
+ 	} else {
+-		of_property_read_u32(pdev->dev.of_node, "xlnx,num-ss-bits",
+-					  &num_cs);
+-		ret = of_property_read_u32(pdev->dev.of_node,
+-					   "xlnx,num-transfer-bits",
+-					   &bits_per_word);
++		device_property_read_u32(&pdev->dev, "xlnx,num-ss-bits",
++					 &num_cs);
++		ret = device_property_read_u32(&pdev->dev,
++					       "xlnx,num-transfer-bits",
++					       &bits_per_word);
+ 		if (ret)
+ 			bits_per_word = 8;
+ 	}
+
+-- 
+2.52.0
+
