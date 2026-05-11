@@ -23,18 +23,16 @@ Implementation:
 Signed-off-by: Mrinmoy Ghosh <mrghosh@cisco.com>
 Signed-off-by: Tamer Ahmed <tamerahmed@microsoft.com>
 ---
- drivers/net/vxlan/vxlan_core.c      | 102 ++++++++++++++++++++++--------------
- drivers/net/vxlan/vxlan_private.h   |   9 ++--
+ drivers/net/vxlan/vxlan_core.c      | 108 +++++++++++++++++++++---------------
+ drivers/net/vxlan/vxlan_private.h   |   7 ++-
  drivers/net/vxlan/vxlan_vnifilter.c |  11 ++--
- include/net/neighbour.h             |   6 +--
- include/uapi/linux/neighbour.h      |   2 +-
  net/bridge/br.c                     |   2 +-
- net/bridge/br_fdb.c                 |  70 ++++++++++++++++++-------
+ net/bridge/br_fdb.c                 |  70 +++++++++++++++++------
  net/bridge/br_private.h             |   4 +-
- 8 files changed, 131 insertions(+), 75 deletions(-)
+ 6 files changed, 128 insertions(+), 74 deletions(-)
 
 diff --git a/drivers/net/vxlan/vxlan_core.c b/drivers/net/vxlan/vxlan_core.c
-index ffb0b61..f677597 100644
+index ffb0b61..7e08ae3 100644
 --- a/drivers/net/vxlan/vxlan_core.c
 +++ b/drivers/net/vxlan/vxlan_core.c
 @@ -200,6 +200,8 @@ static int vxlan_fdb_info(struct sk_buff *skb, struct vxlan_dev *vxlan,
@@ -153,19 +151,26 @@ index ffb0b61..f677597 100644
  			   struct netlink_ext_ack *extack, u32 *ext_flags)
  {
  	struct net *net = dev_net(vxlan->dev);
-@@ -1258,6 +1269,11 @@ static int vxlan_fdb_parse(struct nlattr *tb[], struct vxlan_dev *vxlan,
- 		*ext_flags = 0;
- 	}
+@@ -1252,11 +1263,15 @@ static int vxlan_fdb_parse(struct nlattr *tb[], struct vxlan_dev *vxlan,
+ 	else
+ 		*nhid = 0;
  
+-	if (tb[NDA_FLAGS_EXT]) {
++	if (tb[NDA_FLAGS_EXT] && ext_flags)
+ 		*ext_flags = nla_get_u32(tb[NDA_FLAGS_EXT]);
+-	} else {
++	else if (ext_flags)
+ 		*ext_flags = 0;
+-	}
++
 +	if (tb[NDA_PROTOCOL])
 +		*protocol = nla_get_u8(tb[NDA_PROTOCOL]);
 +	else
 +		*protocol = RTPROT_UNSPEC;
-+
+ 
  	return 0;
  }
- 
-@@ -1275,6 +1291,7 @@ static int vxlan_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
+@@ -1275,6 +1290,7 @@ static int vxlan_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
  	u32 ifindex, nhid;
  	u32 hash_index;
  	u32 ext_flags;
@@ -173,7 +178,7 @@ index ffb0b61..f677597 100644
  	int err;
  
  	if (!(ndm->ndm_state & (NUD_PERMANENT|NUD_REACHABLE))) {
-@@ -1287,7 +1304,7 @@ static int vxlan_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
+@@ -1287,7 +1303,7 @@ static int vxlan_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
  		return -EINVAL;
  
  	err = vxlan_fdb_parse(tb, vxlan, &ip, &port, &src_vni, &vni, &ifindex,
@@ -182,7 +187,7 @@ index ffb0b61..f677597 100644
  	if (err)
  		return err;
  
-@@ -1299,7 +1316,7 @@ static int vxlan_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
+@@ -1299,7 +1315,7 @@ static int vxlan_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
  	err = vxlan_fdb_update(vxlan, addr, &ip, ndm->ndm_state, flags,
  			       port, src_vni, vni, ifindex,
  			       ndm->ndm_flags | NTF_VXLAN_ADDED_BY_USER,
@@ -191,21 +196,21 @@ index ffb0b61..f677597 100644
  	spin_unlock_bh(&vxlan->hash_lock[hash_index]);
  
  	return err;
-@@ -1347,21 +1364,31 @@ static int vxlan_fdb_delete(struct ndmsg *ndm, struct nlattr *tb[],
+@@ -1347,21 +1363,30 @@ static int vxlan_fdb_delete(struct ndmsg *ndm, struct nlattr *tb[],
  	struct vxlan_dev *vxlan = netdev_priv(dev);
  	union vxlan_addr ip;
  	__be32 src_vni, vni;
 +	struct vxlan_fdb *f;
  	u32 ifindex, nhid;
  	u32 hash_index;
- 	u32 ext_flags;
+-	u32 ext_flags;
  	__be16 port;
 +	u8 protocol;
  	int err;
  
  	err = vxlan_fdb_parse(tb, vxlan, &ip, &port, &src_vni, &vni, &ifindex,
 -			      &nhid, extack, &ext_flags);
-+			      &nhid, &protocol, extack, &ext_flags);
++			      &nhid, &protocol, extack, NULL);
  	if (err)
  		return err;
  
@@ -224,7 +229,7 @@ index ffb0b61..f677597 100644
  	spin_unlock_bh(&vxlan->hash_lock[hash_index]);
  
  	return err;
-@@ -1510,13 +1537,12 @@ static bool vxlan_snoop(struct net_device *dev,
+@@ -1510,13 +1535,12 @@ static bool vxlan_snoop(struct net_device *dev,
  
  		/* close off race between vxlan_flush and incoming packets */
  		if (netif_running(dev))
@@ -244,7 +249,7 @@ index ffb0b61..f677597 100644
  		spin_unlock(&vxlan->hash_lock[hash_index]);
  	}
  
-@@ -3964,14 +3990,12 @@ static int __vxlan_dev_create(struct net *net, struct net_device *dev,
+@@ -3964,14 +3988,12 @@ static int __vxlan_dev_create(struct net *net, struct net_device *dev,
  
  	/* create an fdb entry for a valid default destination */
  	if (!vxlan_addr_any(&dst->remote_ip)) {
@@ -264,7 +269,7 @@ index ffb0b61..f677597 100644
  		if (err)
  			return err;
  	}
-@@ -4402,10 +4426,10 @@ static int vxlan_changelink(struct net_device *dev, struct nlattr *tb[],
+@@ -4402,10 +4424,10 @@ static int vxlan_changelink(struct net_device *dev, struct nlattr *tb[],
  					       &conf.remote_ip,
  					       NUD_REACHABLE | NUD_PERMANENT,
  					       NLM_F_APPEND | NLM_F_CREATE,
@@ -279,7 +284,7 @@ index ffb0b61..f677597 100644
  			if (err) {
  				spin_unlock_bh(&vxlan->hash_lock[hash_index]);
  				netdev_adjacent_change_abort(dst->remote_dev,
-@@ -4747,6 +4771,7 @@ vxlan_fdb_external_learn_add(struct net_device *dev,
+@@ -4747,6 +4769,7 @@ vxlan_fdb_external_learn_add(struct net_device *dev,
  	struct vxlan_dev *vxlan = netdev_priv(dev);
  	struct netlink_ext_ack *extack;
  	u32 hash_index;
@@ -287,7 +292,7 @@ index ffb0b61..f677597 100644
  	int err;
  
  	hash_index = fdb_head_index(vxlan, fdb_info->eth_addr, fdb_info->vni);
-@@ -4754,14 +4779,11 @@ vxlan_fdb_external_learn_add(struct net_device *dev,
+@@ -4754,14 +4777,11 @@ vxlan_fdb_external_learn_add(struct net_device *dev,
  
  	spin_lock_bh(&vxlan->hash_lock[hash_index]);
  	err = vxlan_fdb_update(vxlan, fdb_info->eth_addr, &fdb_info->remote_ip,
@@ -308,16 +313,14 @@ index ffb0b61..f677597 100644
  
  	return err;
 diff --git a/drivers/net/vxlan/vxlan_private.h b/drivers/net/vxlan/vxlan_private.h
-index e0878e0..8d40b74 100644
+index e0878e0..c3cc3fa 100644
 --- a/drivers/net/vxlan/vxlan_private.h
 +++ b/drivers/net/vxlan/vxlan_private.h
-@@ -35,7 +35,8 @@ struct vxlan_fdb {
- 	u16		  state;	/* see ndm_state */
+@@ -36,6 +36,7 @@ struct vxlan_fdb {
  	__be32		  vni;
  	u16		  flags;	/* see ndm_flags and below */
--	u32		  ext_flags;
-+	u32 ext_flags;
-+	u8 protocol;
+ 	u32		  ext_flags;
++	u8		  protocol;
  	struct list_head  nh_list;
  	struct nexthop __rcu *nh;
  	struct vxlan_dev  __rcu *vdev;
@@ -365,42 +368,6 @@ index af38b5b..f8396be 100644
  		if (err) {
  			spin_unlock_bh(&vxlan->hash_lock[hash_index]);
  			return err;
-diff --git a/include/net/neighbour.h b/include/net/neighbour.h
-index 5804014..5c6f528 100644
---- a/include/net/neighbour.h
-+++ b/include/net/neighbour.h
-@@ -266,15 +266,15 @@ static inline void *neighbour_priv(const struct neighbour *n)
- #define NEIGH_UPDATE_F_EXT_LEARNED		BIT(5)
- #define NEIGH_UPDATE_F_ISROUTER			BIT(6)
- #define NEIGH_UPDATE_F_ADMIN			BIT(7)
--#define NEIGH_UPDATE_F_EXT_MH_PEER_SYNC		BIT(8)
-+#define NEIGH_UPDATE_F_EXT_MH_PEER_SYNC BIT(8)
- 
- /* In-kernel representation for NDA_FLAGS_EXT flags: */
- #define NTF_OLD_MASK		0xff
- #define NTF_EXT_SHIFT		8
--#define NTF_EXT_MASK		(NTF_EXT_MANAGED | NTF_EXT_MH_PEER_SYNC)
-+#define NTF_EXT_MASK (NTF_EXT_MANAGED | NTF_EXT_MH_PEER_SYNC)
- 
- #define NTF_MANAGED		(NTF_EXT_MANAGED << NTF_EXT_SHIFT)
--#define NTF_MH_PEER_SYNC	(NTF_EXT_MH_PEER_SYNC << NTF_EXT_SHIFT)
-+#define NTF_MH_PEER_SYNC (NTF_EXT_MH_PEER_SYNC << NTF_EXT_SHIFT)
- 
- extern const struct nla_policy nda_policy[];
- 
-diff --git a/include/uapi/linux/neighbour.h b/include/uapi/linux/neighbour.h
-index 12412eb..95b397a 100644
---- a/include/uapi/linux/neighbour.h
-+++ b/include/uapi/linux/neighbour.h
-@@ -54,7 +54,7 @@ enum {
- /* Extended flags under NDA_FLAGS_EXT: */
- #define NTF_EXT_MANAGED		(1 << 0)
- #define NTF_EXT_LOCKED		(1 << 1)
--#define NTF_EXT_MH_PEER_SYNC	(1 << 3)
-+#define NTF_EXT_MH_PEER_SYNC (1 << 3)
- 
- /*
-  *	Neighbor Cache Entry States.
 diff --git a/net/bridge/br.c b/net/bridge/br.c
 index 72b3b54..94ea448 100644
 --- a/net/bridge/br.c
