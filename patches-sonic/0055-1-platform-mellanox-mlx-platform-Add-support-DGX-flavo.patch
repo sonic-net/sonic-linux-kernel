@@ -1,0 +1,63 @@
+From ef65e699e5077b48a501e965d19f750bd23f6a27 Mon Sep 17 00:00:00 2001
+From: Oleksandr Shamray <oleksandrs@nvidia.com>
+Date: Fri, 5 Dec 2025 12:07:48 +0200
+Subject: [PATCH 08/30] platform: mellanox: mlx-platform: Add support DGX
+ flavor of 400GB/s ethernet switch.
+
+This system is based on Nvidia SN4700 Spectrum-3 Based 32x400Gb/s ETH
+Switch System, with the
+following key changes:
+
+Key changes:
+- New Power Supply: AC/DC PSUs power replaced by rack busbar input power
+  ORv3 DC 48V-54V.
+- Dimensions MGX/DGX 1U compliance Tool-less top cover (fast cover
+  opening)
+
+System class: VMOD0010
+System SKU: HI184
+
+Reviewed-by: Vadim Pasternak vadimp@mellanox.com
+
+Signed-off-by: Oleksandr Shamray <oleksandrs@nvidia.com>
+---
+ drivers/platform/mellanox/mlx-platform.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/platform/mellanox/mlx-platform.c b/drivers/platform/mellanox/mlx-platform.c
+index ed1e33cb01f4..7e5d18700e1c 100644
+--- a/drivers/platform/mellanox/mlx-platform.c
++++ b/drivers/platform/mellanox/mlx-platform.c
+@@ -8185,6 +8185,7 @@ static int __init mlxplat_dmi_comex_matched(const struct dmi_system_id *dmi)
+ static int __init mlxplat_dmi_ng400_matched(const struct dmi_system_id *dmi)
+ {
+ 	int i;
++	const char *sku;
+ 
+ 	mlxplat_max_adap_num = MLXPLAT_CPLD_MAX_PHYS_ADAPTER_NUM;
+ 	mlxplat_mux_num = ARRAY_SIZE(mlxplat_default_mux_data);
+@@ -8194,11 +8195,19 @@ static int __init mlxplat_dmi_ng400_matched(const struct dmi_system_id *dmi)
+ 		mlxplat_mux_data[i].n_values =
+ 				ARRAY_SIZE(mlxplat_msn21xx_channels);
+ 	}
+-	mlxplat_hotplug = &mlxplat_mlxcpld_ext_data;
++
++	sku = dmi_get_system_info(DMI_PRODUCT_SKU);
++	if (sku && !strcmp(sku, "HI184")) {
++		mlxplat_hotplug = &mlxplat_mlxcpld_dgx_ext_data;
++		mlxplat_regs_io = &mlxplat_dgx_ng_regs_io_data;
++	} else {
++		mlxplat_hotplug = &mlxplat_mlxcpld_ext_data;
++		mlxplat_regs_io = &mlxplat_default_ng_regs_io_data;
++	}
++
+ 	mlxplat_hotplug->deferred_nr =
+ 		mlxplat_msn21xx_channels[MLXPLAT_CPLD_GRP_CHNL_NUM - 1];
+ 	mlxplat_led = &mlxplat_default_ng_led_data;
+-	mlxplat_regs_io = &mlxplat_default_ng_regs_io_data;
+ 	mlxplat_fan = &mlxplat_default_fan_data;
+ 	for (i = 0; i < ARRAY_SIZE(mlxplat_mlxcpld_wd_set_type2); i++)
+ 		mlxplat_wd_data[i] = &mlxplat_mlxcpld_wd_set_type2[i];
+-- 
+2.47.3
+

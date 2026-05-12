@@ -1,7 +1,7 @@
-From 817b5cfab9f1eef11a244020caf1987bb37f682e Mon Sep 17 00:00:00 2001
+From a6c422c8a1a6416e34590988537f993b4b36e0ea Mon Sep 17 00:00:00 2001
 From: Oleksandr Shamray <oleksandrs@nvidia.com>
 Date: Mon, 9 Dec 2024 13:38:05 +0200
-Subject: [PATCH 55/78] platform: mellanox: Downstream: Add support DGX flavor
+Subject: [PATCH 18/40] platform: mellanox: Downstream: Add support DGX flavor
  of next-generation 800GB/s ethernet switch.
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -20,10 +20,10 @@ Signed-off-by: Oleksandr Shamray <oleksandrs@nvidia.com>
  1 file changed, 28 insertions(+)
 
 diff --git a/drivers/platform/mellanox/mlx-platform.c b/drivers/platform/mellanox/mlx-platform.c
-index de3dbaf..3472c99 100644
+index 4c1073b..54f52d7 100644
 --- a/drivers/platform/mellanox/mlx-platform.c
 +++ b/drivers/platform/mellanox/mlx-platform.c
-@@ -7871,6 +7871,27 @@ static int __init mlxplat_dmi_ng800_matched(const struct dmi_system_id *dmi)
+@@ -8318,6 +8318,27 @@ static int __init mlxplat_dmi_ng800_matched(const struct dmi_system_id *dmi)
  	return mlxplat_register_platform_device();
  }
  
@@ -51,7 +51,7 @@ index de3dbaf..3472c99 100644
  static int __init mlxplat_dmi_l1_switch_matched(const struct dmi_system_id *dmi)
  {
  	int i;
-@@ -8072,6 +8093,13 @@ static const struct dmi_system_id mlxplat_dmi_table[] __initconst = {
+@@ -8526,6 +8547,13 @@ static const struct dmi_system_id mlxplat_dmi_table[] __initconst = {
  		},
  	},
  	{
