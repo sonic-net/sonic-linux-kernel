@@ -284,14 +284,6 @@ index ffb0b61..7e08ae3 100644
  			if (err) {
  				spin_unlock_bh(&vxlan->hash_lock[hash_index]);
  				netdev_adjacent_change_abort(dst->remote_dev,
-@@ -4747,6 +4769,7 @@ vxlan_fdb_external_learn_add(struct net_device *dev,
- 	struct vxlan_dev *vxlan = netdev_priv(dev);
- 	struct netlink_ext_ack *extack;
- 	u32 hash_index;
-+	u32 ext_flags;
- 	int err;
- 
- 	hash_index = fdb_head_index(vxlan, fdb_info->eth_addr, fdb_info->vni);
 @@ -4754,14 +4777,11 @@ vxlan_fdb_external_learn_add(struct net_device *dev,
  
  	spin_lock_bh(&vxlan->hash_lock[hash_index]);
