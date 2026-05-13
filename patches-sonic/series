@@ -233,6 +233,8 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 
 ###-> aspeed
 aspeed-ast2700-support.patch
+aspeed-ast2700-aspeed-only-changes-update-to-6.12-00.07.02.patch
+aspeed-ast2700-vendor-independent-changes-update-to-6.12-00.07.02.patch
 nexthop-b27-dts.patch
 0001-Add-device-tree-for-Nokia-BMC-H6-128-platform.patch
 arista_goldfinch-dts.patch
