@@ -237,6 +237,10 @@ cisco-npu-disable-other-bars.patch
 # https://github.com/sonic-net/sonic-buildimage/issues/20901
 PCI-ASPM-Fix-link-state-exit-during-switch-upstream.patch
 
+# Fix to stop khungtaskd from panicking on long application core dumps.
+# Backport of mainline v6.12 commit b8e753128ed0
+fix-khungtaskd-panic-on-stalled-coredump-upstream.patch
+
 #
 #
 ############################################################
