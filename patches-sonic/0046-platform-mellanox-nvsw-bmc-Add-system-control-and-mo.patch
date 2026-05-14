@@ -1,8 +1,8 @@
-From 7d0f9191f8e282b28411b21fd33d166c4efafc68 Mon Sep 17 00:00:00 2001
+From ac19027ee711c9ab109c8cacde22af73483179db Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Thu, 4 Jul 2024 23:50:27 +0300
-Subject: [PATCH] platform/mellanox: nvsw-bmc: Add system control and
- monitoring driver for Nvidia BMC
+Subject: [PATCH BMC platform-next 1/4] platform/mellanox: nvsw-bmc: Add system
+ control and monitoring driver for Nvidia BMC
 
 The driver allows system control and monitoring of Nvidia switches
 through CPLD/FPGA devices from Based Management Controller SoC.
@@ -16,18 +16,20 @@ This control includes:
 - LED control.
 - FAN control.
 
+Upstream-Status: Pending
+
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
 ---
  .../devicetree/bindings/trivial-devices.yaml  |    5 +
  drivers/platform/mellanox/Kconfig             |   38 +
  drivers/platform/mellanox/Makefile            |    4 +
- drivers/platform/mellanox/nvsw-bmc-hid162.c   | 3310 +++++++++++++++++
- drivers/platform/mellanox/nvsw-core.c         |  693 ++++
- drivers/platform/mellanox/nvsw-host-l1.c      |  770 ++++
- drivers/platform/mellanox/nvsw-host-spc5.c    |  943 +++++
- drivers/platform/mellanox/nvsw-host-spc6.c    |  852 +++++
- drivers/platform/mellanox/nvsw.h              |  297 ++
- 9 files changed, 6912 insertions(+)
+ drivers/platform/mellanox/nvsw-bmc-hid162.c   | 7285 +++++++++++++++++
+ drivers/platform/mellanox/nvsw-core.c         |  717 ++
+ drivers/platform/mellanox/nvsw-host-l1.c      |  770 ++
+ drivers/platform/mellanox/nvsw-host-spc5.c    |  943 +++
+ drivers/platform/mellanox/nvsw-host-spc6.c    |  852 ++
+ drivers/platform/mellanox/nvsw.h              |  318 +
+ 9 files changed, 10932 insertions(+)
  create mode 100644 drivers/platform/mellanox/nvsw-bmc-hid162.c
  create mode 100644 drivers/platform/mellanox/nvsw-core.c
  create mode 100644 drivers/platform/mellanox/nvsw-host-l1.c
@@ -36,10 +38,10 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  create mode 100644 drivers/platform/mellanox/nvsw.h
 
 diff --git a/Documentation/devicetree/bindings/trivial-devices.yaml b/Documentation/devicetree/bindings/trivial-devices.yaml
-index a190c5676..14568bd0f 100644
+index 9bf0fb17a05e..b6c6576f7702 100644
 --- a/Documentation/devicetree/bindings/trivial-devices.yaml
 +++ b/Documentation/devicetree/bindings/trivial-devices.yaml
-@@ -307,6 +307,11 @@ properties:
+@@ -305,6 +305,11 @@ properties:
            - national,lm85
              # I2C ±0.33°C Accurate, 12-Bit + Sign Temperature Sensor and Thermal Window Comparator
            - national,lm92
@@ -52,10 +54,10 @@ index a190c5676..14568bd0f 100644
            - nuvoton,w83773g
              # OKI ML86V7667 video decoder
 diff --git a/drivers/platform/mellanox/Kconfig b/drivers/platform/mellanox/Kconfig
-index e3afbe62c..6cbda147a 100644
+index 7204b10388ca..a8e4619f56d2 100644
 --- a/drivers/platform/mellanox/Kconfig
 +++ b/drivers/platform/mellanox/Kconfig
-@@ -105,6 +105,44 @@ config MLXBF_PMC
+@@ -104,6 +104,44 @@ config MLXBF_PMC
  	  to performance monitoring counters within various blocks in the
  	  Mellanox BlueField SoC via a sysfs interface.
  
@@ -101,7 +103,7 @@ index e3afbe62c..6cbda147a 100644
  	tristate "Nvidia SN2201 platform driver support"
  	depends on HWMON && I2C
 diff --git a/drivers/platform/mellanox/Makefile b/drivers/platform/mellanox/Makefile
-index e86723b44..123edaa99 100644
+index e86723b44c2e..123edaa99d77 100644
 --- a/drivers/platform/mellanox/Makefile
 +++ b/drivers/platform/mellanox/Makefile
 @@ -11,4 +11,8 @@ obj-$(CONFIG_MLXREG_DPU)	+= mlxreg-dpu.o
@@ -115,15 +117,15 @@ index e86723b44..123edaa99 100644
  obj-$(CONFIG_NVSW_SN2201) += nvsw-sn2201.o
 diff --git a/drivers/platform/mellanox/nvsw-bmc-hid162.c b/drivers/platform/mellanox/nvsw-bmc-hid162.c
 new file mode 100644
-index 000000000..3c70e2979
+index 000000000000..89343d7660a4
 --- /dev/null
 +++ b/drivers/platform/mellanox/nvsw-bmc-hid162.c
-@@ -0,0 +1,3310 @@
+@@ -0,0 +1,7285 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Nvidia BMC platform driver
 + *
-+ * Copyright (C) 2025 Nvidia Technologies Ltd.
++ * Copyright (C) 2025-2026 Nvidia Technologies Ltd.
 + */
 +
 +#include <linux/device.h>
@@ -170,10 +172,39 @@ index 000000000..3c70e2979
 +	0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
 +};
 +
-+static int nvsw_bmc_hid185_chan2[] = {
++static int nvsw_bmc_hid181_chan1[] = {
++	0x01, 0x11, 0x21, 0x31, 0x09, 0x02, 0x03, 0x04, 0x14, 0x24, 0x34, 0x05, 0x06, 0x40, 0x41,
++	0x42, 0x43, 0x0a, 0x0b, 0x1b,
++};
++
++static int nvsw_bmc_hid181_chan2[] = {
++	0x00, 0x01, 0x02, 0x03, 0x04,
++};
++
++static int nvsw_bmc_hid189_chan1[] = {
++	0x01, 0x02, 0X0a, 0x07, 0x09, 0x03, 0x04, 0x08, 0x0c, 0x0d, 0x015,
++	// 0x03, 0x05, 0x0C, 0x08, 0x02, 0x07, 0x0A, 0x0D,
++};
++
++static int nvsw_bmc_hid189_chan2[] = {
 +	0x10, 0x11,
 +};
 +
++static int nvsw_bmc_hid191_chan1[] = {
++	0x03, 0x05, 0x0C, 0x08, 0x02, 0x07, 0x0A, 0x0D,
++};
++
++static int nvsw_bmc_hid191_chan2[] = {
++	0x10, 0x11,
++};
++
++static int nvsw_bmc_hid193_chan1[] = {
++	0x01, 0x02, 0X0a, 0x07, 0x09, 0x03, 0x04, 0x08, 0x0c, 0x0d, 0x015,
++};
++
++static int nvsw_bmc_hid193_chan2[] = {
++	0x10, 0x11,
++};
 +
 +/* Mux configuration. */
 +static struct i2c_mux_regmap_platform_data nvsw_bmc_hid162_mux_data[] = {
@@ -213,18 +244,69 @@ index 000000000..3c70e2979
 +	},
 +};
 +
-+static struct i2c_mux_regmap_platform_data nvsw_bmc_hid185_mux_data[] = {
++static struct i2c_mux_regmap_platform_data nvsw_bmc_hid181_mux_data[] = {
++	{
++		.parent = 12,
++		.chan_ids = nvsw_bmc_hid181_chan2,
++		.num_adaps = ARRAY_SIZE(nvsw_bmc_hid181_chan2),
++		.sel_reg_addr = NVSW_REG_MUX2_OFFSET,
++		.reg_size = 1,
++	},
 +	{
 +		.parent = 14,
-+		.chan_ids = nvsw_bmc_hid180_chan1,
-+		.num_adaps = ARRAY_SIZE(nvsw_bmc_hid180_chan1),
++		.chan_ids = nvsw_bmc_hid181_chan1,
++		.num_adaps = ARRAY_SIZE(nvsw_bmc_hid181_chan1),
++		.sel_reg_addr = NVSW_REG_MUX1_OFFSET,
++		.reg_size = 1,
++	},
++};
++
++static struct i2c_mux_regmap_platform_data nvsw_bmc_hid189_mux_data[] = {
++	{
++		.parent = 3,
++		.chan_ids = nvsw_bmc_hid189_chan1,
++		.num_adaps = ARRAY_SIZE(nvsw_bmc_hid189_chan1),
++		.sel_reg_addr = NVSW_REG_MUX1_OFFSET,
++		.reg_size = 1,
++	},
++	{
++		.parent = 6,
++		.chan_ids = nvsw_bmc_hid189_chan2,
++		.num_adaps = ARRAY_SIZE(nvsw_bmc_hid189_chan2),
++		.sel_reg_addr = NVSW_REG_MUX2_OFFSET,
++		.reg_size = 1,
++	},
++};
++
++static struct i2c_mux_regmap_platform_data nvsw_bmc_hid191_mux_data[] = {
++	{
++		.parent = 14,
++		.chan_ids = nvsw_bmc_hid191_chan1,
++		.num_adaps = ARRAY_SIZE(nvsw_bmc_hid191_chan1),
 +		.sel_reg_addr = NVSW_REG_MUX1_OFFSET,
 +		.reg_size = 1,
 +	},
 +	{
 +		.parent = 12,
-+		.chan_ids = nvsw_bmc_hid185_chan2,
-+		.num_adaps = ARRAY_SIZE(nvsw_bmc_hid185_chan2),
++		.chan_ids = nvsw_bmc_hid191_chan2,
++		.num_adaps = ARRAY_SIZE(nvsw_bmc_hid191_chan2),
++		.sel_reg_addr = NVSW_REG_MUX2_OFFSET,
++		.reg_size = 1,
++	},
++};
++
++static struct i2c_mux_regmap_platform_data nvsw_bmc_hid193_mux_data[] = {
++	{
++		.parent = 14,
++		.chan_ids = nvsw_bmc_hid193_chan1,
++		.num_adaps = ARRAY_SIZE(nvsw_bmc_hid193_chan1),
++		.sel_reg_addr = NVSW_REG_MUX1_OFFSET,
++		.reg_size = 1,
++	},
++	{
++		.parent = 12,
++		.chan_ids = nvsw_bmc_hid193_chan2,
++		.num_adaps = ARRAY_SIZE(nvsw_bmc_hid193_chan2),
 +		.sel_reg_addr = NVSW_REG_MUX2_OFFSET,
 +		.reg_size = 1,
 +	},
@@ -286,6 +368,72 @@ index 000000000..3c70e2979
 +		.label = "uid_push_button",
 +		.reg = NVSW_REG_PWRB_OFFSET,
 +		.mask = NVSW_UID_PUSH_BUTTON_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_events_items_data[] = {
++	{
++		.label = "graceful_power_off_req",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_GRACEFUL_POWER_OFF_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "cpu_power_off_ready",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_CPU_POWER_OFF_READY_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "cpu_reset",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_CPU_RESET_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "apml_smb_alert",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_APML_SMB_ALERT_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "cpu_unexp_power_off",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_CPU_UNEXP_POWER_OFF_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid193_events_items_data[] = {
++	{
++		.label = "graceful_power_off_req",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_GRACEFUL_POWER_OFF_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "cpu_power_off_ready",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_CPU_POWER_OFF_READY_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "cpu_reset",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_CPU_RESET_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "apml_smb_alert",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_APML_SMB_ALERT_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "cpu_unexp_power_off",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_CPU_UNEXP_POWER_OFF_MASK,
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +};
@@ -797,6 +945,7 @@ index 000000000..3c70e2979
 +		    NVSW_LOW_AGGR_MASK_ASIC2 | NVSW_LOW_AGGR_MASK_ASIC1,
 +};
 +
++
 +static struct mlxreg_core_data nvsw_bmc_hid180_pg1_events_items_data[] = {
 +	{
 +		.label = "smbus_alt_pwrconv_1",
@@ -952,7 +1101,7 @@ index 000000000..3c70e2979
 +
 +static struct mlxreg_core_data nvsw_bmc_hid180_pg4_events_items_data[] = {
 +	{
-+		.label = "smbus_alt_pwrconv_2",
++		.label = "mbus_alt_pwrconv_2",
 +		.reg = NVSW_REG_PG3_OFFSET,
 +		.mask = BIT(0),
 +		.hpdev.nr = NVSW_NR_NONE,
@@ -1159,39 +1308,21 @@ index 000000000..3c70e2979
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "5v_usb",
++		.label = "51v_usb",
 +		.reg = NVSW_REG_BRD1_OFFSET,
 +		.mask = NVSW_5V_USB_MASK,
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "holder1_alarm",
++		.label = "ssd_pg",
 +		.reg = NVSW_REG_BRD1_OFFSET,
 +		.mask = BIT(3),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "holder2_alarm",
-+		.reg = NVSW_REG_BRD1_OFFSET,
-+		.mask = BIT(4),
-+		.hpdev.nr = NVSW_NR_NONE,
-+	},
-+	{
-+		.label = "sgmii_pg",
-+		.reg = NVSW_REG_BRD1_OFFSET,
-+		.mask = BIT(5),
-+		.hpdev.nr = NVSW_NR_NONE,
-+	},
-+	{
-+		.label = "ssd_pg",
-+		.reg = NVSW_REG_BRD1_OFFSET,
-+		.mask = BIT(6),
-+		.hpdev.nr = NVSW_NR_NONE,
-+	},
-+	{
 +		.label = "leakage_aggr",
 +		.reg = NVSW_REG_BRD1_OFFSET,
-+		.mask = BIT(7),
++		.mask = BIT(4),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +};
@@ -1243,6 +1374,7 @@ index 000000000..3c70e2979
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +};
++
 +
 +static struct mlxreg_core_data nvsw_bmc_hid180_vr1_pwr_alert_items_data[] = {
 +	{
@@ -1437,7 +1569,7 @@ index 000000000..3c70e2979
 +		.data = nvsw_bmc_hid180_alarms_items_data,
 +		.aggr_mask = NVSW_AGGR_MASK,
 +		.reg = NVSW_REG_BRD1_OFFSET,
-+		.mask = GENMASK(7, 0),
++		.mask = GENMASK(4, 0),
 +		.count = ARRAY_SIZE(nvsw_bmc_hid180_alarms_items_data),
 +		.inversed = 0,
 +		.health = false,
@@ -1511,140 +1643,189 @@ index 000000000..3c70e2979
 +	},
 +};
 +
-+static
-+struct mlxreg_core_hotplug_platform_data nvsw_bmc_hid180_hotplug = {
++static struct mlxreg_core_hotplug_platform_data nvsw_bmc_hid180_hotplug = {
 +	.items = nvsw_bmc_hid180_hotplug_items_data,
 +	.count = ARRAY_SIZE(nvsw_bmc_hid180_hotplug_items_data),
 +	.cell = NVSW_REG_AGGR_OFFSET,
 +	.mask = NVSW_AGGR_MASK | NVSW_AGGR_MASK_COMEX,
 +	.cell_low = NVSW_REG_AGGRLO_OFFSET,
 +	.mask_low = GENMASK(6, 0),
-+	.deferred_nr = 5,
 +};
 +
-+static struct mlxreg_core_data nvsw_bmc_hid185_pg1_events_items_data[] = {
++static struct mlxreg_core_data nvsw_bmc_hid181_events_items_data[] = {
 +	{
-+		.label = "swb1_ni_smbus_alt",
++		.label = "holder6_pg",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_PWR_BUTTON_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "holder7_pg",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_AMB_TEMP_SENSE_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "graceful_power_off_req",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_GRACEFUL_POWER_OFF_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "cpu_power_off_ready",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_CPU_POWER_OFF_READY_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "cpu_reset",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_CPU_RESET_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "apml_smb_alert",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_APML_SMB_ALERT_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "cpu_unexp_power_off",
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_CPU_UNEXP_POWER_OFF_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid181_asic1_pg_events_items_data[] = {
++	{
++		.label = "asic1_vddscc_pg",
 +		.reg = NVSW_REG_PG1_OFFSET,
 +		.mask = BIT(0),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "swb1_clk_pg",
++		.label = "asic1_oe_pwr",
 +		.reg = NVSW_REG_PG1_OFFSET,
 +		.mask = BIT(1),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "asic1_vdd_pg",
++		.label = "asic1_clk_pg",
 +		.reg = NVSW_REG_PG1_OFFSET,
 +		.mask = BIT(2),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "asic1_dvdd_pl0_pg",
++		.label = "asic1_vcore_pg",
 +		.reg = NVSW_REG_PG1_OFFSET,
 +		.mask = BIT(3),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "asic1_dvdd_pl1_pg",
++		.label = "asic1_dvdd_pg",
 +		.reg = NVSW_REG_PG1_OFFSET,
 +		.mask = BIT(4),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "asic1_hvdd_avcc_pg",
++		.label = "asic1_hvdd_pg",
 +		.reg = NVSW_REG_PG1_OFFSET,
 +		.mask = BIT(5),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "swb1_1v8_vddio_pg",
++		.label = "asic1_1v8_vddio_pg",
 +		.reg = NVSW_REG_PG1_OFFSET,
 +		.mask = BIT(6),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +		{
-+		.label = "swb1_vdrv_pg",
++		.label = "asic1_vdrv",
 +		.reg = NVSW_REG_PG1_OFFSET,
 +		.mask = BIT(7),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +};
 +
-+static struct mlxreg_core_data nvsw_bmc_hid185_pg3_events_items_data[] = {
++static struct mlxreg_core_data nvsw_bmc_hid181_asic2_pg_events_items_data[] = {
 +	{
-+		.label = "swb1_smbus_alt_hotswap",
-+		.reg = NVSW_REG_BRD4_OFFSET,
++		.label = "asic2_vddscc_pg",
++		.reg = NVSW_REG_PG2_OFFSET,
 +		.mask = BIT(0),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "swb1_3v3_pb_pg",
-+		.reg = NVSW_REG_BRD4_OFFSET,
++		.label = "aisc2_oe_pwr",
++		.reg = NVSW_REG_PG2_OFFSET,
 +		.mask = BIT(1),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "asic2_vdd_pg",
-+		.reg = NVSW_REG_BRD4_OFFSET,
++		.label = "asic2_clk_pg",
++		.reg = NVSW_REG_PG2_OFFSET,
 +		.mask = BIT(2),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "asic2_dvdd_pl0_pg",
-+		.reg = NVSW_REG_BRD4_OFFSET,
++		.label = "asic2_vcore_pg",
++		.reg = NVSW_REG_PG2_OFFSET,
 +		.mask = BIT(3),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "asic2_dvdd_pl1_pg",
-+		.reg = NVSW_REG_BRD4_OFFSET,
++		.label = "asic2_dvdd_pg",
++		.reg = NVSW_REG_PG2_OFFSET,
 +		.mask = BIT(4),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
 +		.label = "asic2_hvdd_pg",
-+		.reg = NVSW_REG_BRD4_OFFSET,
++		.reg = NVSW_REG_PG2_OFFSET,
 +		.mask = BIT(5),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "swb1_1v8_cpld_pg",
-+		.reg = NVSW_REG_BRD4_OFFSET,
++		.label = "asic2_1v8_vddio_pg",
++		.reg = NVSW_REG_PG2_OFFSET,
 +		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_vdrv",
++		.reg = NVSW_REG_PG2_OFFSET,
++		.mask = BIT(7),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +};
 +
-+static struct mlxreg_core_data nvsw_bmc_hid185_pg4_events_items_data[] = {
++static struct mlxreg_core_data nvsw_bmc_hid181_asic3_pg_events_items_data[] = {
 +	{
-+		.label = "swb2_ni_smbus_alt",
++		.label = "asic3_vddscc_pg",
 +		.reg = NVSW_REG_PG3_OFFSET,
 +		.mask = BIT(0),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "swb2_clk_pg",
++		.label = "aisc3_oe_pwr",
 +		.reg = NVSW_REG_PG3_OFFSET,
 +		.mask = BIT(1),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "asic3_vdd_pg",
++		.label = "asic3_clk_pg",
 +		.reg = NVSW_REG_PG3_OFFSET,
 +		.mask = BIT(2),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "asic3_dvdd_pl0_pg",
++		.label = "asic3_vcore_pg",
 +		.reg = NVSW_REG_PG3_OFFSET,
 +		.mask = BIT(3),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "asic3_dvdd_pl1_pg",
++		.label = "asic3_dvdd_pg",
 +		.reg = NVSW_REG_PG3_OFFSET,
 +		.mask = BIT(4),
 +		.hpdev.nr = NVSW_NR_NONE,
@@ -1656,46 +1837,46 @@ index 000000000..3c70e2979
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "swb2_1v8_vddio_pg",
++		.label = "asic3_1v8_vddio_pg",
 +		.reg = NVSW_REG_PG3_OFFSET,
 +		.mask = BIT(6),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "swb2_vdrv_pg",
++		.label = "asic3_vdrv",
 +		.reg = NVSW_REG_PG3_OFFSET,
 +		.mask = BIT(7),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +};
 +
-+static struct mlxreg_core_data nvsw_bmc_hid185_pg5_events_items_data[] = {
++static struct mlxreg_core_data nvsw_bmc_hid181_asic4_pg_events_items_data[] = {
 +	{
-+		.label = "swb2_smbus_alt_hotswap",
++		.label = "asic4_vddscc_pg",
 +		.reg = NVSW_REG_PG4_OFFSET,
 +		.mask = BIT(0),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "swb2_3v3_pb_pg",
++		.label = "aisc4_oe_pwr",
 +		.reg = NVSW_REG_PG4_OFFSET,
 +		.mask = BIT(1),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "asic4_vdd_pg",
++		.label = "asic4_clk_pg",
 +		.reg = NVSW_REG_PG4_OFFSET,
 +		.mask = BIT(2),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "asic4_dvdd_pl0_pg",
++		.label = "asic4_vcore_pg",
 +		.reg = NVSW_REG_PG4_OFFSET,
 +		.mask = BIT(3),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "asic4_dvdd_pl1_pg",
++		.label = "asic4_dvdd_pg",
 +		.reg = NVSW_REG_PG4_OFFSET,
 +		.mask = BIT(4),
 +		.hpdev.nr = NVSW_NR_NONE,
@@ -1707,173 +1888,1688 @@ index 000000000..3c70e2979
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
 +	{
-+		.label = "swb2_1v8_cpld_pg",
++		.label = "asic4_1v8_vddio_pg",
 +		.reg = NVSW_REG_PG4_OFFSET,
 +		.mask = BIT(6),
 +		.hpdev.nr = NVSW_NR_NONE,
 +	},
++	{
++		.label = "asic4_vdrv",
++		.reg = NVSW_REG_PG4_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
 +};
 +
-+static struct mlxreg_core_item nvsw_bmc_hid185_hotplug_items_data[] = {
++static struct mlxreg_core_data nvsw_bmc_hid181_brd2_events_items_data[] = {
 +	{
-+		.data = nvsw_bmc_hid185_pg1_events_items_data,
++		.label = "global_wp_disable",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "pch_hot",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "holder8_pg",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "dimm_ab",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid181_brd4_events_items_data[] = {
++	{
++		.label = "3v3s_fail",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "vccio_pg",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "vccst_pg",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "ddr_pg",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "12v_pg",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "3v3_pg",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "1v05_pg",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "vcc_core_pg",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid181_asic_items_data[] = {
++	{
++		.label = "asic1_health",
++		.reg = NVSW_REG_ASIC1_HEALTH_OFFSET,
++		.mask = NVSW_ASIC_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_health",
++		.reg = NVSW_REG_ASIC1_HEALTH_OFFSET,
++		.mask = NVSW_ASIC2_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_health",
++		.reg = NVSW_REG_ASIC1_HEALTH_OFFSET,
++		.mask = NVSW_ASIC3_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_health",
++		.reg = NVSW_REG_ASIC1_HEALTH_OFFSET,
++		.mask = NVSW_ASIC4_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid181_asic_temp_items_data[] = {
++	{
++		.label = "asic1_temp_warn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_temp_shtdn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_temp_warn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_temp_shtdn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_temp_warn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_temp_shtdn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_temp_warn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_temp_shtdn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid181_leakage_items_data[] = {
++	{
++		.label = "leakage_csm1",
++		.reg = NVSW_REG_LEAK_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "leakage_csm2",
++		.reg = NVSW_REG_LEAK_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "leakage_csm3",
++		.reg = NVSW_REG_LEAK_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "leakage_csm4",
++		.reg = NVSW_REG_LEAK_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "leakage_mgmt",
++		.reg = NVSW_REG_LEAK_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid181_alarms_items_data[] = {
++	{
++		.label = "ssd_i2c_alert",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = NVSW_SSD_I2C_ALERT_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "wd_exp",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = NVSW_WD_EXP_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "5v_usb",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = NVSW_5V_USB_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "holder10_pg",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "holder11_pg",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "sgmii_phy",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "ssd_pg",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "leakage_aggr",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid181_alarms2_items_data[] = {
++	{
++		.label = "comex_tps_upgrade_done",
++		.reg = NVSW_REG_HEALTH_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "holder12_pg",
++		.reg = NVSW_REG_HEALTH_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "holder13_pg",
++		.reg = NVSW_REG_HEALTH_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "holder14_pg",
++		.reg = NVSW_REG_HEALTH_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "holder15_pg",
++		.reg = NVSW_REG_HEALTH_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "vr13_alert",
++		.reg = NVSW_REG_HEALTH_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "therm_trip",
++		.reg = NVSW_REG_HEALTH_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "soc_caterr",
++		.reg = NVSW_REG_HEALTH_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid181_vr1_pwr_alert_items_data[] = {
++	{
++		.label = "asic1_vdd_pwr_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_hdvdd_vr_pwr_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_dvdd_vrs_pwr_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_vdd_vrs_pwr_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_vdd_pwr_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_hdvdd_vr_pwr_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_dvdd_vrs_pwr_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_vdd_vrs_pwr_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid181_vr2_pwr_alert_items_data[] = {
++	{
++		.label = "asic3_vdd_pwr_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_hdvdd_vr_pwr_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_dvdd_vrs_pwr_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_vdd_vrs_pwr_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_vdd_pwr_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_hdvdd_vr_pwr_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_dvdd_vrs_pwr_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_vdd_vrs_pwr_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_item nvsw_bmc_hid181_hotplug_items_data[] = {
++	{
++		.data = nvsw_bmc_hid181_asic1_pg_events_items_data,
 +		.aggr_mask = NVSW_AGGR_MASK,
 +		.reg = NVSW_REG_PG1_OFFSET,
 +		.mask = GENMASK(7, 0),
-+		.count = ARRAY_SIZE(nvsw_bmc_hid185_pg1_events_items_data),
++		.count = ARRAY_SIZE(nvsw_bmc_hid181_asic1_pg_events_items_data),
 +		.inversed = 1,
 +		.health = false,
 +		.non_sticky = true,
 +	},
 +	{
-+		.data = nvsw_bmc_hid180_pg2_events_items_data,
-+		.aggr_mask = NVSW_AGGR_MASK_COMEX,
++		.data = nvsw_bmc_hid181_asic2_pg_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
 +		.reg = NVSW_REG_PG2_OFFSET,
 +		.mask = GENMASK(7, 0),
-+		.count = ARRAY_SIZE(nvsw_bmc_hid180_pg2_events_items_data),
++		.count = ARRAY_SIZE(nvsw_bmc_hid181_asic2_pg_events_items_data),
 +		.inversed = 1,
 +		.health = false,
 +		.non_sticky = true,
 +	},
 +	{
-+		.data = nvsw_bmc_hid185_pg3_events_items_data,
-+		.aggr_mask = NVSW_AGGR_MASK,
-+		.reg = NVSW_REG_BRD4_OFFSET,
-+		.mask = GENMASK(7, 0),
-+		.count = ARRAY_SIZE(nvsw_bmc_hid185_pg3_events_items_data),
-+		.inversed = 1,
-+		.health = false,
-+		.non_sticky = true,
-+	},
-+	{
-+		.data = nvsw_bmc_hid185_pg4_events_items_data,
++		.data = nvsw_bmc_hid181_asic3_pg_events_items_data,
 +		.aggr_mask = NVSW_AGGR_MASK,
 +		.reg = NVSW_REG_PG3_OFFSET,
-+		.mask = NVSW_AGGR_MASK,
-+		.count = ARRAY_SIZE(nvsw_bmc_hid185_pg4_events_items_data),
++		.mask =  GENMASK(7, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid181_asic3_pg_events_items_data),
 +		.inversed = 1,
 +		.health = false,
 +		.non_sticky = true,
 +	},
 +	{
-+		.data = nvsw_bmc_hid185_pg5_events_items_data,
++		.data = nvsw_bmc_hid181_asic4_pg_events_items_data,
 +		.aggr_mask = NVSW_AGGR_MASK,
 +		.reg = NVSW_REG_PG4_OFFSET,
 +		.mask = GENMASK(7, 0),
-+		.count = ARRAY_SIZE(nvsw_bmc_hid185_pg5_events_items_data),
++		.count = ARRAY_SIZE(nvsw_bmc_hid181_asic4_pg_events_items_data),
 +		.inversed = 1,
 +		.health = false,
 +		.non_sticky = true,
 +	},
 +	{
-+		.data = nvsw_bmc_hid180_asic_items_data,
++		.data = nvsw_bmc_hid181_brd2_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_BRD2_OFFSET,
++		.mask = GENMASK(3, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid181_brd2_events_items_data),
++		.inversed = 0,
++		.health = false,
++		.non_sticky = true,
++	},
++	{
++		.data = nvsw_bmc_hid181_brd4_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = GENMASK(7, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid181_brd4_events_items_data),
++		.inversed = 1,
++		.health = false,
++		.non_sticky = true,
++	},
++	{
++		.data = nvsw_bmc_hid181_asic_items_data,
 +		.aggr_mask = NVSW_AGGR_MASK,
 +		.reg = NVSW_REG_ASIC1_HEALTH_OFFSET,
 +		.mask = NVSW_ASICS_MASK,
-+		.count = ARRAY_SIZE(nvsw_bmc_hid180_asic_items_data),
++		.count = ARRAY_SIZE(nvsw_bmc_hid181_asic_items_data),
 +		.inversed = 0,
 +		.health = true,
 +	},
 +	{
-+		.data = nvsw_bmc_hid180_asic_temp_items_data,
++		.data = nvsw_bmc_hid181_asic_temp_items_data,
 +		.aggr_mask = NVSW_AGGR_MASK,
 +		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
 +		.mask = NVSW_ASICS_MASK,
-+		.count = ARRAY_SIZE(nvsw_bmc_hid180_asic_temp_items_data),
++		.count = ARRAY_SIZE(nvsw_bmc_hid181_asic_temp_items_data),
 +		.inversed = 0,
 +		.health = false,
 +	},
 +	{
-+		.data = nvsw_bmc_hid180_leakage_items_data,
++		.data = nvsw_bmc_hid181_leakage_items_data,
 +		.aggr_mask = NVSW_AGGR_MASK,
 +		.reg = NVSW_REG_LEAK_OFFSET,
-+		.mask = GENMASK(1, 0),
-+		.count = ARRAY_SIZE(nvsw_bmc_hid180_leakage_items_data),
++		.mask = GENMASK(4, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid181_leakage_items_data),
 +		.inversed = 0,
 +		.health = false,
 +	},
 +	{
-+		.data = nvsw_bmc_hid180_alarms_items_data,
++		.data = nvsw_bmc_hid181_alarms_items_data,
 +		.aggr_mask = NVSW_AGGR_MASK,
 +		.reg = NVSW_REG_BRD1_OFFSET,
 +		.mask = GENMASK(7, 0),
-+		.count = ARRAY_SIZE(nvsw_bmc_hid180_alarms_items_data),
++		.count = ARRAY_SIZE(nvsw_bmc_hid181_alarms_items_data),
 +		.inversed = 0,
 +		.health = false,
 +	},
 +	{
-+		.data = nvsw_bmc_hid180_alarms2_items_data,
++		.data = nvsw_bmc_hid181_alarms2_items_data,
 +		.aggr_mask = NVSW_AGGR_MASK_COMEX,
 +		.reg = NVSW_REG_HEALTH_OFFSET,
-+		.mask = GENMASK(3, 0),
-+		.count = ARRAY_SIZE(nvsw_bmc_hid180_alarms2_items_data),
++		.mask = GENMASK(7, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid181_alarms2_items_data),
 +		.inversed = 0,
 +		.health = false,
 +	},
 +	{
-+		.data = nvsw_bmc_hid180_cpu_items_data,
-+		.aggr_mask = NVSW_AGGR_MASK,
-+		.reg = NVSW_REG_BRD2_OFFSET,
-+		.mask = GENMASK(4, 2),
-+		.count = ARRAY_SIZE(nvsw_bmc_hid180_cpu_items_data),
-+		.inversed = 0,
-+		.health = false,
-+	},
-+	{
-+		.data = nvsw_bmc_hid180_vr1_pwr_alert_items_data,
++		.data = nvsw_bmc_hid181_vr1_pwr_alert_items_data,
 +		.aggr_mask = NVSW_AGGR_MASK,
 +		.reg = NVSW_REG_VR1_ALERT_OFFSET,
 +		.mask = GENMASK(7, 0),
-+		.count = ARRAY_SIZE(nvsw_bmc_hid180_vr1_pwr_alert_items_data),
++		.count = ARRAY_SIZE(nvsw_bmc_hid181_vr1_pwr_alert_items_data),
 +		.inversed = 0,
 +		.health = false,
 +	},
 +	{
-+		.data = nvsw_bmc_hid180_vr2_pwr_alert_items_data,
++		.data = nvsw_bmc_hid181_vr2_pwr_alert_items_data,
 +		.aggr_mask = NVSW_AGGR_MASK,
 +		.reg = NVSW_REG_VR2_ALERT_OFFSET,
 +		.mask = GENMASK(7, 0),
-+		.count = ARRAY_SIZE(nvsw_bmc_hid180_vr2_pwr_alert_items_data),
++		.count = ARRAY_SIZE(nvsw_bmc_hid181_vr2_pwr_alert_items_data),
 +		.inversed = 0,
 +		.health = false,
 +	},
 +	{
-+		.data = nvsw_bmc_hid180_erot_error_items_data,
-+		.aggr_mask = NVSW_AGGR_MASK,
-+		.reg = NVSW_REG_EROT_ERR_OFFSET,
-+		.mask = BIT(0),
-+		.count = ARRAY_SIZE(nvsw_bmc_hid180_erot_error_items_data),
-+		.inversed = 1,
-+		.health = false,
-+	},
-+	{
-+		.data = nvsw_bmc_hid162_events_items_data,
++		.data = nvsw_bmc_hid181_events_items_data,
 +		.aggr_mask = NVSW_AGGR_MASK,
 +		.reg = NVSW_REG_PWRB_OFFSET,
-+		.mask = NVSW_PWR_BUTTON_MASK | NVSW_AMB_TEMP_SENSE_MASK |
-+			NVSW_GRACEFUL_POWER_OFF_MASK | NVSW_CPU_POWER_OFF_READY_MASK |
++		.mask = NVSW_GRACEFUL_POWER_OFF_MASK | NVSW_CPU_POWER_OFF_READY_MASK |
 +			NVSW_CPU_RESET_MASK | NVSW_APML_SMB_ALERT_MASK |
-+			NVSW_CPU_UNEXP_POWER_OFF_MASK | NVSW_UID_PUSH_BUTTON_MASK,
-+		.count = ARRAY_SIZE(nvsw_bmc_hid162_events_items_data),
++			NVSW_CPU_UNEXP_POWER_OFF_MASK,
++		.count = ARRAY_SIZE(nvsw_bmc_hid181_events_items_data),
++		.inversed = 1,
++		.health = false,
++		.non_sticky = true,
++	},
++};
++
++static struct mlxreg_core_hotplug_platform_data nvsw_bmc_hid181_hotplug = {
++	.items = nvsw_bmc_hid181_hotplug_items_data,
++	.count = ARRAY_SIZE(nvsw_bmc_hid181_hotplug_items_data),
++	.cell = NVSW_REG_AGGR_OFFSET,
++	.mask = NVSW_AGGR_MASK | NVSW_AGGR_MASK_COMEX,
++	.cell_low = NVSW_REG_AGGRLO_OFFSET,
++	.mask_low = GENMASK(6, 0),
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_pg1_events_items_data[] = {
++	{
++		.label = "asic1_hsc0_smb_alert",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_oes_pwr",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_gp_vdrv_5v_clk_pg",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_gp_vdd_pg",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_pl_dvdd_pg",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_pl_avdd_pg",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_vddhbid_pg",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++		{
++		.label = "asic1_gp_1v8_vddio_pg",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_pg2_events_items_data[] = {
++	{
++		.label = "vdd_misc_pg",
++		.reg = NVSW_REG_PG2_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "gp_3v3_bmc_pg",
++		.reg = NVSW_REG_PG2_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "vdd_1v8_pg",
++		.reg = NVSW_REG_PG2_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "ddr_pg",
++		.reg = NVSW_REG_PG2_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "12v_pg",
++		.reg = NVSW_REG_PG2_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "vdd_3v3_pg",
++		.reg = NVSW_REG_PG2_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "vdd_alw_pwrgd",
++		.reg = NVSW_REG_PG2_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "vddcr_pg",
++		.reg = NVSW_REG_PG2_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_brd2_events_items_data[] = {
++	{
++		.label = "bmc_tpm_pirq",
++		.reg = NVSW_REG_BRD2_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "smb_alert",
++		.reg = NVSW_REG_BRD2_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "cpu_reset_deassert",
++		.reg = NVSW_REG_BRD2_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "bios_started",
++		.reg = NVSW_REG_BRD2_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "bios_boot_completed",
++		.reg = NVSW_REG_BRD2_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_pg3_events_items_data[] = {
++	{
++		.label = "asic2_hsc0_smb_alert",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_oes_pwr",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_gp_vdrv_5v_clk_pg",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_gp_vdd_pg",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_pl_dvdd_pg",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_pl_avdd_pg",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_vddhbid_pg",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_gp_1v8_vddio_pg",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_pg4_events_items_data[] = {
++	{
++		.label = "asic3_hsc0_smb_alert",
++		.reg = NVSW_REG_PG3_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_oes_pwr",
++		.reg = NVSW_REG_PG3_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_gp_vdrv_5v_clk_pg",
++		.reg = NVSW_REG_PG3_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_gp_vdd_pg",
++		.reg = NVSW_REG_PG3_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_pl_dvdd_pg",
++		.reg = NVSW_REG_PG3_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_pl_avdd_pg",
++		.reg = NVSW_REG_PG3_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_vddhbid_pg",
++		.reg = NVSW_REG_PG3_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++		{
++		.label = "asic3_gp_1v8_vddio_pg",
++		.reg = NVSW_REG_PG3_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_asic4_events_items_data[] = {
++	{
++		.label = "asic4_hsc0_smb_alert",
++		.reg = NVSW_REG_PG4_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_oes_pwr",
++		.reg = NVSW_REG_PG4_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_gp_vdrv_5v_clk_pg",
++		.reg = NVSW_REG_PG4_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_gp_vdd_pg",
++		.reg = NVSW_REG_PG4_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_pl_dvdd_pg",
++		.reg = NVSW_REG_PG4_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_pl_avdd_pg",
++		.reg = NVSW_REG_PG4_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_vddhbid_pg",
++		.reg = NVSW_REG_PG4_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++		{
++		.label = "asic4_gp_1v8_vddio_pg",
++		.reg = NVSW_REG_PG4_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_asic_items_data[] = {
++	{
++		.label = "asic1_health",
++		.reg = NVSW_REG_ASIC1_HEALTH_OFFSET,
++		.mask = NVSW_ASIC_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_health",
++		.reg = NVSW_REG_ASIC1_HEALTH_OFFSET,
++		.mask = NVSW_ASIC2_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_health",
++		.reg = NVSW_REG_ASIC1_HEALTH_OFFSET,
++		.mask = NVSW_ASIC3_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_health",
++		.reg = NVSW_REG_ASIC1_HEALTH_OFFSET,
++		.mask = NVSW_ASIC4_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_asic_temp_items_data[] = {
++	{
++		.label = "asic1_temp_warn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_temp_shtdn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_temp_warn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_temp_shtdn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_temp_warn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_temp_shtdn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_temp_warn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_temp_shtdn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_vr1_pwr_alert_items_data[] = {
++	{
++		.label = "asic1_vdd_txx_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_dvdd_txx_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_avdd_txx_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_hvdd_vddhbid_txx_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_vdd_txx_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_dvdd_txx_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_avdd_txx_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic2_hvdd_vddhbid_txx_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_vr2_pwr_alert_items_data[] = {
++	{
++		.label = "asic3_vdd_txx_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_dvdd_txx_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_avdd_txx_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic3_hvdd_vddhbid_txx_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_vdd_txx_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_dvdd_txx_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_avdd_txx_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic4_hvdd_vddhbid_txx_alert",
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_leakage_items_data[] = {
++	{
++		.label = "leakage_mgmt",
++		.reg = NVSW_REG_LEAK_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "leakage_csm1",
++		.reg = NVSW_REG_LEAK_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "leakage_csm2",
++		.reg = NVSW_REG_LEAK_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "leakage_csm3",
++		.reg = NVSW_REG_LEAK_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "leakage_csm4",
++		.reg = NVSW_REG_LEAK_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_dc_ok_events_items_data[] = {
++	{
++		.label = "pdb0_12v_pg",
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "pdb1_12v_pg",
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "pdb2_12v_pg",
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "pdb3_12v_pg",
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "pdb0_hsc_pg",
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "pdb1_hsc_pg",
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "pdb2_hsc_pg",
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "pdb3_hsc_pg",
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_alarms_items_data[] = {
++	{
++		.label = "ssd_i2c_alert",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = NVSW_SSD_I2C_ALERT_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "wd_exp",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = NVSW_WD_EXP_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "5v_usb",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = NVSW_5V_USB_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "holder9_pg",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "holder11_pg",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "bmc_phy_pg",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "ssd_pg",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "leakage_aggr",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_alarms2_items_data[] = {
++	{
++		.label = "psys_alert",
++		.reg = NVSW_REG_HEALTH_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "vdd_mem",
++		.reg = NVSW_REG_HEALTH_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "svi3_vr_alert",
++		.reg = NVSW_REG_HEALTH_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "thermtrip_alert",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "vddq_vrhot",
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_item nvsw_bmc_hid191_hotplug_items_data[] = {
++	{
++		.data = nvsw_bmc_hid191_pg1_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = GENMASK(7, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_pg1_events_items_data),
 +		.inversed = 1,
 +		.health = false,
 +		.non_sticky = true,
 +	},
 +	{
-+		.data = nvsw_bmc_hid162_cartridge_items_data,
++		.data = nvsw_bmc_hid191_pg2_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK_COMEX,
++		.reg = NVSW_REG_PG2_OFFSET,
++		.mask = GENMASK(7, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_pg2_events_items_data),
++		.inversed = 1,
++		.health = false,
++		.non_sticky = true,
++	},
++	{
++		.data = nvsw_bmc_hid191_pg4_events_items_data,
 +		.aggr_mask = NVSW_AGGR_MASK,
-+		.reg = NVSW_REG_FRU1_OFFSET,
-+		.mask = NVSW_REG_FRU1_MASK,
-+		.count = ARRAY_SIZE(nvsw_bmc_hid162_cartridge_items_data),
++		.reg = NVSW_REG_PG3_OFFSET,
++		.mask = GENMASK(7, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_pg4_events_items_data),
++		.inversed = 1,
++		.health = false,
++		.non_sticky = true,
++	},
++	{
++		.data = nvsw_bmc_hid191_asic4_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_PG4_OFFSET,
++		.mask = GENMASK(7, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_asic4_events_items_data),
++		.inversed = 1,
++		.health = false,
++		.non_sticky = true,
++	},
++	{
++		.data = nvsw_bmc_hid191_asic_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_ASIC1_HEALTH_OFFSET,
++		.mask =  NVSW_ASIC_MASK,
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_asic_items_data),
++		.inversed = 0,
++		.health = true,
++	},
++	{
++		.data = nvsw_bmc_hid191_asic_temp_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = GENMASK(1, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_asic_temp_items_data),
 +		.inversed = 0,
 +		.health = false,
 +	},
++	{
++		.data = nvsw_bmc_hid191_vr1_pwr_alert_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = GENMASK(7, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_vr1_pwr_alert_items_data),
++		.inversed = 0,
++		.health = false,
++	},
++	{
++		.data = nvsw_bmc_hid191_vr2_pwr_alert_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_VR2_ALERT_OFFSET,
++		.mask = GENMASK(7, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_vr2_pwr_alert_items_data),
++		.inversed = 0,
++		.health = false,
++	},
++	{
++		.data = nvsw_bmc_hid191_dc_ok_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = GENMASK(7, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_dc_ok_events_items_data),
++		.inversed = 0,
++		.health = false,
++	},
++	{
++		.data = nvsw_bmc_hid191_leakage_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_LEAK_OFFSET,
++		.mask = GENMASK(4, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_leakage_items_data),
++		.inversed = 0,
++		.health = false,
++	},
++	{
++		.data = nvsw_bmc_hid191_alarms_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = GENMASK(7, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_alarms_items_data),
++		.inversed = 0,
++		.health = false,
++	},
++	{
++		.data = nvsw_bmc_hid191_brd2_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_BRD2_OFFSET,
++		.mask = GENMASK(4, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_brd2_events_items_data),
++		.inversed = 0,
++		.health = false,
++		.non_sticky = true,
++	},
++	{
++		.data = nvsw_bmc_hid191_pg3_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = GENMASK(4, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_pg3_events_items_data),
++		.inversed = 1,
++		.health = false,
++		.non_sticky = true,
++	},
++	{
++		.data = nvsw_bmc_hid191_alarms2_items_data,
++		.aggr_mask = NVSW_AGGR_MASK_COMEX,
++		.reg = NVSW_REG_HEALTH_OFFSET,
++		.mask = GENMASK(4, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_alarms2_items_data),
++		.inversed = 0,
++		.health = false,
++	},
++	{
++		.data = nvsw_bmc_hid191_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_GRACEFUL_POWER_OFF_MASK | NVSW_CPU_POWER_OFF_READY_MASK |
++			NVSW_CPU_RESET_MASK | NVSW_APML_SMB_ALERT_MASK |
++			NVSW_CPU_UNEXP_POWER_OFF_MASK,
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_events_items_data),
++		.inversed = 1,
++		.health = false,
++		.non_sticky = true,
++	},
 +};
 +
-+static
-+struct mlxreg_core_hotplug_platform_data nvsw_bmc_hid185_hotplug = {
-+	.items = nvsw_bmc_hid185_hotplug_items_data,
-+	.count = ARRAY_SIZE(nvsw_bmc_hid185_hotplug_items_data),
++static struct mlxreg_core_hotplug_platform_data nvsw_bmc_hid191_hotplug = {
++	.items = nvsw_bmc_hid191_hotplug_items_data,
++	.count = ARRAY_SIZE(nvsw_bmc_hid191_hotplug_items_data),
++	.cell = NVSW_REG_AGGR_OFFSET,
++	.mask = NVSW_AGGR_MASK | NVSW_AGGR_MASK_COMEX,
++	.cell_low = NVSW_REG_AGGRLO_OFFSET,
++	.mask_low = GENMASK(5, 0),
++	.deferred_nr = 5,
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid193_pg1_events_items_data[] = {
++	{
++		.label = "gp_vdd_pg",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "gp_vdd_t_pg",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "gp_pl_dvdd_t_pg",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "gp_pl_avdd_t_pg",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "gp_pl_hvdd_t_pg",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "gp_vddhbid_t_pg",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "1v8_vddio_pg",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(6),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++		{
++		.label = "gp_1v8_vddqps_pg",
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = BIT(7),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid193_pg3_events_items_data[] = {
++	{
++		.label = "hsc0_smb_alert",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "hsc1_smb_alert",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "pdb_fsd",
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid193_pg4_events_items_data[] = {
++	{
++		.label = "gp_3v3_osc_pg",
++		.reg = NVSW_REG_PG3_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "gp_vdrv_pg",
++		.reg = NVSW_REG_PG3_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid193_asic_items_data[] = {
++	{
++		.label = "asic1_health",
++		.reg = NVSW_REG_ASIC1_HEALTH_OFFSET,
++		.mask = NVSW_ASIC_MASK,
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid193_asic_temp_items_data[] = {
++	{
++		.label = "asic1_temp_warn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_temp_shtdn",
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid193_vr1_pwr_alert_items_data[] = {
++	{
++		.label = "asic1_vdd_pwr_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_vdd_t0_7_pwr_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_dvdd_t0_7_pwr_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_avdd_t0_7_pwr_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_hvdd_pwr_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "asic1_vdddhbid_pwr_alert",
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid193_leakage_items_data[] = {
++	{
++		.label = "leakage1",
++		.reg = NVSW_REG_LEAK_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "leakage2",
++		.reg = NVSW_REG_LEAK_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid193_dc_ok_events_items_data[] = {
++	{
++		.label = "pdb0_12v_pg",
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = BIT(0),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "pdb1_12v_pg",
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = BIT(1),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "holder16_pg",
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = BIT(2),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "holder17_pg",
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = BIT(3),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "pdb0_hsc_pg",
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = BIT(4),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++	{
++		.label = "pdb1_hsc_pg",
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = BIT(5),
++		.hpdev.nr = NVSW_NR_NONE,
++	},
++};
++
++
++static struct mlxreg_core_item nvsw_bmc_hid193_hotplug_items_data[] = {
++	{
++		.data = nvsw_bmc_hid193_pg1_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_PG1_OFFSET,
++		.mask = GENMASK(7, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid193_pg1_events_items_data),
++		.inversed = 1,
++		.health = false,
++		.non_sticky = true,
++	},
++	{
++		.data = nvsw_bmc_hid191_pg2_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK_COMEX,
++		.reg = NVSW_REG_PG2_OFFSET,
++		.mask = GENMASK(7, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_pg2_events_items_data),
++		.inversed = 1,
++		.health = false,
++		.non_sticky = true,
++	},
++	{
++		.data = nvsw_bmc_hid193_pg4_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_PG3_OFFSET,
++		.mask = GENMASK(1, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid193_pg4_events_items_data),
++		.inversed = 1,
++		.health = false,
++		.non_sticky = true,
++	},
++	{
++		.data = nvsw_bmc_hid193_asic_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_ASIC1_HEALTH_OFFSET,
++		.mask =  NVSW_ASIC_MASK,
++		.count = ARRAY_SIZE(nvsw_bmc_hid193_asic_items_data),
++		.inversed = 0,
++		.health = true,
++	},
++	{
++		.data = nvsw_bmc_hid193_asic_temp_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_ASIC2_HEALTH_OFFSET,
++		.mask = GENMASK(1, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid193_asic_temp_items_data),
++		.inversed = 0,
++		.health = false,
++	},
++	{
++		.data = nvsw_bmc_hid193_dc_ok_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_PS_DC_OK_OFFSET,
++		.mask = GENMASK(5, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid193_dc_ok_events_items_data),
++		.inversed = 0,
++		.health = false,
++	},
++	{
++		.data = nvsw_bmc_hid193_leakage_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_LEAK_OFFSET,
++		.mask = GENMASK(1, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid193_leakage_items_data),
++		.inversed = 0,
++		.health = false,
++	},
++	{
++		.data = nvsw_bmc_hid191_alarms_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_BRD1_OFFSET,
++		.mask = GENMASK(7, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_alarms_items_data),
++		.inversed = 0,
++		.health = false,
++	},
++	{
++		.data = nvsw_bmc_hid191_brd2_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_BRD2_OFFSET,
++		.mask = GENMASK(4, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_brd2_events_items_data),
++		.inversed = 0,
++		.health = false,
++		.non_sticky = true,
++	},
++	{
++		.data = nvsw_bmc_hid193_pg3_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_BRD4_OFFSET,
++		.mask = GENMASK(2, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid193_pg3_events_items_data),
++		.inversed = 1,
++		.health = false,
++		.non_sticky = true,
++	},
++	{
++		.data = nvsw_bmc_hid191_alarms2_items_data,
++		.aggr_mask = NVSW_AGGR_MASK_COMEX,
++		.reg = NVSW_REG_HEALTH_OFFSET,
++		.mask = GENMASK(4, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_alarms2_items_data),
++		.inversed = 0,
++		.health = false,
++	},
++	{
++		.data = nvsw_bmc_hid193_vr1_pwr_alert_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_VR1_ALERT_OFFSET,
++		.mask = GENMASK(5, 0),
++		.count = ARRAY_SIZE(nvsw_bmc_hid193_vr1_pwr_alert_items_data),
++		.inversed = 0,
++		.health = false,
++	},
++	{
++		.data = nvsw_bmc_hid191_events_items_data,
++		.aggr_mask = NVSW_AGGR_MASK,
++		.reg = NVSW_REG_PWRB_OFFSET,
++		.mask = NVSW_GRACEFUL_POWER_OFF_MASK | NVSW_CPU_POWER_OFF_READY_MASK |
++			NVSW_CPU_RESET_MASK | NVSW_APML_SMB_ALERT_MASK |
++			NVSW_CPU_UNEXP_POWER_OFF_MASK,
++		.count = ARRAY_SIZE(nvsw_bmc_hid191_events_items_data),
++		.inversed = 1,
++		.health = false,
++		.non_sticky = true,
++	},
++};
++
++static struct mlxreg_core_hotplug_platform_data nvsw_bmc_hid193_hotplug = {
++	.items = nvsw_bmc_hid193_hotplug_items_data,
++	.count = ARRAY_SIZE(nvsw_bmc_hid193_hotplug_items_data),
 +	.cell = NVSW_REG_AGGR_OFFSET,
 +	.mask = NVSW_AGGR_MASK | NVSW_AGGR_MASK_COMEX,
 +	.cell_low = NVSW_REG_AGGRLO_OFFSET,
@@ -2229,13 +3925,7 @@ index 000000000..3c70e2979
 +		.mode = 0444,
 +	},
 +	{
-+		.label = "reset_cpu",
-+		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
-+		.mask = GENMASK(7, 0) & ~BIT(4),
-+		.mode = 0444,
-+	},
-+	{
-+		.label = "reset_pwr_button",
++		.label = "reset_pwr_button_or_leak_con",
 +		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
 +		.mask = GENMASK(7, 0) & ~BIT(5),
 +		.mode = 0444,
@@ -2424,12 +4114,6 @@ index 000000000..3c70e2979
 +		.mode = 0444,
 +	},
 +	{
-+		.label = "cpld3_version",
-+		.reg = NVSW_REG_CPLD3_VER_OFFSET,
-+		.bit = GENMASK(7, 0),
-+		.mode = 0444,
-+	},
-+	{
 +		.label = "cpld1_pn",
 +		.reg = NVSW_REG_CPLD1_PN_OFFSET,
 +		.bit = GENMASK(15, 0),
@@ -2444,13 +4128,6 @@ index 000000000..3c70e2979
 +		.regnum = 2,
 +	},
 +	{
-+		.label = "cpld3_pn",
-+		.reg = NVSW_REG_CPLD3_PN_OFFSET,
-+		.bit = GENMASK(15, 0),
-+		.mode = 0444,
-+		.regnum = 2,
-+	},
-+	{
 +		.label = "cpld1_version_min",
 +		.reg = NVSW_REG_CPLD1_MVER_OFFSET,
 +		.bit = GENMASK(7, 0),
@@ -2459,12 +4136,6 @@ index 000000000..3c70e2979
 +	{
 +		.label = "cpld2_version_min",
 +		.reg = NVSW_REG_CPLD2_MVER_OFFSET,
-+		.bit = GENMASK(7, 0),
-+		.mode = 0444,
-+	},
-+	{
-+		.label = "cpld3_version_min",
-+		.reg = NVSW_REG_CPLD3_MVER_OFFSET,
 +		.bit = GENMASK(7, 0),
 +		.mode = 0444,
 +	},
@@ -2503,19 +4174,19 @@ index 000000000..3c70e2979
 +		.label = "bmc_perst_en",
 +		.reg = NVSW_REG_GP7_OFFSET,
 +		.mask = GENMASK(7, 0) & ~BIT(4),
-+		.mode = 0644,
++		.mode = 0200,
++	},
++	{
++		.label = "bmc_shutdown_unlock",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0200,
 +	},
 +	{
 +		.label = "stby_pwr_en_unmask",
 +		.reg = NVSW_REG_GP7_OFFSET,
-+		.mask = GENMASK(7, 0) & ~BIT(6),
-+		.mode = 0644,
-+	},
-+	{
-+		.label = "i3c_mux_sel",
-+		.reg = NVSW_REG_GP7_OFFSET,
-+		.mask = GENMASK(7, 0) & ~BIT(7),
-+		.mode = 0644,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0200,
 +	},
 +	{
 +		.label = "cpu_mctp_ready",
@@ -2664,7 +4335,13 @@ index 000000000..3c70e2979
 +		.mode = 0444,
 +	},
 +	{
-+		.label = "reset_pwr_button_or_leak_con",
++		.label = "reset_cpu",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_pwr_button",
 +		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
 +		.mask = GENMASK(7, 0) & ~BIT(5),
 +		.mode = 0444,
@@ -2880,9 +4557,2222 @@ index 000000000..3c70e2979
 +	},
 +};
 +
++static struct mlxreg_core_data nvsw_bmc_hid181_regio_data[] = {
++	{
++		.label = "cpld1_version",
++		.reg = NVSW_REG_CPLD1_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld2_version",
++		.reg = NVSW_REG_CPLD2_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld3_version",
++		.reg = NVSW_REG_CPLD3_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld4_version",
++		.reg = NVSW_REG_CPLD4_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld5_version",
++		.reg = NVSW_REG_CPLD5_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld6_version",
++		.reg = NVSW_REG_CPLD6_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld8_version",
++		.reg = NVSW_REG_CPLD8_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld9_version",
++		.reg = NVSW_REG_CPLD9_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld10_version",
++		.reg = NVSW_REG_CPLD10_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld1_pn",
++		.reg = NVSW_REG_CPLD1_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld2_pn",
++		.reg = NVSW_REG_CPLD2_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld3_pn",
++		.reg = NVSW_REG_CPLD3_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld4_pn",
++		.reg = NVSW_REG_CPLD4_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld5_pn",
++		.reg = NVSW_REG_CPLD5_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld6_pn",
++		.reg = NVSW_REG_CPLD6_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld7_pn",
++		.reg = NVSW_REG_CPLD7_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld8_pn",
++		.reg = NVSW_REG_CPLD8_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld9_pn",
++		.reg = NVSW_REG_CPLD9_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld10_pn",
++		.reg = NVSW_REG_CPLD10_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld1_dbg_led",
++		.reg = NVSW_REG_CPLD1_DBG_LED_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0644,
++	},
++	{
++		.label = "cpld2_dbg_led",
++		.reg = NVSW_REG_CPLD2_DBG_LED_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0644,
++	},
++	{
++		.label = "cpld3_dbg_led",
++		.reg = NVSW_REG_CPLD3_DBG_LED_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0644,
++	},
++	{
++		.label = "cpld4_dbg_led",
++		.reg = NVSW_REG_CPLD4_DBG_LED_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0644,
++	},
++	{
++		.label = "cpld7_version",
++		.reg = NVSW_REG_CPLD7_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld1_version_min",
++		.reg = NVSW_REG_CPLD1_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld2_version_min",
++		.reg = NVSW_REG_CPLD2_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld3_version_min",
++		.reg = NVSW_REG_CPLD3_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld4_version_min",
++		.reg = NVSW_REG_CPLD4_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld5_version_min",
++		.reg = NVSW_REG_CPLD5_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld6_version_min",
++		.reg = NVSW_REG_CPLD6_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld7_version_min",
++		.reg = NVSW_REG_CPLD7_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld8_version_min",
++		.reg = NVSW_REG_CPLD8_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld9_version_min",
++		.reg = NVSW_REG_CPLD9_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld10_version_min",
++		.reg = NVSW_REG_CPLD10_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "ufm_version",
++		.reg = NVSW_REG_UFM_VERSION_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "bios_status",
++		.reg = NVSW_REG_GPCOM0_OFFSET,
++		.mask = GENMASK(3, 1),
++		.bit = 3,
++		.mode = 0444,
++	},
++	{
++		.label = "bios_start_retry",
++		.reg = NVSW_REG_GPCOM0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0444,
++	},
++	{
++		.label = "bios_active_image",
++		.reg = NVSW_REG_GPCOM0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "pwr_converter_prog_en",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0644,
++	},
++	{
++		.label = "graceful_power_off",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "bmc_perst_en",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0200,
++	},
++	{
++		.label = "stby_pwr_en_unmask",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0200,
++	},
++	{
++		.label = "cpu_mctp_ready",
++		.reg = NVSW_REG_GP0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		 .label = "cpu_shutdown_req",
++		 .reg = NVSW_REG_GP0_OFFSET,
++		 .mask = GENMASK(7, 0) & ~BIT(2),
++		 .mode = 0444,
++	},
++	{
++		.label = "vpd_wp",
++		.reg = NVSW_REG_GP0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++		.secured = 1,
++	},
++	{
++		.label = "pcie_asic_reset_dis",
++		.reg = NVSW_REG_GP0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0644,
++	},
++	{
++		.label = "shutdown_unlock",
++		.reg = NVSW_REG_GP0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0644,
++	},
++	{
++		.label = "cpu_power_off_ready",
++		.reg = NVSW_REG_GP0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0644,
++	},
++	{
++		.label = "ignore_next_reset",
++		.reg = NVSW_REG_GP0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0644,
++	},
++	{
++		.label = "pwr_cycle",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0200,
++	},
++	{
++		.label = "pwr_down",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "aux_pwr_cycle",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0200,
++	},
++	{
++		.label = "bmc_to_cpu_ctrl",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0644,
++	},
++	{
++		.label = "uart_sel",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = NVSW_UART_SEL_MASK,
++		.bit = 7,
++		.mode = 0644,
++	},
++	{
++		.label = "global_wp_disable_req",
++		.reg = NVSW_REG_GP4_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0644,
++	},
++	{
++		.label = "bmc_monitor",
++		.reg = NVSW_REG_GP4_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "smbus_vpd",
++		.reg = NVSW_REG_GP4_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0644,
++	},
++	{
++		.label = "serirq_mode",
++		.reg = NVSW_REG_GP4_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "gpio_cpld_fu",
++		.reg = NVSW_REG_GP4_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0644,
++	},
++	{
++		.label = "b2b_vpd",
++		.reg = NVSW_REG_GP4_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0644,
++	},
++	{
++		.label = "comm_chnl_ready",
++		.reg = NVSW_REG_GP4_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0644,
++	},
++	{
++		.label = "smb2i2c",
++		.reg = NVSW_REG_GP4_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0644,
++	},
++	{
++		.label = "sys_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0644,
++	},
++	{
++		.label = "asic4_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0644,
++	},
++	{
++		.label = "asics_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "sgmii_phy_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0644,
++	},
++	{
++		.label = "asic3_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0644,
++	},
++	{
++		.label = "asic2_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0644,
++	},
++	{
++		.label = "asic1_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0644,
++	},
++	{
++		.label = "platform_reset",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0644,
++	},
++	{
++		.label = "main_reset",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0644,
++	},
++	{
++		.label = "ser_irq_reset",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "i219_pe_reset",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0644,
++	},
++	{
++		.label = "tpm_reset",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0644,
++	},
++	{
++		.label = "reset_long_pb",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_short_pb",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_aux_pwr_or_fu",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_swb_dc_dc_pwr_fail",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_from_comex",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_swb_wd",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_asic_thermal",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_from_sw_cmd",
++		.reg = NVSW_REG_RESET_CAUSE1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_from_main_brd",
++		.reg = NVSW_REG_RESET_CAUSE1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_from_cpld",
++		.reg = NVSW_REG_RESET_CAUSE1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_comex_pwr_fail",
++		.reg = NVSW_REG_RESET_CAUSE1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_platform",
++		.reg = NVSW_REG_RESET_CAUSE1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_soc",
++		.reg = NVSW_REG_RESET_CAUSE1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_from_carrier_brd",
++		.reg = NVSW_REG_RESET_CAUSE1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_system",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_sw_pwr_off",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_comex_thermal",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_comex_power",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_pwr_converter_fail",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_main_48v",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_plt_pwr_fail",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0444,
++	},
++	{
++		.label = "comex_tps",
++		.reg = NVSW_REG_GP2_RO_OFFSET,
++		.mask = GENMASK(5, 4),
++		.bit = 5,
++		.mode = 0444,
++	},
++	{
++		.label = "port80",
++		.reg = NVSW_REG_GP1_RO_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "asic2_clk_brd2_boot_fail",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0444,
++	},
++	{
++		.label = "asic2_clk_brd1_boot_fail",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0444,
++	},
++	{
++		.label = "sb_asic2_clk_brd_fail",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0444,
++	},
++	{
++		.label = "asic2_pg",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0444,
++	},
++	{
++		.label = "asic1_clk_brd2_boot_fail",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0444,
++	},
++	{
++		.label = "asic1_clk_brd1_boot_fail",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "sb_asic1_clk_brd_fail",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0444,
++	},
++	{
++		.label = "asic1_pg",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0444,
++	},
++	{
++		.label = "asic4_clk_brd2_boot_fail",
++		.reg = NVSW_REG_GP5_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0444,
++	},
++	{
++		.label = "asic4_clk_brd1_boot_fail",
++		.reg = NVSW_REG_GP5_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0444,
++	},
++	{
++		.label = "sb_asic4_clk_brd_fail",
++		.reg = NVSW_REG_GP5_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0444,
++	},
++	{
++		.label = "asic4_pg",
++		.reg = NVSW_REG_GP5_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0444,
++	},
++	{
++		.label = "asic3_clk_brd2_boot_fail",
++		.reg = NVSW_REG_GP5_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0444,
++	},
++	{
++		.label = "asic3_clk_brd1_boot_fail",
++		.reg = NVSW_REG_GP5_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "sb_asic3_clk_brd_fail",
++		.reg = NVSW_REG_GP5_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0444,
++	},
++	{
++		.label = "asic3_pg",
++		.reg = NVSW_REG_GP5_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0444,
++	},
++	{
++		.label = "jtag_cap",
++		.reg = NVSW_REG_FU_CAP_OFFSET,
++		.mask = NVSW_FU_CAP_MASK,
++		.bit = 1,
++		.mode = 0444,
++	},
++	{
++		.label = "jtag_enable",
++		.reg = NVSW_REG_FIELD_UPGRADE,
++		.mask = GENMASK(1, 0),
++		.bit = 1,
++		.mode = 0644,
++	},
++	{
++		.label = "non_active_bios_select",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0644,
++	},
++	{
++		.label = "smb_erot",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "bios_image_invert",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0644,
++	},
++	{
++		.label = "me_reboot",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0644,
++	},
++	{
++		.label = "asic4_perst",
++		.reg = NVSW_REG_PWM_CONTROL_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0644,
++	},
++	{
++		.label = "clk_brd_program",
++		.reg = NVSW_REG_PWM_CONTROL_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "asic3_perst",
++		.reg = NVSW_REG_PWM_CONTROL_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0644,
++	},
++	{
++		.label = "asic2_perst",
++		.reg = NVSW_REG_PWM_CONTROL_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "asic1_perst",
++		.reg = NVSW_REG_PWM_CONTROL_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0644,
++	},
++	{
++		.label = "cpu_int_enable",
++		.reg = NVSW_REG_GP5_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0644,
++	},
++	{
++		.label = "cpu_tps_upgrade",
++		.reg = NVSW_REG_GP5_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "cpu_spi_ctrl",
++		.reg = NVSW_REG_GP5_OFFSET,
++		.mask = GENMASK(4, 2),
++		.bit = 4,
++		.mode = 0644,
++	},
++	{
++		.label = "sml_connection",
++		.reg = NVSW_REG_GP5_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0644,
++	},
++	{
++		.label = "bmc_reset_reg",
++		.reg = NVSW_REG_GP6_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "current_temp_ro",
++		.reg = NVSW_REG_CURRENT_TEMP_RO,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "switch_ic_qty",
++		.reg = NVSW_REG_SWITCH_IC_QTY,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "asic_pg_fail",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0444,
++	},
++	{
++		.label = "spi_chnl_select",
++		.reg = NVSW_REG_SPI_CHNL_SELECT,
++		.mask = GENMASK(7, 0),
++		.bit = 1,
++		.mode = 0644,
++	},
++	{
++		.label = "config1",
++		.reg = NVSW_REG_CONFIG1_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "config2",
++		.reg = NVSW_REG_CONFIG2_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "config3",
++		.reg = NVSW_REG_CONFIG3_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "i2c_freq",
++		.reg = NVSW_REG_SYS_CPBLTY0,
++		.mask = GENMASK(5, 4),
++		.bit = 5,
++		.mode = 0444,
++	},
++	{
++		.label = "wd_type",
++		.reg = NVSW_REG_SYS_CPBLTY0,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0444,
++	},
++	{
++		.label = "avlbl_reg_new_format",
++		.reg = NVSW_REG_SYS_CPBLTY0,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0444,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid191_regio_data[] = {
++	{
++		.label = "cpld1_version",
++		.reg = NVSW_REG_CPLD1_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld2_version",
++		.reg = NVSW_REG_CPLD2_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld3_version",
++		.reg = NVSW_REG_CPLD3_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld4_version",
++		.reg = NVSW_REG_CPLD4_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld5_version",
++		.reg = NVSW_REG_CPLD5_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld1_pn",
++		.reg = NVSW_REG_CPLD1_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld2_pn",
++		.reg = NVSW_REG_CPLD2_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld3_pn",
++		.reg = NVSW_REG_CPLD3_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld4_pn",
++		.reg = NVSW_REG_CPLD4_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld5_pn",
++		.reg = NVSW_REG_CPLD5_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld1_version_min",
++		.reg = NVSW_REG_CPLD1_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld2_version_min",
++		.reg = NVSW_REG_CPLD2_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld3_version_min",
++		.reg = NVSW_REG_CPLD3_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld4_version_min",
++		.reg = NVSW_REG_CPLD4_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld5_version_min",
++		.reg = NVSW_REG_CPLD5_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld1_dbg_led",
++		.reg = NVSW_REG_CPLD1_DBG_LED_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0644,
++	},
++	{
++		.label = "cpld2_dbg_led",
++		.reg = NVSW_REG_CPLD2_DBG_LED_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0644,
++	},
++	{
++		.label = "cpld3_dbg_led",
++		.reg = NVSW_REG_CPLD3_DBG_LED_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0644,
++	},
++	{
++		.label = "cpld4_dbg_led",
++		.reg = NVSW_REG_CPLD4_DBG_LED_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0644,
++	},
++	{
++		.label = "cpld6_version",
++		.reg = NVSW_REG_CPLD6_PN_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld6_pn",
++		.reg = NVSW_REG_CPLD6_PN1_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld7_version",
++		.reg = NVSW_REG_CPLD7_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld7_pn",
++		.reg = NVSW_REG_CPLD7_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld8_version",
++		.reg = NVSW_REG_CPLD8_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld8_pn",
++		.reg = NVSW_REG_CPLD8_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld9_version",
++		.reg = NVSW_REG_CPLD9_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld9_pn",
++		.reg = NVSW_REG_CPLD9B_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld10_version",
++		.reg = NVSW_REG_CPLD10_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld10_pn",
++		.reg = NVSW_REG_CPLD10_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld6_version_min",
++		.reg = NVSW_REG_CPLD6_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld7_version_min",
++		.reg = NVSW_REG_CPLD7_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld8_version_min",
++		.reg = NVSW_REG_CPLD8_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld9_version_min",
++		.reg = NVSW_REG_CPLD9_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld10_version_min",
++		.reg = NVSW_REG_CPLD10_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "sb_asic1_clk_brd_ci_boot_fail",
++		.reg = NVSW_REG_GP2_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0444,
++	},
++	{
++		.label = "sb_asic1_clk_brd_fail",
++		.reg = NVSW_REG_GP2_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0444,
++	},
++	{
++		.label = "asic1_pg",
++		.reg = NVSW_REG_GP2_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0444,
++	},
++	{
++		.label = "sb_asic2_clk_brd_ci_boot_fail",
++		.reg = NVSW_REG_GP2_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0444,
++	},
++	{
++		.label = "sb_asic2_clk_brd_fail",
++		.reg = NVSW_REG_GP2_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "asic2_pg",
++		.reg = NVSW_REG_GP2_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0444,
++	},
++	{
++		.label = "asic1_perst",
++		.reg = NVSW_REG_GP4_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0644,
++	},
++	{
++		.label = "asic2_perst",
++		.reg = NVSW_REG_GP4_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "asic3_perst",
++		.reg = NVSW_REG_GP4_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0644,
++	},
++	{
++		.label = "asic4_perst",
++		.reg = NVSW_REG_GP4_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "sb_asic3_clk_brd_ci_boot_fail",
++		.reg = NVSW_REG_GP5_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0444,
++	},
++	{
++		.label = "sb_asic3_clk_brd_fail",
++		.reg = NVSW_REG_GP5_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0444,
++	},
++	{
++		.label = "asic3_pg",
++		.reg = NVSW_REG_GP5_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0444,
++	},
++	{
++		.label = "sb_asic4_clk_brd_ci_boot_fail",
++		.reg = NVSW_REG_GP5_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0444,
++	},
++	{
++		.label = "sb_asic4_clk_brd_fail",
++		.reg = NVSW_REG_GP5_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "asic4_pg",
++		.reg = NVSW_REG_GP5_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0444,
++	},
++	{
++		.label = "bios_status_ro",
++		.reg = NVSW_REG_GPCOM0_OFFSET,
++		.mask = GENMASK(3, 1),
++		.bit = 3,
++		.mode = 0444,
++	},
++	{
++		.label = "bios_start_retry",
++		.reg = NVSW_REG_GPCOM0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0444,
++	},
++	{
++		.label = "bios_active_image",
++		.reg = NVSW_REG_GPCOM0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "pwr_converter_prog_en",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0644,
++	},
++	{
++		.label = "bmc_req_conf_flash_updt",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "graceful_power_off",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "bmc_perst_en",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0200,
++	},
++	{
++		.label = "bmc_shutdown_unlock",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0200,
++	},
++	{
++		.label = "stby_pwr_en_unmask",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0200,
++	},
++	{
++		.label = "uart_baud_rate",
++		.reg = NVSW_REG_UART_BAUD_OFFSET,
++		.mask = NVSW_UART_BAUD_MASK,
++		.bit = 1,
++		.mode = 0644,
++	},
++	{
++		.label = "cpu_mctp_ready",
++		.reg = NVSW_REG_GP0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		 .label = "cpu_shutdown_req",
++		 .reg = NVSW_REG_GP0_OFFSET,
++		 .mask = GENMASK(7, 0) & ~BIT(2),
++		 .mode = 0444,
++	},
++	{
++		.label = "vpd_wp",
++		.reg = NVSW_REG_GP0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++		.secured = 1,
++	},
++	{
++		.label = "pcie_asic_reset_dis",
++		.reg = NVSW_REG_GP0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0644,
++	},
++	{
++		.label = "cpu_power_off_ready",
++		.reg = NVSW_REG_GP0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0644,
++	},
++	{
++		.label = "pwr_cycle",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0200,
++	},
++	{
++		.label = "pwr_down",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "aux_pwr_cycle",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0200,
++	},
++	{
++		.label = "bmc_to_cpu_ctrl",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0644,
++	},
++	{
++		.label = "uart_sel",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = NVSW_UART_SEL_MASK,
++		.bit = 7,
++		.mode = 0644,
++	},
++	{
++		.label = "sys_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0644,
++	},
++	{
++		.label = "asic1_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "asic2_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0644,
++	},
++	{
++		.label = "asics_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "asic3_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0644,
++	},
++	{
++		.label = "asic4_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0644,
++	},
++	{
++		.label = "mcu1_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0644,
++	},
++	{
++		.label = "mcu2_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0644,
++	},
++	{
++		.label = "platform_reset",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0200,
++	},
++	{
++		.label = "gp_cpld_rtc_clr",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0200,
++	},
++	{
++		.label = "cpld_phy2_rst",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0200,
++	},
++	{
++		.label = "cpld_phy1_reset",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0200,
++	},
++	{
++		.label = "tpm_reset",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0200,
++	},
++	{
++		.label = "bmc_tpm_reset",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0200,
++	},
++	{
++		.label = "reset_long_pb",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_short_pb",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_aux_pwr_or_fu",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_swb_dc_dc_pwr_fail",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_swb_wd",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_asic_thermal",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_soc",
++		.reg = NVSW_REG_RESET_CAUSE1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_system",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_sw_pwr_off",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_thermal",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0444,
++	},
++	{
++		.label = "main_12v_fail",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_main_51v",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_mgmt_pwr",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0444,
++	},
++	{
++		.label = "port80",
++		.reg = NVSW_REG_GP1_RO_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "switch_ic_qty",
++		.reg = NVSW_REG_SWITCH_IC_QTY,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "gp_swb_mgmt_present",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0444,
++	},
++	{
++		.label = "gp_io_brd_prsnt",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0444,
++	},
++	{
++		.label = "gp_tpm_brd_prsnt",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0444,
++	},
++	{
++		.label = "gp_bmc_presnt",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0444,
++	},
++	{
++		.label = "gp_bmc_tpm_brd_prsnt",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "jtag_cap",
++		.reg = NVSW_REG_FU_CAP_OFFSET,
++		.mask = NVSW_FU_CAP_MASK,
++		.bit = 1,
++		.mode = 0444,
++	},
++	{
++		.label = "jtag_enable",
++		.reg = NVSW_REG_FIELD_UPGRADE,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "bios_status",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(2, 0),
++		.bit = 2,
++		.mode = 0644,
++	},
++	{
++		.label = "conf_flash_updt_done",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "non_active_bios_select",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0644,
++	},
++	{
++		.label = "bios_upgrade_fail",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "bios_image_invert",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0644,
++	},
++	{
++		.label = "cpu_req_conf_flash_updt",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0644,
++	},
++	{
++		.label = "mcu1_recovery",
++		.reg = NVSW_REG_PWM_CONTROL_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0644,
++	},
++	{
++		.label = "gp_vdd_spd_dis",
++		.reg = NVSW_REG_PWM_CONTROL_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0644,
++	},
++	{
++		.label = "gp_spd_b_wp",
++		.reg = NVSW_REG_PWM_CONTROL_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "gp_spd_a_wp",
++		.reg = NVSW_REG_PWM_CONTROL_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0644,
++	},
++	{
++		.label = "sb_clk_brd_prog_en",
++		.reg = NVSW_REG_PWM_CONTROL_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "cpu_int_enable",
++		.reg = NVSW_REG_GP5_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0644,
++	},
++	{
++		.label = "cpu_spi_ctrl",
++		.reg = NVSW_REG_GP5_OFFSET,
++		.mask = GENMASK(4, 2),
++		.bit = 4,
++		.mode = 0644,
++	},
++	{
++		.label = "ignore_next_reset",
++		.reg = NVSW_REG_GP5_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0644,
++	},
++	{
++		.label = "bmc_reset_reg",
++		.reg = NVSW_REG_GP6_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "asic_pg_fail",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0444,
++	},
++	{
++		.label = "spi_chnl_select",
++		.reg = NVSW_REG_SPI_CHNL_SELECT,
++		.mask = GENMASK(7, 0),
++		.bit = 1,
++		.mode = 0644,
++	},
++	{
++		.label = "config1",
++		.reg = NVSW_REG_CONFIG1_OFFSET,
++		.mask = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "config2",
++		.reg = NVSW_REG_CONFIG2_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "config3",
++		.reg = NVSW_REG_CONFIG3_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "psu_qty",
++		.reg = NVSW_REG_SYS_CPBLTY0,
++		.mask = GENMASK(3, 0),
++		.bit = 3,
++		.mode = 0444,
++	},
++	{
++		.label = "i2c_freq",
++		.reg = NVSW_REG_SYS_CPBLTY0,
++		.mask = GENMASK(5, 4),
++		.bit = 5,
++		.mode = 0444,
++	},
++	{
++		.label = "wd_type",
++		.reg = NVSW_REG_SYS_CPBLTY0,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0444,
++	},
++	{
++		.label = "avlbl_reg_new_format",
++		.reg = NVSW_REG_SYS_CPBLTY0,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0444,
++	},
++};
++
++static struct mlxreg_core_data nvsw_bmc_hid193_regio_data[] = {
++	{
++		.label = "cpld1_version",
++		.reg = NVSW_REG_CPLD1_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld2_version",
++		.reg = NVSW_REG_CPLD2_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld3_version",
++		.reg = NVSW_REG_CPLD3_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld4_version",
++		.reg = NVSW_REG_CPLD4_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld1_pn",
++		.reg = NVSW_REG_CPLD1_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld2_pn",
++		.reg = NVSW_REG_CPLD2_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld3_pn",
++		.reg = NVSW_REG_CPLD3_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld4_pn",
++		.reg = NVSW_REG_CPLD4_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld1_version_min",
++		.reg = NVSW_REG_CPLD1_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld2_version_min",
++		.reg = NVSW_REG_CPLD2_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld3_version_min",
++		.reg = NVSW_REG_CPLD3_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld4_version_min",
++		.reg = NVSW_REG_CPLD4_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "bios_status_ro",
++		.reg = NVSW_REG_GPCOM0_OFFSET,
++		.mask = GENMASK(3, 1),
++		.bit = 3,
++		.mode = 0444,
++	},
++	{
++		.label = "bios_start_retry",
++		.reg = NVSW_REG_GPCOM0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0444,
++	},
++	{
++		.label = "bios_active_image",
++		.reg = NVSW_REG_GPCOM0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "pwr_converter_prog_en",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0644,
++	},
++	{
++		.label = "bmc_req_conf_flash_updt",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "graceful_power_off",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "bmc_perst_en",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0200,
++	},
++	{
++		.label = "bmc_shutdown_unlock",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0200,
++	},
++	{
++		.label = "stby_pwr_en_unmask",
++		.reg = NVSW_REG_GP7_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0200,
++	},
++	{
++		.label = "uart_baud_rate",
++		.reg = NVSW_REG_UART_BAUD_OFFSET,
++		.mask = NVSW_UART_BAUD_MASK,
++		.bit = 1,
++		.mode = 0644,
++	},
++	{
++		.label = "cpu_mctp_ready",
++		.reg = NVSW_REG_GP0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		 .label = "cpu_shutdown_req",
++		 .reg = NVSW_REG_GP0_OFFSET,
++		 .mask = GENMASK(7, 0) & ~BIT(2),
++		 .mode = 0444,
++	},
++	{
++		.label = "vpd_wp",
++		.reg = NVSW_REG_GP0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++		.secured = 1,
++	},
++	{
++		.label = "pcie_asic_reset_dis",
++		.reg = NVSW_REG_GP0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0644,
++	},
++	{
++		.label = "cpu_power_off_ready",
++		.reg = NVSW_REG_GP0_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0644,
++	},
++	{
++		.label = "pwr_button_halt",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "pwr_cycle",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0200,
++	},
++	{
++		.label = "pwr_down",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "aux_pwr_cycle",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0200,
++	},
++	{
++		.label = "bmc_to_cpu_ctrl",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0644,
++	},
++	{
++		.label = "uart_sel",
++		.reg = NVSW_REG_GP1_OFFSET,
++		.mask = NVSW_UART_SEL_MASK,
++		.bit = 7,
++		.mode = 0644,
++	},
++	{
++		.label = "asics_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "mcu1_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0644,
++	},
++	{
++		.label = "platform_reset",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0200,
++	},
++	{
++		.label = "gp_cpld_rtc_clr",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0200,
++	},
++	{
++		.label = "cpld_phy2_rst",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0200,
++	},
++	{
++		.label = "cpld_phy1_reset",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0200,
++	},
++	{
++		.label = "tpm_reset",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0200,
++	},
++	{
++		.label = "bmc_tpm_reset",
++		.reg = NVSW_REG_RESET_GP1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0200,
++	},
++	{
++		.label = "reset_long_pb",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_short_pb",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_aux_pwr_or_fu",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_swb_dc_dc_pwr_fail",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_swb_wd",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_asic_thermal",
++		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_soc",
++		.reg = NVSW_REG_RESET_CAUSE1_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_system",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_sw_pwr_off",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_thermal",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_pwr_converter_fail",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_main_51v",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0444,
++	},
++	{
++		.label = "reset_mgmt_pwr",
++		.reg = NVSW_REG_RESET_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0444,
++	},
++	{
++		.label = "port80",
++		.reg = NVSW_REG_GP1_RO_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "switch_ic_qty",
++		.reg = NVSW_REG_SWITCH_IC_QTY,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "gp_swb_mgmt_present",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0444,
++	},
++	{
++		.label = "gp_io_brd_prsnt",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0444,
++	},
++	{
++		.label = "gp_tpm_brd_prsnt",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0444,
++	},
++	{
++		.label = "gp_bmc_presnt",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0444,
++	},
++	{
++		.label = "sb_clk_brd_asic_ci_boot_fail",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0444,
++	},
++	{
++		.label = "gp_bmc_tpm_brd_prsnt",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "sb_clk_brd_asic_fail",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0444,
++	},
++	{
++		.label = "asics_pg",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0444,
++	},
++	{
++		.label = "jtag_cap",
++		.reg = NVSW_REG_FU_CAP_OFFSET,
++		.mask = NVSW_FU_CAP_MASK,
++		.bit = 1,
++		.mode = 0444,
++	},
++	{
++		.label = "jtag_enable",
++		.reg = NVSW_REG_FIELD_UPGRADE,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "bios_status",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(2, 0),
++		.bit = 2,
++		.mode = 0644,
++	},
++	{
++		.label = "conf_flash_updt_done",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "non_active_bios_select",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0644,
++	},
++	{
++		.label = "bios_upgrade_fail",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0444,
++	},
++	{
++		.label = "bios_image_invert",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0644,
++	},
++	{
++		.label = "cpu_req_conf_flash_updt",
++		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0644,
++	},
++	{
++		.label = "mcu1_recovery",
++		.reg = NVSW_REG_PWM_CONTROL_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0644,
++	},
++	{
++		.label = "gp_vdd_spd_dis",
++		.reg = NVSW_REG_PWM_CONTROL_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0644,
++	},
++	{
++		.label = "gp_spd_b_wp",
++		.reg = NVSW_REG_PWM_CONTROL_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(3),
++		.mode = 0644,
++	},
++	{
++		.label = "gp_spd_a_wp",
++		.reg = NVSW_REG_PWM_CONTROL_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0644,
++	},
++	{
++		.label = "sb_clk_brd_prog_en",
++		.reg = NVSW_REG_PWM_CONTROL_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "cpu_int_enable",
++		.reg = NVSW_REG_GP5_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(0),
++		.mode = 0644,
++	},
++	{
++		.label = "cpu_spi_ctrl",
++		.reg = NVSW_REG_GP5_OFFSET,
++		.mask = GENMASK(4, 2),
++		.bit = 4,
++		.mode = 0644,
++	},
++	{
++		.label = "ignore_next_reset",
++		.reg = NVSW_REG_GP5_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(6),
++		.mode = 0644,
++	},
++	{
++		.label = "bmc_reset_reg",
++		.reg = NVSW_REG_GP6_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "asic_pg_fail",
++		.reg = NVSW_REG_GP4_RO_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(7),
++		.mode = 0444,
++	},
++	{
++		.label = "spi_chnl_select",
++		.reg = NVSW_REG_SPI_CHNL_SELECT,
++		.mask = GENMASK(7, 0),
++		.bit = 1,
++		.mode = 0644,
++	},
++	{
++		.label = "asic_clk_brd_hw_id",
++		.reg = NVSW_REG_CONFIG1_OFFSET,
++		.mask = GENMASK(2, 0),
++		.bit = 2,
++		.mode = 0444,
++	},
++	{
++		.label = "config1",
++		.reg = NVSW_REG_CONFIG1_OFFSET,
++		.mask = GENMASK(7, 3),
++		.bit = 7,
++		.mode = 0444,
++	},
++	{
++		.label = "config2",
++		.reg = NVSW_REG_CONFIG2_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "config3",
++		.reg = NVSW_REG_CONFIG3_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++};
++
 +static struct mlxreg_core_platform_data nvsw_bmc_hid180_regio = {
 +		.data = nvsw_bmc_hid180_regio_data,
 +		.counter = ARRAY_SIZE(nvsw_bmc_hid180_regio_data),
++};
++
++static struct mlxreg_core_platform_data nvsw_bmc_hid181_regio = {
++	.data = nvsw_bmc_hid181_regio_data,
++	.counter = ARRAY_SIZE(nvsw_bmc_hid181_regio_data),
++};
++
++static struct mlxreg_core_platform_data nvsw_bmc_hid191_regio = {
++	.data = nvsw_bmc_hid191_regio_data,
++	.counter = ARRAY_SIZE(nvsw_bmc_hid191_regio_data),
++};
++
++static struct mlxreg_core_platform_data nvsw_bmc_hid193_regio = {
++	.data = nvsw_bmc_hid193_regio_data,
++	.counter = ARRAY_SIZE(nvsw_bmc_hid193_regio_data),
 +};
 +
 +/* Platform fan data. */
@@ -3046,7 +6936,7 @@ index 000000000..3c70e2979
 +		.counter = ARRAY_SIZE(nvsw_bmc_hid162_led_data),
 +};
 +
-+/* Platform led data for HI1676 system type. */
++/* Platform led data for HI176 system type. */
 +static struct mlxreg_core_data nvsw_bmc_hid176_led_data[] = {
 +	{
 +		.label = "status:green",
@@ -3090,7 +6980,7 @@ index 000000000..3c70e2979
 +		.counter = ARRAY_SIZE(nvsw_bmc_hid176_led_data),
 +};
 +
-+/* Platform led data for HI1676 system type. */
++/* Platform led data for HI177 system type. */
 +static struct mlxreg_core_data nvsw_bmc_hid177_led_data[] = {
 +	{
 +		.label = "status:green",
@@ -3178,6 +7068,16 @@ index 000000000..3c70e2979
 +	return regmap_write(regmap, NVSW_REG_AGGRCO_MASK_OFFSET, GENMASK(5, 0));
 +}
 +
++static int nvsw_bmc_hid191_set_reg_default(struct regmap *regmap)
++{
++	return regmap_write(regmap, NVSW_REG_AGGRCO_MASK_OFFSET, GENMASK(6, 0));
++}
++
++static int nvsw_bmc_hid193_set_reg_default(struct regmap *regmap)
++{
++	return regmap_write(regmap, NVSW_REG_AGGRCO_MASK_OFFSET, GENMASK(6, 0));
++}
++
 +/* Callback is used to indicate that all adapter devices has been created. */
 +static int
 +nvsw_bmc_hid162_completion_notify(void *handle, struct i2c_adapter *parent,
@@ -3186,19 +7086,6 @@ index 000000000..3c70e2979
 +	/* struct nvsw_core *nvsw_core = handle; */
 +
 +	return 0;
-+}
-+
-+static int nvsw_bmc_hid162_mux_access_grant(void *handle)
-+{
-+	struct nvsw_core *nvsw_core = handle;
-+	u32 regval;
-+	int err;
-+
-+	err = regmap_read(nvsw_core->regmap, NVSW_REG_GP1_OFFSET, &regval);
-+	if (err)
-+		return err;
-+
-+	return regval & NVSW_MASTER_MASK;
 +}
 +
 +static int nvsw_bmc_hid162_platform_data_init(struct nvsw_core *nvsw_core)
@@ -3212,7 +7099,6 @@ index 000000000..3c70e2979
 +		mux_data[i] = &nvsw_bmc_hid162_mux_data[i];
 +		mux_data[i]->handle = nvsw_core;
 +		mux_data[i]->completion_notify = nvsw_bmc_hid162_completion_notify;
-+		mux_data[i]->mux_access_grant = nvsw_bmc_hid162_mux_access_grant;
 +		mux_brdinfo[i] = &nvsw_bmc_hid162_mux_brdinfo;
 +		mux_brdinfo[i]->platform_data = mux_data[i];
 +	}
@@ -3239,7 +7125,6 @@ index 000000000..3c70e2979
 +		mux_data[i] = &nvsw_bmc_hid176_mux_data[i];
 +		mux_data[i]->handle = nvsw_core;
 +		mux_data[i]->completion_notify = nvsw_bmc_hid162_completion_notify;
-+		mux_data[i]->mux_access_grant = nvsw_bmc_hid162_mux_access_grant;
 +		mux_brdinfo[i] = &nvsw_bmc_hid162_mux_brdinfo;
 +		mux_brdinfo[i]->platform_data = mux_data[i];
 +	}
@@ -3265,7 +7150,6 @@ index 000000000..3c70e2979
 +		mux_data[i] = &nvsw_bmc_hid176_mux_data[i];
 +		mux_data[i]->handle = nvsw_core;
 +		mux_data[i]->completion_notify = nvsw_bmc_hid162_completion_notify;
-+		mux_data[i]->mux_access_grant = nvsw_bmc_hid162_mux_access_grant;
 +		mux_brdinfo[i] = &nvsw_bmc_hid162_mux_brdinfo;
 +		mux_brdinfo[i]->platform_data = mux_data[i];
 +	}
@@ -3291,7 +7175,6 @@ index 000000000..3c70e2979
 +		mux_data[i] = &nvsw_bmc_hid180_mux_data[i];
 +		mux_data[i]->handle = nvsw_core;
 +		mux_data[i]->completion_notify = nvsw_bmc_hid162_completion_notify;
-+		mux_data[i]->mux_access_grant = nvsw_bmc_hid162_mux_access_grant;
 +		mux_brdinfo[i] = &nvsw_bmc_hid162_mux_brdinfo;
 +		mux_brdinfo[i]->platform_data = mux_data[i];
 +	}
@@ -3306,28 +7189,102 @@ index 000000000..3c70e2979
 +	return 0;
 +}
 +
-+static int nvsw_bmc_hid185_platform_data_init(struct nvsw_core *nvsw_core)
++static int nvsw_bmc_hid181_platform_data_init(struct nvsw_core *nvsw_core)
 +{
 +	int i;
 +
 +	/* Set system configuration. */
-+	nvsw_core->hid = HID180;
-+	nvsw_core->mux_num = ARRAY_SIZE(nvsw_bmc_hid185_mux_data);
++	nvsw_core->hid = HID181;
++	nvsw_core->mux_num = ARRAY_SIZE(nvsw_bmc_hid181_mux_data);
 +	for (i = 0; i < nvsw_core->mux_num; i++) {
-+		mux_data[i] = &nvsw_bmc_hid185_mux_data[i];
++		mux_data[i] = &nvsw_bmc_hid181_mux_data[i];
 +		mux_data[i]->handle = nvsw_core;
 +		mux_data[i]->completion_notify = nvsw_bmc_hid162_completion_notify;
 +		mux_brdinfo[i] = &nvsw_bmc_hid162_mux_brdinfo;
 +		mux_brdinfo[i]->platform_data = mux_data[i];
 +	}
-+	mux_data[0]->mux_access_grant = nvsw_bmc_hid162_mux_access_grant;
 +
-+	nvsw_core->regio_data = &nvsw_bmc_hid180_regio;
++	nvsw_core->regio_data = &nvsw_bmc_hid181_regio;
 +	nvsw_core->led_data = &nvsw_bmc_hid177_led;
-+	nvsw_core->hotplug_data = &nvsw_bmc_hid185_hotplug;
++	nvsw_core->hotplug_data = &nvsw_bmc_hid181_hotplug;
++	nvsw_core->mux_init = nvsw_bmc_hid162_mux_topology_init;
++	nvsw_core->mux_exit = nvsw_bmc_hid162_mux_topology_exit;
++	nvsw_core->set_reg_default = nvsw_bmc_hid162_set_reg_default;
++
++	return 0;
++}
++
++static int nvsw_bmc_hid189_platform_data_init(struct nvsw_core *nvsw_core)
++{
++	int i;
++
++	/* Set system configuration. */
++	nvsw_core->hid = HID189;
++	nvsw_core->mux_num = ARRAY_SIZE(nvsw_bmc_hid189_mux_data);
++	for (i = 0; i < nvsw_core->mux_num; i++) {
++		mux_data[i] = &nvsw_bmc_hid189_mux_data[i];
++		mux_data[i]->handle = nvsw_core;
++		mux_data[i]->completion_notify = nvsw_bmc_hid162_completion_notify;
++		mux_brdinfo[i] = &nvsw_bmc_hid162_mux_brdinfo;
++		mux_brdinfo[i]->platform_data = mux_data[i];
++	}
++
++	nvsw_core->regio_data = &nvsw_bmc_hid193_regio; /* hid189 uses info from 193 */
++	nvsw_core->led_data = &nvsw_bmc_hid177_led;
++	nvsw_core->hotplug_data = &nvsw_bmc_hid193_hotplug;
 +	nvsw_core->mux_init = nvsw_bmc_hid162_mux_topology_init;
 +	nvsw_core->mux_exit = nvsw_bmc_hid162_mux_topology_exit;
 +	nvsw_core->set_reg_default = nvsw_bmc_hid180_set_reg_default;
++
++	return 0;
++}
++
++static int nvsw_bmc_hid191_platform_data_init(struct nvsw_core *nvsw_core)
++{
++	int i;
++
++	/* Set system configuration. */
++	nvsw_core->hid = HID191;
++	nvsw_core->mux_num = ARRAY_SIZE(nvsw_bmc_hid191_mux_data);
++	for (i = 0; i < nvsw_core->mux_num; i++) {
++		mux_data[i] = &nvsw_bmc_hid191_mux_data[i];
++		mux_data[i]->handle = nvsw_core;
++		mux_data[i]->completion_notify = nvsw_bmc_hid162_completion_notify;
++		mux_brdinfo[i] = &nvsw_bmc_hid162_mux_brdinfo;
++		mux_brdinfo[i]->platform_data = mux_data[i];
++	}
++
++	nvsw_core->regio_data = &nvsw_bmc_hid191_regio;
++	nvsw_core->led_data = &nvsw_bmc_hid177_led;
++	nvsw_core->hotplug_data = &nvsw_bmc_hid191_hotplug;
++	nvsw_core->mux_init = nvsw_bmc_hid162_mux_topology_init;
++	nvsw_core->mux_exit = nvsw_bmc_hid162_mux_topology_exit;
++	nvsw_core->set_reg_default = nvsw_bmc_hid191_set_reg_default;
++
++	return 0;
++}
++
++static int nvsw_bmc_hid193_platform_data_init(struct nvsw_core *nvsw_core)
++{
++	int i;
++
++	/* Set system configuration. */
++	nvsw_core->hid = HID193;
++	nvsw_core->mux_num = ARRAY_SIZE(nvsw_bmc_hid193_mux_data);
++	for (i = 0; i < nvsw_core->mux_num; i++) {
++		mux_data[i] = &nvsw_bmc_hid193_mux_data[i];
++		mux_data[i]->handle = nvsw_core;
++		mux_data[i]->completion_notify = nvsw_bmc_hid162_completion_notify;
++		mux_brdinfo[i] = &nvsw_bmc_hid162_mux_brdinfo;
++		mux_brdinfo[i]->platform_data = mux_data[i];
++	}
++
++	nvsw_core->regio_data = &nvsw_bmc_hid193_regio;
++	nvsw_core->led_data = &nvsw_bmc_hid177_led;
++	nvsw_core->hotplug_data = &nvsw_bmc_hid193_hotplug;
++	nvsw_core->mux_init = nvsw_bmc_hid162_mux_topology_init;
++	nvsw_core->mux_exit = nvsw_bmc_hid162_mux_topology_exit;
++	nvsw_core->set_reg_default = nvsw_bmc_hid193_set_reg_default;
 +
 +	return 0;
 +}
@@ -3343,8 +7300,14 @@ index 000000000..3c70e2979
 +		return nvsw_bmc_hid177_platform_data_init(nvsw_core);
 +	case HID180:
 +		return nvsw_bmc_hid180_platform_data_init(nvsw_core);
-+	case HID185:
-+		return nvsw_bmc_hid185_platform_data_init(nvsw_core);
++	case HID181:
++		return nvsw_bmc_hid181_platform_data_init(nvsw_core);
++	case HID189:
++		return nvsw_bmc_hid189_platform_data_init(nvsw_core);
++	case HID191:
++		return nvsw_bmc_hid191_platform_data_init(nvsw_core);
++	case HID193:
++		return nvsw_bmc_hid193_platform_data_init(nvsw_core);
 +	default:
 +		return -ENODEV;
 +	}
@@ -3368,8 +7331,14 @@ index 000000000..3c70e2979
 +		type = HID177;
 +	else if (of_device_is_compatible(np, "nvidia,hid180"))
 +		type = HID180;
-+	else if (of_device_is_compatible(np, "nvidia,hid185"))
-+		type = HID185;
++	else if (of_device_is_compatible(np, "nvidia,hid181"))
++		type = HID181;
++	else if (of_device_is_compatible(np, "nvidia,hid189"))
++		type = HID189;
++	else if (of_device_is_compatible(np, "nvidia,hid191"))
++		type = HID191;
++	else if (of_device_is_compatible(np, "nvidia,hid193"))
++		type = HID193;
 +	else
 +		return -ENODEV;
 +
@@ -3401,6 +7370,10 @@ index 000000000..3c70e2979
 +	{ "hid176", HID176 },
 +	{ "hid177", HID177 },
 +	{ "hid180", HID180 },
++	{ "hid181", HID181 },
++	{ "hid189", HID189 },
++	{ "hid191", HID191 },
++	{ "hid193", HID193 },
 +	{ },
 +};
 +MODULE_DEVICE_TABLE(i2c, nvsw_bmc_hid162_id);
@@ -3410,6 +7383,10 @@ index 000000000..3c70e2979
 +	{ .compatible = "nvidia,hid176" },
 +	{ .compatible = "nvidia,hid177" },
 +	{ .compatible = "nvidia,hid180" },
++	{ .compatible = "nvidia,hid181" },
++	{ .compatible = "nvidia,hid189" },
++	{ .compatible = "nvidia,hid191" },
++	{ .compatible = "nvidia,hid193" },
 +	{ },
 +};
 +MODULE_DEVICE_TABLE(of, nvsw_bmc_hid162_dt_match);
@@ -3431,15 +7408,15 @@ index 000000000..3c70e2979
 +MODULE_LICENSE("Dual BSD/GPL");
 diff --git a/drivers/platform/mellanox/nvsw-core.c b/drivers/platform/mellanox/nvsw-core.c
 new file mode 100644
-index 000000000..0dae7e076
+index 000000000000..1bd2dfc622ce
 --- /dev/null
 +++ b/drivers/platform/mellanox/nvsw-core.c
-@@ -0,0 +1,693 @@
+@@ -0,0 +1,717 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Nvidia BMC platform driver
 + *
-+ * Copyright (C) 2025 Nvidia Technologies Ltd.
++ * Copyright (C) 2025-2026 Nvidia Technologies Ltd.
 + */
 +
 +#include <linux/device.h>
@@ -3456,6 +7433,10 @@ index 000000000..0dae7e076
 +static bool nvsw_writeable_reg(struct device *dev, unsigned int reg)
 +{
 +	switch (reg) {
++	case NVSW_REG_CPLD1_DBG_LED_OFFSET:
++	case NVSW_REG_CPLD2_DBG_LED_OFFSET:
++	case NVSW_REG_CPLD3_DBG_LED_OFFSET:
++	case NVSW_REG_CPLD4_DBG_LED_OFFSET:
 +	case NVSW_REG_PG1_EVENT_OFFSET:
 +	case NVSW_REG_PG1_MASK_OFFSET:
 +	case NVSW_REG_PG2_EVENT_OFFSET:
@@ -3469,6 +7450,7 @@ index 000000000..0dae7e076
 +	case NVSW_REG_GP0_OFFSET:
 +	case NVSW_REG_GP1_OFFSET:
 +	case NVSW_REG_GP7_OFFSET:
++	case NVSW_REG_UART_BAUD_OFFSET:
 +	case NVSW_REG_PWM_CONTROL_OFFSET:
 +	case NVSW_REG_RESET_GP2_OFFSET:
 +	case NVSW_REG_GP4_OFFSET:
@@ -3488,12 +7470,16 @@ index 000000000..0dae7e076
 +	case NVSW_REG_AGGRLO_MASK_OFFSET:
 +	case NVSW_REG_BRD1_EVENT_OFFSET:
 +	case NVSW_REG_BRD1_MASK_OFFSET:
++	case NVSW_REG_BRD2_EVENT_OFFSET:
++	case NVSW_REG_BRD2_MASK_OFFSET:
 +	case NVSW_REG_ASIC1_EVENT_OFFSET:
 +	case NVSW_REG_ASIC1_MASK_OFFSET:
 +	case NVSW_REG_ASIC2_EVENT_OFFSET:
 +	case NVSW_REG_ASIC2_MASK_OFFSET:
 +	case NVSW_REG_ASIC3_EVENT_OFFSET:
 +	case NVSW_REG_ASIC3_MASK_OFFSET:
++	case NVSW_REG_ASIC4_EVENT_OFFSET:
++	case NVSW_REG_ASIC4_MASK_OFFSET:
 +	case NVSW_REG_VR1_ALERT_EVENT_OFFSET:
 +	case NVSW_REG_VR1_ALERT_MASK_OFFSET:
 +	case NVSW_REG_VR2_ALERT_EVENT_OFFSET:
@@ -3543,6 +7529,10 @@ index 000000000..0dae7e076
 +	case NVSW_REG_CPLD4_VER_OFFSET:
 +	case NVSW_REG_CPLD4_PN_OFFSET:
 +	case NVSW_REG_CPLD4_PN1_OFFSET:
++	case NVSW_REG_CPLD1_DBG_LED_OFFSET:
++	case NVSW_REG_CPLD2_DBG_LED_OFFSET:
++	case NVSW_REG_CPLD3_DBG_LED_OFFSET:
++	case NVSW_REG_CPLD4_DBG_LED_OFFSET:
 +	case NVSW_REG_CPLD7_VER_OFFSET:
 +	case NVSW_REG_PG1_OFFSET:
 +	case NVSW_REG_PG1_EVENT_OFFSET:
@@ -3577,12 +7567,14 @@ index 000000000..0dae7e076
 +	case NVSW_REG_RESET_GP2_OFFSET:
 +	case NVSW_REG_GP0_RO_OFFSET:
 +	case NVSW_REG_GP1_RO_OFFSET:
++	case NVSW_REG_GP2_RO_OFFSET:
 +	case NVSW_REG_GP4_RO_OFFSET:
 +	case NVSW_REG_GP5_RO_OFFSET:
 +	case NVSW_REG_GPCOM0_OFFSET:
 +	case NVSW_REG_GP0_OFFSET:
 +	case NVSW_REG_GP1_OFFSET:
 +	case NVSW_REG_GP7_OFFSET:
++	case NVSW_REG_UART_BAUD_OFFSET:
 +	case NVSW_REG_PWM_CONTROL_OFFSET:
 +	case NVSW_REG_GP4_OFFSET:
 +	case NVSW_REG_GP5_OFFSET:
@@ -3603,6 +7595,9 @@ index 000000000..0dae7e076
 +	case NVSW_REG_BRD1_OFFSET:
 +	case NVSW_REG_BRD1_EVENT_OFFSET:
 +	case NVSW_REG_BRD1_MASK_OFFSET:
++	case NVSW_REG_BRD2_OFFSET:
++	case NVSW_REG_BRD2_EVENT_OFFSET:
++	case NVSW_REG_BRD2_MASK_OFFSET:
 +	case NVSW_REG_ASIC1_HEALTH_OFFSET:
 +	case NVSW_REG_ASIC1_EVENT_OFFSET:
 +	case NVSW_REG_ASIC1_MASK_OFFSET:
@@ -3612,6 +7607,9 @@ index 000000000..0dae7e076
 +	case NVSW_REG_ASIC3_HEALTH_OFFSET:
 +	case NVSW_REG_ASIC3_EVENT_OFFSET:
 +	case NVSW_REG_ASIC3_MASK_OFFSET:
++	case NVSW_REG_ASIC4_HEALTH_OFFSET:
++	case NVSW_REG_ASIC4_EVENT_OFFSET:
++	case NVSW_REG_ASIC4_MASK_OFFSET:
 +	case NVSW_REG_VR1_ALERT_OFFSET:
 +	case NVSW_REG_VR1_ALERT_EVENT_OFFSET:
 +	case NVSW_REG_VR1_ALERT_MASK_OFFSET:
@@ -3767,6 +7765,9 @@ index 000000000..0dae7e076
 +	case NVSW_REG_BRD1_OFFSET:
 +	case NVSW_REG_BRD1_EVENT_OFFSET:
 +	case NVSW_REG_BRD1_MASK_OFFSET:
++	case NVSW_REG_BRD2_OFFSET:
++	case NVSW_REG_BRD2_EVENT_OFFSET:
++	case NVSW_REG_BRD2_MASK_OFFSET:
 +	case NVSW_REG_ASIC1_HEALTH_OFFSET:
 +	case NVSW_REG_ASIC1_EVENT_OFFSET:
 +	case NVSW_REG_ASIC1_MASK_OFFSET:
@@ -3854,7 +7855,7 @@ index 000000000..0dae7e076
 +	case NVSW_REG_MUX1_OFFSET:
 +	case NVSW_REG_MUX2_OFFSET:
 +	case NVSW_REG_UFM_VERSION_OFFSET:
-+	case NVSW_REG_PSU_I2C_CAP_OFFSET:
++	case NVSW_REG_SYS_CPBLTY0:
 +		return true;
 +	}
 +	return false;
@@ -4130,7 +8131,7 @@ index 000000000..0dae7e076
 +MODULE_LICENSE("Dual BSD/GPL");
 diff --git a/drivers/platform/mellanox/nvsw-host-l1.c b/drivers/platform/mellanox/nvsw-host-l1.c
 new file mode 100644
-index 000000000..83d305080
+index 000000000000..83d305080150
 --- /dev/null
 +++ b/drivers/platform/mellanox/nvsw-host-l1.c
 @@ -0,0 +1,770 @@
@@ -4906,7 +8907,7 @@ index 000000000..83d305080
 +MODULE_LICENSE("Dual BSD/GPL");
 diff --git a/drivers/platform/mellanox/nvsw-host-spc5.c b/drivers/platform/mellanox/nvsw-host-spc5.c
 new file mode 100644
-index 000000000..e54bd4109
+index 000000000000..e54bd4109b79
 --- /dev/null
 +++ b/drivers/platform/mellanox/nvsw-host-spc5.c
 @@ -0,0 +1,943 @@
@@ -5855,7 +9856,7 @@ index 000000000..e54bd4109
 +
 diff --git a/drivers/platform/mellanox/nvsw-host-spc6.c b/drivers/platform/mellanox/nvsw-host-spc6.c
 new file mode 100644
-index 000000000..449ba5ffd
+index 000000000000..449ba5ffd589
 --- /dev/null
 +++ b/drivers/platform/mellanox/nvsw-host-spc6.c
 @@ -0,0 +1,852 @@
@@ -6713,15 +10714,15 @@ index 000000000..449ba5ffd
 +
 diff --git a/drivers/platform/mellanox/nvsw.h b/drivers/platform/mellanox/nvsw.h
 new file mode 100644
-index 000000000..91bdbc2ce
+index 000000000000..4fa0d9d31bdd
 --- /dev/null
 +++ b/drivers/platform/mellanox/nvsw.h
-@@ -0,0 +1,297 @@
+@@ -0,0 +1,318 @@
 +/* SPDX-License-Identifier: GPL-2.0+
 + *
 + * Nvidia BMC platform driver
 + *
-+ * Copyright (C) 2025 Nvidia Technologies Ltd.
++ * Copyright (C) 2025-2026 Nvidia Technologies Ltd.
 + */
 +
 +#ifndef __NVSW_H__
@@ -6740,6 +10741,10 @@ index 000000000..91bdbc2ce
 +#define NVSW_REG_CPLD3_PN1_OFFSET	0x2509
 +#define NVSW_REG_CPLD4_PN_OFFSET	0x250a
 +#define NVSW_REG_CPLD4_PN1_OFFSET	0x250b
++#define NVSW_REG_CPLD1_DBG_LED_OFFSET	0x250c
++#define NVSW_REG_CPLD2_DBG_LED_OFFSET	0x250d
++#define NVSW_REG_CPLD3_DBG_LED_OFFSET	0x250e
++#define NVSW_REG_CPLD4_DBG_LED_OFFSET	0x250f
 +#define NVSW_REG_CPLD7_VER_OFFSET	0x2510
 +#define NVSW_REG_PG1_OFFSET		0x2511
 +#define NVSW_REG_PG1_EVENT_OFFSET	0x2512
@@ -6759,11 +10764,13 @@ index 000000000..91bdbc2ce
 +#define NVSW_REG_CPLD7_PN_OFFSET	0x2528
 +#define NVSW_REG_CPLD7_PN1_OFFSET	0x2529
 +#define NVSW_REG_GP0_RO_OFFSET		0x252a
++#define NVSW_REG_GP2_RO_OFFSET		0x252b
 +#define NVSW_REG_GP1_RO_OFFSET		0x252c
 +#define NVSW_REG_GPCOM0_OFFSET		0x252d
 +#define NVSW_REG_GP0_OFFSET		0x252e
 +#define NVSW_REG_GP7_OFFSET		0x252f
 +#define NVSW_REG_GP1_OFFSET		0x2530
++#define NVSW_REG_UART_BAUD_OFFSET	0x2531
 +#define NVSW_REG_GP4_OFFSET		0x2532
 +#define NVSW_REG_GP5_RO_OFFSET		0x2533
 +#define NVSW_REG_FIELD_UPGRADE		0x2534
@@ -6784,6 +10791,9 @@ index 000000000..91bdbc2ce
 +#define NVSW_REG_BRD1_OFFSET		0x2547
 +#define NVSW_REG_BRD1_EVENT_OFFSET	0x2548
 +#define NVSW_REG_BRD1_MASK_OFFSET	0x2549
++#define NVSW_REG_BRD2_OFFSET		0x254a
++#define NVSW_REG_BRD2_EVENT_OFFSET	0x254b
++#define NVSW_REG_BRD2_MASK_OFFSET	0x254c
 +#define NVSW_REG_HEALTH_OFFSET		0x254d
 +#define NVSW_REG_HEALTH_EVENT_OFFSET	0x254e
 +#define NVSW_REG_HEALTH_MASK_OFFSET	0x254f
@@ -6820,6 +10830,9 @@ index 000000000..91bdbc2ce
 +#define NVSW_REG_ASIC3_HEALTH_OFFSET	0x2582
 +#define NVSW_REG_ASIC3_EVENT_OFFSET	0x2583
 +#define NVSW_REG_ASIC3_MASK_OFFSET	0x2584
++#define NVSW_REG_ASIC4_HEALTH_OFFSET	0x2585
++#define NVSW_REG_ASIC4_EVENT_OFFSET	0x2586
++#define NVSW_REG_ASIC4_MASK_OFFSET	0x2587
 +#define NVSW_REG_FAN_OFFSET		0x2588
 +#define NVSW_REG_FAN_EVENT_OFFSET	0x2589
 +#define NVSW_REG_FAN_MASK_OFFSET	0x258a
@@ -6841,12 +10854,16 @@ index 000000000..91bdbc2ce
 +#define NVSW_REG_LEAK_OFFSET		0x25af
 +#define NVSW_REG_LEAK_EVENT_OFFSET	0x25b0
 +#define NVSW_REG_LEAK_MASK_OFFSET	0x25b1
++#define NVSW_REG_CURRENT_TEMP_RO	0x25c0
++#define NVSW_REG_SWITCH_IC_QTY		0x25c1
 +#define NVSW_REG_GP4_RO_OFFSET		0x25c2
 +#define NVSW_REG_SPI_CHNL_SELECT	0x25c3
 +#define NVSW_REG_CPLD5_MVER_OFFSET	0x25c4
 +#define NVSW_REG_CPLD8_VER_OFFSET	0x25c8
 +#define NVSW_REG_CPLD9_VER_OFFSET	0x25c9
 +#define NVSW_REG_CPLD10_VER_OFFSET	0x25ca
++#define NVSW_REG_CPLD9B_PN_OFFSET	0x25cb
++#define NVSW_REG_CPLD9B_PN1_OFFSET	0x25cc
 +#define NVSW_REG_WD2_TMR_OFFSET		0x25cd
 +#define NVSW_REG_WD2_TLEFT_OFFSET	0x25ce
 +#define NVSW_REG_WD2_ACT_OFFSET		0x25cf
@@ -6886,6 +10903,7 @@ index 000000000..91bdbc2ce
 +#define NVSW_REG_CONFIG1_OFFSET		0x25fb
 +#define NVSW_REG_CONFIG2_OFFSET		0x25fc
 +#define NVSW_REG_CONFIG3_OFFSET		0x25fd
++#define NVSW_REG_SYS_CPBLTY0		NVSW_REG_PSU_I2C_CAP_OFFSET
 +#define NVSW_REG_MIN			0x2500
 +#define NVSW_REG_MAX			0x26ff
 +
@@ -6926,6 +10944,7 @@ index 000000000..91bdbc2ce
 +#define NVSW_LED_LO_NIBBLE_MASK		GENMASK(7, 4)
 +#define NVSW_LED_HI_NIBBLE_MASK		GENMASK(3, 0)
 +#define NVSW_UART_SEL_MASK		GENMASK(7, 6)
++#define NVSW_UART_BAUD_MASK		GENMASK(3, 0)
 +#define NVSW_BIOS_STATUS_MASK		GENMASK(3, 1)
 +#define NVSW_REG_RESET_MASK		BIT(1)
 +#define NVSW_MASTER_MASK		BIT(5)
@@ -6936,6 +10955,7 @@ index 000000000..91bdbc2ce
 +#define NVSW_WD3_DFLT_TIMEOUT		600
 +#define NVSW_I2C_CAP_BIT		0x04
 +#define NVSW_I2C_CAP_MASK		GENMASK(5, NVSW_I2C_CAP_BIT)
++#define NVSW_I2C_TRAN_END_L		BIT(5)
 +
 +#define NVSW_NR_NONE			-1
 +#define NVSW_MUX_MAX			2
@@ -6950,6 +10970,8 @@ index 000000000..91bdbc2ce
 +	HID181,
 +	HID182,
 +	HID185,
++	HID189,
++	HID191,
 +	HID193,
 +};
 +

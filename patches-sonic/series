@@ -119,6 +119,11 @@ driver-i2c-smbus-add-disable_spd-module-parameter.patch
 0057-hwmon-pmbus-mp5926-Add-support-for-MP5926-device.patch
 0058-PCI-DOE-Poll-DOE-Busy-bit-for-up-to-1-second-in-pci.patch
 0059-hwmon-pmbus-xdpe1a2g7b-Add-support-for-XDPE1A2G7B-5B.patch
+0060-leds-mlxreg-Provide-conversion-for-hardware-LED-colo.patch
+0060-platform-mellanox-nvsw-bmc-Downstream-Add-protection.patch
+0061-platform-mellanox-mlxreg-io-Increase-max-supported-a.patch
+0062-Add-support-for-NXP-s-PCF85053A-RTC-chip.patch
+0063-reset-phy-using-polling-function-not-register-write.patch
 8000-mlxsw-Use-weak-reverse-dependencies-for-firmware-fla.patch
 8002-mlxsw-i2c-SONIC-ISSU-Prevent-transaction-execution-f.patch
 8003-mlxsw-minimal-Downstream-Ignore-error-reading-SPAD-r.patch
@@ -241,6 +246,13 @@ arista_goldfinch-dts.patch
 ###-> aspeed-end
 
 ###-> nvidia_aspeed_bmc-start
+0001-mctp-driver-net-Extend-MCTP-support.patch
+0002-mctp-aspeed-IRoT-Add-initial-support.patch
+0003-mctp-driver-net-Add-global-APIs-for-MCTP.patch
+0004-mctp-driver-net-Fix-MCTP-over-VDM-PCIe.patch
+0005-mctp-driver-net-Fix-MCTP-over-USB.patch
+0006-jtag-Add-JTAG-core-headers-GPIO-mux-and-locking-support.patch
+0007-JTAG-Aspeed-Fix-kernel-configuration.patch
 ###-> nvidia_aspeed_bmc-end
 
 # QID-45097: Crackarmor fixes
