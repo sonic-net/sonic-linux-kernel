@@ -1,0 +1,2234 @@
+From 8f00d7f476aec432ee298f7c94c90b9035766a04 Mon Sep 17 00:00:00 2001
+From: Chander <chander@nexthop.ai>
+Date: Wed, 13 May 2026 23:09:41 +0000
+Subject: [PATCH] Vendor independent changes
+
+This patch adds support for Aspeed AST2700 ARM64 SoC including:
+- Device tree files for AST2700 and related boards
+- Aspeed-specific drivers (pinctrl, clk, soc, crypto, etc.)
+- Faraday ethernet driver support
+- Kconfig and Makefile updates
+
+This patch targets vendor independent changes as part of updating to
+kernel-6.12 00.07.02.
+
+Signed-off-by: Chander <chander@nexthop.ai>
+
+---
+ drivers/char/hw_random/Kconfig               |   1 -
+ drivers/clk/Kconfig                          |   8 -
+ drivers/clk/Makefile                         |   1 -
+ drivers/edac/altera_edac.c                   |   1 +
+ drivers/edac/edac_mc_sysfs.c                 |  24 -
+ drivers/edac/i10nm_base.c                    |  14 -
+ drivers/edac/synopsys_edac.c                 |  97 +--
+ drivers/gpio/gpio-aspeed-sgpio.c             | 749 ++++++-------------
+ drivers/i3c/master/ast2600-i3c-master.c      |  34 +-
+ drivers/irqchip/Kconfig                      |   3 +
+ drivers/irqchip/Makefile                     |   2 +
+ drivers/media/platform/aspeed/aspeed-video.c |  48 +-
+ drivers/net/ethernet/faraday/ftgmac100.c     | 384 +++++++++-
+ drivers/net/ethernet/faraday/ftgmac100.h     |  39 +
+ drivers/net/mctp/mctp-pcie-vdm.c             |  12 +-
+ drivers/reset/Kconfig                        |  11 +-
+ drivers/rtc/rtc-aspeed.c                     |  22 +-
+ drivers/usb/gadget/udc/aspeed-vhub/core.c    |   6 +
+ drivers/usb/gadget/udc/aspeed-vhub/vhub.h    |   4 +
+ 19 files changed, 830 insertions(+), 630 deletions(-)
+
+diff --git a/drivers/char/hw_random/Kconfig b/drivers/char/hw_random/Kconfig
+index d723621e4..dd2e0f031 100644
+--- a/drivers/char/hw_random/Kconfig
++++ b/drivers/char/hw_random/Kconfig
+@@ -286,7 +286,6 @@ config HW_RANDOM_INGENIC_TRNG
+ config HW_RANDOM_NOMADIK
+ 	tristate "ST-Ericsson Nomadik Random Number Generator support"
+ 	depends on ARCH_NOMADIK || COMPILE_TEST
+-	depends on ARM_AMBA
+ 	default HW_RANDOM
+ 	help
+ 	  This driver provides kernel-side support for the Random Number
+diff --git a/drivers/clk/Kconfig b/drivers/clk/Kconfig
+index fb3e94edc..ddded0fbc 100644
+--- a/drivers/clk/Kconfig
++++ b/drivers/clk/Kconfig
+@@ -356,14 +356,6 @@ config COMMON_CLK_LOCHNAGAR
+ 	  This driver supports the clocking features of the Cirrus Logic
+ 	  Lochnagar audio development board.
+ 
+-config COMMON_CLK_NPCM8XX
+-	tristate "Clock driver for the NPCM8XX SoC Family"
+-	depends on ARCH_NPCM || COMPILE_TEST
+-	help
+-	  This driver supports the clocks on the Nuvoton BMC NPCM8XX SoC Family,
+-	  all the clocks are initialized by the bootloader, so this driver
+-	  allows only reading of current settings directly from the hardware.
+-
+ config COMMON_CLK_LOONGSON2
+ 	bool "Clock driver for Loongson-2 SoC"
+ 	depends on LOONGARCH || COMPILE_TEST
+diff --git a/drivers/clk/Makefile b/drivers/clk/Makefile
+index 0a8016c2e..ea0e812f7 100644
+--- a/drivers/clk/Makefile
++++ b/drivers/clk/Makefile
+@@ -64,7 +64,6 @@ obj-$(CONFIG_ARCH_MILBEAUT_M10V)	+= clk-milbeaut.o
+ obj-$(CONFIG_ARCH_MOXART)		+= clk-moxart.o
+ obj-$(CONFIG_ARCH_NOMADIK)		+= clk-nomadik.o
+ obj-$(CONFIG_ARCH_NPCM7XX)	    	+= clk-npcm7xx.o
+-obj-$(CONFIG_COMMON_CLK_NPCM8XX)	+= clk-npcm8xx.o
+ obj-$(CONFIG_ARCH_NSPIRE)		+= clk-nspire.o
+ obj-$(CONFIG_COMMON_CLK_PALMAS)		+= clk-palmas.o
+ obj-$(CONFIG_CLK_LS1028A_PLLDIG)	+= clk-plldig.o
+diff --git a/drivers/edac/altera_edac.c b/drivers/edac/altera_edac.c
+index 605493b50..a059964b9 100644
+--- a/drivers/edac/altera_edac.c
++++ b/drivers/edac/altera_edac.c
+@@ -128,6 +128,7 @@ static ssize_t altr_sdr_mc_err_inject_write(struct file *file,
+ 
+ 	ptemp = dma_alloc_coherent(mci->pdev, 16, &dma_handle, GFP_KERNEL);
+ 	if (!ptemp) {
++		dma_free_coherent(mci->pdev, 16, ptemp, dma_handle);
+ 		edac_printk(KERN_ERR, EDAC_MC,
+ 			    "Inject: Buffer Allocation error\n");
+ 		return -ENOMEM;
+diff --git a/drivers/edac/edac_mc_sysfs.c b/drivers/edac/edac_mc_sysfs.c
+index 70dc0ee1c..4200aec04 100644
+--- a/drivers/edac/edac_mc_sysfs.c
++++ b/drivers/edac/edac_mc_sysfs.c
+@@ -305,14 +305,6 @@ DEVICE_CHANNEL(ch10_dimm_label, S_IRUGO | S_IWUSR,
+ 	channel_dimm_label_show, channel_dimm_label_store, 10);
+ DEVICE_CHANNEL(ch11_dimm_label, S_IRUGO | S_IWUSR,
+ 	channel_dimm_label_show, channel_dimm_label_store, 11);
+-DEVICE_CHANNEL(ch12_dimm_label, S_IRUGO | S_IWUSR,
+-	channel_dimm_label_show, channel_dimm_label_store, 12);
+-DEVICE_CHANNEL(ch13_dimm_label, S_IRUGO | S_IWUSR,
+-	channel_dimm_label_show, channel_dimm_label_store, 13);
+-DEVICE_CHANNEL(ch14_dimm_label, S_IRUGO | S_IWUSR,
+-	channel_dimm_label_show, channel_dimm_label_store, 14);
+-DEVICE_CHANNEL(ch15_dimm_label, S_IRUGO | S_IWUSR,
+-	channel_dimm_label_show, channel_dimm_label_store, 15);
+ 
+ /* Total possible dynamic DIMM Label attribute file table */
+ static struct attribute *dynamic_csrow_dimm_attr[] = {
+@@ -328,10 +320,6 @@ static struct attribute *dynamic_csrow_dimm_attr[] = {
+ 	&dev_attr_legacy_ch9_dimm_label.attr.attr,
+ 	&dev_attr_legacy_ch10_dimm_label.attr.attr,
+ 	&dev_attr_legacy_ch11_dimm_label.attr.attr,
+-	&dev_attr_legacy_ch12_dimm_label.attr.attr,
+-	&dev_attr_legacy_ch13_dimm_label.attr.attr,
+-	&dev_attr_legacy_ch14_dimm_label.attr.attr,
+-	&dev_attr_legacy_ch15_dimm_label.attr.attr,
+ 	NULL
+ };
+ 
+@@ -360,14 +348,6 @@ DEVICE_CHANNEL(ch10_ce_count, S_IRUGO,
+ 		   channel_ce_count_show, NULL, 10);
+ DEVICE_CHANNEL(ch11_ce_count, S_IRUGO,
+ 		   channel_ce_count_show, NULL, 11);
+-DEVICE_CHANNEL(ch12_ce_count, S_IRUGO,
+-		   channel_ce_count_show, NULL, 12);
+-DEVICE_CHANNEL(ch13_ce_count, S_IRUGO,
+-		   channel_ce_count_show, NULL, 13);
+-DEVICE_CHANNEL(ch14_ce_count, S_IRUGO,
+-		   channel_ce_count_show, NULL, 14);
+-DEVICE_CHANNEL(ch15_ce_count, S_IRUGO,
+-		   channel_ce_count_show, NULL, 15);
+ 
+ /* Total possible dynamic ce_count attribute file table */
+ static struct attribute *dynamic_csrow_ce_count_attr[] = {
+@@ -383,10 +363,6 @@ static struct attribute *dynamic_csrow_ce_count_attr[] = {
+ 	&dev_attr_legacy_ch9_ce_count.attr.attr,
+ 	&dev_attr_legacy_ch10_ce_count.attr.attr,
+ 	&dev_attr_legacy_ch11_ce_count.attr.attr,
+-	&dev_attr_legacy_ch12_ce_count.attr.attr,
+-	&dev_attr_legacy_ch13_ce_count.attr.attr,
+-	&dev_attr_legacy_ch14_ce_count.attr.attr,
+-	&dev_attr_legacy_ch15_ce_count.attr.attr,
+ 	NULL
+ };
+ 
+diff --git a/drivers/edac/i10nm_base.c b/drivers/edac/i10nm_base.c
+index d8cd12d90..ac4b3d955 100644
+--- a/drivers/edac/i10nm_base.c
++++ b/drivers/edac/i10nm_base.c
+@@ -967,15 +967,6 @@ static bool i10nm_check_ecc(struct skx_imc *imc, int chan)
+ 	return !!GET_BITFIELD(mcmtr, 2, 2);
+ }
+ 
+-static bool i10nm_channel_disabled(struct skx_imc *imc, int chan)
+-{
+-	u32 mcmtr = I10NM_GET_MCMTR(imc, chan);
+-
+-	edac_dbg(1, "mc%d ch%d mcmtr reg %x\n", imc->mc, chan, mcmtr);
+-
+-	return (mcmtr == ~0 || GET_BITFIELD(mcmtr, 18, 18));
+-}
+-
+ static int i10nm_get_dimm_config(struct mem_ctl_info *mci,
+ 				 struct res_config *cfg)
+ {
+@@ -989,11 +980,6 @@ static int i10nm_get_dimm_config(struct mem_ctl_info *mci,
+ 		if (!imc->mbase)
+ 			continue;
+ 
+-		if (i10nm_channel_disabled(imc, i)) {
+-			edac_dbg(1, "mc%d ch%d is disabled.\n", imc->mc, i);
+-			continue;
+-		}
+-
+ 		ndimms = 0;
+ 
+ 		if (res_cfg->type != GNR)
+diff --git a/drivers/edac/synopsys_edac.c b/drivers/edac/synopsys_edac.c
+index ec3ed5e2b..d7416166f 100644
+--- a/drivers/edac/synopsys_edac.c
++++ b/drivers/edac/synopsys_edac.c
+@@ -332,26 +332,20 @@ struct synps_edac_priv {
+ #endif
+ };
+ 
+-enum synps_platform_type {
+-	ZYNQ,
+-	ZYNQMP,
+-	SYNPS,
+-};
+-
+ /**
+  * struct synps_platform_data -  synps platform data structure.
+- * @platform:		Identifies the target hardware platform
+  * @get_error_info:	Get EDAC error info.
+  * @get_mtype:		Get mtype.
+  * @get_dtype:		Get dtype.
++ * @get_ecc_state:	Get ECC state.
+  * @get_mem_info:	Get EDAC memory info
+  * @quirks:		To differentiate IPs.
+  */
+ struct synps_platform_data {
+-	enum synps_platform_type platform;
+ 	int (*get_error_info)(struct synps_edac_priv *priv);
+ 	enum mem_type (*get_mtype)(const void __iomem *base);
+ 	enum dev_type (*get_dtype)(const void __iomem *base);
++	bool (*get_ecc_state)(void __iomem *base);
+ #ifdef CONFIG_EDAC_DEBUG
+ 	u64 (*get_mem_info)(struct synps_edac_priv *priv);
+ #endif
+@@ -726,38 +720,51 @@ static enum dev_type zynqmp_get_dtype(const void __iomem *base)
+ 	return dt;
+ }
+ 
+-static bool get_ecc_state(struct synps_edac_priv *priv)
++/**
++ * zynq_get_ecc_state - Return the controller ECC enable/disable status.
++ * @base:	DDR memory controller base address.
++ *
++ * Get the ECC enable/disable status of the controller.
++ *
++ * Return: true if enabled, otherwise false.
++ */
++static bool zynq_get_ecc_state(void __iomem *base)
+ {
+-	u32 ecctype, clearval;
+ 	enum dev_type dt;
++	u32 ecctype;
+ 
+-	if (priv->p_data->platform == ZYNQ) {
+-		dt = zynq_get_dtype(priv->baseaddr);
+-		if (dt == DEV_UNKNOWN)
+-			return false;
+-
+-		ecctype = readl(priv->baseaddr + SCRUB_OFST) & SCRUB_MODE_MASK;
+-		if (ecctype == SCRUB_MODE_SECDED && dt == DEV_X2) {
+-			clearval = ECC_CTRL_CLR_CE_ERR | ECC_CTRL_CLR_UE_ERR;
+-			writel(clearval, priv->baseaddr + ECC_CTRL_OFST);
+-			writel(0x0, priv->baseaddr + ECC_CTRL_OFST);
+-			return true;
+-		}
+-	} else {
+-		dt = zynqmp_get_dtype(priv->baseaddr);
+-		if (dt == DEV_UNKNOWN)
+-			return false;
+-
+-		ecctype = readl(priv->baseaddr + ECC_CFG0_OFST) & SCRUB_MODE_MASK;
+-		if (ecctype == SCRUB_MODE_SECDED &&
+-		    (dt == DEV_X2 || dt == DEV_X4 || dt == DEV_X8)) {
+-			clearval = readl(priv->baseaddr + ECC_CLR_OFST) |
+-			ECC_CTRL_CLR_CE_ERR | ECC_CTRL_CLR_CE_ERRCNT |
+-			ECC_CTRL_CLR_UE_ERR | ECC_CTRL_CLR_UE_ERRCNT;
+-			writel(clearval, priv->baseaddr + ECC_CLR_OFST);
+-			return true;
+-		}
+-	}
++	dt = zynq_get_dtype(base);
++	if (dt == DEV_UNKNOWN)
++		return false;
++
++	ecctype = readl(base + SCRUB_OFST) & SCRUB_MODE_MASK;
++	if ((ecctype == SCRUB_MODE_SECDED) && (dt == DEV_X2))
++		return true;
++
++	return false;
++}
++
++/**
++ * zynqmp_get_ecc_state - Return the controller ECC enable/disable status.
++ * @base:	DDR memory controller base address.
++ *
++ * Get the ECC enable/disable status for the controller.
++ *
++ * Return: a ECC status boolean i.e true/false - enabled/disabled.
++ */
++static bool zynqmp_get_ecc_state(void __iomem *base)
++{
++	enum dev_type dt;
++	u32 ecctype;
++
++	dt = zynqmp_get_dtype(base);
++	if (dt == DEV_UNKNOWN)
++		return false;
++
++	ecctype = readl(base + ECC_CFG0_OFST) & SCRUB_MODE_MASK;
++	if ((ecctype == SCRUB_MODE_SECDED) &&
++	    ((dt == DEV_X2) || (dt == DEV_X4) || (dt == DEV_X8)))
++		return true;
+ 
+ 	return false;
+ }
+@@ -927,18 +934,18 @@ static int setup_irq(struct mem_ctl_info *mci,
+ }
+ 
+ static const struct synps_platform_data zynq_edac_def = {
+-	.platform = ZYNQ,
+ 	.get_error_info	= zynq_get_error_info,
+ 	.get_mtype	= zynq_get_mtype,
+ 	.get_dtype	= zynq_get_dtype,
++	.get_ecc_state	= zynq_get_ecc_state,
+ 	.quirks		= 0,
+ };
+ 
+ static const struct synps_platform_data zynqmp_edac_def = {
+-	.platform = ZYNQMP,
+ 	.get_error_info	= zynqmp_get_error_info,
+ 	.get_mtype	= zynqmp_get_mtype,
+ 	.get_dtype	= zynqmp_get_dtype,
++	.get_ecc_state	= zynqmp_get_ecc_state,
+ #ifdef CONFIG_EDAC_DEBUG
+ 	.get_mem_info	= zynqmp_get_mem_info,
+ #endif
+@@ -950,10 +957,10 @@ static const struct synps_platform_data zynqmp_edac_def = {
+ };
+ 
+ static const struct synps_platform_data synopsys_edac_def = {
+-	.platform = SYNPS,
+ 	.get_error_info	= zynqmp_get_error_info,
+ 	.get_mtype	= zynqmp_get_mtype,
+ 	.get_dtype	= zynqmp_get_dtype,
++	.get_ecc_state	= zynqmp_get_ecc_state,
+ 	.quirks         = (DDR_ECC_INTR_SUPPORT | DDR_ECC_INTR_SELF_CLEAR
+ #ifdef CONFIG_EDAC_DEBUG
+ 			  | DDR_ECC_DATA_POISON_SUPPORT
+@@ -1383,6 +1390,10 @@ static int mc_probe(struct platform_device *pdev)
+ 	if (!p_data)
+ 		return -ENODEV;
+ 
++	if (!p_data->get_ecc_state(baseaddr)) {
++		edac_printk(KERN_INFO, EDAC_MC, "ECC not enabled\n");
++		return -ENXIO;
++	}
+ 
+ 	layers[0].type = EDAC_MC_LAYER_CHIP_SELECT;
+ 	layers[0].size = SYNPS_EDAC_NR_CSROWS;
+@@ -1402,12 +1413,6 @@ static int mc_probe(struct platform_device *pdev)
+ 	priv = mci->pvt_info;
+ 	priv->baseaddr = baseaddr;
+ 	priv->p_data = p_data;
+-	if (!get_ecc_state(priv)) {
+-		edac_printk(KERN_INFO, EDAC_MC, "ECC not enabled\n");
+-		rc = -ENODEV;
+-		goto free_edac_mc;
+-	}
+-
+ 	spin_lock_init(&priv->reglock);
+ 
+ 	mc_init(mci, pdev);
+diff --git a/drivers/gpio/gpio-aspeed-sgpio.c b/drivers/gpio/gpio-aspeed-sgpio.c
+index 150fbaebb..836b0cc76 100644
+--- a/drivers/gpio/gpio-aspeed-sgpio.c
++++ b/drivers/gpio/gpio-aspeed-sgpio.c
+@@ -6,6 +6,7 @@
+  */
+ 
+ #include <linux/bitfield.h>
++#include <linux/cleanup.h>
+ #include <linux/clk.h>
+ #include <linux/gpio/driver.h>
+ #include <linux/hashtable.h>
+@@ -18,6 +19,10 @@
+ #include <linux/spinlock.h>
+ #include <linux/string.h>
+ 
++/* Non-constant mask variant of FIELD_GET() and FIELD_PREP() */
++#define field_get(_mask, _reg)	(((_reg) & (_mask)) >> (ffs(_mask) - 1))
++#define field_prep(_mask, _val)	(((_val) << (ffs(_mask) - 1)) & (_mask))
++
+ #define SGPIO_G7_IRQ_STS_BASE 0x40
+ #define SGPIO_G7_IRQ_STS_OFFSET(x) (SGPIO_G7_IRQ_STS_BASE + (x) * 0x4)
+ #define SGPIO_G7_CTRL_REG_BASE 0x80
+@@ -39,30 +44,10 @@
+ #define SGPIO_G7_PARALLEL_OUT_SEL GENMASK(19, 18)
+ #define SELECT_FROM_CSR 0
+ #define SELECT_FROM_PARALLEL_IN 1
+-#define SELECT_FROM_SERIAL_IN 1
++#define SELECT_FROM_SERIAL_IN 2
+ 
+-#define BMC_CONTROL_START_INDEX 128
+-#define BMC_CONTROL_END_INDEX 143
+-
+-static inline u32 field_get(u32 _mask, u32 _val)
+-{
+-	return (((_val) & (_mask)) >> (ffs(_mask) - 1));
+-}
+-
+-static inline u32 field_prep(u32 _mask, u32 _val)
+-{
+-	return (((_val) << (ffs(_mask) - 1)) & (_mask));
+-}
+-
+-static inline void ast_write_bits(void __iomem *addr, u32 mask, u32 val)
+-{
+-	iowrite32((ioread32(addr) & ~(mask)) | field_prep(mask, val), addr);
+-}
+-
+-static inline void ast_clr_bits(void __iomem *addr, u32 mask)
+-{
+-	iowrite32((ioread32(addr) & ~(mask)), addr);
+-}
++#define ASPEED_SGPIO_G4_CFG_OFFSET 0x54
++#define ASPEED_SGPIO_G7_CFG_OFFSET 0x0
+ 
+ #define ASPEED_SGPIO_CLK_DIV_MASK	GENMASK(31, 16)
+ #define ASPEED_SGPIO_ENABLE		BIT(0)
+@@ -70,9 +55,8 @@ static inline void ast_clr_bits(void __iomem *addr, u32 mask)
+ 
+ struct aspeed_sgpio_pdata {
+ 	const u32 pin_mask;
+-	const u16 ctrl_reg;
+-	const int version;
+-	const bool slave;
++	const struct aspeed_sgpio_llops *llops;
++	const u32 cfg_offset;
+ };
+ 
+ struct aspeed_sgpio {
+@@ -82,7 +66,6 @@ struct aspeed_sgpio {
+ 	raw_spinlock_t lock;
+ 	void __iomem *base;
+ 	int irq;
+-	int version;
+ 	const struct aspeed_sgpio_pdata *pdata;
+ };
+ 
+@@ -91,7 +74,6 @@ struct aspeed_sgpio_bank {
+ 	u16    rdata_reg;
+ 	u16    irq_regs;
+ 	u16    tolerance_regs;
+-	const char  names[4][3];
+ };
+ 
+ /*
+@@ -107,28 +89,24 @@ static const struct aspeed_sgpio_bank aspeed_sgpio_banks[] = {
+ 		.rdata_reg = 0x0070,
+ 		.irq_regs = 0x0004,
+ 		.tolerance_regs = 0x0018,
+-		.names = { "A", "B", "C", "D" },
+ 	},
+ 	{
+ 		.val_regs = 0x001C,
+ 		.rdata_reg = 0x0074,
+ 		.irq_regs = 0x0020,
+ 		.tolerance_regs = 0x0034,
+-		.names = { "E", "F", "G", "H" },
+ 	},
+ 	{
+ 		.val_regs = 0x0038,
+ 		.rdata_reg = 0x0078,
+ 		.irq_regs = 0x003C,
+ 		.tolerance_regs = 0x0050,
+-		.names = { "I", "J", "K", "L" },
+ 	},
+ 	{
+ 		.val_regs = 0x0090,
+ 		.rdata_reg = 0x007C,
+ 		.irq_regs = 0x0094,
+ 		.tolerance_regs = 0x00A8,
+-		.names = { "M", "N", "O", "P" },
+ 	},
+ };
+ 
+@@ -143,6 +121,15 @@ enum aspeed_sgpio_reg {
+ 	reg_tolerance,
+ };
+ 
++struct aspeed_sgpio_llops {
++	void (*reg_bit_set)(struct aspeed_sgpio *gpio, unsigned int offset,
++			    const enum aspeed_sgpio_reg reg, bool val);
++	bool (*reg_bit_get)(struct aspeed_sgpio *gpio, unsigned int offset,
++			    const enum aspeed_sgpio_reg reg);
++	int (*reg_bank_get)(struct aspeed_sgpio *gpio, unsigned int offset,
++			    const enum aspeed_sgpio_reg reg);
++};
++
+ #define GPIO_VAL_VALUE      0x00
+ #define GPIO_IRQ_ENABLE     0x00
+ #define GPIO_IRQ_TYPE0      0x04
+@@ -150,9 +137,9 @@ enum aspeed_sgpio_reg {
+ #define GPIO_IRQ_TYPE2      0x0C
+ #define GPIO_IRQ_STATUS     0x10
+ 
+-static void __iomem *bank_reg(struct aspeed_sgpio *gpio,
+-				     const struct aspeed_sgpio_bank *bank,
+-				     const enum aspeed_sgpio_reg reg)
++static void __iomem *aspeed_sgpio_g4_bank_reg(struct aspeed_sgpio *gpio,
++					      const struct aspeed_sgpio_bank *bank,
++					      const enum aspeed_sgpio_reg reg)
+ {
+ 	switch (reg) {
+ 	case reg_val:
+@@ -177,6 +164,30 @@ static void __iomem *bank_reg(struct aspeed_sgpio *gpio,
+ 	}
+ }
+ 
++static u32 aspeed_sgpio_g7_reg_mask(const enum aspeed_sgpio_reg reg)
++{
++	switch (reg) {
++	case reg_val:
++	case reg_rdata:
++		return SGPIO_G7_OUT_DATA;
++	case reg_irq_enable:
++		return SGPIO_G7_IRQ_EN;
++	case reg_irq_type0:
++		return SGPIO_G7_IRQ_TYPE0;
++	case reg_irq_type1:
++		return SGPIO_G7_IRQ_TYPE1;
++	case reg_irq_type2:
++		return SGPIO_G7_IRQ_TYPE2;
++	case reg_irq_status:
++		return SGPIO_G7_IRQ_STS;
++	case reg_tolerance:
++		return SGPIO_G7_RST_TOLERANCE;
++	default:
++		WARN_ON_ONCE(1);
++		return 0;
++	}
++}
++
+ #define GPIO_BANK(x)    ((x) >> 6)
+ #define GPIO_OFFSET(x)  ((x) & GENMASK(5, 0))
+ #define GPIO_BIT(x)     BIT(GPIO_OFFSET(x) >> 1)
+@@ -215,40 +226,16 @@ static bool aspeed_sgpio_is_input(unsigned int offset)
+ 	return !(offset % 2);
+ }
+ 
+-static bool aspeed_sgpios_ctrl_by_csr(unsigned int offset)
+-{
+-	if (offset >= BMC_CONTROL_START_INDEX &&
+-	    offset <= BMC_CONTROL_END_INDEX)
+-		return true;
+-	return false;
+-}
+-
+ static int aspeed_sgpio_get(struct gpio_chip *gc, unsigned int offset)
+ {
+ 	struct aspeed_sgpio *gpio = gpiochip_get_data(gc);
+-	const struct aspeed_sgpio_bank *bank;
+-	void __iomem *addr = gpio->base + SGPIO_G7_CTRL_REG_OFFSET(offset >> 1);
+-	unsigned long flags;
+ 	enum aspeed_sgpio_reg reg;
+ 	int rc = 0;
+ 
+-	raw_spin_lock_irqsave(&gpio->lock, flags);
++	guard(raw_spinlock_irqsave)(&gpio->lock);
+ 
+-	if (gpio->version == 7) {
+-		if (gpio->pdata->slave && !aspeed_sgpios_ctrl_by_csr(offset))
+-			reg = aspeed_sgpio_is_input(offset) ?
+-				      SGPIO_G7_PARALLEL_IN_DATA :
+-				      SGPIO_G7_PARALLEL_OUT_DATA;
+-		else
+-			reg = aspeed_sgpio_is_input(offset) ? SGPIO_G7_IN_DATA :
+-							      SGPIO_G7_OUT_DATA;
+-		rc = !!(field_get(reg, ioread32(addr)));
+-	} else {
+-		bank = to_bank(offset);
+-		reg = aspeed_sgpio_is_input(offset) ? reg_val : reg_rdata;
+-		rc = !!(ioread32(bank_reg(gpio, bank, reg)) & GPIO_BIT(offset));
+-	}
+-	raw_spin_unlock_irqrestore(&gpio->lock, flags);
++	reg = aspeed_sgpio_is_input(offset) ? reg_val : reg_rdata;
++	rc = gpio->pdata->llops->reg_bit_get(gpio, offset, reg);
+ 
+ 	return rc;
+ }
+@@ -256,58 +243,11 @@ static int aspeed_sgpio_get(struct gpio_chip *gc, unsigned int offset)
+ static int sgpio_set_value(struct gpio_chip *gc, unsigned int offset, int val)
+ {
+ 	struct aspeed_sgpio *gpio = gpiochip_get_data(gc);
+-	const struct aspeed_sgpio_bank *bank = to_bank(offset);
+-	void __iomem *addr_r, *addr_w;
+-	u32 reg = 0;
+-
+-	if (aspeed_sgpio_is_input(offset))
+-		return -EINVAL;
+-
+-	/* Since this is an output, read the cached value from rdata, then
+-	 * update val. */
+-	addr_r = bank_reg(gpio, bank, reg_rdata);
+-	addr_w = bank_reg(gpio, bank, reg_val);
+-
+-	reg = ioread32(addr_r);
+-
+-	if (val)
+-		reg |= GPIO_BIT(offset);
+-	else
+-		reg &= ~GPIO_BIT(offset);
+-
+-	iowrite32(reg, addr_w);
+-
+-	return 0;
+-}
+-
+-static int sgpio_g7_set_value(struct gpio_chip *gc, unsigned int offset,
+-			      int val)
+-{
+-	struct aspeed_sgpio *gpio = gpiochip_get_data(gc);
+-	void __iomem *addr = gpio->base + SGPIO_G7_CTRL_REG_OFFSET(offset >> 1);
+-	u32 reg = 0, out_data;
+ 
+ 	if (aspeed_sgpio_is_input(offset))
+ 		return -EINVAL;
+ 
+-	if (gpio->pdata->slave && !aspeed_sgpios_ctrl_by_csr(offset)) {
+-		// Ensure the parallel out value control by the software.
+-		ast_write_bits(addr, SGPIO_G7_PARALLEL_OUT_SEL,
+-			       SELECT_FROM_CSR);
+-		out_data = SGPIO_G7_PARALLEL_OUT_DATA;
+-	} else {
+-		// Ensure the serial out value control by the software.
+-		ast_write_bits(addr, SGPIO_G7_SERIAL_OUT_SEL, SELECT_FROM_CSR);
+-		out_data = SGPIO_G7_OUT_DATA;
+-	}
+-	reg = ioread32(addr);
+-
+-	if (val)
+-		reg |= out_data;
+-	else
+-		reg &= ~out_data;
+-
+-	iowrite32(reg, addr);
++	gpio->pdata->llops->reg_bit_set(gpio, offset, reg_val, val);
+ 
+ 	return 0;
+ }
+@@ -315,16 +255,11 @@ static int sgpio_g7_set_value(struct gpio_chip *gc, unsigned int offset,
+ static void aspeed_sgpio_set(struct gpio_chip *gc, unsigned int offset, int val)
+ {
+ 	struct aspeed_sgpio *gpio = gpiochip_get_data(gc);
+-	unsigned long flags;
+-
+-	raw_spin_lock_irqsave(&gpio->lock, flags);
+ 
+-	if (gpio->version == 7)
+-		sgpio_g7_set_value(gc, offset, val);
+-	else
+-		sgpio_set_value(gc, offset, val);
++	guard(raw_spinlock_irqsave)(&gpio->lock);
++	sgpio_set_value(gc, offset, val);
+ 
+-	raw_spin_unlock_irqrestore(&gpio->lock, flags);
++	return;
+ }
+ 
+ static int aspeed_sgpio_dir_in(struct gpio_chip *gc, unsigned int offset)
+@@ -335,18 +270,14 @@ static int aspeed_sgpio_dir_in(struct gpio_chip *gc, unsigned int offset)
+ static int aspeed_sgpio_dir_out(struct gpio_chip *gc, unsigned int offset, int val)
+ {
+ 	struct aspeed_sgpio *gpio = gpiochip_get_data(gc);
+-	unsigned long flags;
+ 	int rc;
+ 
+ 	/* No special action is required for setting the direction; we'll
+ 	 * error-out in sgpio_set_value if this isn't an output GPIO */
+ 
+-	raw_spin_lock_irqsave(&gpio->lock, flags);
+-	if (gpio->version == 7)
+-		rc = sgpio_g7_set_value(gc, offset, val);
+-	else
+-		rc = sgpio_set_value(gc, offset, val);
+-	raw_spin_unlock_irqrestore(&gpio->lock, flags);
++	guard(raw_spinlock_irqsave)(&gpio->lock);
++
++	rc = sgpio_set_value(gc, offset, val);
+ 
+ 	return rc;
+ }
+@@ -356,132 +287,34 @@ static int aspeed_sgpio_get_direction(struct gpio_chip *gc, unsigned int offset)
+ 	return !!aspeed_sgpio_is_input(offset);
+ }
+ 
+-static void irqd_to_aspeed_sgpio_data(struct irq_data *d,
+-					struct aspeed_sgpio **gpio,
+-					const struct aspeed_sgpio_bank **bank,
+-					u32 *bit, int *offset)
+-{
+-	struct aspeed_sgpio *internal;
+-
+-	*offset = irqd_to_hwirq(d);
+-	internal = irq_data_get_irq_chip_data(d);
+-	WARN_ON(!internal);
+-
+-	*gpio = internal;
+-	*bank = to_bank(*offset);
+-	*bit = GPIO_BIT(*offset);
+-}
+-
+-static void irqd_to_aspeed_g7_sgpio_data(struct irq_data *d,
+-					 struct aspeed_sgpio **gpio,
+-					 int *offset)
+-{
+-	struct aspeed_sgpio *internal;
+-
+-	*offset = irqd_to_hwirq(d);
+-	internal = irq_data_get_irq_chip_data(d);
+-	WARN_ON(!internal);
+-
+-	*gpio = internal;
+-}
+ 
+ static void aspeed_sgpio_irq_ack(struct irq_data *d)
+ {
+-	const struct aspeed_sgpio_bank *bank;
+-	struct aspeed_sgpio *gpio;
+-	unsigned long flags;
+-	void __iomem *status_addr;
+-	int offset;
+-	u32 bit;
+-
+-	irqd_to_aspeed_sgpio_data(d, &gpio, &bank, &bit, &offset);
+-
+-	status_addr = bank_reg(gpio, bank, reg_irq_status);
++	struct aspeed_sgpio *gpio = irq_data_get_irq_chip_data(d);
++	int offset = irqd_to_hwirq(d);
+ 
+-	raw_spin_lock_irqsave(&gpio->lock, flags);
++	guard(raw_spinlock_irqsave)(&gpio->lock);
+ 
+-	iowrite32(bit, status_addr);
+-
+-	raw_spin_unlock_irqrestore(&gpio->lock, flags);
+-}
+-
+-static void aspeed_g7_sgpio_irq_ack(struct irq_data *d)
+-{
+-	struct aspeed_sgpio *gpio;
+-	unsigned long flags;
+-	void __iomem *status_addr;
+-	int offset;
+-
+-	irqd_to_aspeed_g7_sgpio_data(d, &gpio, &offset);
+-
+-	status_addr = gpio->base + SGPIO_G7_CTRL_REG_OFFSET(offset >> 1);
+-
+-	raw_spin_lock_irqsave(&gpio->lock, flags);
+-
+-	ast_write_bits(status_addr, SGPIO_G7_IRQ_STS, 1);
+-
+-	raw_spin_unlock_irqrestore(&gpio->lock, flags);
++	gpio->pdata->llops->reg_bit_set(gpio, offset, reg_irq_status, 1);
+ }
+ 
+ static void aspeed_sgpio_irq_set_mask(struct irq_data *d, bool set)
+ {
+-	const struct aspeed_sgpio_bank *bank;
+-	struct aspeed_sgpio *gpio;
+-	unsigned long flags;
+-	u32 reg, bit;
+-	void __iomem *addr;
+-	int offset;
+-
+-	irqd_to_aspeed_sgpio_data(d, &gpio, &bank, &bit, &offset);
+-	addr = bank_reg(gpio, bank, reg_irq_enable);
++	struct aspeed_sgpio *gpio = irq_data_get_irq_chip_data(d);
++	int offset = irqd_to_hwirq(d);
+ 
+ 	/* Unmasking the IRQ */
+ 	if (set)
+-		gpiochip_enable_irq(&gpio->chip, irqd_to_hwirq(d));
+-
+-	raw_spin_lock_irqsave(&gpio->lock, flags);
+-
+-	reg = ioread32(addr);
+-	if (set)
+-		reg |= bit;
+-	else
+-		reg &= ~bit;
+-
+-	iowrite32(reg, addr);
+-
+-	raw_spin_unlock_irqrestore(&gpio->lock, flags);
+-
+-	/* Masking the IRQ */
+-	if (!set)
+-		gpiochip_disable_irq(&gpio->chip, irqd_to_hwirq(d));
+-
+-
+-}
+-
+-static void aspeed_g7_sgpio_irq_set_mask(struct irq_data *d, bool set)
+-{
+-	struct aspeed_sgpio *gpio;
+-	unsigned long flags;
+-	void __iomem *addr;
+-	int offset;
+-
+-	irqd_to_aspeed_g7_sgpio_data(d, &gpio, &offset);
+-	addr = gpio->base + SGPIO_G7_CTRL_REG_OFFSET(offset >> 1);
+-
+-	/* Unmasking the IRQ */
+-	if (set)
+-		gpiochip_enable_irq(&gpio->chip, irqd_to_hwirq(d));
+-
+-	raw_spin_lock_irqsave(&gpio->lock, flags);
+-	if (set)
+-		ast_write_bits(addr, SGPIO_G7_IRQ_EN, 1);
+-	else
+-		ast_clr_bits(addr, SGPIO_G7_IRQ_EN);
+-	raw_spin_unlock_irqrestore(&gpio->lock, flags);
++		gpiochip_enable_irq(&gpio->chip, offset);
++	scoped_guard(raw_spinlock_irqsave, &gpio->lock)
++	{
++		gpio->pdata->llops->reg_bit_set(gpio, offset, reg_irq_enable,
++						set);
++	}
+ 
+ 	/* Masking the IRQ */
+ 	if (!set)
+-		gpiochip_disable_irq(&gpio->chip, irqd_to_hwirq(d));
++		gpiochip_disable_irq(&gpio->chip, offset);
+ }
+ 
+ static void aspeed_sgpio_irq_mask(struct irq_data *d)
+@@ -494,89 +327,14 @@ static void aspeed_sgpio_irq_unmask(struct irq_data *d)
+ 	aspeed_sgpio_irq_set_mask(d, true);
+ }
+ 
+-static void aspeed_g7_sgpio_irq_mask(struct irq_data *d)
+-{
+-	aspeed_g7_sgpio_irq_set_mask(d, false);
+-}
+-
+-static void aspeed_g7_sgpio_irq_unmask(struct irq_data *d)
+-{
+-	aspeed_g7_sgpio_irq_set_mask(d, true);
+-}
+-
+ static int aspeed_sgpio_set_type(struct irq_data *d, unsigned int type)
+ {
+ 	u32 type0 = 0;
+ 	u32 type1 = 0;
+ 	u32 type2 = 0;
+-	u32 bit, reg;
+-	const struct aspeed_sgpio_bank *bank;
+ 	irq_flow_handler_t handler;
+-	struct aspeed_sgpio *gpio;
+-	unsigned long flags;
+-	void __iomem *addr;
+-	int offset;
+-
+-	irqd_to_aspeed_sgpio_data(d, &gpio, &bank, &bit, &offset);
+-
+-	switch (type & IRQ_TYPE_SENSE_MASK) {
+-	case IRQ_TYPE_EDGE_BOTH:
+-		type2 |= bit;
+-		fallthrough;
+-	case IRQ_TYPE_EDGE_RISING:
+-		type0 |= bit;
+-		fallthrough;
+-	case IRQ_TYPE_EDGE_FALLING:
+-		handler = handle_edge_irq;
+-		break;
+-	case IRQ_TYPE_LEVEL_HIGH:
+-		type0 |= bit;
+-		fallthrough;
+-	case IRQ_TYPE_LEVEL_LOW:
+-		type1 |= bit;
+-		handler = handle_level_irq;
+-		break;
+-	default:
+-		return -EINVAL;
+-	}
+-
+-	raw_spin_lock_irqsave(&gpio->lock, flags);
+-
+-	addr = bank_reg(gpio, bank, reg_irq_type0);
+-	reg = ioread32(addr);
+-	reg = (reg & ~bit) | type0;
+-	iowrite32(reg, addr);
+-
+-	addr = bank_reg(gpio, bank, reg_irq_type1);
+-	reg = ioread32(addr);
+-	reg = (reg & ~bit) | type1;
+-	iowrite32(reg, addr);
+-
+-	addr = bank_reg(gpio, bank, reg_irq_type2);
+-	reg = ioread32(addr);
+-	reg = (reg & ~bit) | type2;
+-	iowrite32(reg, addr);
+-
+-	raw_spin_unlock_irqrestore(&gpio->lock, flags);
+-
+-	irq_set_handler_locked(d, handler);
+-
+-	return 0;
+-}
+-
+-static int aspeed_g7_sgpio_set_type(struct irq_data *d, unsigned int type)
+-{
+-	u32 type0 = 0;
+-	u32 type1 = 0;
+-	u32 type2 = 0;
+-	irq_flow_handler_t handler;
+-	struct aspeed_sgpio *gpio;
+-	unsigned long flags;
+-	void __iomem *addr;
+-	int offset;
+-
+-	irqd_to_aspeed_g7_sgpio_data(d, &gpio, &offset);
+-	addr = gpio->base + SGPIO_G7_CTRL_REG_OFFSET(offset >> 1);
++	struct aspeed_sgpio *gpio = irq_data_get_irq_chip_data(d);
++	int offset = irqd_to_hwirq(d);
+ 
+ 	switch (type & IRQ_TYPE_SENSE_MASK) {
+ 	case IRQ_TYPE_EDGE_BOTH:
+@@ -599,15 +357,14 @@ static int aspeed_g7_sgpio_set_type(struct irq_data *d, unsigned int type)
+ 		return -EINVAL;
+ 	}
+ 
+-	raw_spin_lock_irqsave(&gpio->lock, flags);
+-
+-	ast_write_bits(addr, SGPIO_G7_IRQ_TYPE2, type2);
+-	ast_write_bits(addr, SGPIO_G7_IRQ_TYPE1, type1);
+-	ast_write_bits(addr, SGPIO_G7_IRQ_TYPE0, type0);
+-
+-	raw_spin_unlock_irqrestore(&gpio->lock, flags);
++	scoped_guard(raw_spinlock_irqsave, &gpio->lock) {
++		gpio->pdata->llops->reg_bit_set(gpio, offset, reg_irq_type0, type0);
++		gpio->pdata->llops->reg_bit_set(gpio, offset, reg_irq_type1, type1);
++		gpio->pdata->llops->reg_bit_set(gpio, offset, reg_irq_type2, type2);
++	}
+ 
+ 	irq_set_handler_locked(d, handler);
++
+ 	return 0;
+ }
+ 
+@@ -616,64 +373,27 @@ static void aspeed_sgpio_irq_handler(struct irq_desc *desc)
+ 	struct gpio_chip *gc = irq_desc_get_handler_data(desc);
+ 	struct irq_chip *ic = irq_desc_get_chip(desc);
+ 	struct aspeed_sgpio *data = gpiochip_get_data(gc);
+-	unsigned int i, p;
+-	unsigned long reg;
+-
+-	chained_irq_enter(ic, desc);
+-
+-	for (i = 0; i < ARRAY_SIZE(aspeed_sgpio_banks); i++) {
+-		const struct aspeed_sgpio_bank *bank = &aspeed_sgpio_banks[i];
+-
+-		reg = ioread32(bank_reg(data, bank, reg_irq_status));
+-
+-		for_each_set_bit(p, &reg, 32)
+-			generic_handle_domain_irq(gc->irq.domain, (i * 32 + p) * 2);
+-	}
+-
+-	chained_irq_exit(ic, desc);
+-}
+-
+-static void aspeed_g7_sgpio_irq_handler(struct irq_desc *desc)
+-{
+-	struct gpio_chip *gc = irq_desc_get_handler_data(desc);
+-	struct irq_chip *ic = irq_desc_get_chip(desc);
+-	struct aspeed_sgpio *gpio = gpiochip_get_data(gc);
+ 	unsigned int i, p, banks;
+ 	unsigned long reg;
+-	void __iomem *addr;
+ 
+ 	chained_irq_enter(ic, desc);
+ 
+-	banks = DIV_ROUND_UP(gpio->chip.ngpio >> 1, 32);
++	banks = DIV_ROUND_UP(gc->ngpio, 64);
+ 	for (i = 0; i < banks; i++) {
+-		addr = gpio->base + SGPIO_G7_IRQ_STS_OFFSET(i);
+-
+-		reg = ioread32(addr);
++		reg = data->pdata->llops->reg_bank_get(data, i << 6, reg_irq_status);
+ 
+ 		for_each_set_bit(p, &reg, 32)
+ 			generic_handle_domain_irq(gc->irq.domain, (i * 32 + p) * 2);
+ 	}
++
+ 	chained_irq_exit(ic, desc);
+ }
+ 
+ static void aspeed_sgpio_irq_print_chip(struct irq_data *d, struct seq_file *p)
+ {
+-	const struct aspeed_sgpio_bank *bank;
+-	struct aspeed_sgpio *gpio;
+-	u32 bit;
+-	int offset;
++	struct aspeed_sgpio *gpio = irq_data_get_irq_chip_data(d);
+ 
+-	irqd_to_aspeed_sgpio_data(d, &gpio, &bank, &bit, &offset);
+-	seq_printf(p, dev_name(gpio->dev));
+-}
+-
+-static void aspeed_g7_sgpio_irq_print_chip(struct irq_data *d, struct seq_file *p)
+-{
+-	struct aspeed_sgpio *gpio;
+-	int offset;
+-
+-	irqd_to_aspeed_g7_sgpio_data(d, &gpio, &offset);
+-	seq_printf(p, dev_name(gpio->dev));
++	seq_puts(p, dev_name(gpio->dev));
+ }
+ 
+ static const struct irq_chip aspeed_sgpio_irq_chip = {
+@@ -686,21 +406,10 @@ static const struct irq_chip aspeed_sgpio_irq_chip = {
+ 	GPIOCHIP_IRQ_RESOURCE_HELPERS,
+ };
+ 
+-static const struct irq_chip aspeed_g7_sgpio_irq_chip = {
+-	.irq_ack = aspeed_g7_sgpio_irq_ack,
+-	.irq_mask = aspeed_g7_sgpio_irq_mask,
+-	.irq_unmask = aspeed_g7_sgpio_irq_unmask,
+-	.irq_set_type = aspeed_g7_sgpio_set_type,
+-	.irq_print_chip = aspeed_g7_sgpio_irq_print_chip,
+-	.flags = IRQCHIP_IMMUTABLE,
+-	GPIOCHIP_IRQ_RESOURCE_HELPERS,
+-};
+-
+ static int aspeed_sgpio_setup_irqs(struct aspeed_sgpio *gpio,
+ 				   struct platform_device *pdev)
+ {
+ 	int rc, i;
+-	const struct aspeed_sgpio_bank *bank;
+ 	struct gpio_irq_chip *irq;
+ 
+ 	rc = platform_get_irq(pdev, 0);
+@@ -709,94 +418,110 @@ static int aspeed_sgpio_setup_irqs(struct aspeed_sgpio *gpio,
+ 
+ 	gpio->irq = rc;
+ 
+-	if (gpio->version != 7)
+-		/* Disable IRQ and clear Interrupt status registers for all SGPIO Pins. */
+-		for (i = 0; i < ARRAY_SIZE(aspeed_sgpio_banks); i++) {
+-			bank =  &aspeed_sgpio_banks[i];
+-			/* disable irq enable bits */
+-			iowrite32(0x00000000, bank_reg(gpio, bank, reg_irq_enable));
+-			/* clear status bits */
+-			iowrite32(0xffffffff, bank_reg(gpio, bank, reg_irq_status));
+-		}
++	/* Disable IRQ and clear Interrupt status registers for all SGPIO Pins. */
++	for (i = 0; i < gpio->chip.ngpio; i += 2) {
++		/* disable irq enable bits */
++		gpio->pdata->llops->reg_bit_set(gpio, i, reg_irq_enable, 0);
++		/* clear status bits */
++		gpio->pdata->llops->reg_bit_set(gpio, i, reg_irq_status, 1);
++	}
+ 
+ 	irq = &gpio->chip.irq;
+-	if (gpio->version == 7)
+-		gpio_irq_chip_set_chip(irq, &aspeed_g7_sgpio_irq_chip);
+-	else
+-		gpio_irq_chip_set_chip(irq, &aspeed_sgpio_irq_chip);
++	gpio_irq_chip_set_chip(irq, &aspeed_sgpio_irq_chip);
+ 	irq->init_valid_mask = aspeed_sgpio_irq_init_valid_mask;
+ 	irq->handler = handle_bad_irq;
+ 	irq->default_type = IRQ_TYPE_NONE;
+-	irq->parent_handler = (gpio->version == 7) ?
+-				      aspeed_g7_sgpio_irq_handler :
+-				      aspeed_sgpio_irq_handler;
++	irq->parent_handler = aspeed_sgpio_irq_handler;
+ 	irq->parent_handler_data = gpio;
+ 	irq->parents = &gpio->irq;
+ 	irq->num_parents = 1;
+ 
+-	if (gpio->version != 7)
+-		/* Apply default IRQ settings */
+-		for (i = 0; i < ARRAY_SIZE(aspeed_sgpio_banks); i++) {
+-			bank = &aspeed_sgpio_banks[i];
+-			/* set falling or level-low irq */
+-			iowrite32(0x00000000, bank_reg(gpio, bank, reg_irq_type0));
+-			/* trigger type is edge */
+-			iowrite32(0x00000000, bank_reg(gpio, bank, reg_irq_type1));
+-			/* single edge trigger */
+-			iowrite32(0x00000000, bank_reg(gpio, bank, reg_irq_type2));
+-		}
++	/* Apply default IRQ settings */
++	for (i = 0; i < gpio->chip.ngpio; i += 2) {
++		/* set falling or level-low irq */
++		gpio->pdata->llops->reg_bit_set(gpio, i, reg_irq_type0, 0);
++		/* trigger type is edge */
++		gpio->pdata->llops->reg_bit_set(gpio, i, reg_irq_type1, 0);
++		/* single edge trigger */
++		gpio->pdata->llops->reg_bit_set(gpio, i, reg_irq_type2, 0);
++	}
+ 
+ 	return 0;
+ }
+ 
+-static const struct aspeed_sgpio_pdata ast2400_sgpio_pdata = {
+-	.pin_mask = GENMASK(9, 6),
+-	.ctrl_reg = 0x54,
+-};
+-
+-static int aspeed_sgpio_reset_tolerance(struct gpio_chip *chip,
+-					unsigned int offset, bool enable)
++static void aspeed_sgpio_g4_reg_bit_set(struct aspeed_sgpio *gpio, unsigned int offset,
++				      const enum aspeed_sgpio_reg reg, bool val)
+ {
+-	struct aspeed_sgpio *gpio = gpiochip_get_data(chip);
+-	unsigned long flags;
+-	void __iomem *reg;
+-	u32 val;
++	const struct aspeed_sgpio_bank *bank = to_bank(offset);
++	void __iomem *addr = aspeed_sgpio_g4_bank_reg(gpio, bank, reg);
++	u32 temp;
++
++	if (reg == reg_val) {
++		/* Since this is an output, read the cached value from rdata, then update val. */
++		addr = aspeed_sgpio_g4_bank_reg(gpio, bank, reg_rdata);
++		temp = ioread32(addr);
++		if (val)
++			temp |= GPIO_BIT(offset);
++		else
++			temp &= ~GPIO_BIT(offset);
+ 
+-	reg = bank_reg(gpio, to_bank(offset), reg_tolerance);
++		addr = aspeed_sgpio_g4_bank_reg(gpio, bank, reg_val);
++		iowrite32(temp, addr);
++	} else if (reg == reg_irq_status) {
++		if (val)
++			iowrite32(GPIO_BIT(offset), addr);
++	} else {
++		/* When setting other registers, we read from the register itself */
++		temp = ioread32(addr);
++		if (val)
++			temp |= GPIO_BIT(offset);
++		else
++			temp &= ~GPIO_BIT(offset);
++		iowrite32(temp, addr);
++	}
++}
+ 
+-	raw_spin_lock_irqsave(&gpio->lock, flags);
++static bool aspeed_sgpio_g4_reg_bit_get(struct aspeed_sgpio *gpio, unsigned int offset,
++					const enum aspeed_sgpio_reg reg)
++{
++	const struct aspeed_sgpio_bank *bank = to_bank(offset);
++	void __iomem *addr = aspeed_sgpio_g4_bank_reg(gpio, bank, reg);
+ 
+-	val = readl(reg);
++	return !!(ioread32(addr) & GPIO_BIT(offset));
++}
+ 
+-	if (enable)
+-		val |= GPIO_BIT(offset);
+-	else
+-		val &= ~GPIO_BIT(offset);
++static int aspeed_sgpio_g4_reg_bank_get(struct aspeed_sgpio *gpio, unsigned int offset,
++					const enum aspeed_sgpio_reg reg)
++{
++	const struct aspeed_sgpio_bank *bank = to_bank(offset);
++	void __iomem *addr = aspeed_sgpio_g4_bank_reg(gpio, bank, reg);
+ 
+-	writel(val, reg);
++	if (reg == reg_irq_status)
++		return ioread32(addr);
++	else
++		return -EOPNOTSUPP;
++}
+ 
+-	raw_spin_unlock_irqrestore(&gpio->lock, flags);
++static const struct aspeed_sgpio_llops aspeed_sgpio_g4_llops = {
++	.reg_bit_set = aspeed_sgpio_g4_reg_bit_set,
++	.reg_bit_get = aspeed_sgpio_g4_reg_bit_get,
++	.reg_bank_get = aspeed_sgpio_g4_reg_bank_get,
++};
+ 
+-	return 0;
+-}
++static const struct aspeed_sgpio_pdata ast2400_sgpio_pdata = {
++	.pin_mask = GENMASK(9, 6),
++	.llops = &aspeed_sgpio_g4_llops,
++	.cfg_offset = ASPEED_SGPIO_G4_CFG_OFFSET,
++};
+ 
+-static int aspeed_g7_sgpio_reset_tolerance(struct gpio_chip *chip,
+-					   unsigned int offset, bool enable)
++static int aspeed_sgpio_reset_tolerance(struct gpio_chip *chip,
++					unsigned int offset, bool enable)
+ {
+ 	struct aspeed_sgpio *gpio = gpiochip_get_data(chip);
+-	unsigned long flags;
+-	void __iomem *reg;
+ 
+-	reg = gpio->base + SGPIO_G7_CTRL_REG_OFFSET(offset >> 1);
++	guard(raw_spinlock_irqsave)(&gpio->lock);
+ 
+-	raw_spin_lock_irqsave(&gpio->lock, flags);
+-
+-	if (enable)
+-		ast_write_bits(reg, SGPIO_G7_RST_TOLERANCE, 1);
+-	else
+-		ast_clr_bits(reg, SGPIO_G7_RST_TOLERANCE);
+-
+-	raw_spin_unlock_irqrestore(&gpio->lock, flags);
++	gpio->pdata->llops->reg_bit_set(gpio, offset, reg_tolerance, enable);
+ 
+ 	return 0;
+ }
+@@ -804,37 +529,73 @@ static int aspeed_g7_sgpio_reset_tolerance(struct gpio_chip *chip,
+ static int aspeed_sgpio_set_config(struct gpio_chip *chip, unsigned int offset,
+ 				   unsigned long config)
+ {
+-	struct aspeed_sgpio *gpio = gpiochip_get_data(chip);
+ 	unsigned long param = pinconf_to_config_param(config);
+ 	u32 arg = pinconf_to_config_argument(config);
+ 
+-	if (param == PIN_CONFIG_PERSIST_STATE) {
+-		if (gpio->version == 7)
+-			return aspeed_g7_sgpio_reset_tolerance(chip, offset,
+-							       arg);
+-		else
+-			return aspeed_sgpio_reset_tolerance(chip, offset, arg);
+-	}
++	if (param == PIN_CONFIG_PERSIST_STATE)
++		return aspeed_sgpio_reset_tolerance(chip, offset, arg);
+ 
+ 	return -ENOTSUPP;
+ }
+ 
+ static const struct aspeed_sgpio_pdata ast2600_sgpiom_pdata = {
+ 	.pin_mask = GENMASK(10, 6),
+-	.ctrl_reg = 0x54,
++	.llops = &aspeed_sgpio_g4_llops,
++	.cfg_offset = ASPEED_SGPIO_G4_CFG_OFFSET,
+ };
+ 
+-static const struct aspeed_sgpio_pdata ast2700_sgpiom_pdata = {
+-	.pin_mask = GENMASK(11, 6),
+-	.ctrl_reg = 0x0,
+-	.version = 7,
++static void aspeed_sgpio_g7_reg_bit_set(struct aspeed_sgpio *gpio, unsigned int offset,
++					const enum aspeed_sgpio_reg reg, bool val)
++{
++	u32 mask = aspeed_sgpio_g7_reg_mask(reg);
++	void __iomem *addr = gpio->base + SGPIO_G7_CTRL_REG_OFFSET(offset >> 1);
++	u32 write_val;
++
++	if (mask) {
++		write_val = (ioread32(addr) & ~(mask)) | field_prep(mask, val);
++		iowrite32(write_val, addr);
++	}
++}
++
++static bool aspeed_sgpio_g7_reg_bit_get(struct aspeed_sgpio *gpio, unsigned int offset,
++					const enum aspeed_sgpio_reg reg)
++{
++	u32 mask = aspeed_sgpio_g7_reg_mask(reg);
++	void __iomem *addr;
++
++	addr = gpio->base + SGPIO_G7_CTRL_REG_OFFSET(offset >> 1);
++	if (reg == reg_val)
++		mask = SGPIO_G7_IN_DATA;
++
++	if (mask)
++		return field_get(mask, ioread32(addr));
++	else
++		return 0;
++}
++
++static int aspeed_sgpio_g7_reg_bank_get(struct aspeed_sgpio *gpio, unsigned int offset,
++					const enum aspeed_sgpio_reg reg)
++{
++	void __iomem *addr;
++
++	if (reg == reg_irq_status) {
++		addr = gpio->base + SGPIO_G7_IRQ_STS_OFFSET(offset >> 6);
++		return ioread32(addr);
++	} else {
++		return -EOPNOTSUPP;
++	}
++}
++
++static const struct aspeed_sgpio_llops aspeed_sgpio_g7_llops = {
++	.reg_bit_set = aspeed_sgpio_g7_reg_bit_set,
++	.reg_bit_get = aspeed_sgpio_g7_reg_bit_get,
++	.reg_bank_get = aspeed_sgpio_g7_reg_bank_get,
+ };
+ 
+-static const struct aspeed_sgpio_pdata ast2700_sgpios_pdata = {
++static const struct aspeed_sgpio_pdata ast2700_sgpiom_pdata = {
+ 	.pin_mask = GENMASK(11, 6),
+-	.ctrl_reg = 0x0,
+-	.version = 7,
+-	.slave = 1,
++	.llops = &aspeed_sgpio_g7_llops,
++	.cfg_offset = ASPEED_SGPIO_G7_CFG_OFFSET,
+ };
+ 
+ static const struct of_device_id aspeed_sgpio_of_table[] = {
+@@ -842,7 +603,6 @@ static const struct of_device_id aspeed_sgpio_of_table[] = {
+ 	{ .compatible = "aspeed,ast2500-sgpio", .data = &ast2400_sgpio_pdata, },
+ 	{ .compatible = "aspeed,ast2600-sgpiom", .data = &ast2600_sgpiom_pdata, },
+ 	{ .compatible = "aspeed,ast2700-sgpiom", .data = &ast2700_sgpiom_pdata, },
+-	{ .compatible = "aspeed,ast2700-sgpios", .data = &ast2700_sgpios_pdata, },
+ 	{}
+ };
+ 
+@@ -853,8 +613,7 @@ static int aspeed_sgpio_probe(struct platform_device *pdev)
+ 	u32 nr_gpios, sgpio_freq, sgpio_clk_div, gpio_cnt_regval, pin_mask;
+ 	struct aspeed_sgpio *gpio;
+ 	unsigned long apb_freq;
+-	void __iomem *addr;
+-	int rc, i;
++	int rc;
+ 
+ 	gpio = devm_kzalloc(&pdev->dev, sizeof(*gpio), GFP_KERNEL);
+ 	if (!gpio)
+@@ -871,8 +630,6 @@ static int aspeed_sgpio_probe(struct platform_device *pdev)
+ 		return -EINVAL;
+ 
+ 	pin_mask = gpio->pdata->pin_mask;
+-	gpio->version = gpio->pdata->version;
+-
+ 	rc = device_property_read_u32(&pdev->dev, "ngpios", &nr_gpios);
+ 	if (rc < 0) {
+ 		dev_err(&pdev->dev, "Could not read ngpios property\n");
+@@ -883,53 +640,41 @@ static int aspeed_sgpio_probe(struct platform_device *pdev)
+ 		return -EINVAL;
+ 	}
+ 
+-	if (gpio->version == 7 && !gpio->pdata->slave)
+-		for (i = 0; i < nr_gpios; i++) {
+-			addr = gpio->base + SGPIO_G7_CTRL_REG_OFFSET(i);
+-			ast_write_bits(addr, SGPIO_G7_SERIAL_OUT_SEL,
+-				       SELECT_FROM_CSR);
+-		}
+-
+-	if (!gpio->pdata->slave) {
+-		rc = device_property_read_u32(&pdev->dev, "bus-frequency", &sgpio_freq);
+-		if (rc < 0) {
+-			dev_err(&pdev->dev, "Could not read bus-frequency property\n");
+-			return -EINVAL;
+-		}
+-
+-		gpio->pclk = devm_clk_get(&pdev->dev, NULL);
+-		if (IS_ERR(gpio->pclk)) {
+-			dev_err(&pdev->dev, "devm_clk_get failed\n");
+-			return PTR_ERR(gpio->pclk);
+-		}
+-
+-		apb_freq = clk_get_rate(gpio->pclk);
+-
+-		/*
+-		 * From the datasheet,
+-		 *	SGPIO period = 1/PCLK * 2 * (GPIO254[31:16] + 1)
+-		 *	period = 2 * (GPIO254[31:16] + 1) / PCLK
+-		 *	frequency = 1 / (2 * (GPIO254[31:16] + 1) / PCLK)
+-		 *	frequency = PCLK / (2 * (GPIO254[31:16] + 1))
+-		 *	frequency * 2 * (GPIO254[31:16] + 1) = PCLK
+-		 *	GPIO254[31:16] = PCLK / (frequency * 2) - 1
+-		 */
+-		if (sgpio_freq == 0)
+-			return -EINVAL;
+-
+-		sgpio_clk_div = (apb_freq / (sgpio_freq * 2)) - 1;
+-
+-		if (sgpio_clk_div > (1 << 16) - 1)
+-			return -EINVAL;
+-
+-		gpio_cnt_regval = ((nr_gpios / 8) << ASPEED_SGPIO_PINS_SHIFT) & pin_mask;
+-		iowrite32(FIELD_PREP(ASPEED_SGPIO_CLK_DIV_MASK, sgpio_clk_div) |
+-				gpio_cnt_regval | ASPEED_SGPIO_ENABLE,
+-			gpio->base + gpio->pdata->ctrl_reg);
+-	} else {
+-		iowrite32(ASPEED_SGPIO_ENABLE, gpio->base + gpio->pdata->ctrl_reg);
++	rc = device_property_read_u32(&pdev->dev, "bus-frequency", &sgpio_freq);
++	if (rc < 0) {
++		dev_err(&pdev->dev, "Could not read bus-frequency property\n");
++		return -EINVAL;
+ 	}
+ 
++	gpio->pclk = devm_clk_get(&pdev->dev, NULL);
++	if (IS_ERR(gpio->pclk)) {
++		dev_err(&pdev->dev, "devm_clk_get failed\n");
++		return PTR_ERR(gpio->pclk);
++	}
++
++	apb_freq = clk_get_rate(gpio->pclk);
++
++	/*
++	 * From the datasheet,
++	 *	SGPIO period = 1/PCLK * 2 * (GPIO254[31:16] + 1)
++	 *	period = 2 * (GPIO254[31:16] + 1) / PCLK
++	 *	frequency = 1 / (2 * (GPIO254[31:16] + 1) / PCLK)
++	 *	frequency = PCLK / (2 * (GPIO254[31:16] + 1))
++	 *	frequency * 2 * (GPIO254[31:16] + 1) = PCLK
++	 *	GPIO254[31:16] = PCLK / (frequency * 2) - 1
++	 */
++	if (sgpio_freq == 0)
++		return -EINVAL;
++
++	sgpio_clk_div = (apb_freq / (sgpio_freq * 2)) - 1;
++
++	if (sgpio_clk_div > (1 << 16) - 1)
++		return -EINVAL;
++
++	gpio_cnt_regval = ((nr_gpios / 8) << ASPEED_SGPIO_PINS_SHIFT) & pin_mask;
++	iowrite32(FIELD_PREP(ASPEED_SGPIO_CLK_DIV_MASK, sgpio_clk_div) | gpio_cnt_regval |
++		  ASPEED_SGPIO_ENABLE, gpio->base + gpio->pdata->cfg_offset);
++
+ 	raw_spin_lock_init(&gpio->lock);
+ 
+ 	gpio->chip.parent = &pdev->dev;
+diff --git a/drivers/i3c/master/ast2600-i3c-master.c b/drivers/i3c/master/ast2600-i3c-master.c
+index 066b5ee90..fabe1313f 100644
+--- a/drivers/i3c/master/ast2600-i3c-master.c
++++ b/drivers/i3c/master/ast2600-i3c-master.c
+@@ -77,12 +77,16 @@
+ #define ADDR_HID(x)				((x) & ADDR_HID_MASK)
+ 
+ #define IBI_QUEUE_STATUS			0x18
++#define IBI_QUEUE_STATUS_DATA_LEN(x)	((x) & GENMASK(7, 0))
+ 
+ #define IBI_SIR_REQ_REJECT			0x30
+ #define INTR_STATUS_EN				0x40
+ #define INTR_SIGNAL_EN				0x44
+ #define   INTR_IBI_THLD_STAT			BIT(2)
+ 
++#define QUEUE_STATUS_LEVEL		0x4c
++#define QUEUE_STATUS_IBI_STATUS_CNT(x) (((x) & GENMASK(28, 24)) >> 24)
++
+ #define PRESENT_STATE				0x54
+ #define   CM_TFR_STS				GENMASK(13, 8)
+ #define     CM_TFR_STS_MASTER_SERV_IBI		0xe
+@@ -340,6 +344,20 @@ static void ast2600_i3c_gen_target_reset_pattern(struct dw_i3c_master *dw)
+ 			  SDA_IN_SW_MODE_EN | SCL_IN_SW_MODE_EN, 0);
+ }
+ 
++static void aspeed_i3c_drain_ibi_queue(struct dw_i3c_master *dw)
++{
++	/*
++	 * Clear the IBI queue to avoid any stale IBI data when
++	 * re-enabling the controller.
++	 */
++	u32 ibi_status = readl(dw->regs + IBI_QUEUE_STATUS);
++	u8 length = IBI_QUEUE_STATUS_DATA_LEN(ibi_status);
++	int i, nwords = (length + 3) >> 2;
++
++	for (i = 0; i < nwords; i++)
++		readl(dw->regs + IBI_QUEUE_STATUS);
++}
++
+ static bool ast2600_i3c_fsm_exit_serv_ibi(struct dw_i3c_master *dw)
+ {
+ 	u32 state;
+@@ -348,7 +366,7 @@ static bool ast2600_i3c_fsm_exit_serv_ibi(struct dw_i3c_master *dw)
+ 	 * Clear the IBI queue to enable the hardware to generate SCL and
+ 	 * begin detecting the T-bit low to stop reading IBI data.
+ 	 */
+-	readl(dw->regs + IBI_QUEUE_STATUS);
++	aspeed_i3c_drain_ibi_queue(dw);
+ 	state = FIELD_GET(CM_TFR_STS, readl(dw->regs + PRESENT_STATE));
+ 	if (state == CM_TFR_STS_MASTER_SERV_IBI)
+ 		return false;
+@@ -359,7 +377,8 @@ static bool ast2600_i3c_fsm_exit_serv_ibi(struct dw_i3c_master *dw)
+ static void ast2600_i3c_gen_tbits_in(struct dw_i3c_master *dw)
+ {
+ 	struct ast2600_i3c *i3c = to_ast2600_i3c(dw);
+-	bool is_idle;
++	bool is_halted;
++	u32 nibi, i;
+ 	int ret;
+ 
+ 	regmap_write_bits(i3c->global_regs, AST2600_I3CG_REG1(i3c->global_idx),
+@@ -370,14 +389,21 @@ static void ast2600_i3c_gen_tbits_in(struct dw_i3c_master *dw)
+ 	regmap_write_bits(i3c->global_regs, AST2600_I3CG_REG1(i3c->global_idx),
+ 			  SDA_IN_SW_MODE_VAL, 0);
+ 	ret = readx_poll_timeout_atomic(ast2600_i3c_fsm_exit_serv_ibi, dw,
+-					is_idle, is_idle, 0, 2000000);
++					is_halted, is_halted, 0, 2000000);
+ 	regmap_write_bits(i3c->global_regs, AST2600_I3CG_REG1(i3c->global_idx),
+ 			  SDA_IN_SW_MODE_EN, 0);
+-	if (ret)
++	if (ret) {
+ 		dev_err(&dw->base.dev,
+ 			"Failed to exit the I3C fsm from %lx(MASTER_SERV_IBI): %d",
+ 			FIELD_GET(CM_TFR_STS, readl(dw->regs + PRESENT_STATE)),
+ 			ret);
++	} else {
++		/* Clear the dummy data generated in this recovery process */
++		nibi = readl(dw->regs + QUEUE_STATUS_LEVEL);
++		nibi = QUEUE_STATUS_IBI_STATUS_CNT(nibi);
++		for (i = 0; i < nibi; i++)
++			aspeed_i3c_drain_ibi_queue(dw);
++	}
+ }
+ 
+ static void ast2600_i3c_set_ibi_mdb(struct dw_i3c_master *dw, u8 mdb)
+diff --git a/drivers/irqchip/Kconfig b/drivers/irqchip/Kconfig
+index 3f0afa73a..619d3fb51 100644
+--- a/drivers/irqchip/Kconfig
++++ b/drivers/irqchip/Kconfig
+@@ -734,6 +734,9 @@ config APPLE_AIC
+ 	  Support for the Apple Interrupt Controller found on Apple Silicon SoCs,
+ 	  such as the M1.
+ 
++config AST2700_IRQ
++	bool
++
+ config MCHP_EIC
+ 	bool "Microchip External Interrupt Controller"
+ 	depends on ARCH_AT91 || COMPILE_TEST
+diff --git a/drivers/irqchip/Makefile b/drivers/irqchip/Makefile
+index 95e13a5b2..56c98f5dd 100644
+--- a/drivers/irqchip/Makefile
++++ b/drivers/irqchip/Makefile
+@@ -83,6 +83,8 @@ obj-$(CONFIG_MVEBU_PIC)			+= irq-mvebu-pic.o
+ obj-$(CONFIG_MVEBU_SEI)			+= irq-mvebu-sei.o
+ obj-$(CONFIG_LS_EXTIRQ)			+= irq-ls-extirq.o
+ obj-$(CONFIG_LS_SCFG_MSI)		+= irq-ls-scfg-msi.o
++obj-$(CONFIG_ARCH_ASPEED)		+= irq-aspeed-vic.o irq-aspeed-i2c-ic.o irq-aspeed-scu-ic.o
++obj-$(CONFIG_STM32MP_EXTI)		+= irq-stm32mp-exti.o
+ obj-$(CONFIG_ARCH_ASPEED)		+= irq-aspeed-vic.o irq-aspeed-i2c-ic.o irq-aspeed-scu-ic.o irq-aspeed-intc.o irq-aspeed-e2m-ic.o
+ obj-$(CONFIG_AST2700_IRQ)		+= irq-ast2700-intc0.o irq-ast2700-intc1.o
+ obj-$(CONFIG_STM32_EXTI) 		+= irq-stm32-exti.o
+diff --git a/drivers/media/platform/aspeed/aspeed-video.c b/drivers/media/platform/aspeed/aspeed-video.c
+index 7e8758db8..0902e3064 100644
+--- a/drivers/media/platform/aspeed/aspeed-video.c
++++ b/drivers/media/platform/aspeed/aspeed-video.c
+@@ -612,6 +612,38 @@ static inline u32 _make_addr(dma_addr_t addr)
+ #endif
+ }
+ 
++static void aspeed_video_support_vga_ctrl(struct aspeed_video *v, bool yes)
++{
++	u32 val = yes ? BIT(0) : 0;
++	u32 reg;
++
++	if (!v || v->version < 6)
++		return;
++
++	if (v->version == 7)
++		reg = (v->id == 1) ? 0x914 : 0x904;
++	else
++		reg = 0x104;
++
++	regmap_update_bits(v->scu, reg, BIT(0), val);
++}
++
++static void aspeed_video_set_vga_on(struct aspeed_video *v, bool on)
++{
++	u32 val = on ? BIT(1) : 0;
++	u32 reg;
++
++	if (!v || v->version < 6)
++		return;
++
++	if (v->version == 7)
++		reg = (v->id == 1) ? 0x914 : 0x904;
++	else
++		reg = 0x104;
++
++	regmap_update_bits(v->scu, reg, BIT(1), val);
++}
++
+ static void aspeed_video_init_jpeg_table(u32 *table, bool yuv420)
+ {
+ 	int i;
+@@ -1912,12 +1944,6 @@ static int aspeed_video_set_input(struct file *file, void *fh, unsigned int i)
+ 	if (i >= VIDEO_INPUT_MAX)
+ 		return -EINVAL;
+ 
+-	if (i == video->input)
+-		return 0;
+-
+-	if (vb2_is_busy(&video->queue))
+-		return -EBUSY;
+-
+ 	if (IS_ERR(video->scu)) {
+ 		v4l2_dbg(1, debug, &video->v4l2_dev, "%s: scu isn't ready for input-control\n", __func__);
+ 		return -EINVAL;
+@@ -2480,6 +2506,8 @@ static int aspeed_video_start_streaming(struct vb2_queue *q,
+ 	int rc;
+ 	struct aspeed_video *video = vb2_get_drv_priv(q);
+ 
++	aspeed_video_set_vga_on(video, true);
++
+ 	video->sequence = 0;
+ 	video->perf.duration_max = 0;
+ 	video->perf.duration_min = 0xffffffff;
+@@ -2505,6 +2533,8 @@ static void aspeed_video_stop_streaming(struct vb2_queue *q)
+ 	int rc;
+ 	struct aspeed_video *video = vb2_get_drv_priv(q);
+ 
++	aspeed_video_set_vga_on(video, false);
++
+ 	clear_bit(VIDEO_STREAMING, &video->flags);
+ 
+ 	rc = wait_event_timeout(video->wait,
+@@ -2890,6 +2920,7 @@ static int aspeed_video_probe(struct platform_device *pdev)
+ 	const struct aspeed_video_config *config;
+ 	struct aspeed_video *video;
+ 	int rc;
++	bool vga_ctrl;
+ 
+ 	video = devm_kzalloc(&pdev->dev, sizeof(*video), GFP_KERNEL);
+ 	if (!video)
+@@ -2938,6 +2969,11 @@ static int aspeed_video_probe(struct platform_device *pdev)
+ 	if (rc)
+ 		return rc;
+ 
++	/* vga_ctrl is a property to say if VGA will be on/off with KVM */
++	vga_ctrl = of_find_property(pdev->dev.of_node, "vga_ctrl", NULL) ? 1 : 0;
++	aspeed_video_support_vga_ctrl(video, vga_ctrl);
++	aspeed_video_set_vga_on(video, false);
++
+ 	rc = aspeed_video_setup_video(video);
+ 	if (rc) {
+ 		clk_unprepare(video->vclk);
+diff --git a/drivers/net/ethernet/faraday/ftgmac100.c b/drivers/net/ethernet/faraday/ftgmac100.c
+index 3ce28dbed..035fa1c2b 100644
+--- a/drivers/net/ethernet/faraday/ftgmac100.c
++++ b/drivers/net/ethernet/faraday/ftgmac100.c
+@@ -27,6 +27,9 @@
+ #include <linux/if_vlan.h>
+ #include <linux/of_net.h>
+ #include <linux/phy_fixed.h>
++#include <linux/mfd/syscon.h>
++#include <linux/regmap.h>
++#include <linux/bitfield.h>
+ #include <net/ip.h>
+ #include <net/ncsi.h>
+ 
+@@ -1862,12 +1865,377 @@ static bool ftgmac100_has_child_node(struct device_node *np, const char *name)
+ 	return ret;
+ }
+ 
++static int ftgmac100_get_ast2600_rgmii_flag(u32 delay)
++{
++	if ((delay > 500 && delay < 1500) ||
++	    (delay > 2500 && delay < 7500))
++		return AST2600_RGMII_KEEP_DELAY;
++
++	return AST2600_RGMII_DIS_DELAY;
++}
++
++static int ftgmac100_check_ast2600_rgmii_delay(struct regmap *scu,
++					       u32 delay_unit,
++					       int mac_id, int dly_reg)
++{
++	u32 delay_value;
++	u32 tx_delay;
++	u32 rx_delay;
++	int tx_flag;
++	int rx_flag;
++
++	regmap_read(scu, dly_reg, &delay_value);
++	if (mac_id == 0 || mac_id == 2) {
++		tx_delay = FIELD_GET(ASPEED_MAC0_2_TX_DLY, delay_value);
++		rx_delay = FIELD_GET(ASPEED_MAC0_2_RX_DLY, delay_value);
++	} else {
++		tx_delay = FIELD_GET(ASPEED_MAC1_3_TX_DLY, delay_value);
++		rx_delay = FIELD_GET(ASPEED_MAC1_3_RX_DLY, delay_value);
++	}
++
++	/* Due to the hardware design reason, for MAC2/3 on AST2600,
++	 * the zero delay ns on RX is configured by setting value 0x1a.
++	 * List as below:
++	 * 0x1a, 0x1b, ... , 0x1f, 0x00, 0x01, ... , 0x19
++	 * Covert for calculation purpose.
++	 * 0x00, 0x01, ... , 0x19, 0x1a, 0x1b, ... , 0x1f
++	 */
++	if (mac_id == 2 || mac_id == 3)
++		rx_delay = (rx_delay + 0x06) & 0x1f;
++
++	tx_delay *= delay_unit;
++	rx_delay *= delay_unit;
++
++	tx_flag = ftgmac100_get_ast2600_rgmii_flag(tx_delay);
++	rx_flag = ftgmac100_get_ast2600_rgmii_flag(rx_delay);
++
++	if (tx_flag == AST2600_RGMII_KEEP_DELAY ||
++	    rx_flag == AST2600_RGMII_KEEP_DELAY) {
++		return AST2600_RGMII_KEEP_DELAY;
++	}
++
++	return AST2600_RGMII_DIS_DELAY;
++}
++
++static int ftgmac100_set_ast2600_rgmii_delay(struct ftgmac100 *priv,
++					     s32 rgmii_tx_delay,
++					     s32 rgmii_rx_delay,
++					     phy_interface_t *phy_intf)
++{
++	struct device *dev = priv->dev;
++	struct device_node *np;
++	u32 rgmii_delay_unit;
++	u32 rx_delay_index;
++	u32 tx_delay_index;
++	struct regmap *scu;
++	int dly_mask;
++	int dly_reg;
++	int mac_id;
++	int err;
++
++	np = dev->of_node;
++
++	err = of_get_phy_mode(np, phy_intf);
++	if (err) {
++		dev_err(priv->dev, "Failed to get phy mode: %d\n", err);
++		return err;
++	}
++
++	scu = syscon_regmap_lookup_by_phandle(np, "aspeed,scu");
++	if (IS_ERR(scu)) {
++		dev_err(dev, "failed to get aspeed,scu");
++		return PTR_ERR(scu);
++	}
++
++	/* According to the register base address to specify the corresponding
++	 * values.
++	 */
++	switch (priv->res->start) {
++	case AST2600_MAC0_BASE_ADDR:
++		mac_id = 0;
++		rgmii_delay_unit = AST2600_MAC01_CLK_DLY_UNIT;
++		dly_reg = AST2600_MAC01_CLK_DLY;
++		break;
++	case AST2600_MAC1_BASE_ADDR:
++		mac_id = 1;
++		rgmii_delay_unit = AST2600_MAC01_CLK_DLY_UNIT;
++		dly_reg = AST2600_MAC01_CLK_DLY;
++		break;
++	case AST2600_MAC2_BASE_ADDR:
++		mac_id = 2;
++		rgmii_delay_unit = AST2600_MAC23_CLK_DLY_UNIT;
++		dly_reg = AST2600_MAC23_CLK_DLY;
++		break;
++	case AST2600_MAC3_BASE_ADDR:
++		mac_id = 3;
++		rgmii_delay_unit = AST2600_MAC23_CLK_DLY_UNIT;
++		dly_reg = AST2600_MAC23_CLK_DLY;
++		break;
++	default:
++		dev_err(dev, "Invalid mac base address");
++		return -EINVAL;
++	}
++
++	if (of_phy_is_fixed_link(np)) {
++		if (rgmii_tx_delay < 0 || rgmii_rx_delay < 0) {
++			dev_err(dev,
++				"Add rx/tx-internal-delay-ps for fixed-link\n");
++			/* Keep original RGMII delay value*/
++			return 0;
++		}
++
++		/* Must have both of rx/tx-internal-delay-ps for fixed-link */
++		goto conf_delay;
++	}
++
++	if (*phy_intf == PHY_INTERFACE_MODE_RGMII_RXID ||
++	    *phy_intf == PHY_INTERFACE_MODE_RGMII_TXID)
++		goto out_warn;
++
++	if (*phy_intf != PHY_INTERFACE_MODE_RGMII &&
++	    *phy_intf != PHY_INTERFACE_MODE_RGMII_ID)
++		return 0;
++
++	/* Both rx/tx-internal-delay-ps are not existed. */
++	if (rgmii_tx_delay < 0 && rgmii_rx_delay < 0) {
++		int flag;
++
++		flag = ftgmac100_check_ast2600_rgmii_delay(scu,
++							   rgmii_delay_unit,
++							   mac_id,
++							   dly_reg);
++		if (flag == AST2600_RGMII_KEEP_DELAY)
++			goto out_warn;
++
++		if (*phy_intf == PHY_INTERFACE_MODE_RGMII) {
++			dev_err(dev, "Update phy-mode to 'rgmii-id'\n");
++			/* Forced phy interface to RGMII_ID and MAC will disable
++			 * RGMII delay.
++			 */
++			*phy_intf = PHY_INTERFACE_MODE_RGMII_ID;
++		}
++	} else {
++		/* Please refer to ethernet-controller.yaml. */
++		if (*phy_intf == PHY_INTERFACE_MODE_RGMII &&
++		    (rgmii_tx_delay == 2000 || rgmii_rx_delay == 2000)) {
++			dev_warn(dev,
++				 "RX/TX delay cannot set to 2000 on 'rgmii'\n");
++			return -EINVAL;
++		}
++	}
++
++	/* The value is negative, which means the rx/tx-internal-delay-ps
++	 * property is not existed in dts. Therefore, set to default 0.
++	 */
++	if (rgmii_tx_delay < 0)
++		rgmii_tx_delay = 0;
++	if (rgmii_rx_delay < 0)
++		rgmii_rx_delay = 0;
++
++conf_delay:
++	tx_delay_index = DIV_ROUND_CLOSEST(rgmii_tx_delay, rgmii_delay_unit);
++	if (tx_delay_index >= 32) {
++		dev_err(dev, "The %u ps of TX delay is out of range\n",
++			rgmii_tx_delay);
++		return -EINVAL;
++	}
++
++	rx_delay_index = DIV_ROUND_CLOSEST(rgmii_rx_delay, rgmii_delay_unit);
++	if (rx_delay_index >= 32) {
++		dev_err(dev, "The %u ps of RX delay is out of range\n",
++			rgmii_rx_delay);
++		return -EINVAL;
++	}
++
++	/* Due to the hardware design reason, for MAC2/3 on AST2600, the zero
++	 * delay ns on RX is configured by setting value 0x1a.
++	 * List as below:
++	 * 0x1a -> 0   ns, 0x1b -> 0.25 ns, ... , 0x1f -> 1.25 ns,
++	 * 0x00 -> 1.5 ns, 0x01 -> 1.75 ns, ... , 0x19 -> 7.75 ns, 0x1a -> 0 ns
++	 */
++	if (mac_id == 2 || mac_id == 3)
++		rx_delay_index = (AST2600_MAC23_RX_DLY_0_NS + rx_delay_index) &
++				 AST2600_MAC_TX_RX_DLY_MASK;
++
++	if (mac_id == 0 || mac_id == 2) {
++		dly_mask = ASPEED_MAC0_2_TX_DLY | ASPEED_MAC0_2_RX_DLY;
++		tx_delay_index = FIELD_PREP(ASPEED_MAC0_2_TX_DLY, tx_delay_index);
++		rx_delay_index = FIELD_PREP(ASPEED_MAC0_2_RX_DLY, rx_delay_index);
++	} else {
++		dly_mask = ASPEED_MAC1_3_TX_DLY | ASPEED_MAC1_3_RX_DLY;
++		tx_delay_index = FIELD_PREP(ASPEED_MAC1_3_TX_DLY, tx_delay_index);
++		rx_delay_index = FIELD_PREP(ASPEED_MAC1_3_RX_DLY, rx_delay_index);
++	}
++
++	regmap_update_bits(scu, dly_reg, dly_mask, tx_delay_index | rx_delay_index);
++
++	return 0;
++
++out_warn:
++	/* Print the warning message. Keep the phy-mode and the RGMII delay value. */
++	dev_warn(dev, "Update phy-mode to 'rgmii-id' and add rx/tx-internal-delay-ps\n");
++
++	return 0;
++}
++
++static int ftgmac100_set_ast2700_rgmii_delay(struct ftgmac100 *priv,
++					     s32 rgmii_tx_delay,
++					     s32 rgmii_rx_delay)
++{
++	struct device *dev = priv->dev;
++	struct device_node *np;
++	u32 rgmii_delay_tx_unit, rgmii_delay_rx_unit;
++	u32 rgmii_delay_tx_dis, rgmii_delay_rx_dis;
++	u32 tx_delay_index, rx_delay_index;
++	u32 reg_unit, reg_val;
++	struct regmap *scu;
++	int dly_mask;
++	int mac_id;
++
++	np = dev->of_node;
++
++	scu = syscon_regmap_lookup_by_phandle(np, "aspeed,scu");
++	if (IS_ERR(scu)) {
++		dev_err(dev, "failed to get aspeed,scu");
++		return PTR_ERR(scu);
++	}
++
++	/* According to the register base address to specify the corresponding
++	 * values.
++	 */
++	switch (priv->res->start) {
++	case AST2700_MAC0_BASE_ADDR:
++		mac_id = 0;
++		regmap_read(scu, AST2700_MAC0_DLY_UNIT, &reg_unit);
++		regmap_read(scu, AST2700_MAC0_DLY_VAL, &reg_val);
++		break;
++	case AST2700_MAC1_BASE_ADDR:
++		mac_id = 1;
++		regmap_read(scu, AST2700_MAC1_DLY_UNIT, &reg_unit);
++		regmap_read(scu, AST2700_MAC1_DLY_VAL, &reg_val);
++		break;
++	case AST2700_MAC2_BASE_ADDR:
++		/* Only support SGMII */
++		return 0;
++	default:
++		dev_err(dev, "Invalid mac base address");
++		return -EINVAL;
++	}
++
++	rgmii_delay_tx_unit = AST2700_MAC_TX_DLY_UNIT(reg_unit);
++	rgmii_delay_rx_unit = AST2700_MAC_RX_DLY_UNIT(reg_unit);
++	rgmii_delay_tx_dis = AST2700_MAC_TX_DLY_DIS(reg_val);
++	rgmii_delay_rx_dis = AST2700_MAC_RX_DLY_DIS(reg_val);
++
++	/* The value is negative, which means the rx/tx-internal-delay-ps
++	 * property is not existed in dts. Therefore, set to default 0.
++	 */
++	if (rgmii_tx_delay < 0)
++		rgmii_tx_delay = 0;
++	if (rgmii_rx_delay < 0)
++		rgmii_rx_delay = 0;
++
++	tx_delay_index = DIV_ROUND_CLOSEST(rgmii_tx_delay, rgmii_delay_tx_unit);
++	tx_delay_index += rgmii_delay_tx_dis;
++	if (tx_delay_index >= 32) {
++		dev_err(dev, "The %u ps of TX delay is out of range\n",
++			rgmii_tx_delay);
++		return -EINVAL;
++	}
++
++	rx_delay_index = DIV_ROUND_CLOSEST(rgmii_rx_delay, rgmii_delay_rx_unit);
++	rx_delay_index += rgmii_delay_rx_dis;
++	if (rx_delay_index >= 32) {
++		dev_err(dev, "The %u ps of RX delay is out of range\n",
++			rgmii_rx_delay);
++		return -EINVAL;
++	}
++
++	if (mac_id == 0) {
++		dly_mask = ASPEED_MAC0_2_TX_DLY | ASPEED_MAC0_2_RX_DLY;
++		tx_delay_index = FIELD_PREP(ASPEED_MAC0_2_TX_DLY, tx_delay_index);
++		rx_delay_index = FIELD_PREP(ASPEED_MAC0_2_RX_DLY, rx_delay_index);
++	} else {
++		dly_mask = ASPEED_MAC1_3_TX_DLY | ASPEED_MAC1_3_RX_DLY;
++		tx_delay_index = FIELD_PREP(ASPEED_MAC1_3_TX_DLY, tx_delay_index);
++		rx_delay_index = FIELD_PREP(ASPEED_MAC1_3_RX_DLY, rx_delay_index);
++	}
++
++	regmap_update_bits(scu, AST2700_MAC01_CLK_DLY, dly_mask,
++			   tx_delay_index | rx_delay_index);
++
++	return 0;
++}
++
++static int ftgmac100_set_internal_delay(struct ftgmac100 *priv,
++					phy_interface_t *phy_intf)
++{
++	struct device_node *np = priv->dev->of_node;
++	s32 rgmii_tx_delay;
++	s32 rgmii_rx_delay;
++	int err = 0;
++
++	/* NCSI mode is based on RMII, not neet to set delay for RMII */
++	if (of_get_property(np, "use-ncsi", NULL))
++		return 0;
++
++	/* AST2600 needs to know if the "tx/rx-internal-delay-ps" properties
++	 * are existed in dts. If not existed, set -1 and delay is equal to 0.
++	 */
++	if (of_property_read_u32(np, "tx-internal-delay-ps", &rgmii_tx_delay))
++		rgmii_tx_delay = -1;
++	if (of_property_read_u32(np, "rx-internal-delay-ps", &rgmii_rx_delay))
++		rgmii_rx_delay = -1;
++
++	if ((of_device_is_compatible(np, "aspeed,ast2600-mac")))
++		err = ftgmac100_set_ast2600_rgmii_delay(priv,
++							rgmii_tx_delay,
++							rgmii_rx_delay,
++							phy_intf);
++	else if ((of_device_is_compatible(np, "aspeed,ast2700-mac")))
++		err = ftgmac100_set_ast2700_rgmii_delay(priv,
++							rgmii_tx_delay,
++							rgmii_rx_delay);
++
++	return err;
++}
++
++static struct phy_device *ftgmac100_ast2600_phy_get(struct net_device *dev,
++						    struct device_node *np,
++						    void (*hndlr)(struct net_device *),
++						    phy_interface_t phy_intf)
++{
++	struct device_node *phy_np;
++	struct phy_device *phy;
++	int ret;
++
++	if (of_phy_is_fixed_link(np)) {
++		ret = of_phy_register_fixed_link(np);
++		if (ret < 0) {
++			netdev_err(dev, "broken fixed-link specification\n");
++			return NULL;
++		}
++		phy_np = of_node_get(np);
++	} else {
++		phy_np = of_parse_phandle(np, "phy-handle", 0);
++		if (!phy_np)
++			return NULL;
++	}
++
++	phy = of_phy_connect(dev, phy_np, hndlr, 0, phy_intf);
++
++	of_node_put(phy_np);
++
++	return phy;
++}
++
+ static int ftgmac100_probe(struct platform_device *pdev)
+ {
+ 	struct resource *res;
+ 	int irq;
+ 	struct net_device *netdev;
+ 	struct phy_device *phydev;
++	phy_interface_t phy_intf;
+ 	struct ftgmac100 *priv;
+ 	struct device_node *np;
+ 	int err = 0;
+@@ -1937,6 +2305,10 @@ static int ftgmac100_probe(struct platform_device *pdev)
+ 		priv->rxdes0_edorr_mask = BIT(30);
+ 		priv->txdes0_edotr_mask = BIT(30);
+ 		priv->is_aspeed = true;
++		/* Configure RGMII delay if there are the corresponding compatibles */
++		err = ftgmac100_set_internal_delay(priv, &phy_intf);
++		if (err)
++			goto err_phy_connect;
+ 	} else {
+ 		priv->rxdes0_edorr_mask = BIT(15);
+ 		priv->txdes0_edotr_mask = BIT(15);
+@@ -1985,8 +2357,16 @@ static int ftgmac100_probe(struct platform_device *pdev)
+ 				goto err_setup_mdio;
+ 		}
+ 
+-		phy = of_phy_get_and_connect(priv->netdev, np,
+-					     &ftgmac100_adjust_link);
++		/* Because AST2600 will use the RGMII delay to determine
++		 * which phy interface to use.
++		 */
++		if (of_device_is_compatible(np, "aspeed,ast2600-mac"))
++			phy = ftgmac100_ast2600_phy_get(priv->netdev, np,
++							&ftgmac100_adjust_link,
++							phy_intf);
++		else
++			phy = of_phy_get_and_connect(priv->netdev, np,
++						     &ftgmac100_adjust_link);
+ 		if (!phy) {
+ 			dev_err(&pdev->dev, "Failed to connect to phy\n");
+ 			err = -EINVAL;
+diff --git a/drivers/net/ethernet/faraday/ftgmac100.h b/drivers/net/ethernet/faraday/ftgmac100.h
+index f8c30a09d..73cdd1a1b 100644
+--- a/drivers/net/ethernet/faraday/ftgmac100.h
++++ b/drivers/net/ethernet/faraday/ftgmac100.h
+@@ -281,4 +281,43 @@ struct ftgmac100_rxdes {
+ #define FTGMAC100_RXDES1_IP_CHKSUM_ERR	(1 << 27)
+ 
+ #define FTGMAC100_RXDES2_RXBUF_BADR_HI	GENMASK(18, 16)
++
++/* Aspeed SCU */
++#define AST2600_MAC01_CLK_DLY	0x340
++#define AST2600_MAC23_CLK_DLY	0x350
++#define AST2600_MAC01_CLK_DLY_UNIT	45	/* ps */
++#define AST2600_MAC01_TX_DLY_0_NS	0
++#define AST2600_MAC01_RX_DLY_0_NS	0
++#define AST2600_MAC23_CLK_DLY_UNIT	250	/* ps */
++#define AST2600_MAC23_TX_DLY_0_NS	0
++#define AST2600_MAC23_RX_DLY_0_NS	0x1a
++#define AST2600_MAC_TX_RX_DLY_MASK	0x1f
++#define ASPEED_MAC0_2_TX_DLY		GENMASK(5, 0)
++#define ASPEED_MAC0_2_RX_DLY		GENMASK(17, 12)
++#define ASPEED_MAC1_3_TX_DLY		GENMASK(11, 6)
++#define ASPEED_MAC1_3_RX_DLY		GENMASK(23, 18)
++
++#define AST2600_MAC0_BASE_ADDR		0x1e660000
++#define AST2600_MAC1_BASE_ADDR		0x1e680000
++#define AST2600_MAC2_BASE_ADDR		0x1e670000
++#define AST2600_MAC3_BASE_ADDR		0x1e690000
++
++/* Keep original delay */
++#define AST2600_RGMII_KEEP_DELAY	0x01
++/* Need to disable delay on MAC side */
++#define AST2600_RGMII_DIS_DELAY		0x02
++
++#define AST2700_MAC0_DLY_UNIT   0x190
++#define AST2700_MAC_TX_DLY_UNIT(x)	FIELD_GET(GENMASK(15, 0), (x))
++#define AST2700_MAC_RX_DLY_UNIT(x)	FIELD_GET(GENMASK(31, 16), (x))
++#define AST2700_MAC0_DLY_VAL    0x194
++#define AST2700_MAC_TX_DLY_DIS(x)	FIELD_GET(GENMASK(7, 0), (x))
++#define AST2700_MAC_RX_DLY_DIS(x)	FIELD_GET(GENMASK(23, 16), (x))
++#define AST2700_MAC1_DLY_UNIT   0x198
++#define AST2700_MAC1_DLY_VAL    0x19c
++#define AST2700_MAC01_CLK_DLY	0x390
++#define AST2700_MAC0_BASE_ADDR		0x14050000
++#define AST2700_MAC1_BASE_ADDR		0x14060000
++#define AST2700_MAC2_BASE_ADDR		0x14070000
++
+ #endif /* __FTGMAC100_H */
+diff --git a/drivers/net/mctp/mctp-pcie-vdm.c b/drivers/net/mctp/mctp-pcie-vdm.c
+index e89a296af..f715fc085 100644
+--- a/drivers/net/mctp/mctp-pcie-vdm.c
++++ b/drivers/net/mctp/mctp-pcie-vdm.c
+@@ -33,7 +33,8 @@
+ #include <net/mctp.h>
+ #include <net/mctpdevice.h>
+ 
+-#define MCTP_PCIE_VDM_MIN_MTU 64
++// 64bytes mctp payload + 4bytes mctp header
++#define MCTP_PCIE_VDM_MIN_MTU (64 + 4)
+ #define MCTP_PCIE_VDM_MAX_MTU 512
+ /* 16byte */
+ #define MCTP_PCIE_VDM_HDR_SIZE 16
+@@ -311,12 +312,9 @@ void mctp_pcie_vdm_receive_packet(struct net_device *ndev)
+ 
+ 		cb = __mctp_cb(skb);
+ 		cb->halen = 3; // route type | bdf address
+-		cb->haddr[0] = vdm_hdr->route_type;
+-		// address is also converted to little-endian, but we want to keep it as big-endian
+-		// because kernel network layer assumes address in big-endian format
+-		cb->haddr[1] = vdm_hdr->pci_req_id & 0xFF;
+-		cb->haddr[2] = vdm_hdr->pci_req_id >> 8;
+-
++		cb->haddr[0] = vdm_hdr->route_type & GENMASK(2, 0);
++		cb->haddr[1] = vdm_hdr->pci_req_id >> 8;
++		cb->haddr[2] = vdm_hdr->pci_req_id & 0xFF;
+ 		net_status = netif_rx(skb);
+ 		if (net_status == NET_RX_SUCCESS) {
+ 			stats->rx_packets++;
+diff --git a/drivers/reset/Kconfig b/drivers/reset/Kconfig
+index 0158fba2a..bfa791c92 100644
+--- a/drivers/reset/Kconfig
++++ b/drivers/reset/Kconfig
+@@ -58,8 +58,8 @@ config RESET_BERLIN
+ 
+ config RESET_BRCMSTB
+ 	tristate "Broadcom STB reset controller"
+-	depends on ARCH_BRCMSTB || ARCH_BCM2835 || COMPILE_TEST
+-	default ARCH_BRCMSTB || ARCH_BCM2835
++	depends on ARCH_BRCMSTB || COMPILE_TEST
++	default ARCH_BRCMSTB
+ 	help
+ 	  This enables the reset controller driver for Broadcom STB SoCs using
+ 	  a SUN_TOP_CTRL_SW_INIT style controller.
+@@ -67,11 +67,11 @@ config RESET_BRCMSTB
+ config RESET_BRCMSTB_RESCAL
+ 	tristate "Broadcom STB RESCAL reset controller"
+ 	depends on HAS_IOMEM
+-	depends on ARCH_BRCMSTB || ARCH_BCM2835 || COMPILE_TEST
+-	default ARCH_BRCMSTB || ARCH_BCM2835
++	depends on ARCH_BRCMSTB || COMPILE_TEST
++	default ARCH_BRCMSTB
+ 	help
+ 	  This enables the RESCAL reset controller for SATA, PCIe0, or PCIe1 on
+-	  BCM7216 or the BCM2712.
++	  BCM7216.
+ 
+ config RESET_EYEQ
+ 	bool "Mobileye EyeQ reset controller"
+@@ -186,7 +186,6 @@ config RESET_MESON_AUDIO_ARB
+ config RESET_NPCM
+ 	bool "NPCM BMC Reset Driver" if COMPILE_TEST
+ 	default ARCH_NPCM
+-	select AUXILIARY_BUS
+ 	help
+ 	  This enables the reset controller driver for Nuvoton NPCM
+ 	  BMC SoCs.
+diff --git a/drivers/rtc/rtc-aspeed.c b/drivers/rtc/rtc-aspeed.c
+index 2196aaf47..c171e39f5 100644
+--- a/drivers/rtc/rtc-aspeed.c
++++ b/drivers/rtc/rtc-aspeed.c
+@@ -301,21 +301,25 @@ static int aspeed_rtc_probe(struct platform_device *pdev)
+ 	 * In rtc_read_time, run aspeed_rtc_read_time and check the rtc_time.
+ 	 * As a result, need to enable and initialize RTC time.
+ 	 *
++	 * If the RTC_ENABLE has been set, it means that the RTC has been initialed
+ 	 * Enable and unlock RTC to initialize RTC time to 1970-01-01T01:01:01
+ 	 * and re-lock and ensure enable is set now that a time is programmed.
+ 	 */
+ 	ctrl = readl(rtc->base + RTC_CTRL);
+-	writel(ctrl | RTC_UNLOCK, rtc->base + RTC_CTRL);
+ 
+-	/*
+-	 * Initial value set to year:70,mon:0,mday:1,hour:1,min:1,sec:1
+-	 * rtc_valid_tm check whether in suitable range or not.
+-	 */
+-	writel(0x01010101, rtc->base + RTC_TIME);
+-	writel(0x00134601, rtc->base + RTC_YEAR);
++	if (!(ctrl & RTC_ENABLE)) {
++		writel(ctrl | RTC_UNLOCK, rtc->base + RTC_CTRL);
+ 
+-	/* Re-lock and ensure enable is set now that a time is programmed */
+-	writel(ctrl | RTC_ENABLE, rtc->base + RTC_CTRL);
++		/*
++		 * Initial value set to year:70,mon:0,mday:1,hour:1,min:1,sec:1
++		 * rtc_valid_tm check whether in suitable range or not.
++		 */
++		writel(0x01010101, rtc->base + RTC_TIME);
++		writel(0x00134601, rtc->base + RTC_YEAR);
++
++		/* Re-lock and ensure enable is set now that a time is programmed */
++		writel(ctrl | RTC_ENABLE, rtc->base + RTC_CTRL);
++	}
+ 
+ 	rc = devm_rtc_register_device(rtc->rtc_dev);
+ 	if (rc) {
+diff --git a/drivers/usb/gadget/udc/aspeed-vhub/core.c b/drivers/usb/gadget/udc/aspeed-vhub/core.c
+index 64b9048e8..f230d602c 100644
+--- a/drivers/usb/gadget/udc/aspeed-vhub/core.c
++++ b/drivers/usb/gadget/udc/aspeed-vhub/core.c
+@@ -257,6 +257,10 @@ void ast_vhub_init_hw(struct ast_vhub *vhub)
+ 	if (vhub->force_usb1)
+ 		ctrl |= VHUB_CTRL_FULL_SPEED_ONLY;
+ 
++	/* Enlarge FIFO for ast2700 soc0 vhub1 */
++	if (vhub->enlarge_fifo)
++		ctrl |= VHUB_CTRL_ENLARGE_FIFO;
++
+ 	ctrl |= VHUB_CTRL_AUTO_REMOTE_WAKEUP;
+ 	ctrl |= VHUB_CTRL_UPSTREAM_CONNECT;
+ 	writel(ctrl, vhub->regs + AST_VHUB_CTRL);
+@@ -454,6 +458,8 @@ static int ast_vhub_probe(struct platform_device *pdev)
+ 	if (!vhub->epns)
+ 		return -ENOMEM;
+ 
++	vhub->enlarge_fifo = of_property_read_bool(np, "aspeed,enlarge-fifo");
++
+ 	spin_lock_init(&vhub->lock);
+ 	vhub->pdev = pdev;
+ 	vhub->port_irq_mask = GENMASK(VHUB_IRQ_DEV1_BIT + vhub->max_ports - 1,
+diff --git a/drivers/usb/gadget/udc/aspeed-vhub/vhub.h b/drivers/usb/gadget/udc/aspeed-vhub/vhub.h
+index 78abf0a7c..1b710b8fd 100644
+--- a/drivers/usb/gadget/udc/aspeed-vhub/vhub.h
++++ b/drivers/usb/gadget/udc/aspeed-vhub/vhub.h
+@@ -35,6 +35,7 @@
+ #define VHUB_CTRL_PHY_LOOP_TEST			(1 << 25)
+ #define VHUB_CTRL_DN_PWN			(1 << 24)
+ #define VHUB_CTRL_DP_PWN			(1 << 23)
++#define VHUB_CTRL_ENLARGE_FIFO			(1 << 21)
+ #define VHUB_CTRL_LONG_DESC			(1 << 18)
+ #define VHUB_CTRL_ISO_RSP_CTRL			(1 << 17)
+ #define VHUB_CTRL_SPLIT_IN			(1 << 16)
+@@ -429,6 +430,9 @@ struct ast_vhub {
+ 	/* Force full speed only */
+ 	bool				force_usb1 : 1;
+ 
++	/* Enlarge FIFO for ast2700 soc0 vhub1 */
++	bool				enlarge_fifo : 1;
++
+ 	/* Upstream bus speed captured at bus reset */
+ 	unsigned int			speed;
+ 	u8				current_config;
+-- 
+2.34.1
+
