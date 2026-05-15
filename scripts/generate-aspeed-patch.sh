@@ -80,27 +80,17 @@ echo ""
 echo "Step 3: Applying SONiC patches (excluding Aspeed)..."
 cd "$SONIC_SRC"
 PATCH_COUNT=0
-SKIP_COUNT=0
-IN_ASPEED_SECTION=0
 
 # Temporarily disable exit-on-error for patch application
 set +e
 
 while IFS= read -r line; do
-    # Check for aspeed section markers
+    # Stop at the aspeed section. Patches at or after the "###-> aspeed"
+    # marker (the aspeed patches themselves and anything listed after the
+    # "###-> aspeed-end" marker) MUST NOT be applied 
     if [[ "$line" == "###-> aspeed" ]]; then
-        IN_ASPEED_SECTION=1
-        echo "Skipping Aspeed section..."
-        continue
-    elif [[ "$line" == "###-> aspeed-end" ]]; then
-        IN_ASPEED_SECTION=0
-        continue
-    fi
-
-    # Skip if in aspeed section
-    if [ $IN_ASPEED_SECTION -eq 1 ]; then
-        SKIP_COUNT=$((SKIP_COUNT + 1))
-        continue
+        echo "Reached aspeed section, stopping patch application."
+        break
     fi
 
     # Skip comments and empty lines
@@ -119,12 +109,61 @@ while IFS= read -r line; do
     else
         echo "Warning: Patch file not found: $line"
     fi
-done < <(head -228 "$KERNEL_DIR/patches-sonic/series")
+done < "$KERNEL_DIR/patches-sonic/series"
 
 # Re-enable exit-on-error
 set -e
 
-echo "Applied $PATCH_COUNT patches, skipped $SKIP_COUNT Aspeed patches"
+echo "Applied $PATCH_COUNT patches (stopped at aspeed section)"
+
+# List patches that follow the "###-> aspeed-end" marker. They are NOT
+# applied here (the loop above stopped at "###-> aspeed"), so the diff
+# generated in Step 6 reflects a tree that does not have them yet. At
+# SONiC build time these patches are applied AFTER the regenerated
+# aspeed patch -- if any of them touch a file that the aspeed patch
+# also modifies, their context lines / hunk offsets will be stale and
+# `quilt push` will fail. Surface the list here so the maintainer can
+# review and regenerate them if needed.
+echo ""
+echo "========================================="
+echo "WARNING: Patches listed AFTER '###-> aspeed-end' marker"
+echo "========================================="
+echo "These patches were NOT applied to sonic-src and are replayed"
+echo "AFTER aspeed-ast2700-support.patch at SONiC build time. If any"
+echo "of them modify files that are also touched by the regenerated"
+echo "aspeed patch, they may need to be regenerated against the new"
+echo "tree state."
+echo ""
+echo "Patches to review:"
+
+POST_ASPEED_COUNT=0
+PAST_ASPEED_END=0
+while IFS= read -r line; do
+    if [[ "$line" == "###-> aspeed-end" ]]; then
+        PAST_ASPEED_END=1
+        continue
+    fi
+
+    if [ $PAST_ASPEED_END -eq 0 ]; then
+        continue
+    fi
+
+    # Skip comments and empty lines
+    if [[ "$line" =~ ^#.*$ ]] || [[ -z "$line" ]]; then
+        continue
+    fi
+
+    echo "  - $line"
+    POST_ASPEED_COUNT=$((POST_ASPEED_COUNT + 1))
+done < "$KERNEL_DIR/patches-sonic/series"
+
+if [ $POST_ASPEED_COUNT -eq 0 ]; then
+    echo "  (none -- no patches listed after the aspeed section)"
+fi
+echo ""
+echo "Total post-aspeed patches to review: $POST_ASPEED_COUNT"
+echo "========================================="
+echo ""
 
 # Step 4: Create sonic-src-aspeed by copying sonic-src
 echo ""
@@ -172,76 +211,7 @@ fi
 echo "Step 5b: Intelligently merging modified Kconfig files..."
 KCONFIG_COUNT=0
 
-# Create Python script for smart merging
-cat > "$WORK_DIR/smart_merge.py" << 'PYTHON_EOF'
-#!/usr/bin/env python3
-"""
-Smart merge for Kconfig/Makefile files.
-Uses a common ancestor approach: extract Aspeed additions from diff,
-add them to SONiC base at correct locations while preserving order.
-"""
-import sys
-import re
-import difflib
-
-def smart_merge(sonic_file, aspeed_file, target_file):
-    # Aspeed-related patterns
-    aspeed_patterns = [
-        re.compile(r'aspeed', re.IGNORECASE),
-        re.compile(r'ast2[567]00', re.IGNORECASE),
-        re.compile(r'ast1[78]00', re.IGNORECASE),
-        re.compile(r'AST2700_IRQ'),
-        re.compile(r'ARCH_ASPEED'),
-    ]
-
-    def is_aspeed_related(text):
-        return any(pattern.search(text) for pattern in aspeed_patterns)
-
-    # Read files
-    with open(sonic_file, 'r') as f:
-        sonic_lines = f.readlines()
-
-    with open(aspeed_file, 'r') as f:
-        aspeed_lines = f.readlines()
-
-    # Use difflib to get a proper sequence matcher
-    matcher = difflib.SequenceMatcher(None, sonic_lines, aspeed_lines)
-
-    result = []
-
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag == 'equal':
-            # Common lines - keep them
-            result.extend(sonic_lines[i1:i2])
-        elif tag == 'delete':
-            # Lines deleted in aspeed - KEEP THEM (preserve SONiC content)
-            result.extend(sonic_lines[i1:i2])
-        elif tag == 'insert':
-            # Lines added in aspeed - check if Aspeed-related
-            new_lines = aspeed_lines[j1:j2]
-            aspeed_related = any(is_aspeed_related(line) for line in new_lines)
-            if aspeed_related:
-                # Add these lines
-                result.extend(new_lines)
-            # Otherwise skip (non-Aspeed additions)
-        elif tag == 'replace':
-            # Lines changed - keep SONiC version, then add Aspeed additions if any
-            result.extend(sonic_lines[i1:i2])
-            new_lines = aspeed_lines[j1:j2]
-            aspeed_related = any(is_aspeed_related(line) for line in new_lines)
-            if aspeed_related:
-                # Also add the Aspeed replacements
-                result.extend(new_lines)
-
-    # Write result
-    with open(target_file, 'w') as f:
-        f.writelines(result)
-
-if __name__ == '__main__':
-    smart_merge(sys.argv[1], sys.argv[2], sys.argv[3])
-PYTHON_EOF
-
-chmod +x "$WORK_DIR/smart_merge.py"
+SMART_MERGE="$SCRIPT_DIR/smart_merge.py"
 
 find "$ASPEED_SRC" -name "Kconfig" -type f > "$WORK_DIR/kconfig-files.txt"
 while IFS= read -r aspeed_kconfig; do
@@ -275,7 +245,7 @@ while IFS= read -r aspeed_kconfig; do
                 mkdir -p "$SONIC_ASPEED/$(dirname $rel_path)"
 
                 # Try smart merge, fall back to full copy if it fails
-                if ! python3 "$WORK_DIR/smart_merge.py" "$sonic_kconfig" "$aspeed_kconfig" "$target_kconfig" 2>/dev/null; then
+                if ! python3 "$SMART_MERGE" "$sonic_kconfig" "$aspeed_kconfig" "$target_kconfig" 2>/dev/null; then
                     echo "    Smart merge failed, using full file"
                     cp "$aspeed_kconfig" "$target_kconfig"
                 fi
@@ -326,7 +296,7 @@ while IFS= read -r aspeed_makefile; do
                 mkdir -p "$SONIC_ASPEED/$(dirname $rel_path)"
 
                 # Use smart merge, fall back to full copy if it fails
-                if ! python3 "$WORK_DIR/smart_merge.py" "$sonic_makefile" "$aspeed_makefile" "$target_makefile" 2>/dev/null; then
+                if ! python3 "$SMART_MERGE" "$sonic_makefile" "$aspeed_makefile" "$target_makefile" 2>/dev/null; then
                     echo "    Smart merge failed, using full file"
                     cp "$aspeed_makefile" "$target_makefile"
                 fi
@@ -478,7 +448,7 @@ if [ -f "$ASPEED_SRC/arch/arm64/Kconfig.platforms" ]; then
     if ! diff -q "$SONIC_SRC/arch/arm64/Kconfig.platforms" "$ASPEED_SRC/arch/arm64/Kconfig.platforms" > /dev/null 2>&1; then
         if diff -u "$SONIC_SRC/arch/arm64/Kconfig.platforms" "$ASPEED_SRC/arch/arm64/Kconfig.platforms" | grep -qi "aspeed"; then
             echo "  Smart merging arch/arm64/Kconfig.platforms with Aspeed changes"
-            if ! python3 "$WORK_DIR/smart_merge.py" "$SONIC_SRC/arch/arm64/Kconfig.platforms" \
+            if ! python3 "$SMART_MERGE" "$SONIC_SRC/arch/arm64/Kconfig.platforms" \
                          "$ASPEED_SRC/arch/arm64/Kconfig.platforms" \
                          "$SONIC_ASPEED/arch/arm64/Kconfig.platforms" 2>/dev/null; then
                 echo "    Smart merge failed, using full file"
@@ -494,7 +464,7 @@ if [ -f "$ASPEED_SRC/arch/arm64/boot/dts/Makefile" ]; then
     if ! diff -q "$SONIC_SRC/arch/arm64/boot/dts/Makefile" "$ASPEED_SRC/arch/arm64/boot/dts/Makefile" > /dev/null 2>&1; then
         if diff -u "$SONIC_SRC/arch/arm64/boot/dts/Makefile" "$ASPEED_SRC/arch/arm64/boot/dts/Makefile" | grep -qi "aspeed"; then
             echo "  Smart merging arch/arm64/boot/dts/Makefile with Aspeed changes"
-            if ! python3 "$WORK_DIR/smart_merge.py" "$SONIC_SRC/arch/arm64/boot/dts/Makefile" \
+            if ! python3 "$SMART_MERGE" "$SONIC_SRC/arch/arm64/boot/dts/Makefile" \
                          "$ASPEED_SRC/arch/arm64/boot/dts/Makefile" \
                          "$SONIC_ASPEED/arch/arm64/boot/dts/Makefile" 2>/dev/null; then
                 echo "    Smart merge failed, using full file"

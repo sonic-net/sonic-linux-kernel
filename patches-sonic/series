@@ -256,6 +256,29 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 0011-PCI-AER-Fix-NULL-pointer-access-by-aer_info.patch
 0012-PCI-AER-Avoid-NULL-pointer-dereference-in-aer_rateli.patch
 
+# QID-45097: Crackarmor fixes
+qsa-2026-apparmor/0001-apparmor-validate-DFA-start-states-are-in-bounds-in-.patch
+qsa-2026-apparmor/0002-apparmor-fix-memory-leak-in-verify_header.patch
+qsa-2026-apparmor/0003-apparmor-replace-recursive-profile-removal-with-iter.patch
+qsa-2026-apparmor/0004-apparmor-fix-limit-the-number-of-levels-of-policy-na.patch
+qsa-2026-apparmor/0005-apparmor-fix-side-effect-bug-in-match_char-macro-usa.patch
+qsa-2026-apparmor/0006-apparmor-fix-missing-bounds-check-on-DEFAULT-table-i.patch
+qsa-2026-apparmor/0007-apparmor-Fix-double-free-of-ns_name-in-aa_replace_pr.patch
+qsa-2026-apparmor/0008-apparmor-fix-unprivileged-local-user-can-do-privileg.patch
+qsa-2026-apparmor/0009-apparmor-fix-differential-encoding-verification.patch
+qsa-2026-apparmor/0010-apparmor-fix-race-on-rawdata-dereference.patch
+qsa-2026-apparmor/0011-apparmor-fix-race-between-freeing-data-and-fs-access.patch
+# Patches for EVPN MH
+0001-vxlan-bridge-Add-NDA_FLAGS_EXT-support-with-NTF_EXT_.patch
+0002-net-bridge-vxlan-Protocol-field-in-bridge-fdb.patch
+# Drop 0003 when kernel >= 6.12 (merged upstream: torvalds/linux 03dc03fa0432)
+0003-neighbor-Add-NTF_EXT_VALIDATED-flag-for-externally-v.patch
+
+############################################################
+#
+# Let us keep Aspeed patches at the end
+#
+############################################################
 ###-> aspeed
 aspeed-ast2700-support.patch
 nexthop-b27-dts.patch
@@ -274,24 +297,6 @@ arista_goldfinch-dts.patch
 0006-jtag-Add-JTAG-core-headers-GPIO-mux-and-locking-support.patch
 0007-JTAG-Aspeed-Fix-kernel-configuration.patch
 ###-> nvidia_aspeed_bmc-end
-
-# QID-45097: Crackarmor fixes
-qsa-2026-apparmor/0001-apparmor-validate-DFA-start-states-are-in-bounds-in-.patch
-qsa-2026-apparmor/0002-apparmor-fix-memory-leak-in-verify_header.patch
-qsa-2026-apparmor/0003-apparmor-replace-recursive-profile-removal-with-iter.patch
-qsa-2026-apparmor/0004-apparmor-fix-limit-the-number-of-levels-of-policy-na.patch
-qsa-2026-apparmor/0005-apparmor-fix-side-effect-bug-in-match_char-macro-usa.patch
-qsa-2026-apparmor/0006-apparmor-fix-missing-bounds-check-on-DEFAULT-table-i.patch
-qsa-2026-apparmor/0007-apparmor-Fix-double-free-of-ns_name-in-aa_replace_pr.patch
-qsa-2026-apparmor/0008-apparmor-fix-unprivileged-local-user-can-do-privileg.patch
-qsa-2026-apparmor/0009-apparmor-fix-differential-encoding-verification.patch
-qsa-2026-apparmor/0010-apparmor-fix-race-on-rawdata-dereference.patch
-qsa-2026-apparmor/0011-apparmor-fix-race-between-freeing-data-and-fs-access.patch
-# Patches for EVPN MH
-0001-vxlan-bridge-Add-NDA_FLAGS_EXT-support-with-NTF_EXT_.patch
-0002-net-bridge-vxlan-Protocol-field-in-bridge-fdb.patch
-# Drop 0003 when kernel >= 6.12 (merged upstream: torvalds/linux 03dc03fa0432)
-0003-neighbor-Add-NTF_EXT_VALIDATED-flag-for-externally-v.patch
 
 #
 #
