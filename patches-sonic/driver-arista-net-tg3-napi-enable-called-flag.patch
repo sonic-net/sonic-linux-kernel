@@ -1,0 +1,136 @@
+From 821f6d79ad2773e0ff1537c0bb3c7af93a694709 Mon Sep 17 00:00:00 2001
+From: Yury Murashka <yurypm@arista.com>
+Date: Thu, 8 May 2026 00:00:00 +0000
+Subject: tg3: guard napi_disable and pci_disable_device calls
+
+We need this patch to fix a soft lockup in the Linux kernel on Arista
+modular chassis in the 202511 branch.
+During linecard resets, uncorrectable errors could be reported.
+As a result, AER recovery for the tg3 device can be initiated by the
+AER kernel driver. The tg3_io_error_detected function is the AER error
+recovery handler.
+From tg3_io_error_detected, we call tg3_netif_stop->tg3_napi_disable->
+napi_disable and return PCI_ERS_RESULT_NEED_RESET on non-fatal error.
+We expect that during AER recovery tg3_io_slot_reset and tg3_io_resume will
+be called. But AER error recovery can fail. For example, when one of PCIe
+devices on the same bus reports PCI_ERS_RESULT_NO_AER_DRIVER. As a result,
+tg3_io_slot_reset and tg3_io_resume are not called, PCIe device is
+disabled and NAPI is disabled (pci_disable_device and napi_disabled
+are called from tg3_io_error_detected). Then we can try to disable PCIe link
+and napi_disable will be called again:
+    napi_disable+0x1b/0x1b0
+    tg3_napi_disable+0x89/0xa0 [tg3]
+    tg3_netif_stop+0x37/0xe3 [tg3]
+    tg3_stop+0x30/0x160 [tg3]
+    tg3_close+0x2a/0x60 [tg3]
+    __dev_close_many+0xad/0x130
+    dev_close_many+0xb2/0x190
+    unregister_netdevice_many_notify+0x19d/0xa00
+    ? try_to_wake_up+0x302/0x680
+    unregister_netdevice_queue+0xf8/0x140
+    unregister_netdev+0x1c/0x30
+    tg3_remove_one+0xaa/0x150 [tg3]
+    pci_device_remove+0x42/0xb0
+    device_release_driver_internal+0x19c/0x200
+    pci_stop_bus_device+0x85/0xb0
+    pci_stop_bus_device+0x2c/0xb0
+    pci_stop_bus_device+0x2c/0xb0
+    pci_stop_and_remove_bus_device+0x12/0x20
+    pciehp_unconfigure_device+0x9f/0x160
+    pciehp_disable_slot+0x67/0x100
+    pciehp_handle_presence_or_link_change+0x77/0x350
+This is not expected by napi_disable and a thread can be locked in
+napi_disable forever. We have pcierr_recovery to cover similar issue, but for
+fatal errors. We cannot reuse this flag because it is reset in tg3_io_resume,
+but it is not called when AER recovery fails.
+
+If an AER error is reported, recovery is started and tg3_io_error_detected is
+called. In tg3_io_error_detected, NAPI is disabled and pci_disable_device is
+called. Then, if we try to reset the device, pci_disable_device will be called
+again for the same device.
+
+Add a napi_enabled flag to struct tg3 to track whether napi_enable has
+been called. Guard tg3_napi_disable() against being called before
+tg3_napi_enable(), logging an error if that happens. Also guard
+pci_disable_device() calls in tg3_remove_one() and tg3_shutdown() with
+pci_is_enabled() to avoid disabling an already-disabled device.
+
+Signed-off-by: Yury Murashka <yurypm@arista.com>
+---
+ drivers/net/ethernet/broadcom/tg3.c | 19 +++++++++++++++++--
+ drivers/net/ethernet/broadcom/tg3.h |  1 +
+ 2 files changed, 18 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/broadcom/tg3.c b/drivers/net/ethernet/broadcom/tg3.c
+index 52adda7..63f8f44 100644
+--- a/drivers/net/ethernet/broadcom/tg3.c
++++ b/drivers/net/ethernet/broadcom/tg3.c
+@@ -7432,6 +7432,17 @@ tx_recovery:
+ static void tg3_napi_disable(struct tg3 *tp)
+ {
+ 	int i;
++	struct net_device *netdev = tp->dev;
++
++	if (!tp->napi_enabled) {
++		netdev_err(netdev, "%s() called when napi_enable wasn't "
++			   "called before, netif_running=%d, pci_enabled=%d\n",
++			   __func__, netif_running(netdev),
++			   pci_is_enabled(tp->pdev));
++		return;
++	}
++
++	tp->napi_enabled = false;
+
+ 	for (i = tp->irq_cnt - 1; i >= 0; i--)
+ 		napi_disable(&tp->napi[i].napi);
+@@ -7441,6 +7452,8 @@ static void tg3_napi_enable(struct tg3 *tp)
+ {
+ 	int i;
+
++	tp->napi_enabled = true;
++
+ 	for (i = 0; i < tp->irq_cnt; i++)
+ 		napi_enable(&tp->napi[i].napi);
+ }
+@@ -17734,6 +17747,7 @@ static int tg3_init_one(struct pci_dev *pdev,
+ 	tp->tx_mode = TG3_DEF_TX_MODE;
+ 	tp->irq_sync = 1;
+ 	tp->pcierr_recovery = false;
++	tp->napi_enabled = false;
+
+ 	if (tg3_debug > 0)
+ 		tp->msg_enable = tg3_debug;
+@@ -18125,7 +18139,8 @@ static void tg3_remove_one(struct pci_dev *pdev)
+ 		}
+ 		free_netdev(dev);
+ 		pci_release_regions(pdev);
+-		pci_disable_device(pdev);
++		if (pci_is_enabled(pdev))
++			pci_disable_device(pdev);
+ 	}
+ }
+
+@@ -18281,7 +18296,8 @@ static void tg3_shutdown(struct pci_dev *pdev,
+
+ 	rtnl_unlock();
+
+-	pci_disable_device(pdev);
++	if (pci_is_enabled(pdev))
++		pci_disable_device(pdev);
+ }
+
+ /**
+diff --git a/drivers/net/ethernet/broadcom/tg3.h b/drivers/net/ethernet/broadcom/tg3.h
+index 6017b17..dbbd87b 100644
+--- a/drivers/net/ethernet/broadcom/tg3.h
++++ b/drivers/net/ethernet/broadcom/tg3.h
+@@ -3430,6 +3430,7 @@ struct tg3 {
+ 	struct device			*hwmon_dev;
+ 	bool				link_up;
+ 	bool				pcierr_recovery;
++	bool				napi_enabled;
+
+ 	u32                             ape_hb;
+ 	unsigned long                   ape_hb_interval;
+--
+2.39.0
