@@ -1,0 +1,634 @@
+From 90dd2881db42e4ca0be7663cd5b31282e9d324a0 Mon Sep 17 00:00:00 2001
+From: Oleksandr Ivantsiv <oivantsiv@nvidia.com>
+Date: Fri, 8 May 2026 00:15:02 +0300
+Subject: [PATCH 1/2] DTS: Aspeed: Nvidia spc6 bmc dts
+
+Add DTS for AST2700 A1 for Nvidia.
+
+Signed-off-by: Oleksandr Ivantsiv <oivantsiv@nvidia.com>
+---
+ arch/arm64/boot/dts/aspeed/Makefile           |   7 +
+ .../aspeed-nvidia-spc6-a1-bmc-core.dtsi       | 125 +++++
+ .../dts/aspeed/aspeed-nvidia-spc6-a1-bmc.dts  | 463 ++++++++++++++++++
+ 3 files changed, 595 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-a1-bmc-core.dtsi
+ create mode 100644 arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-a1-bmc.dts
+
+diff --git a/arch/arm64/boot/dts/aspeed/Makefile b/arch/arm64/boot/dts/aspeed/Makefile
+index 5caf80a7f..a481a41b5 100644
+--- a/arch/arm64/boot/dts/aspeed/Makefile
++++ b/arch/arm64/boot/dts/aspeed/Makefile
+@@ -27,3 +27,10 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
+ 	ast2700a1-evb-s0.dtb \
+ 	ast2700a1-evb-s1.dtb \
+ 	ast2700a1-ci-host.dtb
++
++###
++### Nvidia DTBs 
++###
++
++dtb-$(CONFIG_ARCH_ASPEED) += \
++	aspeed-nvidia-spc6-a1-bmc.dtb
+diff --git a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-a1-bmc-core.dtsi b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-a1-bmc-core.dtsi
+new file mode 100644
+index 000000000..d3b9eb76a
+--- /dev/null
++++ b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-a1-bmc-core.dtsi
+@@ -0,0 +1,125 @@
++// SPDX-License-Identifier: GPL-2.0+
++/dts-v1/;
++
++#include "aspeed-g7.dtsi"
++#include <dt-bindings/gpio/aspeed-gpio.h>
++
++&gpio1 {
++	gpio-line-names =
++
++	/* gpio-line-names are the combination of <signal>-<I/O> , "" is the placeholder for the unused pins*/
++
++	/* 208 (26*8) 3.3V GPIOs */
++
++	/*A0-A7*/
++	"", "", "", "", "", "", "", "",
++
++	/*B0-B7*/
++	"", "", "", "", "", "", "", "",
++
++	/*C0-C7*/
++	"", "", "", "", "", "", "", "",
++
++	/*D0-D7*/
++	"", "", "", "", "", "", "", "",
++
++	/*E0-E7*/
++	"", "GP_BMC_STBY_PWR_EN", "GP_STBY_PG", "GP_BMC_PRESNT0_L", "", "", "", "",
++
++	/*F0-F7*/
++	"", "", "", "", "", "", "", "",
++
++	/*G0-G7*/
++	"", "", "", "", "", "", "", "",
++
++	/*H0-H7*/
++	"", "", "", "", "", "", "", "",
++
++	/*I0-I7*/
++	"", "", "", "", "", "", "", "",
++
++	/*J0-J7*/
++	"", "", "", "", "", "", "", "",
++
++	/*K0-K7*/
++	"", "", "", "", "", "", "", "",
++
++	/*L0-L7*/
++	"", "", "", "", "", "", "", "",
++
++	/*M0-M7*/
++	"", "", "", "", "", "", "", "",
++
++	/*N0-N7*/
++	"", "", "", "", "", "", "", "",
++
++	/*O0-O7*/
++	"", "", "", "", "", "", "", "",
++
++	/*P0-P7*/
++	"", "", "", "", "", "", "", "",
++
++	/*Q0-Q7*/
++	"", "", "", "", "", "", "", "",
++
++	/*R0-R7*/
++	"GP_BMC_EXP_INT_L", "", "", "GP_BMC_READY", "GP_APML_SMB_ALERT_L", "", "", "GP_MGMT_CPLD_BMC_INT_L",
++
++	/*S0-S7*/
++	"GP_BMC_GPIO_EXP_RESET_L", "GP_BMC_PWR_CYCLE_BMC", "", "", "", "", "", "",
++
++	/*T0-T7*/
++	"", "", "", "", "", "", "", "",
++
++	/*U0-U7*/
++	"", "", "", "", "", "", "", "",
++
++	/*V0-V7*/
++	"", "", "", "", "", "", "", "",
++
++	/*W0-W7*/
++	"", "", "", "", "", "", "", "",
++
++	/*X0-X7*/
++	"", "", "", "", "", "", "", "",
++
++	/*Y0-Y7*/
++	"", "", "", "", "", "", "", "",
++
++	/*Z0-Z7*/
++	"", "", "", "", "", "", "", "";
++
++	bmc_ready {
++		gpio-hog;
++		gpios = <ASPEED_GPIO(R, 3) GPIO_TRANSITORY>;
++		output-high;
++		line-name = "gpio-bmc-ready";
++	};
++
++	stby_enable {
++		gpio-hog;
++		gpios = <ASPEED_GPIO(E, 1) GPIO_TRANSITORY>;
++		output-high;
++		line-name = "gpio-stby-enable";
++	};
++
++};
++
++&gpio0 {
++	/* 36 1.8V GPIOs */
++	gpio-line-names =
++	/*A0-A7*/
++	"", "", "", "", "", "", "", "",
++
++	/*B0-B7*/
++	"", "", "", "", "", "", "", "",
++
++	/*C0-C7*/
++	"", "", "", "", "", "", "", "",
++
++	/*D0-D7*/
++	"", "", "", "", "", "", "", "",
++
++	/*E0-E7*/
++	"", "", "", "", "", "", "", "";
++};
+diff --git a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-a1-bmc.dts b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-a1-bmc.dts
+new file mode 100644
+index 000000000..753abd6bd
+--- /dev/null
++++ b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-a1-bmc.dts
+@@ -0,0 +1,463 @@
++// SPDX-License-Identifier: GPL-2.0+
++/dts-v1/;
++
++#include "aspeed-nvidia-spc6-a1-bmc-core.dtsi"
++#include <dt-bindings/leds/common.h>
++#include <dt-bindings/gpio/aspeed-gpio.h>
++#include <dt-bindings/i2c/i2c.h>
++
++#define PCIE0_EP 1     // 1: EP, 0: RC
++
++/ {
++	model = "AST2700-A1 Spc6 CPU BMC";
++	compatible = "aspeed,ast2700";
++
++	chosen {
++		stdout-path = &uart12;
++		bootargs = "console=ttyS12,115200 earlyprintk";
++	};
++
++	memory@400000000 {
++		device_type = "memory";
++		reg = <0x4 0x00000000 0x0 0x40000000>;
++	};
++
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
++
++		#include "ast2700-reserved-mem.dtsi"
++	};
++};
++
++/*
++ * SPI1: BIOS recovery (CS0, CPLD selects which flash) and TPM (CS1, AST2700 only).
++ * AST2700 uses &spi1 (aspeed-g7.dtsi); AST2600 uses &spi1raw.
++ * Remove default flash@0/flash@1 from dtsi so spidev and tpm are the only children.
++ */
++&spi1 {
++	status = "okay";
++	/delete-node/ flash@0;
++	/delete-node/ flash@1;
++	spidev@0 {
++		/* BIOS flash: CPLD (spi_chnl_select) selects which of two flashes */
++		compatible = "rohm,dh2228fv";
++		reg = <0>;
++		status = "okay";
++	};
++	/* TPM on chip select 1; both ST33 and Infineon SLB9672 use tpm_tis_spi */
++	tpm@1 {
++		compatible = "st,st33htpm-spi", "infineon,slb9670", "tcg,tpm_tis-spi";
++		reg = <1>;
++		spi-max-frequency = <10000000>;
++	};
++};
++
++#if 0
++&fmc {
++	status = "okay";
++	pinctrl-0 = <&pinctrl_fwspi_quad_default>;
++	pinctrl-names = "default";
++
++	flash@0 {
++		status = "okay";
++		m25p,fast-read;
++		label = "bmc";
++		spi-max-frequency = <20000000>;
++		spi-tx-bus-width = <4>;
++		spi-rx-bus-width = <4>;
++
++		partitions {
++			compatible = "fixed-partitions";
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			u-boot@0 {
++				reg = <0x0 0x300000>; // 3MB
++				label = "u-boot";
++			};
++
++			/* TODO: move to eMMC */
++			u-boot-env@300000 {
++				reg = <0x300000 0x20000>; // 128KB
++				label = "u-boot-env";
++			};
++
++			kernel@320000 {
++				reg = <0x320000 0x900000>; // 9MB
++				label = "kernel";
++			};
++			rofs@c20000 {
++				reg = <0xc20000 0x3000000>; // 48MB
++				label = "rofs";
++			};
++			rwfs@3c20000 {
++				reg = <0x3C20000 0x3E0000>; // ~4MB
++				label = "rwfs";
++			};
++		};
++	};
++
++	flash@1 {
++		status = "okay";
++		m25p,fast-read;
++		label = "fmc0:1";
++		spi-max-frequency = <20000000>;
++		spi-tx-bus-width = <4>;
++		spi-rx-bus-width = <4>;
++	};
++
++	flash@2 {
++		status = "disabled";
++		m25p,fast-read;
++		label = "fmc0:2";
++		spi-max-frequency = <20000000>;
++		spi-tx-bus-width = <4>;
++		spi-rx-bus-width = <4>;
++	};
++};
++#endif
++
++&rtc {
++	status = "okay";
++};
++
++&uart1 {
++	status = "okay";
++};
++
++&uart12 {
++	// BMC Debug Console
++	status = "okay";
++};
++
++&mdio0 {
++	status = "disabled";
++};
++
++&mdio1 {
++	status = "disabled";
++};
++
++&mac0 {
++	status = "disabled";
++};
++
++&mac1 {
++	status = "disabled";
++};
++
++&sgmii {
++	status = "okay";
++	#phy-cells = <0>;
++};
++
++&mdio2 {
++	status = "okay";
++	reset-gpios = <&exp0 10 GPIO_ACTIVE_LOW>;
++	reset-delay-us = <30000>;
++	reset-post-delay-us = <30000>;
++
++	ethphy2: ethernet-phy@0 {
++		compatible = "ethernet-phy-ieee802.3-c22";
++		reg = <0>;
++	};
++};
++
++&mac2 {
++	status = "okay";
++	phy-mode = "sgmii";
++	phy-handle = <&ethphy2>;
++	phys = <&sgmii>;
++	phy-names = "sgmii-phy";
++};
++
++/*
++ * Enable port A as device (via the virtual hub) and port B as
++ * host by default on the eval board. This can be easily changed
++ * by replacing the override below with &ehci0 { ... } to enable
++ * host on both ports.
++ */
++&vhuba0 {
++	status = "okay";
++};
++
++/* USB PORT B - MCU and Power bank */
++/* This is an assembly option */
++&ehci1 {
++	status = "okay";
++};
++
++&i2c0 {
++	status = "okay";
++};
++
++/* I2C bus connecting BMC to CPU for IPMI */
++/* Note : On Chameleon SPC6 on 2600 it will be i2c-0, on 2700 i2c-16 */
++&i2c1 {
++	status = "okay";
++	bus-frequency = <100000>;    /* 100 KHz standard mode */
++	/* BMC as I2C slave for IPMB */
++	ipmb@20 {
++		compatible = "ipmb-dev";
++		reg = <0x20>;           /* BMC slave address (7-bit) */
++		slave-dev;              /* This is a slave device */
++	};
++};
++
++
++&i2c2 {
++	status = "disabled";
++};
++
++&i2c3 {
++	status = "okay";
++	bus-frequency = <100000>;         /* 100 KHz */
++	aspeed,hw-timeout-ms = <1000>;
++	multi-master;
++};
++
++&i2c4 {
++	status = "okay";
++/*
++	// To be added later
++	rtc@6f {
++		compatible = "nxp,pcf85053a";
++		reg = <0x6f>;
++	};
++*/
++};
++
++&i2c5 {
++	status = "okay";
++	exp0: pcal6524@20 {
++	status = "okay";
++		compatible = "nxp,pcal6524";
++		reg = <0x20>;
++		gpio-controller;
++		#gpio-cells = <2>;
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		gpio-line-names =
++			"RSRVD_0", "GP_EROT_RST_IN_L",
++			"GP_3V3_BMC_PHY_PG", "GP_BMC_PWR_CYCLE_3V3_MASK_L",
++			"GP_BMC_SPI_BUF_OE_L", "GP_BMC_SPI_TPM_BUF_OE_L",
++			"SE_CPLD_EROT_BOOT_COMPLETE", "GP_BMC_WP_CTRL_L",
++			"GP_BMC_REC_SPI_MUX1_SEL", "RSRVD_1",
++			"S_BMC_GPIO_PHY_RST_L", "GP_JTAG_BMC_CPLD_BURN_EN_L",
++			"GP_PWR_BANK_PRESENT_L", "RSRVD_2",
++			"RSRVD_3", "RSRVD_4",
++			"RSRVD_5", "RSRVD_6",
++			"RSRVD_7", "GP_PROD_CS_FLASH0_EN",
++			"RSRVD_8", "GP_PROD_CS_FLASH1_EN",
++			"RSRVD_9", "RSRVD_10";
++	};
++};
++
++&i2c6 {
++	status = "okay";
++};
++
++&i2c7 {
++	status = "okay";
++	clock-frequency = <400000>;
++	i2c-tck-thddat-config = <0x0099EC00>;
++};
++
++&i2c8 {
++	status = "okay";
++	clock-frequency = <400000>;
++	i2c-tck-thddat-config = <0x0099EC00>;
++};
++
++/* Used by I3C */
++&i2c9 {
++    status = "disabled";
++};
++
++&i2c10 {
++	status = "okay";
++	clock-frequency = <400000>;
++	i2c-tck-thddat-config = <0x0099EC00>;
++};
++
++&i2c11 {
++    status = "disabled";
++};
++
++&i2c12 {
++    status = "disabled";
++};
++
++/* CPU master to BMC slave recovery interface */
++/* Note: On Chameleon SPC6 multi - on 2600 it will be i2c-9, on 2700 - i2c-13 */
++&i2c13 {
++	status = "okay";
++	clock-frequency = <400000>;
++	i2c-tck-thddat-config = <0x0099EC00>;
++	/*
++	* BMC slave device (slave-24c02 at 0x42) is to be instantiated via
++	* bmc-i2c-slave-setup.service at boot. This approach ensures the
++	* I2C_CLIENT_SLAVE flag (0x1042) is properly set, which is required
++	* for the Aspeed I2C controller to register the hardware slave address.
++	*
++	* DTS-based instantiation doesn't set the I2C_CLIENT_SLAVE flag, causing:
++	*   "i2c_slave_register: client slave flag not set. You might see address collisions"
++	* and preventing proper slave address registration in hardware.
++	*
++	* Note: "multi-master" is not required.
++	*
++	* Manual instantiation: echo slave-24c02 0x1042 > /sys/bus/i2c/devices/i2c-9/new_device
++	* Consider to provide service: /etc/systemd/system/bmc-i2c-slave-setup.service
++	*/
++};
++
++&i2c14 {
++	status = "okay";
++	cpld: nvsw_bmc_hid189@31 {
++		compatible = "nvidia,hid189";
++		reg = <0x31>;
++		interrupt-parent = <&gpio1>;
++		interrupts = <ASPEED_GPIO(R, 7) GPIO_ACTIVE_HIGH>;
++	};
++};
++
++&i2c15 {
++	status = "okay";
++};
++
++&pcie0 {
++	status = "okay";
++};
++
++&mctp0 {
++	status = "okay";
++};
++
++&jtag0 {
++	status = "okay";
++};
++
++&jtag1 {
++	status = "okay";
++};
++
++// Enable emmc
++&emmc_controller {
++	status = "okay";
++	mmc-hs200-1_8v;
++};
++
++&emmc {
++	status = "okay";
++	non-removable;
++	bus-width = <4>;
++	max-frequency = <52000000>;
++};
++
++/* eSPI Controller - Communication with host CPU */
++&espi0 {
++	status = "okay";
++	perif-dma-mode;
++	perif-mmbi-enable;
++	perif-mmbi-src-addr = <0x0 0xa8000000>;
++	perif-mmbi-tgt-memory = <&espi0_mmbi_memory>;
++	perif-mmbi-instance-num = <0x1>;
++	perif-mcyc-enable;
++	perif-mcyc-src-addr = <0x0 0x98000000>;
++	perif-mcyc-size = <0x0 0x10000>;
++	oob-dma-mode;
++	flash-dma-mode;
++};
++
++/* RTC over eSPI - Time synchronization with host */
++&rtc_over_espi0 {
++	status = "okay";
++};
++
++// TODO: FIXME probably N/A for in 2700
++#if 0
++&lpc_ctrl {
++	status = "okay";
++	memory-region = <&espi_memory>;
++};
++
++&lpc_reset {
++	status = "okay";
++};
++#endif
++
++/*
++ * LPC SNOOP for POST code capture (simpler alternative to PCC)
++ *
++ * SNOOP driver benefits:
++ * - Mainline Linux driver (well-tested, stable)
++ * - Two independent channels for monitoring multiple ports
++ * - Simple FIFO-based interface via /dev/aspeed-lpc-snoop0/1
++ *
++ * Usage:
++ *   modprobe aspeed-lpc-snoop
++ *   hexdump -C /dev/aspeed-lpc-snoop0    # Monitor port 0x80
++ *   hexdump -C /dev/aspeed-lpc-snoop1    # Monitor port 0x81 (if configured)
++ */
++&pcie_lpc0_snoop {
++	status = "okay";
++	snoop-ports = <0x80>;  /* Capture POST codes from port 0x80 */
++	/*
++	* Optional: Add second port for dual-channel monitoring
++	* snoop-ports = <0x80>, <0x81>;
++	*/
++};
++
++/*
++ * PCC disabled - cannot run simultaneously with SNOOP
++ * (both use same hardware registers: SNPWADR, HICR5, HICR6)
++ */
++&pcie_lpc0_pcc {
++	status = "disabled";
++};
++
++&pcie_lpc0_kcs0 {
++	status = "okay";
++	kcs-io-addr = <0x3a0>;
++	kcs-channel = <1>;
++};
++
++&pcie_lpc0_kcs1 {
++	status = "okay";
++	kcs-io-addr = <0x3a8>;
++	kcs-channel = <2>;
++};
++
++&pcie_lpc0_kcs2 {
++	status = "okay";
++	/* Primary IPMI interface */
++	kcs-io-addr = <0x3a2>;
++	kcs-channel = <3>;
++};
++
++&pcie_lpc0_kcs3 {
++	status = "disabled";
++};
++
++// TODO: FIXME
++#if 0
++&pinctrl0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_espi0_default>,
++		<&pinctrl_espialt_default>;  pinctrl_salt0_default ????
++};
++#endif
++
++/*
++ * I3C Controller for MCTP communication
++ * Note: pinctrl is already configured in aspeed-g7.dtsi base DTS
++ */
++&i3c1 {
++	status = "okay";
++	pinctrl-names = "default";
++	i3c-scl-hz = <12500000>;
++	mctp-controller;
++};
+-- 
+2.49.0
+

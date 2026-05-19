@@ -14,14 +14,14 @@ BUILD_DIR="$(dirname "$(dirname "$KERNEL_DIR")")"
 # Example, run with ASPEED_TAG=v00.07.02 ./scripts/generate-aspeed-patch.sh
 ASPEED_BRANCH="${ASPEED_TAG:-aspeed-master-v6.12}"
 ASPEED_REPO="https://github.com/AspeedTech-BMC/linux.git"
-WORK_DIR="/tmp/aspeed-patch-gen"
+WORK_DIR="${TMPDIR:-/tmp}/aspeed-patch-gen"
 ASPEED_SRC="$WORK_DIR/aspeed-src"
 SONIC_SRC="$WORK_DIR/sonic-src"
 SONIC_ASPEED="$WORK_DIR/sonic-src-aspeed"
 OUTPUT_PATCH="$WORK_DIR/aspeed-ast2700-support-new.patch"
 
 # Read kernel version from Makefile
-KERNEL_VERSION=$(grep "^KERNEL_VERSION" "$KERNEL_DIR/Makefile" | cut -d= -f2 | tr -d ' ')
+KERNEL_VERSION=$(sed -nE 's/^KERNEL_VERSION[[:space:]]*[?:+]?=[[:space:]]*//p' "$KERNEL_DIR/Makefile")
 SONIC_KERNEL_URL="https://packages.trafficmanager.net/public/debian-security/pool/updates/main/l/linux/linux_${KERNEL_VERSION}.orig.tar.xz"
 
 echo "========================================="
@@ -59,21 +59,26 @@ else
     rm -rf "$ASPEED_SRC"
     git clone --depth 1 --branch "$ASPEED_BRANCH" "$ASPEED_REPO" "$ASPEED_SRC"
 fi
-echo "Aspeed source ready: $(du -sh $ASPEED_SRC | cut -f1)"
+echo "Aspeed source ready (size on disk: $(du -sh "$ASPEED_SRC" | cut -f1))"
 
 # Step 2: Download SONiC kernel source
 echo ""
 echo "Step 2: Downloading SONiC kernel source..."
+SONIC_TARBALL="$WORK_DIR/linux_${KERNEL_VERSION}.orig.tar.xz"
 if [ -d "$SONIC_SRC" ]; then
     echo "SONiC source already exists, removing and re-extracting..."
     rm -rf "$SONIC_SRC"
 fi
+if [ -f "$SONIC_TARBALL" ]; then
+    echo "SONiC kernel tarball already cached at $SONIC_TARBALL, skipping download..."
+else
+    echo "Downloading SONiC kernel tarball to $SONIC_TARBALL..."
+    wget -q -O "$SONIC_TARBALL" "$SONIC_KERNEL_URL"
+fi
 mkdir -p "$SONIC_SRC"
 cd "$SONIC_SRC"
-wget -q "$SONIC_KERNEL_URL"
-tar -xf "linux_${KERNEL_VERSION}.orig.tar.xz" --strip-components=1
-rm "linux_${KERNEL_VERSION}.orig.tar.xz"
-echo "SONiC kernel source ready: $(du -sh $SONIC_SRC | cut -f1)"
+tar -xf "$SONIC_TARBALL" --strip-components=1
+echo "SONiC kernel source ready (size on disk: $(du -sh "$SONIC_SRC" | cut -f1))"
 
 # Step 3: Apply SONiC patches (excluding Aspeed)
 echo ""
