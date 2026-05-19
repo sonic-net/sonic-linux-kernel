@@ -242,18 +242,6 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 0011-PCI-AER-Fix-NULL-pointer-access-by-aer_info.patch
 0012-PCI-AER-Avoid-NULL-pointer-dereference-in-aer_rateli.patch
 
-###-> aspeed
-aspeed-ast2700-support.patch
-nexthop-b27-dts.patch
-0001-Add-device-tree-for-Nokia-BMC-H6-128-platform.patch
-arista_goldfinch-dts.patch
-0001-DTS-Aspeed-Nvidia-spc6-a1-bmc-dts.patch
-0002-DTS-Aspeed-Nvidia-spc6-bmc-dts.patch
-###-> aspeed-end
-
-###-> nvidia_aspeed_bmc-start
-###-> nvidia_aspeed_bmc-end
-
 # QID-45097: Crackarmor fixes
 qsa-2026-apparmor/0001-apparmor-validate-DFA-start-states-are-in-bounds-in-.patch
 qsa-2026-apparmor/0002-apparmor-fix-memory-leak-in-verify_header.patch
@@ -271,6 +259,23 @@ qsa-2026-apparmor/0011-apparmor-fix-race-between-freeing-data-and-fs-access.patc
 0002-net-bridge-vxlan-Protocol-field-in-bridge-fdb.patch
 # Drop 0003 when kernel >= 6.12 (merged upstream: torvalds/linux 03dc03fa0432)
 0003-neighbor-Add-NTF_EXT_VALIDATED-flag-for-externally-v.patch
+
+###-> nvidia_aspeed_bmc-start
+###-> nvidia_aspeed_bmc-end
+
+############################################################
+#
+# Let us keep Aspeed patches at the end
+#
+############################################################
+###-> aspeed
+aspeed-ast2700-support.patch
+nexthop-b27-dts.patch
+0001-Add-device-tree-for-Nokia-BMC-H6-128-platform.patch
+arista_goldfinch-dts.patch
+0001-DTS-Aspeed-Nvidia-spc6-a1-bmc-dts.patch
+0002-DTS-Aspeed-Nvidia-spc6-bmc-dts.patch
+###-> aspeed-end
 
 #
 #
