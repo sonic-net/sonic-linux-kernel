@@ -232,9 +232,9 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 0012-PCI-AER-Avoid-NULL-pointer-dereference-in-aer_rateli.patch
 
 ###-> aspeed
-aspeed-ast2700-support.patch
-aspeed-ast2700-aspeed-only-changes-update-to-6.12-00.07.02.patch
-aspeed-ast2700-vendor-independent-changes-update-to-6.12-00.07.02.patch
+0001-aspeed-ast2700-support.patch
+0002-aspeed-ast2700-aspeed-new-files-update-to-6.12-00.07.02.patch
+0003-aspeed-ast2700-aspeed-diff-vendor-independent-changes-update-to-6.12-00.07.02.patch
 nexthop-b27-dts.patch
 0001-Add-device-tree-for-Nokia-BMC-H6-128-platform.patch
 arista_goldfinch-dts.patch
