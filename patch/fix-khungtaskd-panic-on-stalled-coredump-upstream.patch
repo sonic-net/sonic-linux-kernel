@@ -1,0 +1,55 @@
+From b8e753128ed074fcb48e9ceded940752f6b1c19f Mon Sep 17 00:00:00 2001
+From: "Paul E. McKenney" <paulmck@kernel.org>
+Date: Wed, 24 Jul 2024 16:51:52 -0700
+Subject: [PATCH] exit: Sleep at TASK_IDLE when waiting for application core
+ dump
+
+[ Upstream commit b8e753128ed074fcb48e9ceded940752f6b1c19f ]
+
+Currently, the coredump_task_exit() function sets the task state
+to TASK_UNINTERRUPTIBLE|TASK_FREEZABLE, which usually works well.
+But a combination of large memory and slow (and/or highly contended)
+mass storage can cause application core dumps to take more than
+two minutes, which can cause check_hung_task(), which is invoked by
+check_hung_uninterruptible_tasks(), to produce task-blocked splats.
+There does not seem to be any reasonable benefit to getting these splats.
+
+Furthermore, as Oleg Nesterov points out, TASK_UNINTERRUPTIBLE could
+be misleading because the task sleeping in coredump_task_exit() really
+is killable, albeit indirectly.  See the check of signal->core_state
+in prepare_signal() and the check of fatal_signal_pending()
+in dump_interrupted(), which bypass the normal unkillability of
+TASK_UNINTERRUPTIBLE, resulting in coredump_finish() invoking
+wake_up_process() on any threads sleeping in coredump_task_exit().
+
+Therefore, change that TASK_UNINTERRUPTIBLE to TASK_IDLE.
+
+Reported-by: Anhad Jai Singh <ffledgling@meta.com>
+Signed-off-by: Paul E. McKenney <paulmck@kernel.org>
+Acked-by: Oleg Nesterov <oleg@redhat.com>
+[manish1: backport from mainline v6.12 to 6.1.123 - applies cleanly,
+ surrounding code in coredump_task_exit() is identical between v6.1
+ and v6.12; no functional adaptation required.  Fixes recurring
+ hung_task panics on switches running SONiC 202505
+ when orchagent crashes under sustained memory pressure and the coredump writer cannot complete within
+ kernel.hung_task_timeout_secs.]
+Signed-off-by: manish1 <manish1@arista.com>
+---
+ kernel/exit.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/kernel/exit.c b/kernel/exit.c
+index 7430852a8571..0d62a53605df 100644
+--- a/kernel/exit.c
++++ b/kernel/exit.c
+@@ -428,7 +428,7 @@ static void coredump_task_exit(struct task_struct *tsk)
+ 			complete(&core_state->startup);
+
+ 		for (;;) {
+-			set_current_state(TASK_UNINTERRUPTIBLE|TASK_FREEZABLE);
++			set_current_state(TASK_IDLE|TASK_FREEZABLE);
+ 			if (!self.task) /* see coredump_finish() */
+ 				break;
+ 			schedule();
+--
+2.39.0
