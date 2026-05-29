@@ -1,7 +1,7 @@
-From a209121e8dc093705e0f3fcc3aad27d4c28d949d Mon Sep 17 00:00:00 2001
+From e9caf9cf3e69dff922c98c0e5e0ffe7a2fd0a7c7 Mon Sep 17 00:00:00 2001
 From: Oleksandr Shamray <oleksandrs@nvidia.com>
 Date: Mon, 9 Dec 2024 11:42:37 +0200
-Subject: [PATCH 69/78] platform: mellanox: Downstream: Add support for new
+Subject: [PATCH 17/40] platform: mellanox: Downstream: Add support for new
  Nvidia IB DGX system based on class VMOD0010
 
 This system is based on Nvidia QM9700 64x400G QTM-2 IB switch, with the
@@ -18,15 +18,15 @@ Reviewed-by: Vadim Pasternak <vadimp@nvidia.com>
  1 file changed, 454 insertions(+)
 
 diff --git a/drivers/platform/mellanox/mlx-platform.c b/drivers/platform/mellanox/mlx-platform.c
-index 9203ed8..710c21d 100644
+index b2ea7e8..4c1073b 100644
 --- a/drivers/platform/mellanox/mlx-platform.c
 +++ b/drivers/platform/mellanox/mlx-platform.c
-@@ -825,6 +825,16 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_psu_items_data[] = {
+@@ -824,6 +824,16 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_psu_items_data[] = {
  	},
  };
  
 +/* Platform hotplug dgx data */
-+static struct mlxreg_core_data mlxplat_mlxcpld_dgx_psu_items_data[] = {
++static struct mlxreg_core_data mlxplat_mlxcpld_dgx_pdb_items_data[] = {
 +	{
 +		.label = "pdb1",
 +		.reg = MLXPLAT_CPLD_LPC_REG_PSU_OFFSET,
@@ -38,7 +38,7 @@ index 9203ed8..710c21d 100644
  static struct mlxreg_core_data mlxplat_mlxcpld_default_pwr_items_data[] = {
  	{
  		.label = "pwr1",
-@@ -874,6 +884,15 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_pwr_ng800_items_data[] =
+@@ -873,6 +883,15 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_pwr_ng800_items_data[] =
  	},
  };
  
@@ -54,17 +54,17 @@ index 9203ed8..710c21d 100644
  static struct mlxreg_core_data mlxplat_mlxcpld_default_fan_items_data[] = {
  	{
  		.label = "fan1",
-@@ -1497,6 +1516,45 @@ static struct mlxreg_core_item mlxplat_mlxcpld_ext_items[] = {
+@@ -1496,6 +1515,45 @@ static struct mlxreg_core_item mlxplat_mlxcpld_ext_items[] = {
  	}
  };
  
 +static struct mlxreg_core_item mlxplat_mlxcpld_ext_dgx_items[] = {
 +	{
-+		.data = mlxplat_mlxcpld_dgx_psu_items_data,
++		.data = mlxplat_mlxcpld_dgx_pdb_items_data,
 +		.aggr_mask = MLXPLAT_CPLD_AGGR_PSU_MASK_DEF,
 +		.reg = MLXPLAT_CPLD_LPC_REG_PSU_OFFSET,
 +		.mask = MLXPLAT_CPLD_PSU_MASK,
-+		.count = ARRAY_SIZE(mlxplat_mlxcpld_dgx_psu_items_data),
++		.count = ARRAY_SIZE(mlxplat_mlxcpld_dgx_pdb_items_data),
 +		.inversed = 1,
 +		.health = false,
 +	},
@@ -100,7 +100,7 @@ index 9203ed8..710c21d 100644
  static struct mlxreg_core_item mlxplat_mlxcpld_ng800_items[] = {
  	{
  		.data = mlxplat_mlxcpld_default_ng_psu_items_data,
-@@ -1549,6 +1607,16 @@ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_ext_data = {
+@@ -1548,6 +1606,16 @@ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_ext_data = {
  };
  
  static
@@ -117,7 +117,7 @@ index 9203ed8..710c21d 100644
  struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_ng800_data = {
  	.items = mlxplat_mlxcpld_ng800_items,
  	.count = ARRAY_SIZE(mlxplat_mlxcpld_ng800_items),
-@@ -5048,6 +5116,359 @@ static struct mlxreg_core_platform_data mlxplat_default_ng_regs_io_data = {
+@@ -5037,6 +5105,359 @@ static struct mlxreg_core_platform_data mlxplat_default_ng_regs_io_data = {
  		.counter = ARRAY_SIZE(mlxplat_mlxcpld_default_ng_regs_io_data),
  };
  
@@ -477,7 +477,7 @@ index 9203ed8..710c21d 100644
  /* Platform register access for modular systems families data */
  static struct mlxreg_core_data mlxplat_mlxcpld_modular_regs_io_data[] = {
  	{
-@@ -7799,6 +8220,32 @@ static int __init mlxplat_dmi_ng400_matched(const struct dmi_system_id *dmi)
+@@ -7787,6 +8208,32 @@ static int __init mlxplat_dmi_ng400_matched(const struct dmi_system_id *dmi)
  	return mlxplat_register_platform_device();
  }
  
@@ -510,7 +510,7 @@ index 9203ed8..710c21d 100644
  static int __init mlxplat_dmi_modular_matched(const struct dmi_system_id *dmi)
  {
  	int i;
-@@ -8095,6 +8542,13 @@ static const struct dmi_system_id mlxplat_dmi_table[] __initconst = {
+@@ -8060,6 +8507,13 @@ static const struct dmi_system_id mlxplat_dmi_table[] __initconst = {
  		},
  	},
  	{

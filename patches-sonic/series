@@ -112,11 +112,13 @@ driver-i2c-smbus-add-disable_spd-module-parameter.patch
 0052-platform-mellanox-Introduce-support-for-switches-equ.patch
 0053-platform-mellanox-mlx-platform-Add-support-for-new-X.patch
 0054-i2c-asf-Introduce-MCTP-support-over-ASF-controller.patch
+0054-1-platform-mellanox-Downstream-Add-support-for-new-Nvi.patch
 0055-platform-mellanox-Downstream-Add-support-DGX-flavor-.patch
 0056-hwmon-pmbus-mp2845-Add-support-for-MP2845-device.patch
 0057-hwmon-pmbus-mp5926-Add-support-for-MP5926-device.patch
+0058-PCI-DOE-Poll-DOE-Busy-bit-for-up-to-1-second-in-pci.patch
+0059-leds-mlxreg-Provide-conversion-for-hardware-LED-colo.patch
 8000-mlxsw-Use-weak-reverse-dependencies-for-firmware-fla.patch
-8001-platform-mlx-platform-Downstream-Add-SPI-path-for-ra.patch
 8002-mlxsw-i2c-SONIC-ISSU-Prevent-transaction-execution-f.patch
 8003-mlxsw-minimal-Downstream-Ignore-error-reading-SPAD-r.patch
 8004-leds-leds-mlxreg-Downstream-Send-udev-event-from-led.patch
@@ -128,7 +130,6 @@ driver-i2c-smbus-add-disable_spd-module-parameter.patch
 8010-mlxsw-minimal-Downstream-Disable-ethtool-interface.patch
 8011-hwmon-pmbus-Downstream-Workaround-for-psu-attributes.patch
 8013-hwmon-pmbus-mp2975-Clear-interrupts-at-probe.patch
-9000-platform-mellanox-Downstream-Add-support-for-new-Nvi.patch
 ###-> mellanox_hw_mgmt-end
 
 # Cisco patches for 5.10 kernel
