@@ -140,6 +140,7 @@ cisco-Enable-static-memory-reservation-for-OIRable-PCIe-de.patch
 cisco-npu-disable-other-bars.patch
 #cisco-hwmon-pmbus_core-pec-support-check.patch # Upstreamed
 0001-regmap-i2c-add-SMBus-byte-word-reg16-bus-for-adapter.patch
+0002-regmap-i2c-fix-sparse-warning-in-regmap_smbus_word_w.patch
 
 # Nokia patches for 5.10 kernel
 #0001-hwmon-emc2305-Fix-unable-to-probe-emc2301-2-3.patch # Upstreamed
