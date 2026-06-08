@@ -1,19 +1,15 @@
-From 2cb15fde0dd4af7c65266f918439e29857afd8e8 Mon Sep 17 00:00:00 2001
-From: Prajjwal Singh <prajjwal@arista.com>
-Date: Thu, 4 Jun 2026 14:01:37 +0000
-Subject: [PATCH 2/2] mmc: sdhci-of-aspeed: Optimize tuning mechanism
+From 2af0060637db659bd20798de0e0896ce0b0fa1e6 Mon Sep 17 00:00:00 2001
+From: Cool Lee <cool_lee@aspeedtech.com>
+Date: Fri, 24 Apr 2026 10:43:49 +0800
+Subject: [PATCH] mmc: sdhci-of-aspeed: Optimize tuning mechanism
 
-  Rewrites aspeed_sdhci_execute_tuning with circular window detection
-  across all 30 phase positions (15 rising + 15 falling edge taps).
-  Adds aspeed_sdhci_find_center_tap() helper for finding the optimal
-  center of the widest passing window.
+Rewrote aspeed_sdhci_execute_tuning with circular window detection
+across all 30 phase positions.
 
-  Cherry-picked from AspeedTech-BMC/linux aspeed-master-v6.12 branch.
-  This commit exists on v6.12 but was not included in the current
-  aspeed-ast2700-support.patch (tag v00.07.02).
-  Source: https://github.com/AspeedTech-BMC/linux/commit/5fa88b1
-
-  Signed-off-by: Prajjwal Singh <prajjwal@arista.com>
+Signed-off-by: Cool Lee <cool_lee@aspeedtech.com>
+(cherry picked from commit 5fa88b13a96cf0059009f13cdf0b5b8b7b9c51ea)
+Upstream: https://github.com/AspeedTech-BMC/linux/commit/5fa88b13a96cf0059009f13cdf0b5b8b7b9c51ea
+Signed-off-by: Prajjwal Singh <prajjwal@arista.com>
 ---
  drivers/mmc/host/sdhci-of-aspeed.c | 178 ++++++++++++++++-------------
  1 file changed, 96 insertions(+), 82 deletions(-)

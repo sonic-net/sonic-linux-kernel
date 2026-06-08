@@ -1,17 +1,15 @@
-From eaf85fded1b4c2fd24077653d8c8088d9a051f83 Mon Sep 17 00:00:00 2001
-From: Prajjwal Singh <prajjwal@arista.com>
-Date: Thu, 4 Jun 2026 13:57:26 +0000
-Subject: [PATCH 1/2] mmc: sdhci-of-aspeed: Improve CMD6 timing
+From 5f1adff1a89dd68acfe81157b9c20b38d87ba18f Mon Sep 17 00:00:00 2001
+From: Cool Lee <cool_lee@aspeedtech.com>
+Date: Fri, 10 Apr 2026 15:37:51 +0800
+Subject: [PATCH] mmc: sdhci-of-aspeed: Improve CMD6 timing
 
-When 1.8V signal is enabled, the clock-to-command edge timing becomes
-constrained before HS200 mode selection. This adds an inverse clock
-configuration to provide additional tolerance before the CMD6 command
-switches to HS200 mode.
+The timing is critical before select_hs200 due to a 1_8V_SIGNAL is set.
+When this is set, the post edge between CLK and CMD is tight. Make an
+inverse to get a tolerance before CMD6 to switch HS200.
 
-Cherry-picked from AspeedTech-BMC/linux aspeed-master-v6.18 branch.
-Not yet available on aspeed-master-v6.12.
-Source: https://github.com/AspeedTech-BMC/linux/commit/e3532140fbe86fe88abacde37aebbbd5520fbc9d
-
+Signed-off-by: Cool Lee <cool_lee@aspeedtech.com>
+(cherry picked from commit e3532140fbe86fe88abacde37aebbbd5520fbc9d)
+Upstream: https://github.com/AspeedTech-BMC/linux/commit/e3532140fbe86fe88abacde37aebbbd5520fbc9d
 Signed-off-by: Prajjwal Singh <prajjwal@arista.com>
 ---
  drivers/mmc/host/sdhci-of-aspeed.c | 18 ++++++++++++++++++
