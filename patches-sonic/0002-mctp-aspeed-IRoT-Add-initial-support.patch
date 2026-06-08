@@ -3,7 +3,14 @@ From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Sun, 10 May 2026 11:31:35 +0300
 Subject: [PATCH 6.12 2/5] mctp: aspeed: IRoT: Add initial support
 
-Add support for MCTP over IRoT.
+Add initial support for NVIDIA's Internal Root of Trust (IRoT) on the
+Aspeed AST27xx BMC, exposed as an MCTP transport over the hardware
+mailbox.
+
+A new CONFIG_NVIDIA_AST27XX_IROT option (depends on ARCH_ASPEED) builds
+the nvidia-ast27xx-irot driver, which creates an MCTP network device for
+a BMC device-tree node compatible with "nvidia,ast27xx,irot" (for
+example mctpirot0).
 
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
 ---

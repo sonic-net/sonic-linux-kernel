@@ -1,14 +1,19 @@
 From d380e09439f8576e4a89dd1f5c32850ce1c14d62 Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Thu, 2 Apr 2026 12:24:00 +0300
-Subject: [PATCH BMC Realtek PHY 1/1] From
- d2e5ed78b4233e73d5b392cb0ca7b61d4409e8de Mon Sep 17 00:00:00 2001 Subject:
- [PATCH BMC Realtek PHY 1/1] reset phy using polling function not  register
- write
+Subject: [PATCH BMC Realtek PHY 1/1] net: phy: realtek: reset PHY using polling function instead of register write
 
-replace the code to reset the phy with a call to a
-function that resets the phy and waits for the reset to be done,
-preventing race conditions.
+When resetting the Realtek PHY, the driver previously triggered the
+reset by writing the reset bit directly to a PHY register and continued
+without confirming that the reset had actually completed. Because the
+reset takes a finite, non-zero time, configuration accesses that ran
+immediately afterwards could observe the PHY in an intermediate state,
+leading to intermittent, hard-to-reproduce link/initialization failures.
+
+Replace the bare register write with a polling-based reset that triggers
+the reset and then waits until the PHY reports that the reset has
+completed before returning. This closes the timing window between the
+reset request and the subsequent PHY access.
 
 Signed-off-by: Mohammad Abu Gazala <mabugazala@nvidia.com>
 ---

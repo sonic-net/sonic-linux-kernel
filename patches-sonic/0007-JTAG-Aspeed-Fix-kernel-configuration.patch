@@ -3,7 +3,16 @@ From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Thu, 23 Apr 2026 21:40:40 +0300
 Subject: [PATCH 6.12 1/1] JTAG: Aspeed: Fix kernel configuration
 
-Change Kconfig and Makefile.
+The JTAG subsystem was not properly wired into the kernel build:
+drivers/jtag/Kconfig was not sourced from the top-level drivers/Kconfig,
+so its configuration options were not exposed in menuconfig, and
+drivers/Makefile descended into drivers/jtag/ only when
+CONFIG_JTAG_ASPEED was set instead of for the generic CONFIG_JTAG
+option.
+
+Source drivers/jtag/Kconfig from drivers/Kconfig so the JTAG options
+become selectable, and build drivers/jtag/ based on CONFIG_JTAG so the
+subsystem is compiled whenever JTAG support is enabled.
 
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
 ---

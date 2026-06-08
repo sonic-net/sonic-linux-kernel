@@ -3,6 +3,12 @@ From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Mon, 26 Jan 2026 11:28:09 +0200
 Subject: [PATCH RTC 1/1] Add support for NXP's PCF85053A RTC chip.
 
+Add a driver for NXP's PCF85053A I2C real-time clock (RTC).
+
+Introduce the rtc-pcf85053a driver together with its
+CONFIG_RTC_DRV_PCF85053A Kconfig and Makefile entries, so the chip can
+be used as a standard Linux RTC device on platforms that include it.
+
 Upstream-Status: Pending
 
 Signed-off-by: Carlos Menin <menin@carlosaurelio.net>
