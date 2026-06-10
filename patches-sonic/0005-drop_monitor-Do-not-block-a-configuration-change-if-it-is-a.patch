@@ -1,0 +1,103 @@
+From 1581ee077219eaa6cca2aec1cdc190da14ebd6ab Mon Sep 17 00:00:00 2001
+From: Ido Schimmel <idosch@nvidia.com>
+Date: Thu, 12 Feb 2026 10:46:23 +0200
+Subject: [PATCH] drop_monitor: Do not block a configuration change if it is a
+ NOP
+
+Currently, drop_monitor blocks configuration changes if tracing is
+enabled. Relax this condition and do not block a configuration change if
+it is a NOP, even if tracing is enabled.
+
+Signed-off-by: Ido Schimmel <idosch@nvidia.com>
+---
+ net/core/drop_monitor.c | 60 ++++++++++++++---------------------------
+ 1 file changed, 20 insertions(+), 40 deletions(-)
+
+diff --git a/net/core/drop_monitor.c b/net/core/drop_monitor.c
+index e56d3e166df0..5bdf8ca0caba 100644
+--- a/net/core/drop_monitor.c
++++ b/net/core/drop_monitor.c
+@@ -1279,60 +1279,40 @@ static int net_dm_alert_mode_get_from_info(struct genl_info *info,
+ 	return 0;
+ }
+ 
+-static int net_dm_alert_mode_set(struct genl_info *info)
++static int net_dm_cmd_config(struct sk_buff *skb, struct genl_info *info)
+ {
++	enum net_dm_alert_mode alert_mode = net_dm_alert_mode;
+ 	struct netlink_ext_ack *extack = info->extack;
+-	enum net_dm_alert_mode alert_mode;
++	u32 trunc_len = net_dm_trunc_len;
++	u32 queue_len = net_dm_queue_len;
+ 	int rc;
+ 
+-	if (!info->attrs[NET_DM_ATTR_ALERT_MODE])
+-		return 0;
+-
+-	rc = net_dm_alert_mode_get_from_info(info, &alert_mode);
+-	if (rc) {
+-		NL_SET_ERR_MSG_MOD(extack, "Invalid alert mode");
+-		return -EINVAL;
++	if (info->attrs[NET_DM_ATTR_ALERT_MODE]) {
++		rc = net_dm_alert_mode_get_from_info(info, &alert_mode);
++		if (rc) {
++			NL_SET_ERR_MSG_MOD(extack, "Invalid alert mode");
++			return -EINVAL;
++		}
+ 	}
+ 
+-	net_dm_alert_mode = alert_mode;
+-
+-	return 0;
+-}
+-
+-static void net_dm_trunc_len_set(struct genl_info *info)
+-{
+-	if (!info->attrs[NET_DM_ATTR_TRUNC_LEN])
+-		return;
+-
+-	net_dm_trunc_len = nla_get_u32(info->attrs[NET_DM_ATTR_TRUNC_LEN]);
+-}
+-
+-static void net_dm_queue_len_set(struct genl_info *info)
+-{
+-	if (!info->attrs[NET_DM_ATTR_QUEUE_LEN])
+-		return;
++	if (info->attrs[NET_DM_ATTR_TRUNC_LEN])
++		trunc_len = nla_get_u32(info->attrs[NET_DM_ATTR_TRUNC_LEN]);
+ 
+-	net_dm_queue_len = nla_get_u32(info->attrs[NET_DM_ATTR_QUEUE_LEN]);
+-}
++	if (info->attrs[NET_DM_ATTR_QUEUE_LEN])
++		queue_len = nla_get_u32(info->attrs[NET_DM_ATTR_QUEUE_LEN]);
+ 
+-static int net_dm_cmd_config(struct sk_buff *skb,
+-			struct genl_info *info)
+-{
+-	struct netlink_ext_ack *extack = info->extack;
+-	int rc;
++	if (alert_mode == net_dm_alert_mode && trunc_len == net_dm_trunc_len &&
++	    queue_len == net_dm_queue_len)
++		return 0;
+ 
+ 	if (net_dm_is_monitoring()) {
+ 		NL_SET_ERR_MSG_MOD(extack, "Cannot configure drop monitor during monitoring");
+ 		return -EBUSY;
+ 	}
+ 
+-	rc = net_dm_alert_mode_set(info);
+-	if (rc)
+-		return rc;
+-
+-	net_dm_trunc_len_set(info);
+-
+-	net_dm_queue_len_set(info);
++	net_dm_alert_mode = alert_mode;
++	net_dm_trunc_len = trunc_len;
++	net_dm_queue_len = queue_len;
+ 
+ 	return 0;
+ }
+-- 
+GitLab
+

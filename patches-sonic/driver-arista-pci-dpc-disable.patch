@@ -1,0 +1,121 @@
+From: yurypm <yurypm@arista.com>
+Date: Mon, 25 May 2026 13:45:50 +0000
+Subject: Add nodpc pci kernel boot option
+
+PCI DPC (Downstream Port Containment) is enabled by default in the
+SONiC Linux kernel. DPC support can be advertised by PCIe devices,
+but it might not be fully supported in the firmware. The default Linux
+behavior is incompatible with Arista chassis hardware architecture.
+Enabling DPC could cause unexpected behavior and side effects. It
+would be nice to have an option to disable DPC on some chassis.
+
+Add pci=nodpc kernel boot option to disable PCI DPC.
+
+Signed-off-by: Yury Murashka <yurypm@arista.com>
+---
+ Documentation/admin-guide/kernel-parameters.txt |  3 +++
+ drivers/pci/pci.c                               |  2 ++
+ drivers/pci/pci.h                               |  2 ++
+ drivers/pci/pcie/dpc.c                          | 16 +++++++++++++---
+ 4 files changed, 20 insertions(+), 3 deletions(-)
+
+diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+index 2bbd7ab..068891e 100644
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -4480,6 +4480,9 @@
+ 				through ports 0xC000-0xCFFF).
+ 				See http://wiki.osdev.org/PCI for more info
+ 				on the configuration access mechanisms.
++		nodpc		[PCIE] If the PCIE_DPC kernel config parameter is
++				enabled, this kernel boot option can be used to
++				disable the use of PCIE DPC.
+ 		noaer		[PCIE] If the PCIEAER kernel config parameter is
+ 				enabled, this kernel boot option can be used to
+ 				disable the use of PCIE advanced error reporting.
+diff --git a/drivers/pci/pci.c b/drivers/pci/pci.c
+index 77d0786..f6a4c2f 100644
+--- a/drivers/pci/pci.c
++++ b/drivers/pci/pci.c
+@@ -6894,6 +6894,8 @@ static int __init pci_setup(char *str)
+ 			} else if (!strncmp(str, "noats", 5)) {
+ 				pr_info("PCIe: ATS is disabled\n");
+ 				pcie_ats_disabled = true;
++			} else if (!strcmp(str, "nodpc")) {
++				pci_no_dpc();
+ 			} else if (!strcmp(str, "noaer")) {
+ 				pci_no_aer();
+ 			} else if (!strcmp(str, "noaer_recovery")) {
+diff --git a/drivers/pci/pci.h b/drivers/pci/pci.h
+index 551b6e8..bece8b9 100644
+--- a/drivers/pci/pci.h
++++ b/drivers/pci/pci.h
+@@ -535,6 +535,7 @@ struct rcec_ea {
+ #endif
+
+ #ifdef CONFIG_PCIE_DPC
++void pci_no_dpc(void);
+ void pci_save_dpc_state(struct pci_dev *dev);
+ void pci_restore_dpc_state(struct pci_dev *dev);
+ void pci_dpc_init(struct pci_dev *pdev);
+@@ -542,6 +543,7 @@ void dpc_process_error(struct pci_dev *pdev);
+ pci_ers_result_t dpc_reset_link(struct pci_dev *pdev);
+ bool pci_dpc_recovered(struct pci_dev *pdev);
+ #else
++static inline void pci_no_dpc(void) { }
+ static inline void pci_save_dpc_state(struct pci_dev *dev) { }
+ static inline void pci_restore_dpc_state(struct pci_dev *dev) { }
+ static inline void pci_dpc_init(struct pci_dev *pdev) { }
+diff --git a/drivers/pci/pcie/dpc.c b/drivers/pci/pcie/dpc.c
+index cdc5431..8eb2a1f 100644
+--- a/drivers/pci/pcie/dpc.c
++++ b/drivers/pci/pcie/dpc.c
+@@ -43,12 +43,19 @@ static const char * const rp_pio_error_string[] = {
+ 	"Memory Request Completion Timeout",		 /* Bit Position 18 */
+ };
+
++static int pcie_dpc_disable = 0;
++
++void pci_no_dpc(void)
++{
++	pcie_dpc_disable = 1;
++}
++
+ void pci_save_dpc_state(struct pci_dev *dev)
+ {
+ 	struct pci_cap_saved_state *save_state;
+ 	u16 *cap;
+
+-	if (!pci_is_pcie(dev))
++	if (pcie_dpc_disable || !pci_is_pcie(dev))
+ 		return;
+
+ 	save_state = pci_find_saved_ext_cap(dev, PCI_EXT_CAP_ID_DPC);
+@@ -64,7 +71,7 @@ void pci_restore_dpc_state(struct pci_dev *dev)
+ 	struct pci_cap_saved_state *save_state;
+ 	u16 *cap;
+
+-	if (!pci_is_pcie(dev))
++	if (pcie_dpc_disable || !pci_is_pcie(dev))
+ 		return;
+
+ 	save_state = pci_find_saved_ext_cap(dev, PCI_EXT_CAP_ID_DPC);
+@@ -104,7 +111,7 @@ bool pci_dpc_recovered(struct pci_dev *pdev)
+ {
+ 	struct pci_host_bridge *host;
+
+-	if (!pdev->dpc_cap)
++	if (pcie_dpc_disable || !pdev->dpc_cap)
+ 		return false;
+
+ 	/*
+@@ -398,6 +405,9 @@ void pci_dpc_init(struct pci_dev *pdev)
+ {
+ 	u16 cap;
+
++	if (pcie_dpc_disable)
++		return;
++
+ 	pdev->dpc_cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_DPC);
+ 	if (!pdev->dpc_cap)
+ 		return;

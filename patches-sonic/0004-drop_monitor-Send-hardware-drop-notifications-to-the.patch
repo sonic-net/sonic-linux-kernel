@@ -1,0 +1,55 @@
+From 41e1e040ed42d47757819896fa275ce00301e162 Mon Sep 17 00:00:00 2001
+From: Ido Schimmel <idosch@nvidia.com>
+Date: Wed, 11 Feb 2026 15:41:52 +0200
+Subject: [PATCH] drop_monitor: Send hardware drop notifications to the
+ appropriate netns
+
+Unlike software drops, it is always clear in which network namespace a
+hardware drop occurred.
+
+Allow drop_monitor to work in different network namespaces and send
+hardware drop notifications to the appropriate one. Other notifications
+are still sent to the initial network namespace.
+
+Signed-off-by: Ido Schimmel <idosch@nvidia.com>
+---
+ net/core/drop_monitor.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/net/core/drop_monitor.c b/net/core/drop_monitor.c
+index 29f2b8c6b8b9..e56d3e166df0 100644
+--- a/net/core/drop_monitor.c
++++ b/net/core/drop_monitor.c
+@@ -911,6 +911,7 @@ static void net_dm_hw_packet_report(struct sk_buff *skb)
+ 	struct devlink_trap_metadata *hw_metadata;
+ 	struct sk_buff *msg;
+ 	size_t payload_len;
++	struct net *net;
+ 	int rc;
+ 
+ 	if (skb->data > skb_mac_header(skb))
+@@ -934,7 +935,12 @@ static void net_dm_hw_packet_report(struct sk_buff *skb)
+ 		goto out;
+ 	}
+ 
+-	genlmsg_multicast(&net_drop_monitor_family, msg, 0, 0, GFP_KERNEL);
++	/* The network namespace cannot disappear since we are holding a
++	 * reference on the net device.
++	 */
++	net = dev_net(hw_metadata->input_dev);
++	genlmsg_multicast_netns(&net_drop_monitor_family, net, msg, 0, 0,
++				GFP_KERNEL);
+ 
+ out:
+ 	net_dm_hw_metadata_free(NET_DM_SKB_CB(skb)->hw_metadata);
+@@ -1659,6 +1665,7 @@ static struct genl_family net_drop_monitor_family __ro_after_init = {
+ 	.name           = "NET_DM",
+ 	.version        = 2,
+ 	.maxattr	= NET_DM_ATTR_MAX,
++	.netnsok	= true,
+ 	.policy		= net_dm_nl_policy,
+ 	.pre_doit	= net_dm_nl_pre_doit,
+ 	.post_doit	= net_dm_nl_post_doit,
+-- 
+GitLab
+
