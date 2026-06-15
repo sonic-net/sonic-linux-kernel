@@ -1,0 +1,55 @@
+From 2415aef978513606be09aff401ed4ee32fc2a0df Mon Sep 17 00:00:00 2001
+From: Elad Nachman <enachman@marvell.com>
+Date: Mon, 15 Jun 2026 10:58:42 +0000
+Subject: [PATCH] drivers: rtc: handle OTF clock changes
+
+When processing expired RTC events and rearming them, use now
+instead of expiry to prevent endless loops.
+
+Signed-off-by: Elad Nachman <enachman@marvell.com>
+---
+ drivers/rtc/interface.c | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/rtc/interface.c b/drivers/rtc/interface.c
+index 04ce689da..eb1338b97 100644
+--- a/drivers/rtc/interface.c
++++ b/drivers/rtc/interface.c
+@@ -126,6 +126,7 @@ EXPORT_SYMBOL_GPL(rtc_read_time);
+ int rtc_set_time(struct rtc_device *rtc, struct rtc_time *tm)
+ {
+ 	int err, uie;
++	struct rtc_time new_tm;
+ 
+ 	err = rtc_valid_tm(tm);
+ 	if (err != 0)
+@@ -159,6 +160,17 @@ int rtc_set_time(struct rtc_device *rtc, struct rtc_time *tm)
+ 	else
+ 		err = -EINVAL;
+ 
++	if (rtc && rtc->ops && rtc->ops->read_time) {
++		if (!rtc->ops->read_time(rtc->dev.parent, &new_tm)) {
++			pr_err("new rtc tm %d %d %d %d %d %d %d %d %d\n",
++					new_tm.tm_sec, new_tm.tm_min,
++					new_tm.tm_hour, new_tm.tm_mday,
++					new_tm.tm_mon, new_tm.tm_year,
++					new_tm.tm_wday, new_tm.tm_yday,
++					new_tm.tm_isdst);
++		}
++	}
++
+ 	pm_stay_awake(rtc->dev.parent);
+ 	mutex_unlock(&rtc->ops_lock);
+ 	/* A timer might have just expired */
+@@ -932,7 +944,7 @@ void rtc_timer_do_work(struct work_struct *work)
+ 		trace_rtc_timer_fired(timer);
+ 		/* Re-add/fwd periodic timers */
+ 		if (ktime_to_ns(timer->period)) {
+-			timer->node.expires = ktime_add(timer->node.expires,
++			timer->node.expires = ktime_add(now/*timer->node.expires*/,
+ 							timer->period);
+ 			timer->enabled = 1;
+ 			timerqueue_add(&rtc->timerqueue, &timer->node);
+-- 
+2.25.1
+
