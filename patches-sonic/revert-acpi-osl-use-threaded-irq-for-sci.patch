@@ -1,0 +1,80 @@
+From: Mohan Yelugoti <ymd@arista.com>
+Date: 2026-05-11
+Subject: Revert "ACPI: OSL: Use a threaded interrupt handler for SCI"
+
+This reverts commit 7a36b901a6eb0e9945341db71ed3c45c7721cfa9.
+
+After upgrading from Debian bookworm to trixie on modular systems,
+the kdump kernel started hitting a soft lockup while capturing a
+crash dump.  The issue is reproducible by triggering a panic in the
+production kernel with:
+
+echo c | sudo tee /proc/sysrq-trigger
+
+Once the kdump kernel boots, CPU0 gets stuck in the ACPI SCI handling
+path and the soft lockup watchdog eventually panics the kdump kernel,
+so no vmcore is produced.
+
+The trace below was obtained by adding the following to the kdump
+command line: debug=1, loglevel=7, softlockup_all_cpu_backtrace=1 and
+softlockup_panic=1:
+
+    watchdog: BUG: soft lockup - CPU#0 stuck for 26s! [irq/9-acpi:39]
+    CPU: 0 UID: 0 PID: 39 Comm: irq/9-acpi Not tainted
+      6.12.41+deb13-sonic-amd64 #1  Debian 6.12.41-1
+    Hardware name: Intel Camelback Mountain CRB, BIOS
+      Aboot-norcal7-7.1.6-generic-22971530 06/30/2021
+    RIP: 0010:acpi_os_read_port+0x30/0xa0
+    Call Trace:
+     <TASK>
+     acpi_hw_gpe_read+0x61/0x80
+     acpi_ev_detect_gpe+0x74/0x180
+     acpi_ev_gpe_detect+0xe1/0x130
+     acpi_ev_sci_xrupt_handler+0x1d/0x40
+     acpi_irq+0x1c/0x40
+     irq_thread_fn+0x23/0x60
+     irq_thread+0x1b3/0x2f0
+     kthread+0xd2/0x100
+     ret_from_fork+0x34/0x50
+     ret_from_fork_asm+0x1a/0x30
+     </TASK>
+    Kernel panic - not syncing: softlockup: hung tasks
+
+Comparing the bookworm and trixie kernels, the SCI handler was moved
+from a hardirq handler to a threaded handler by the commit being
+reverted.  Moving to a threaded IRQ regressed kdump on this hardware;
+reverting that commit restores the previous hardirq-based SCI handling
+and the kdump kernel completes the crash dump without triggering the
+soft lockup watchdog.
+
+Signed-off-by: Mohan Yelugoti <ymd@arista.com>
+---
+ drivers/acpi/osl.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/acpi/osl.c b/drivers/acpi/osl.c
+--- a/drivers/acpi/osl.c
++++ b/drivers/acpi/osl.c
+@@ -544,7 +544,11 @@ acpi_os_predefined_override(const struct acpi_predefined_names *init_val,
+
+ static irqreturn_t acpi_irq(int irq, void *dev_id)
+ {
+-	if ((*acpi_irq_handler)(acpi_irq_context)) {
++	u32 handled;
++
++	handled = (*acpi_irq_handler) (acpi_irq_context);
++
++	if (handled) {
+ 		acpi_irq_handled++;
+ 		return IRQ_HANDLED;
+ 	} else {
+@@ -578,8 +582,7 @@ acpi_os_install_interrupt_handler(u32 gsi, acpi_osd_handler handler,
+
+ 	acpi_irq_handler = handler;
+ 	acpi_irq_context = context;
+-	if (request_threaded_irq(irq, NULL, acpi_irq, IRQF_SHARED | IRQF_ONESHOT,
+-			         "acpi", acpi_irq)) {
++	if (request_irq(irq, acpi_irq, IRQF_SHARED, "acpi", acpi_irq)) {
+ 		pr_err("SCI (IRQ%d) allocation failed\n", irq);
+ 		acpi_irq_handler = NULL;
+ 		return AE_NOT_ACQUIRED;

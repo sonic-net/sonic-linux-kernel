@@ -1,0 +1,104 @@
+From: yurypm <yurypm@arista.com>
+Date: Mon, 25 May 2026 13:45:51 +0000
+Subject: Add noaer_recovery pci kernel boot option
+
+AER error recovery is part of the AER error handling subsystem in
+the Linux kernel. AER is enabled by default in the SONiC Linux
+kernel. The default Linux behavior is incompatible with Arista
+chassis hardware architecture. Enabling AER recovery on large
+modular systems with a complex PCIe tree could cause unexpected
+behavior and side effects. It would be nice to have an option to
+disable AER recovery on some chassis.
+
+Add pci=noaer_recovery kernel boot option to disable AER error
+recovery when an uncorrectable error is reported.
+
+Signed-off-by: Yury Murashka <yurypm@arista.com>
+---
+ Documentation/admin-guide/kernel-parameters.txt |  4 ++++
+ drivers/pci/pci.c                               |  2 ++
+ drivers/pci/pci.h                               |  2 ++
+ drivers/pci/pcie/err.c                          | 15 +++++++++++++++
+ 4 files changed, 23 insertions(+)
+
+diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+index f402bba..2bbd7ab 100644
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -4483,6 +4483,10 @@
+ 		noaer		[PCIE] If the PCIEAER kernel config parameter is
+ 				enabled, this kernel boot option can be used to
+ 				disable the use of PCIE advanced error reporting.
++		noaer_recovery	[PCIE] If the PCIEAER kernel config parameter is
++				enabled, this kernel boot option can be used to
++				disable AER error recovery when an uncorrectable
++				error is reported.
+ 		nodomains	[PCI] Disable support for multiple PCI
+ 				root domains (aka PCI segments, in ACPI-speak).
+ 		nommconf	[X86] Disable use of MMCONFIG for PCI
+diff --git a/drivers/pci/pci.c b/drivers/pci/pci.c
+index 51a09e4..77d0786 100644
+--- a/drivers/pci/pci.c
++++ b/drivers/pci/pci.c
+@@ -6896,6 +6896,8 @@ static int __init pci_setup(char *str)
+ 				pcie_ats_disabled = true;
+ 			} else if (!strcmp(str, "noaer")) {
+ 				pci_no_aer();
++			} else if (!strcmp(str, "noaer_recovery")) {
++				pci_no_aer_recovery();
+ 			} else if (!strcmp(str, "earlydump")) {
+ 				pci_early_dump = true;
+ 			} else if (!strncmp(str, "realloc=", 8)) {
+diff --git a/drivers/pci/pci.h b/drivers/pci/pci.h
+index 65df6d2..551b6e8 100644
+--- a/drivers/pci/pci.h
++++ b/drivers/pci/pci.h
+@@ -826,6 +826,7 @@ static inline void of_pci_remove_node(struct pci_dev *pdev) { }
+
+ #ifdef CONFIG_PCIEAER
+ void pci_no_aer(void);
++void pci_no_aer_recovery(void);
+ void pci_aer_init(struct pci_dev *dev);
+ void pci_aer_exit(struct pci_dev *dev);
+ extern const struct attribute_group aer_stats_attr_group;
+@@ -836,6 +837,7 @@ void pci_save_aer_state(struct pci_dev *dev);
+ void pci_restore_aer_state(struct pci_dev *dev);
+ #else
+ static inline void pci_no_aer(void) { }
++static inline void pci_no_aer_recovery(void) { }
+ static inline void pci_aer_init(struct pci_dev *d) { }
+ static inline void pci_aer_exit(struct pci_dev *d) { }
+ static inline void pci_aer_clear_fatal_status(struct pci_dev *dev) { }
+diff --git a/drivers/pci/pcie/err.c b/drivers/pci/pcie/err.c
+index 3109077..bb5ec0c 100644
+--- a/drivers/pci/pcie/err.c
++++ b/drivers/pci/pcie/err.c
+@@ -21,6 +21,13 @@
+ #include "portdrv.h"
+ #include "../pci.h"
+
++static int pcie_aer_recovery_disable = 0;
++
++void pci_no_aer_recovery(void)
++{
++	pcie_aer_recovery_disable = 1;
++}
++
+ static pci_ers_result_t merge_result(enum pci_ers_result orig,
+ 				  enum pci_ers_result new)
+ {
+@@ -197,6 +204,14 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
+ 	pci_ers_result_t status = PCI_ERS_RESULT_CAN_RECOVER;
+ 	struct pci_host_bridge *host = pci_find_host_bridge(dev->bus);
+
++	if (pcie_aer_recovery_disable) {
++		if (host->native_aer || pcie_ports_native) {
++			pcie_clear_device_status(dev);
++			pci_aer_clear_nonfatal_status(dev);
++		}
++		return status;
++	}
++
+ 	/*
+ 	 * If the error was detected by a Root Port, Downstream Port, RCEC,
+ 	 * or RCiEP, recovery runs on the device itself.  For Ports, that

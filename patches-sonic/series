@@ -7,10 +7,13 @@
 driver-arista-net-tg3-dma-mask-4g-sb800.patch
 driver-arista-net-tg3-disallow-broadcom-default-mac.patch
 driver-arista-net-tg3-access-regs-indirectly.patch
+driver-arista-net-tg3-napi-enable-called-flag.patch
 driver-arista-pci-reassign-pref-mem.patch
 driver-arista-mmcblk-not-working-on-AMD-platforms.patch
 driver-arista-restrict-eMMC-drive-to-50Mhz-from-userland.patch
 driver-arista-i2c-designware-shutdown.patch
+driver-arista-pci-aer-disable-recovery.patch
+driver-arista-pci-dpc-disable.patch
 driver-support-sff-8436-eeprom.patch
 driver-support-sff-8436-eeprom-update.patch
 driver-sff-8436-use-nvmem-framework.patch
@@ -40,6 +43,7 @@ driver-net-tg3-change-dma-mask-for-57766.patch
 0004-dt-bindings-hwmon-Add-missing-documentation-for-lm75.patch
 0005-dt-bindings-hwmon-Add-tmp75b-to-lm75.txt.patch
 0006-device-tree-bindinds-add-NXP-PCT2075-as-compatible-d.patch
+revert-acpi-osl-use-threaded-irq-for-sci.patch
 #Support-for-fullcone-nat.patch # TODO(trixie): update for current version
 
 #
@@ -122,6 +126,11 @@ driver-i2c-smbus-add-disable_spd-module-parameter.patch
 0057-hwmon-pmbus-mp5926-Add-support-for-MP5926-device.patch
 0058-PCI-DOE-Poll-DOE-Busy-bit-for-up-to-1-second-in-pci.patch
 0059-hwmon-pmbus-xdpe1a2g7b-Add-support-for-XDPE1A2G7B-5B.patch
+0060-leds-mlxreg-Provide-conversion-for-hardware-LED-colo.patch
+0060-platform-mellanox-nvsw-bmc-Downstream-Add-protection.patch
+0061-platform-mellanox-mlxreg-io-Increase-max-supported-a.patch
+0062-Add-support-for-NXP-s-PCF85053A-RTC-chip.patch
+0063-reset-phy-using-polling-function-not-register-write.patch
 8000-mlxsw-Use-weak-reverse-dependencies-for-firmware-fla.patch
 8002-mlxsw-i2c-SONIC-ISSU-Prevent-transaction-execution-f.patch
 8003-mlxsw-minimal-Downstream-Ignore-error-reading-SPAD-r.patch
@@ -144,6 +153,8 @@ cisco-acpi-spi-nor.patch
 cisco-Enable-static-memory-reservation-for-OIRable-PCIe-de.patch
 cisco-npu-disable-other-bars.patch
 #cisco-hwmon-pmbus_core-pec-support-check.patch # Upstreamed
+0001-regmap-i2c-add-SMBus-byte-word-reg16-bus-for-adapter.patch
+0002-regmap-i2c-fix-sparse-warning-in-regmap_smbus_word_w.patch
 
 # Nokia patches for 5.10 kernel
 #0001-hwmon-emc2305-Fix-unable-to-probe-emc2301-2-3.patch # Upstreamed
@@ -245,18 +256,6 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 0011-PCI-AER-Fix-NULL-pointer-access-by-aer_info.patch
 0012-PCI-AER-Avoid-NULL-pointer-dereference-in-aer_rateli.patch
 
-###-> aspeed
-aspeed-ast2700-support.patch
-nexthop-b27-dts.patch
-0001-Add-device-tree-for-Nokia-BMC-H6-128-platform.patch
-arista_goldfinch-dts.patch
-0001-DTS-Aspeed-Nvidia-spc6-a1-bmc-dts.patch
-0002-DTS-Aspeed-Nvidia-spc6-bmc-dts.patch
-micas-m2-w6950-128oc-dts.patch
-###-> aspeed-end
-
-###-> nvidia_aspeed_bmc-start
-###-> nvidia_aspeed_bmc-end
 
 # QID-45097: Crackarmor fixes
 qsa-2026-apparmor/0001-apparmor-validate-DFA-start-states-are-in-bounds-in-.patch
@@ -275,6 +274,31 @@ qsa-2026-apparmor/0011-apparmor-fix-race-between-freeing-data-and-fs-access.patc
 0002-net-bridge-vxlan-Protocol-field-in-bridge-fdb.patch
 # Drop 0003 when kernel >= 6.12 (merged upstream: torvalds/linux 03dc03fa0432)
 0003-neighbor-Add-NTF_EXT_VALIDATED-flag-for-externally-v.patch
+
+############################################################
+#
+# Let us keep Aspeed patches at the end
+#
+############################################################
+###-> aspeed
+aspeed-ast2700-support.patch
+nexthop-b27-dts.patch
+0001-Add-device-tree-for-Nokia-BMC-H6-128-platform.patch
+arista_goldfinch-dts.patch
+0001-DTS-Aspeed-Nvidia-spc6-a1-bmc-dts.patch
+0002-DTS-Aspeed-Nvidia-spc6-bmc-dts.patch
+micas-m2-w6950-128oc-dts.patch
+###-> aspeed-end
+
+###-> nvidia_aspeed_bmc-start
+0001-mctp-driver-net-Extend-MCTP-support.patch
+0002-mctp-aspeed-IRoT-Add-initial-support.patch
+0003-mctp-driver-net-Add-global-APIs-for-MCTP.patch
+0004-mctp-driver-net-Fix-MCTP-over-VDM-PCIe.patch
+0005-mctp-driver-net-Fix-MCTP-over-USB.patch
+0006-jtag-Add-JTAG-core-headers-GPIO-mux-and-locking-support.patch
+0007-JTAG-Aspeed-Fix-kernel-configuration.patch
+###-> nvidia_aspeed_bmc-end
 
 #
 #
