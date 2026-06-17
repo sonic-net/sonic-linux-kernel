@@ -256,6 +256,7 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 0011-PCI-AER-Fix-NULL-pointer-access-by-aer_info.patch
 0012-PCI-AER-Avoid-NULL-pointer-dereference-in-aer_rateli.patch
 
+
 # QID-45097: Crackarmor fixes
 qsa-2026-apparmor/0001-apparmor-validate-DFA-start-states-are-in-bounds-in-.patch
 qsa-2026-apparmor/0002-apparmor-fix-memory-leak-in-verify_header.patch
@@ -286,6 +287,7 @@ nexthop-b27-dts.patch
 arista_goldfinch-dts.patch
 0001-DTS-Aspeed-Nvidia-spc6-a1-bmc-dts.patch
 0002-DTS-Aspeed-Nvidia-spc6-bmc-dts.patch
+micas-m2-w6950-128oc-dts.patch
 ###-> aspeed-end
 
 ###-> nvidia_aspeed_bmc-start
