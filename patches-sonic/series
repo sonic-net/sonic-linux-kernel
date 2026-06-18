@@ -256,7 +256,6 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 0011-PCI-AER-Fix-NULL-pointer-access-by-aer_info.patch
 0012-PCI-AER-Avoid-NULL-pointer-dereference-in-aer_rateli.patch
 
-
 # QID-45097: Crackarmor fixes
 qsa-2026-apparmor/0001-apparmor-validate-DFA-start-states-are-in-bounds-in-.patch
 qsa-2026-apparmor/0002-apparmor-fix-memory-leak-in-verify_header.patch
@@ -282,6 +281,8 @@ qsa-2026-apparmor/0011-apparmor-fix-race-between-freeing-data-and-fs-access.patc
 ############################################################
 ###-> aspeed
 aspeed-ast2700-support.patch
+mmc-sdhci-of-aspeed-Improve-CMD6-timing_v6.18.patch
+mmc-sdhci-of-aspeed-Optimize-tuning-mechanism_v6.12.patch
 nexthop-b27-dts.patch
 0001-Add-device-tree-for-Nokia-BMC-H6-128-platform.patch
 arista_goldfinch-dts.patch
