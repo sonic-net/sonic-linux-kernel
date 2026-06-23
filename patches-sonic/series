@@ -249,6 +249,7 @@ nexthop-b27-dts.patch
 arista_goldfinch-dts.patch
 0001-DTS-Aspeed-Nvidia-spc6-a1-bmc-dts.patch
 0002-DTS-Aspeed-Nvidia-spc6-bmc-dts.patch
+micas-m2-w6950-128oc-dts.patch
 ###-> aspeed-end
 
 ###-> nvidia_aspeed_bmc-start
