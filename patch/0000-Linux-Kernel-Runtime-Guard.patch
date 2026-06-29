@@ -1,0 +1,25 @@
+diff --git i/security/Kconfig w/security/Kconfig
+index 0d798a1f4..f53076cd1 100644
+--- i/security/Kconfig
++++ w/security/Kconfig
+@@ -321,6 +321,7 @@ source security/loadpin/Kconfig
+ source security/yama/Kconfig
+ 
+ source security/integrity/Kconfig
++source security/lkrg/Kconfig
+ 
+ choice
+ 	prompt "Default security module"
+diff --git i/security/Makefile w/security/Makefile
+index 507ac8c52..c2a7493be 100644
+--- i/security/Makefile
++++ w/security/Makefile
+@@ -33,3 +33,8 @@ obj-$(CONFIG_INTEGRITY)			+= integrity/
+ 
+ # Allow the kernel to be locked down
+ obj-$(CONFIG_LOCK_DOWN_KERNEL)		+= lock_down.o
++
++# LKRG file list
++subdir-$(CONFIG_SECURITY_LKRG)         += lkrg
++obj-$(CONFIG_SECURITY_LKRG)            += lkrg/
++
