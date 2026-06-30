@@ -1,0 +1,107 @@
+From fb4beb7d83581052bc47a326fe8e78721ed2dc4c Mon Sep 17 00:00:00 2001
+From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Date: Mon, 23 Feb 2026 15:59:16 +0000
+Subject: [PATCH 10/22] i2c: xiic: switch to devres managed APIs
+
+Simplify the error code paths by switching to devres managed helper
+functions.
+
+Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Reviewed-by: Andy Shevchenko <andriy.shevchenko@intel.com>
+Signed-off-by: Andi Shyti <andi.shyti@kernel.org>
+Link: https://lore.kernel.org/r/20260223-i2c-xiic-v12-1-b6c9ce4e4f3c@nexthop.ai
+---
+ drivers/i2c/busses/i2c-xiic.c | 30 ++++++++++++------------------
+ 1 file changed, 12 insertions(+), 18 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-xiic.c b/drivers/i2c/busses/i2c-xiic.c
+index 072edc6c12da..ea85fc396033 100644
+--- a/drivers/i2c/busses/i2c-xiic.c
++++ b/drivers/i2c/busses/i2c-xiic.c
+@@ -1424,6 +1424,7 @@ MODULE_DEVICE_TABLE(of, xiic_of_match);
+ 
+ static int xiic_i2c_probe(struct platform_device *pdev)
+ {
++	struct device *dev = &pdev->dev;
+ 	struct xiic_i2c *i2c;
+ 	struct xiic_i2c_platform_data *pdata;
+ 	const struct of_device_id *match;
+@@ -1462,7 +1463,10 @@ static int xiic_i2c_probe(struct platform_device *pdev)
+ 	snprintf(i2c->adap.name, sizeof(i2c->adap.name),
+ 		 DRIVER_NAME " %s", pdev->name);
+ 
+-	mutex_init(&i2c->lock);
++	ret = devm_mutex_init(dev, &i2c->lock);
++	if (ret)
++		return ret;
++
+ 	spin_lock_init(&i2c->atomic_lock);
+ 
+ 	i2c->clk = devm_clk_get_enabled(&pdev->dev, NULL);
+@@ -1473,8 +1477,9 @@ static int xiic_i2c_probe(struct platform_device *pdev)
+ 	i2c->dev = &pdev->dev;
+ 	pm_runtime_set_autosuspend_delay(i2c->dev, XIIC_PM_TIMEOUT);
+ 	pm_runtime_use_autosuspend(i2c->dev);
+-	pm_runtime_set_active(i2c->dev);
+-	pm_runtime_enable(i2c->dev);
++	ret = devm_pm_runtime_set_active_enabled(dev);
++	if (ret)
++		return ret;
+ 
+ 	/* SCL frequency configuration */
+ 	i2c->input_clk = clk_get_rate(i2c->clk);
+@@ -1490,7 +1495,7 @@ static int xiic_i2c_probe(struct platform_device *pdev)
+ 
+ 	if (ret < 0) {
+ 		dev_err_probe(&pdev->dev, ret, "Cannot claim IRQ\n");
+-		goto err_pm_disable;
++		return ret;
+ 	}
+ 
+ 	i2c->singlemaster =
+@@ -1509,16 +1514,14 @@ static int xiic_i2c_probe(struct platform_device *pdev)
+ 		i2c->endianness = BIG;
+ 
+ 	ret = xiic_reinit(i2c);
+-	if (ret < 0) {
+-		dev_err_probe(&pdev->dev, ret, "Cannot xiic_reinit\n");
+-		goto err_pm_disable;
+-	}
++	if (ret)
++		return dev_err_probe(dev, ret, "Cannot xiic_reinit\n");
+ 
+ 	/* add i2c adapter to i2c tree */
+ 	ret = i2c_add_adapter(&i2c->adap);
+ 	if (ret) {
+ 		xiic_deinit(i2c);
+-		goto err_pm_disable;
++		return ret;
+ 	}
+ 
+ 	if (pdata) {
+@@ -1531,12 +1534,6 @@ static int xiic_i2c_probe(struct platform_device *pdev)
+ 		(unsigned long)res->start, irq, i2c->i2c_clk);
+ 
+ 	return 0;
+-
+-err_pm_disable:
+-	pm_runtime_disable(&pdev->dev);
+-	pm_runtime_set_suspended(&pdev->dev);
+-
+-	return ret;
+ }
+ 
+ static void xiic_i2c_remove(struct platform_device *pdev)
+@@ -1556,9 +1553,6 @@ static void xiic_i2c_remove(struct platform_device *pdev)
+ 		xiic_deinit(i2c);
+ 
+ 	pm_runtime_put_sync(i2c->dev);
+-	pm_runtime_disable(&pdev->dev);
+-	pm_runtime_set_suspended(&pdev->dev);
+-	pm_runtime_dont_use_autosuspend(&pdev->dev);
+ }
+ 
+ static const struct dev_pm_ops xiic_dev_pm_ops = {
+-- 
+2.53.0
+

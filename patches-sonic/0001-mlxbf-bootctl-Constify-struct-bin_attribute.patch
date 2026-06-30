@@ -15,8 +15,8 @@ Link: https://lore.kernel.org/r/20241215-sysfs-const-bin_attr-mellanox-v1-1-b6fe
 Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
 Signed-off-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
 ---
- drivers/platform/mellanox/mlxbf-bootctl.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ drivers/platform/mellanox/mlxbf-bootctl.c | 2 +-
+ 1 file changed, 1 insertions(+), 1 deletions(-)
 
 diff --git a/drivers/platform/mellanox/mlxbf-bootctl.c b/drivers/platform/mellanox/mlxbf-bootctl.c
 index dd5f370..7e246dd 100644
@@ -31,18 +31,6 @@ index dd5f370..7e246dd 100644
  					   char *buf, loff_t pos,
  					   size_t count)
  {
-@@ -971,9 +971,9 @@ static ssize_t mlxbf_bootctl_bootfifo_read(struct file *filp,
- 	return p - buf;
- }
- 
--static struct bin_attribute mlxbf_bootctl_bootfifo_sysfs_attr = {
-+static const struct bin_attribute mlxbf_bootctl_bootfifo_sysfs_attr = {
- 	.attr = { .name = "bootfifo", .mode = 0400 },
--	.read = mlxbf_bootctl_bootfifo_read,
-+	.read_new = mlxbf_bootctl_bootfifo_read,
- };
- 
- static bool mlxbf_bootctl_guid_match(const guid_t *guid,
 -- 
 2.8.4
 

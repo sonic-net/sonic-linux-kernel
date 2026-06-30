@@ -17,3 +17,6 @@ CONFIG_MEDIA_ATTACH=n
 CONFIG_MODULE_COMPRESS=n
 # Disable strict /dev/mem access checks to allow mmap on PCI resource file
 CONFIG_IO_STRICT_DEVMEM=n
+
+# Set THP default to madvise instead of always
+CONFIG_TRANSPARENT_HUGEPAGE_MADVISE=y

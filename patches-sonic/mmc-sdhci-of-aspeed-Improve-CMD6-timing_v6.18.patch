@@ -1,0 +1,49 @@
+From 5f1adff1a89dd68acfe81157b9c20b38d87ba18f Mon Sep 17 00:00:00 2001
+From: Cool Lee <cool_lee@aspeedtech.com>
+Date: Fri, 10 Apr 2026 15:37:51 +0800
+Subject: [PATCH] mmc: sdhci-of-aspeed: Improve CMD6 timing
+
+The timing is critical before select_hs200 due to a 1_8V_SIGNAL is set.
+When this is set, the post edge between CLK and CMD is tight. Make an
+inverse to get a tolerance before CMD6 to switch HS200.
+
+Signed-off-by: Cool Lee <cool_lee@aspeedtech.com>
+(cherry picked from commit e3532140fbe86fe88abacde37aebbbd5520fbc9d)
+Upstream: https://github.com/AspeedTech-BMC/linux/commit/e3532140fbe86fe88abacde37aebbbd5520fbc9d
+Signed-off-by: Prajjwal Singh <prajjwal@arista.com>
+---
+ drivers/mmc/host/sdhci-of-aspeed.c | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/drivers/mmc/host/sdhci-of-aspeed.c b/drivers/mmc/host/sdhci-of-aspeed.c
+index 6d309f47d..e4a1e91c5 100644
+--- a/drivers/mmc/host/sdhci-of-aspeed.c
++++ b/drivers/mmc/host/sdhci-of-aspeed.c
+@@ -312,6 +312,24 @@ static int aspeed_sdhci_execute_tuning(struct sdhci_host *host, u32 opcode)
+ 
+ static void aspeed_sdhci_voltage_switch(struct sdhci_host *host)
+ {
++	struct sdhci_pltfm_host *pltfm_priv;
++	struct aspeed_sdhci *sdhci;
++	struct aspeed_sdc *sdc;
++	u32 out_phase, enable_mask, inverted = 1;
++
++	pltfm_priv = sdhci_priv(host);
++	sdhci = sdhci_pltfm_priv(pltfm_priv);
++	sdc = sdhci->parent;
++
++	enable_mask = ASPEED_SDC_S0_PHASE_OUT_EN | ASPEED_SDC_S0_PHASE_IN_EN;
++
++	inverted = ASPEED_SDHCI_TAP_PARAM_INVERT_CLK;
++	out_phase = readl(sdc->regs + ASPEED_SDC_PHASE) & ASPEED_SDC_S0_PHASE_OUT;
++	out_phase |= (inverted << ASPEED_SDC_S0_PHASE_OUT_SHIFT);
++
++	/* output inverse */
++	writel(out_phase | enable_mask, sdc->regs + ASPEED_SDC_PHASE);
++
+ 	mdelay(30);
+ }
+ 
+-- 
+2.47.3
+
