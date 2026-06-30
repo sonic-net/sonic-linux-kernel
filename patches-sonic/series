@@ -283,7 +283,9 @@ qsa-2026-apparmor/0011-apparmor-fix-race-between-freeing-data-and-fs-access.patc
 #
 ############################################################
 ###-> aspeed
-aspeed-ast2700-support.patch
+0001-aspeed-ast2700-support.patch
+0002-aspeed-ast2700-aspeed-new-files-update-to-6.12-00.07.02.patch
+0003-aspeed-ast2700-aspeed-diff-vendor-independent-changes-update-to-6.12-00.07.02.patch
 mmc-sdhci-of-aspeed-Improve-CMD6-timing_v6.18.patch
 mmc-sdhci-of-aspeed-Optimize-tuning-mechanism_v6.12.patch
 nexthop-b27-dts.patch
