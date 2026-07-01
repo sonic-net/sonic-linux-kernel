@@ -1,0 +1,25 @@
+From 97dafb76ffc08cbac6bca2568e8d179d7f2f3632 Mon Sep 17 00:00:00 2001
+From: fountzou <ioannis.fountzoulas@nokia.com>
+Date: Wed, 1 Jul 2026 11:50:21 -0400
+Subject: [PATCH] Clear UIE bit from armada38x RTC driver
+
+---
+ drivers/rtc/rtc-armada38x.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/rtc/rtc-armada38x.c b/drivers/rtc/rtc-armada38x.c
+index 85bead76..a7045242 100644
+--- a/drivers/rtc/rtc-armada38x.c
++++ b/drivers/rtc/rtc-armada38x.c
+@@ -530,6 +530,8 @@ static __init int armada38x_rtc_probe(struct platform_device *pdev)
+ 	else
+ 		clear_bit(RTC_FEATURE_ALARM, rtc->rtc_dev->features);
+ 
++	clear_bit(RTC_FEATURE_UPDATE_INTERRUPT, rtc->rtc_dev->features);
++
+ 	/* Update RTC-MBUS bridge timing parameters */
+ 	rtc->data->update_mbus_timing(rtc);
+ 
+-- 
+2.34.1
+
