@@ -1,6 +1,6 @@
-From b08258664a6e45fb4c03f53bc74e29227a5dfcf3 Mon Sep 17 00:00:00 2001
-From: NextHop Build System <build@nexthop.ai>
-Date: Tue, 2 Jun 2026 15:07:24 +0000
+From 00a401bfbf89926ecc24882259826427cfd32b7d Mon Sep 17 00:00:00 2001
+From: Chandrasekaran Swaminathan <chander@nexthop.ai>
+Date: Thu, 2 Jul 2026 16:53:15 +0000
 Subject: [PATCH] Add NextHop B27 R0 device tree
 
 This adds nexthop-b27-r0.dts for NextHop B27 R0 hardware.
@@ -12,6 +12,8 @@ Hardware differences from ast2700-evb:
 
 The device tree is based on ast2700-evb.dts with modifications for
 production hardware that does not have PHY chips.
+
+Signed-off-by: Chandrasekaran Swaminathan <chander@nexthop.ai>
 ---
  arch/arm64/boot/dts/aspeed/Makefile           |   1 +
  arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts | 538 ++++++++++++++++++
