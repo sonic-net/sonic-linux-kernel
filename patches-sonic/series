@@ -148,11 +148,9 @@ driver-i2c-smbus-add-disable_spd-module-parameter.patch
 # Cisco patches for 5.10 kernel
 cisco-mtd-part.patch
 cisco-mdio-mux-support-acpi.patch
-#cisco-x86-gpio-config.patch # Deprecated, GPIOs are effectively unlimited
 cisco-acpi-spi-nor.patch
 cisco-Enable-static-memory-reservation-for-OIRable-PCIe-de.patch
 cisco-npu-disable-other-bars.patch
-#cisco-hwmon-pmbus_core-pec-support-check.patch # Upstreamed
 0001-regmap-i2c-add-SMBus-byte-word-reg16-bus-for-adapter.patch
 0002-regmap-i2c-fix-sparse-warning-in-regmap_smbus_word_w.patch
 
@@ -162,12 +160,7 @@ cisco-npu-disable-other-bars.patch
 #
 # Marvell platform patches for 6.1 kernel
 0001-armhf_secondary_boot_online.patch
-#0002-arm64-dts-Update-cache-properties-for-marvell.patch # Upstreamed
-#0003-arm64-dts-marvell-Add-NAND-flash-controller-to-AC5.patch # Upstreamed
-#0004-arm64-dts-ac5-add-mmc-node-and-clock.patch # Upstreamed
 0005-dts-ac5-marvell-Add-switching-watchdog-node.patch
-#0006-mmc-xenon-Add-ac5-support-via-bounce-buffer.patch # Upstreamed
-#0007-usb-ehci-Add-support-for-ac5.patch # Upstreamed but no 64-bit, so the next 0007
 0007-usb-ehci-Add-support-for-ac5-with-DMA-mask-64-bit.patch
 0008-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch
 0009-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
@@ -240,10 +233,6 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 0014-i2c-xiic-cosmetic-use-resource-format-specifier-in-d.patch
 0015-i2c-xiic-use-numbered-adapter-registration.patch
 0016-i2c-xiic-skip-input-clock-setup-on-non-OF-systems.patch
-
-# Fix to avoid kernel panic on Kernel 6.1.94
-# https://github.com/sonic-net/sonic-buildimage/issues/20901
-#PCI-ASPM-Fix-link-state-exit-during-switch-upstream.patch # Upstreamed
 
 # 
 0001-PCI-AER-Simplify-pci_print_aer.patch
