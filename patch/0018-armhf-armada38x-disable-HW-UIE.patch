@@ -1,0 +1,81 @@
+From 73ec9b3ad05e0edc30c1b70065b92a47df3e2423 Mon Sep 17 00:00:00 2001
+From: Ioannis Fountzoulas <ioannis.fountzoulas@nokia.com>
+Date: Thu, 9 Jul 2026 04:08:20 -0400
+Subject: [PATCH] rtc: armada38x: do not advertise update interrupt (UIE)
+ support
+
+Problem:
+chrony enables RTC update interrupts via the RTC_UIE_ON ioctl to track
+RTC drift. On the armada38x driver this request is served by the RTC
+core's native path, which arms a 1 second periodic timer that is
+re-programmed on the alarm and serviced by rtc_timer_do_work().
+If the RTC time is then stepped forward by a large amount while this
+timer is active, its scheduled expiry ends up far in the past compared
+to the freshly read time.
+
+Why the CPU hangs:
+When rtc_timer_do_work() runs, it expires every timer whose expiry is
+not in the future, advancing periodic timers by one period each pass:
+	while ((next = timerqueue_getnext(&rtc->timerqueue))) {
+		if (next->expires > now)
+			break;
+		...
+		timer->node.expires += timer->period;   /* += 1s */
+		timerqueue_add(&rtc->timerqueue, &timer->node);
+	}
+With a large forward step (seen when the RTC starts far in the past and
+chrony corrects it after the first NTP sync), the periodic UIE timer is
+overdue by the size of the jump, so this loop must run one iteration per
+elapsed second before it can exit.
+It never yields in that time, so the workqueue worker pins the CPU and
+the watchdog reports a soft lockup / RCU stall, after which the
+board reboots:
+	watchdog: BUG: soft lockup - CPU#1 stuck for 48s! [kworker/1:3:432]
+	Kernel panic - not syncing: softlockup: hung tasks
+	Workqueue: events rtc_timer_do_work
+	 rtc_handle_legacy_irq from rtc_timer_do_work
+	 rtc_timer_do_work from process_one_work
+	 process_one_work from worker_thread
+
+Fix:
+Clear RTC_FEATURE_UPDATE_INTERRUPT at probe time so the driver stops
+advertising native UIE. RTC_UIE_ON is then served by the poll-based UIE
+emulation in rtc-dev (CONFIG_RTC_INTF_DEV_UIE_EMUL), which delivers the
+1 Hz update notifications chrony needs without ever queuing the runaway
+periodic timer.
+
+Testing:
+Tested on a Marvell Armada 38x board (ARM Cortex-A9). Before the change,
+stepping the clock forward while UIE was enabled reproduced the soft
+lockup (about 1 in 4 boots). After the change, rtc_timer_do_work() runs
+zero loop iterations and returns immediately, chrony still receives
+update interrupts via emulation, and no lockups occur over repeated
+reboot cycles.
+
+Signed-off-by: Ioannis Fountzoulas <ioannis.fountzoulas@nokia.com>
+---
+ drivers/rtc/rtc-armada38x.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/drivers/rtc/rtc-armada38x.c b/drivers/rtc/rtc-armada38x.c
+index cc542e6b1..3bdde1f2f 100644
+--- a/drivers/rtc/rtc-armada38x.c
++++ b/drivers/rtc/rtc-armada38x.c
+@@ -537,6 +537,14 @@ static __init int armada38x_rtc_probe(struct platform_device *pdev)
+ 	else
+ 		clear_bit(RTC_FEATURE_ALARM, rtc->rtc_dev->features);
+ 
++	/*
++	 * A large forward step of the RTC time makes
++	 * rtc_timer_do_work() replay one period per elapsed second and can
++	 * loop long enough to trigger a soft lockup. Do not advertise
++	 * native UIE; RTC_UIE_ON then uses the poll-based emulation.
++	 */
++	clear_bit(RTC_FEATURE_UPDATE_INTERRUPT, rtc->rtc_dev->features);
++
+ 	/* Update RTC-MBUS bridge timing parameters */
+ 	rtc->data->update_mbus_timing(rtc);
+ 
+-- 
+2.34.1
+
