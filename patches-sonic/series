@@ -262,8 +262,6 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 ############################################################
 ###-> aspeed
 aspeed-ast2700-support.patch
-mmc-sdhci-of-aspeed-Improve-CMD6-timing_v6.18.patch
-mmc-sdhci-of-aspeed-Optimize-tuning-mechanism_v6.12.patch
 nexthop-b27-dts.patch
 0001-Add-device-tree-for-Nokia-BMC-H6-128-platform.patch
 arista_goldfinch-dts.patch
@@ -273,13 +271,13 @@ micas-m2-w6950-128oc-dts.patch
 ###-> aspeed-end
 
 ###-> nvidia_aspeed_bmc-start
-0001-mctp-driver-net-Extend-MCTP-support.patch
-0002-mctp-aspeed-IRoT-Add-initial-support.patch
-0003-mctp-driver-net-Add-global-APIs-for-MCTP.patch
-0004-mctp-driver-net-Fix-MCTP-over-VDM-PCIe.patch
-0005-mctp-driver-net-Fix-MCTP-over-USB.patch
-0006-jtag-Add-JTAG-core-headers-GPIO-mux-and-locking-support.patch
-0007-JTAG-Aspeed-Fix-kernel-configuration.patch
+#0001-mctp-driver-net-Extend-MCTP-support.patch
+#0002-mctp-aspeed-IRoT-Add-initial-support.patch
+#0003-mctp-driver-net-Add-global-APIs-for-MCTP.patch
+#0004-mctp-driver-net-Fix-MCTP-over-VDM-PCIe.patch
+#0005-mctp-driver-net-Fix-MCTP-over-USB.patch
+#0006-jtag-Add-JTAG-core-headers-GPIO-mux-and-locking-support.patch
+#0007-JTAG-Aspeed-Fix-kernel-configuration.patch
 ###-> nvidia_aspeed_bmc-end
 
 #

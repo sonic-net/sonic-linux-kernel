@@ -28,9 +28,9 @@ index 3e904b273f1f..5caf80a7ff69 100644
  	ast2700-evb.dtb \
  	nexthop-b27-r0.dtb \
 +	nokia-ast2700-h6-128-r0.dtb \
+ 	ast2700-evb_ast1700-evb.dtb \
+ 	ast2700-evb_ast1700-evb-dual.dtb \
  	ast2700-raw.dtb \
- 	ast2700-evb-s0.dtb \
- 	ast2700-evb-s1.dtb \
 diff --git a/arch/arm64/boot/dts/aspeed/nokia-ast2700-h6-128-r0.dts b/arch/arm64/boot/dts/aspeed/nokia-ast2700-h6-128-r0.dts
 new file mode 100644
 index 000000000000..79b5bd7fb94a
