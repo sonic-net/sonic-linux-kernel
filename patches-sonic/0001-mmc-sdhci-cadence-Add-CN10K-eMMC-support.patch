@@ -2496,7 +2496,8 @@ index be1505e8c536..87022bc6d941 100644
  
  static const struct sdhci_cdns_drv_data sdhci_eyeq_drv_data = {
  	.pltfm_data = {
- 		.ops = &sdhci_cdns_ops,
+- 		.ops = &sdhci_cdns_ops,
++		.ops = &sdhci_cdns_sd4_ops,
  		.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN,
  	},
 +	.cdns_data = NULL,
