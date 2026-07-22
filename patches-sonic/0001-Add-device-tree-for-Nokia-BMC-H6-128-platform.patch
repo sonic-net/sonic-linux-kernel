@@ -200,7 +200,7 @@ index 000000000000..79b5bd7fb94a
 +	phy-mode = "rmii";
 +
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&pinctrl_rmii1_default>;
++	pinctrl-0 = <&pinctrl_rmii0_default>;
 +};
 +
 +&mac1 {
@@ -209,7 +209,7 @@ index 000000000000..79b5bd7fb94a
 +	phy-mode = "rmii";
 +
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&pinctrl_rmii0_default>;
++	pinctrl-0 = <&pinctrl_rmii1_default>;
 +};
 +
 +&syscon1 {
