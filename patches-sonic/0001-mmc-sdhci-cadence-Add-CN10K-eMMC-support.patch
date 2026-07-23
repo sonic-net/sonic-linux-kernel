@@ -2470,7 +2470,7 @@ index be1505e8c536..87022bc6d941 100644
  };
  
  static const struct sdhci_cdns_drv_data sdhci_elba_drv_data = {
-@@ -431,12 +2281,32 @@ static const struct sdhci_cdns_drv_data sdhci_elba_drv_data = {
+@@ -431,19 +2281,40 @@ static const struct sdhci_cdns_drv_data sdhci_elba_drv_data = {
  	.pltfm_data = {
  		.ops = &sdhci_elba_ops,
  	},
@@ -2492,6 +2492,15 @@ index be1505e8c536..87022bc6d941 100644
 +		.ops = &sdhci_cdns_sd4_ops,
 +	},
 +	.cdns_data = &sdhci_cdns_sd4_data,
+ };
+ 
+ static const struct sdhci_cdns_drv_data sdhci_eyeq_drv_data = {
+ 	.pltfm_data = {
+-		.ops = &sdhci_cdns_ops,
++		.ops = &sdhci_cdns_sd4_ops,
+ 		.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN,
+ 	},
++	.cdns_data = NULL,
  };
  
 -static const struct sdhci_cdns_drv_data sdhci_cdns_drv_data = {
@@ -2698,9 +2707,9 @@ index be1505e8c536..87022bc6d941 100644
  
  	return ret;
  }
-@@ -595,7 +2549,14 @@ static const struct of_device_id sdhci_cdns_match[] = {
- 		.compatible = "amd,pensando-elba-sd4hc",
- 		.data = &sdhci_elba_drv_data,
+@@ -606,7 +2549,14 @@ static const struct of_device_id sdhci_cdns_match[] = {
+ 		.compatible = "mobileye,eyeq-sd4hc",
+ 		.data = &sdhci_eyeq_drv_data,
  	},
 -	{ .compatible = "cdns,sd4hc" },
 +	{

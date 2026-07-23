@@ -27,9 +27,9 @@ index 4458a1b..1b26168 100644
  dtb-$(CONFIG_ARCH_ASPEED) += \
  	ast2700-evb.dtb \
 +	nexthop-b27-r0.dtb \
+ 	ast2700-evb_ast1700-evb.dtb \
+ 	ast2700-evb_ast1700-evb-dual.dtb \
  	ast2700-raw.dtb \
- 	ast2700-evb-s0.dtb \
- 	ast2700-evb-s1.dtb \
 diff --git a/arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts b/arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts
 new file mode 100644
 index 0000000..edad94f
