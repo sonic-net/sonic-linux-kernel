@@ -15,70 +15,21 @@ kernel-6.12 00.07.02.
 Signed-off-by: Chander <chander@nexthop.ai>
 
 ---
- drivers/char/hw_random/Kconfig               |   1 -
- drivers/clk/Kconfig                          |   8 -
- drivers/clk/Makefile                         |   1 -
- drivers/edac/altera_edac.c                   |   1 +
- drivers/edac/edac_mc_sysfs.c                 |  24 -
- drivers/edac/i10nm_base.c                    |  14 -
- drivers/edac/synopsys_edac.c                 |  97 +--
- drivers/gpio/gpio-aspeed-sgpio.c             | 749 ++++++-------------
- drivers/i3c/master/ast2600-i3c-master.c      |  34 +-
- drivers/irqchip/Kconfig                      |   3 +
- drivers/irqchip/Makefile                     |   2 +
- drivers/media/platform/aspeed/aspeed-video.c |  48 +-
- drivers/net/ethernet/faraday/ftgmac100.c     | 384 +++++++++-
- drivers/net/ethernet/faraday/ftgmac100.h     |  39 +
- drivers/net/mctp/mctp-pcie-vdm.c             |  12 +-
- drivers/reset/Kconfig                        |  11 +-
- drivers/rtc/rtc-aspeed.c                     |  22 +-
- drivers/usb/gadget/udc/aspeed-vhub/core.c    |   6 +
- drivers/usb/gadget/udc/aspeed-vhub/vhub.h    |   4 +
- 19 files changed, 830 insertions(+), 630 deletions(-)
+ drivers/edac/altera_edac.c                   |    1 
+ drivers/edac/edac_mc_sysfs.c                 |   24 -
+ drivers/edac/i10nm_base.c                    |   14 
+ drivers/gpio/gpio-aspeed-sgpio.c             |  749 +++++++++-----------------
+ drivers/i3c/master/ast2600-i3c-master.c      |   34 +
+ drivers/irqchip/Kconfig                      |    3 
+ drivers/media/platform/aspeed/aspeed-video.c |   48 +-
+ drivers/net/ethernet/faraday/ftgmac100.c     |  384 +++++++++++++
+ drivers/net/ethernet/faraday/ftgmac100.h     |   39 +
+ drivers/net/mctp/mctp-pcie-vdm.c             |   12 
+ drivers/rtc/rtc-aspeed.c                     |   22 -
+ drivers/usb/gadget/udc/aspeed-vhub/core.c    |    6 
+ drivers/usb/gadget/udc/aspeed-vhub/vhub.h    |    4 
+ 13 files changed, 772 insertions(+), 568 deletions(-)
 
-diff --git a/drivers/char/hw_random/Kconfig b/drivers/char/hw_random/Kconfig
-index d723621e4..dd2e0f031 100644
---- a/drivers/char/hw_random/Kconfig
-+++ b/drivers/char/hw_random/Kconfig
-@@ -286,7 +286,6 @@ config HW_RANDOM_INGENIC_TRNG
- config HW_RANDOM_NOMADIK
- 	tristate "ST-Ericsson Nomadik Random Number Generator support"
- 	depends on ARCH_NOMADIK || COMPILE_TEST
--	depends on ARM_AMBA
- 	default HW_RANDOM
- 	help
- 	  This driver provides kernel-side support for the Random Number
-diff --git a/drivers/clk/Kconfig b/drivers/clk/Kconfig
-index fb3e94edc..ddded0fbc 100644
---- a/drivers/clk/Kconfig
-+++ b/drivers/clk/Kconfig
-@@ -356,14 +356,6 @@ config COMMON_CLK_LOCHNAGAR
- 	  This driver supports the clocking features of the Cirrus Logic
- 	  Lochnagar audio development board.
- 
--config COMMON_CLK_NPCM8XX
--	tristate "Clock driver for the NPCM8XX SoC Family"
--	depends on ARCH_NPCM || COMPILE_TEST
--	help
--	  This driver supports the clocks on the Nuvoton BMC NPCM8XX SoC Family,
--	  all the clocks are initialized by the bootloader, so this driver
--	  allows only reading of current settings directly from the hardware.
--
- config COMMON_CLK_LOONGSON2
- 	bool "Clock driver for Loongson-2 SoC"
- 	depends on LOONGARCH || COMPILE_TEST
-diff --git a/drivers/clk/Makefile b/drivers/clk/Makefile
-index 0a8016c2e..ea0e812f7 100644
---- a/drivers/clk/Makefile
-+++ b/drivers/clk/Makefile
-@@ -64,7 +64,6 @@ obj-$(CONFIG_ARCH_MILBEAUT_M10V)	+= clk-milbeaut.o
- obj-$(CONFIG_ARCH_MOXART)		+= clk-moxart.o
- obj-$(CONFIG_ARCH_NOMADIK)		+= clk-nomadik.o
- obj-$(CONFIG_ARCH_NPCM7XX)	    	+= clk-npcm7xx.o
--obj-$(CONFIG_COMMON_CLK_NPCM8XX)	+= clk-npcm8xx.o
- obj-$(CONFIG_ARCH_NSPIRE)		+= clk-nspire.o
- obj-$(CONFIG_COMMON_CLK_PALMAS)		+= clk-palmas.o
- obj-$(CONFIG_CLK_LS1028A_PLLDIG)	+= clk-plldig.o
 diff --git a/drivers/edac/altera_edac.c b/drivers/edac/altera_edac.c
 index 605493b50..a059964b9 100644
 --- a/drivers/edac/altera_edac.c
@@ -179,177 +130,6 @@ index d8cd12d90..ac4b3d955 100644
  		ndimms = 0;
  
  		if (res_cfg->type != GNR)
-diff --git a/drivers/edac/synopsys_edac.c b/drivers/edac/synopsys_edac.c
-index ec3ed5e2b..d7416166f 100644
---- a/drivers/edac/synopsys_edac.c
-+++ b/drivers/edac/synopsys_edac.c
-@@ -332,26 +332,20 @@ struct synps_edac_priv {
- #endif
- };
- 
--enum synps_platform_type {
--	ZYNQ,
--	ZYNQMP,
--	SYNPS,
--};
--
- /**
-  * struct synps_platform_data -  synps platform data structure.
-- * @platform:		Identifies the target hardware platform
-  * @get_error_info:	Get EDAC error info.
-  * @get_mtype:		Get mtype.
-  * @get_dtype:		Get dtype.
-+ * @get_ecc_state:	Get ECC state.
-  * @get_mem_info:	Get EDAC memory info
-  * @quirks:		To differentiate IPs.
-  */
- struct synps_platform_data {
--	enum synps_platform_type platform;
- 	int (*get_error_info)(struct synps_edac_priv *priv);
- 	enum mem_type (*get_mtype)(const void __iomem *base);
- 	enum dev_type (*get_dtype)(const void __iomem *base);
-+	bool (*get_ecc_state)(void __iomem *base);
- #ifdef CONFIG_EDAC_DEBUG
- 	u64 (*get_mem_info)(struct synps_edac_priv *priv);
- #endif
-@@ -726,38 +720,51 @@ static enum dev_type zynqmp_get_dtype(const void __iomem *base)
- 	return dt;
- }
- 
--static bool get_ecc_state(struct synps_edac_priv *priv)
-+/**
-+ * zynq_get_ecc_state - Return the controller ECC enable/disable status.
-+ * @base:	DDR memory controller base address.
-+ *
-+ * Get the ECC enable/disable status of the controller.
-+ *
-+ * Return: true if enabled, otherwise false.
-+ */
-+static bool zynq_get_ecc_state(void __iomem *base)
- {
--	u32 ecctype, clearval;
- 	enum dev_type dt;
-+	u32 ecctype;
- 
--	if (priv->p_data->platform == ZYNQ) {
--		dt = zynq_get_dtype(priv->baseaddr);
--		if (dt == DEV_UNKNOWN)
--			return false;
--
--		ecctype = readl(priv->baseaddr + SCRUB_OFST) & SCRUB_MODE_MASK;
--		if (ecctype == SCRUB_MODE_SECDED && dt == DEV_X2) {
--			clearval = ECC_CTRL_CLR_CE_ERR | ECC_CTRL_CLR_UE_ERR;
--			writel(clearval, priv->baseaddr + ECC_CTRL_OFST);
--			writel(0x0, priv->baseaddr + ECC_CTRL_OFST);
--			return true;
--		}
--	} else {
--		dt = zynqmp_get_dtype(priv->baseaddr);
--		if (dt == DEV_UNKNOWN)
--			return false;
--
--		ecctype = readl(priv->baseaddr + ECC_CFG0_OFST) & SCRUB_MODE_MASK;
--		if (ecctype == SCRUB_MODE_SECDED &&
--		    (dt == DEV_X2 || dt == DEV_X4 || dt == DEV_X8)) {
--			clearval = readl(priv->baseaddr + ECC_CLR_OFST) |
--			ECC_CTRL_CLR_CE_ERR | ECC_CTRL_CLR_CE_ERRCNT |
--			ECC_CTRL_CLR_UE_ERR | ECC_CTRL_CLR_UE_ERRCNT;
--			writel(clearval, priv->baseaddr + ECC_CLR_OFST);
--			return true;
--		}
--	}
-+	dt = zynq_get_dtype(base);
-+	if (dt == DEV_UNKNOWN)
-+		return false;
-+
-+	ecctype = readl(base + SCRUB_OFST) & SCRUB_MODE_MASK;
-+	if ((ecctype == SCRUB_MODE_SECDED) && (dt == DEV_X2))
-+		return true;
-+
-+	return false;
-+}
-+
-+/**
-+ * zynqmp_get_ecc_state - Return the controller ECC enable/disable status.
-+ * @base:	DDR memory controller base address.
-+ *
-+ * Get the ECC enable/disable status for the controller.
-+ *
-+ * Return: a ECC status boolean i.e true/false - enabled/disabled.
-+ */
-+static bool zynqmp_get_ecc_state(void __iomem *base)
-+{
-+	enum dev_type dt;
-+	u32 ecctype;
-+
-+	dt = zynqmp_get_dtype(base);
-+	if (dt == DEV_UNKNOWN)
-+		return false;
-+
-+	ecctype = readl(base + ECC_CFG0_OFST) & SCRUB_MODE_MASK;
-+	if ((ecctype == SCRUB_MODE_SECDED) &&
-+	    ((dt == DEV_X2) || (dt == DEV_X4) || (dt == DEV_X8)))
-+		return true;
- 
- 	return false;
- }
-@@ -927,18 +934,18 @@ static int setup_irq(struct mem_ctl_info *mci,
- }
- 
- static const struct synps_platform_data zynq_edac_def = {
--	.platform = ZYNQ,
- 	.get_error_info	= zynq_get_error_info,
- 	.get_mtype	= zynq_get_mtype,
- 	.get_dtype	= zynq_get_dtype,
-+	.get_ecc_state	= zynq_get_ecc_state,
- 	.quirks		= 0,
- };
- 
- static const struct synps_platform_data zynqmp_edac_def = {
--	.platform = ZYNQMP,
- 	.get_error_info	= zynqmp_get_error_info,
- 	.get_mtype	= zynqmp_get_mtype,
- 	.get_dtype	= zynqmp_get_dtype,
-+	.get_ecc_state	= zynqmp_get_ecc_state,
- #ifdef CONFIG_EDAC_DEBUG
- 	.get_mem_info	= zynqmp_get_mem_info,
- #endif
-@@ -950,10 +957,10 @@ static const struct synps_platform_data zynqmp_edac_def = {
- };
- 
- static const struct synps_platform_data synopsys_edac_def = {
--	.platform = SYNPS,
- 	.get_error_info	= zynqmp_get_error_info,
- 	.get_mtype	= zynqmp_get_mtype,
- 	.get_dtype	= zynqmp_get_dtype,
-+	.get_ecc_state	= zynqmp_get_ecc_state,
- 	.quirks         = (DDR_ECC_INTR_SUPPORT | DDR_ECC_INTR_SELF_CLEAR
- #ifdef CONFIG_EDAC_DEBUG
- 			  | DDR_ECC_DATA_POISON_SUPPORT
-@@ -1383,6 +1390,10 @@ static int mc_probe(struct platform_device *pdev)
- 	if (!p_data)
- 		return -ENODEV;
- 
-+	if (!p_data->get_ecc_state(baseaddr)) {
-+		edac_printk(KERN_INFO, EDAC_MC, "ECC not enabled\n");
-+		return -ENXIO;
-+	}
- 
- 	layers[0].type = EDAC_MC_LAYER_CHIP_SELECT;
- 	layers[0].size = SYNPS_EDAC_NR_CSROWS;
-@@ -1402,12 +1413,6 @@ static int mc_probe(struct platform_device *pdev)
- 	priv = mci->pvt_info;
- 	priv->baseaddr = baseaddr;
- 	priv->p_data = p_data;
--	if (!get_ecc_state(priv)) {
--		edac_printk(KERN_INFO, EDAC_MC, "ECC not enabled\n");
--		rc = -ENODEV;
--		goto free_edac_mc;
--	}
--
- 	spin_lock_init(&priv->reglock);
- 
- 	mc_init(mci, pdev);
 diff --git a/drivers/gpio/gpio-aspeed-sgpio.c b/drivers/gpio/gpio-aspeed-sgpio.c
 index 150fbaebb..836b0cc76 100644
 --- a/drivers/gpio/gpio-aspeed-sgpio.c
@@ -1499,19 +1279,6 @@ index 3f0afa73a..619d3fb51 100644
  config MCHP_EIC
  	bool "Microchip External Interrupt Controller"
  	depends on ARCH_AT91 || COMPILE_TEST
-diff --git a/drivers/irqchip/Makefile b/drivers/irqchip/Makefile
-index 95e13a5b2..56c98f5dd 100644
---- a/drivers/irqchip/Makefile
-+++ b/drivers/irqchip/Makefile
-@@ -83,6 +83,8 @@ obj-$(CONFIG_MVEBU_PIC)			+= irq-mvebu-pic.o
- obj-$(CONFIG_MVEBU_SEI)			+= irq-mvebu-sei.o
- obj-$(CONFIG_LS_EXTIRQ)			+= irq-ls-extirq.o
- obj-$(CONFIG_LS_SCFG_MSI)		+= irq-ls-scfg-msi.o
-+obj-$(CONFIG_ARCH_ASPEED)		+= irq-aspeed-vic.o irq-aspeed-i2c-ic.o irq-aspeed-scu-ic.o
-+obj-$(CONFIG_STM32MP_EXTI)		+= irq-stm32mp-exti.o
- obj-$(CONFIG_ARCH_ASPEED)		+= irq-aspeed-vic.o irq-aspeed-i2c-ic.o irq-aspeed-scu-ic.o irq-aspeed-intc.o irq-aspeed-e2m-ic.o
- obj-$(CONFIG_AST2700_IRQ)		+= irq-ast2700-intc0.o irq-ast2700-intc1.o
- obj-$(CONFIG_STM32_EXTI) 		+= irq-stm32-exti.o
 diff --git a/drivers/media/platform/aspeed/aspeed-video.c b/drivers/media/platform/aspeed/aspeed-video.c
 index 7e8758db8..0902e3064 100644
 --- a/drivers/media/platform/aspeed/aspeed-video.c
@@ -2106,44 +1873,6 @@ index e89a296af..f715fc085 100644
  		net_status = netif_rx(skb);
  		if (net_status == NET_RX_SUCCESS) {
  			stats->rx_packets++;
-diff --git a/drivers/reset/Kconfig b/drivers/reset/Kconfig
-index 0158fba2a..bfa791c92 100644
---- a/drivers/reset/Kconfig
-+++ b/drivers/reset/Kconfig
-@@ -58,8 +58,8 @@ config RESET_BERLIN
- 
- config RESET_BRCMSTB
- 	tristate "Broadcom STB reset controller"
--	depends on ARCH_BRCMSTB || ARCH_BCM2835 || COMPILE_TEST
--	default ARCH_BRCMSTB || ARCH_BCM2835
-+	depends on ARCH_BRCMSTB || COMPILE_TEST
-+	default ARCH_BRCMSTB
- 	help
- 	  This enables the reset controller driver for Broadcom STB SoCs using
- 	  a SUN_TOP_CTRL_SW_INIT style controller.
-@@ -67,11 +67,11 @@ config RESET_BRCMSTB
- config RESET_BRCMSTB_RESCAL
- 	tristate "Broadcom STB RESCAL reset controller"
- 	depends on HAS_IOMEM
--	depends on ARCH_BRCMSTB || ARCH_BCM2835 || COMPILE_TEST
--	default ARCH_BRCMSTB || ARCH_BCM2835
-+	depends on ARCH_BRCMSTB || COMPILE_TEST
-+	default ARCH_BRCMSTB
- 	help
- 	  This enables the RESCAL reset controller for SATA, PCIe0, or PCIe1 on
--	  BCM7216 or the BCM2712.
-+	  BCM7216.
- 
- config RESET_EYEQ
- 	bool "Mobileye EyeQ reset controller"
-@@ -186,7 +186,6 @@ config RESET_MESON_AUDIO_ARB
- config RESET_NPCM
- 	bool "NPCM BMC Reset Driver" if COMPILE_TEST
- 	default ARCH_NPCM
--	select AUXILIARY_BUS
- 	help
- 	  This enables the reset controller driver for Nuvoton NPCM
- 	  BMC SoCs.
 diff --git a/drivers/rtc/rtc-aspeed.c b/drivers/rtc/rtc-aspeed.c
 index 2196aaf47..c171e39f5 100644
 --- a/drivers/rtc/rtc-aspeed.c
