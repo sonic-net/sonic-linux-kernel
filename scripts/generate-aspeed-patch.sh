@@ -11,18 +11,53 @@ KERNEL_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="$(dirname "$(dirname "$KERNEL_DIR")")"
 
 # Configuration
-# Example, run with ASPEED_TAG=v00.07.02 ./scripts/generate-aspeed-patch.sh
-ASPEED_BRANCH="${ASPEED_TAG:-aspeed-master-v6.12}"
+# By default the script auto-detects the latest Aspeed release tag on the kernel
+# line that matches the SONiC kernel (e.g. 6.12 -> aspeed-master-v6.12). To pin a
+# specific ref, override it explicitly:
+#   ASPEED_TAG=v00.07.02 ./scripts/generate-aspeed-patch.sh
 ASPEED_REPO="https://github.com/AspeedTech-BMC/linux.git"
 WORK_DIR="${TMPDIR:-/tmp}/aspeed-patch-gen"
 ASPEED_SRC="$WORK_DIR/aspeed-src"
 SONIC_SRC="$WORK_DIR/sonic-src"
 SONIC_ASPEED="$WORK_DIR/sonic-src-aspeed"
+# AST2700 (g7) defconfig. Used to decide whether a genuinely-new source
+# directory is actually needed by the Aspeed image (see Step 5c2).
+ASPEED_DEFCONFIG="$ASPEED_SRC/arch/arm64/configs/aspeed_g7_defconfig"
 OUTPUT_PATCH="$WORK_DIR/aspeed-ast2700-support-new.patch"
 
 # Read kernel version from Makefile
 KERNEL_VERSION=$(sed -nE 's/^KERNEL_VERSION[[:space:]]*[?:+]?=[[:space:]]*//p' "$KERNEL_DIR/Makefile")
 SONIC_KERNEL_URL="https://packages.trafficmanager.net/public/debian-security/pool/updates/main/l/linux/linux_${KERNEL_VERSION}.orig.tar.xz"
+
+# Derive the Aspeed kernel-line branch from the SONiC kernel version (e.g. 6.12).
+ASPEED_KERNEL_LINE=$(printf '%s' "$KERNEL_VERSION" | grep -oE '^[0-9]+\.[0-9]+')
+ASPEED_LINE_BRANCH="aspeed-master-v${ASPEED_KERNEL_LINE}"
+
+# Resolve which ref to use. An explicit ASPEED_TAG always wins; otherwise find the
+# latest release tag published on the matching kernel line. Aspeed tags releases at
+# the tip of each aspeed-master-v<line> branch, so we match tags by the branch-tip
+# commit and pick the highest version when several point at the same commit.
+if [ -n "$ASPEED_TAG" ]; then
+    ASPEED_BRANCH="$ASPEED_TAG"
+    echo "Using explicitly requested Aspeed ref: $ASPEED_BRANCH"
+else
+    echo "Resolving latest Aspeed release tag on '$ASPEED_LINE_BRANCH'..."
+    LINE_TIP=$(git ls-remote "$ASPEED_REPO" "refs/heads/$ASPEED_LINE_BRANCH" 2>/dev/null | awk 'END{print $1}')
+    LATEST_TAG=""
+    if [ -n "$LINE_TIP" ]; then
+        LATEST_TAG=$(git ls-remote --tags "$ASPEED_REPO" 2>/dev/null \
+            | awk -v tip="$LINE_TIP" '$1==tip {print $2}' \
+            | sed -e 's,refs/tags/,,' -e 's,\^{},,' \
+            | sort -u | sort -V | tail -n1)
+    fi
+    if [ -n "$LATEST_TAG" ]; then
+        echo "  Latest tag for ${ASPEED_KERNEL_LINE}: $LATEST_TAG (branch tip $LINE_TIP)"
+        ASPEED_BRANCH="$LATEST_TAG"
+    else
+        echo "  No release tag found at tip of '$ASPEED_LINE_BRANCH'; falling back to the branch."
+        ASPEED_BRANCH="$ASPEED_LINE_BRANCH"
+    fi
+fi
 
 echo "========================================="
 echo "Aspeed Patch Generation Script"
@@ -50,11 +85,21 @@ fi
 echo ""
 echo "Step 1: Downloading Aspeed kernel source..."
 if [ -d "$ASPEED_SRC/.git" ]; then
-    echo "Aspeed source already exists, assuming its valid"
-#    cd "$ASPEED_SRC"
-#    git fetch origin "$ASPEED_BRANCH"
-#    git reset --hard "origin/$ASPEED_BRANCH"
-#    cd - > /dev/null
+    echo "Aspeed source already exists; verifying it matches '$ASPEED_BRANCH'..."
+    # Resolve the requested ref (branch or annotated/lightweight tag) on the remote.
+    # For an annotated tag the peeled "^{}" line carries the commit; take the last
+    # matching line so we always compare against the commit HEAD would end up at.
+    want_sha=$(git ls-remote "$ASPEED_REPO" "$ASPEED_BRANCH" "refs/tags/$ASPEED_BRANCH^{}" 2>/dev/null | awk 'END{print $1}')
+    have_sha=$(git -C "$ASPEED_SRC" rev-parse HEAD 2>/dev/null)
+    if [ -n "$want_sha" ] && [ "$want_sha" != "$have_sha" ]; then
+        echo "  Cached tree is at ${have_sha:-<none>} but '$ASPEED_BRANCH' is $want_sha; re-fetching..."
+        git -C "$ASPEED_SRC" fetch --depth 1 "$ASPEED_REPO" "$ASPEED_BRANCH"
+        git -C "$ASPEED_SRC" checkout --quiet --detach FETCH_HEAD
+        git -C "$ASPEED_SRC" reset --hard --quiet FETCH_HEAD
+        git -C "$ASPEED_SRC" clean -fdxq
+    else
+        echo "  Cached tree already matches '$ASPEED_BRANCH' (${have_sha:-unknown})."
+    fi
 else
     rm -rf "$ASPEED_SRC"
     git clone --depth 1 --branch "$ASPEED_BRANCH" "$ASPEED_REPO" "$ASPEED_SRC"
@@ -341,17 +386,54 @@ while IFS= read -r aspeed_kconfig; do
 
                     # Check if the source directory exists and contains Aspeed-related content
                     if [ -d "$source_dir" ]; then
-                        set +e
-                        # Check if directory or its Kconfig has Aspeed references
-                        grep -rqi "aspeed\|ast2[567]00\|ast1[78]00" "$source_dir" 2>/dev/null
-                        if [ $? -eq 0 ]; then
-                            rel_source_dir="${source_dir#$ASPEED_SRC/}"
-                            echo "  Found new source directory: $rel_source_dir"
-                            mkdir -p "$SONIC_ASPEED/$rel_source_dir"
-                            cp -rv "$source_dir/"* "$SONIC_ASPEED/$rel_source_dir/" | wc -l
-                            KCONFIG_DIR_COUNT=$((KCONFIG_DIR_COUNT + 1))
+                        rel_source_dir="${source_dir#$ASPEED_SRC/}"
+                        # Only copy directories that are genuinely NEW (absent from the
+                        # SONiC base). A new +source statement can reference a sibling
+                        # Kconfig file inside a pre-existing shared directory (e.g. the
+                        # Aspeed tree adds `source "drivers/gpu/drm/Kconfig.debug"`), in
+                        # which case dirname resolves to a large shared directory such as
+                        # drivers/gpu/drm. Wholesale-copying that newer-kernel directory
+                        # clobbers unrelated files and drops non-Aspeed obj-/subdir-y
+                        # entries. Such shared directories are handled by the smart-merge
+                        # steps (5b/5c) and the targeted file copies (5d), so skip them here.
+                        if [ -d "$SONIC_SRC/$rel_source_dir" ]; then
+                            echo "  Skipping pre-existing shared directory: $rel_source_dir (handled by smart merge / targeted copy)"
+                        else
+                            # Genuinely new directory (absent from the SONiC base)
+                            # referenced by a new +source statement. "New to SONiC"
+                            # is NOT the same as "Aspeed addition": the SONiC/Debian
+                            # tree strips many vanilla drivers (e.g. staging/rtl8712)
+                            # that the near-vanilla Aspeed tree still carries. Only
+                            # bring the directory in if it is genuinely Aspeed-relevant:
+                            #   (a) its code/config references Aspeed (content scan), or
+                            #   (b) a Kconfig symbol it defines is enabled in the Aspeed
+                            #       g7 defconfig -- this catches Intel-authored but
+                            #       Aspeed-required stacks like drivers/i3c/mctp
+                            #       (CONFIG_I3C_MCTP=y) whose code carries no "aspeed"
+                            #       marker.
+                            set +e
+                            python3 "$SCRIPT_DIR/aspeed_content_scan.py" "$source_dir" 2>/dev/null
+                            wanted=$?
+                            if [ $wanted -ne 0 ] && [ -f "$ASPEED_DEFCONFIG" ]; then
+                                dir_syms=$(grep -hoE '^[[:space:]]*(menu)?config [A-Z0-9_]+' "$source_dir/Kconfig" 2>/dev/null | awk '{print $NF}')
+                                for sym in $dir_syms; do
+                                    if grep -qE "^CONFIG_${sym}=(y|m)\$" "$ASPEED_DEFCONFIG"; then
+                                        wanted=0
+                                        break
+                                    fi
+                                done
+                            fi
+                            set -e
+
+                            if [ $wanted -eq 0 ]; then
+                                echo "  Found new source directory: $rel_source_dir"
+                                mkdir -p "$SONIC_ASPEED/$rel_source_dir"
+                                cp -rv "$source_dir/"* "$SONIC_ASPEED/$rel_source_dir/" | wc -l
+                                KCONFIG_DIR_COUNT=$((KCONFIG_DIR_COUNT + 1))
+                            else
+                                echo "  Skipping new non-Aspeed directory: $rel_source_dir (no Aspeed content, not enabled by aspeed_g7_defconfig)"
+                            fi
                         fi
-                        set -e
                     fi
                 fi
             done <<< "$new_sources"
@@ -507,7 +589,7 @@ while IFS= read -r aspeed_c_file; do
                         # Check if it's a new file or has Aspeed-related content
                         if [ ! -f "$sonic_include" ]; then
                             # New file - check if it has Aspeed references or is in our dependency list
-                            if grep -qi "aspeed\|ast2[567]00\|ast1[78]00\|mctp.*pcie.*vdm\|xdma" "$aspeed_include" 2>/dev/null; then
+                            if python3 "$SCRIPT_DIR/aspeed_content_scan.py" "$aspeed_include" "aspeed|ast2[567]00|ast1[78]00|mctp.*pcie.*vdm|xdma" 2>/dev/null; then
                                 echo "  Found dependency (new file): $base_dir/$include_file"
                                 mkdir -p "$SONIC_ASPEED/$base_dir"
                                 cp -v "$aspeed_include" "$SONIC_ASPEED/$base_dir/$include_file"
@@ -570,7 +652,7 @@ for dep in "${KNOWN_DEPS[@]}"; do
 
             # For new files, check if they have relevant content
             if [ ! -f "$sonic_dep" ]; then
-                if grep -qi "aspeed\|ast2[567]00\|ast1[78]00\|mctp.*pcie.*vdm\|xdma\|devm_clk_hw_register_gate_parent_hw" "$aspeed_dep" 2>/dev/null; then
+                if python3 "$SCRIPT_DIR/aspeed_content_scan.py" "$aspeed_dep" "aspeed|ast2[567]00|ast1[78]00|mctp.*pcie.*vdm|xdma|devm_clk_hw_register_gate_parent_hw" 2>/dev/null; then
                     echo "  Found known dependency (new): $dep"
                     mkdir -p "$SONIC_ASPEED/$(dirname $dep)"
                     cp -v "$aspeed_dep" "$SONIC_ASPEED/$dep"
@@ -668,10 +750,10 @@ echo "========================================="
 echo "Output patch: $OUTPUT_PATCH"
 echo "Patch size: $(du -sh $OUTPUT_PATCH | cut -f1)"
 echo "Total lines: $(wc -l < $OUTPUT_PATCH)"
-echo "Files changed: $(grep -c '^diff -Naur' $OUTPUT_PATCH)"
+echo "Files changed: $(grep -c '^diff --git' $OUTPUT_PATCH)"
 echo ""
 echo "Sample of changed files:"
-grep '^diff -Naur' "$OUTPUT_PATCH" | head -20
+grep '^diff --git' "$OUTPUT_PATCH" | head -20
 echo ""
 
 # Step 10: Sanity check for non-Aspeed deletions
