@@ -14,6 +14,7 @@ driver-arista-restrict-eMMC-drive-to-50Mhz-from-userland.patch
 driver-arista-i2c-designware-shutdown.patch
 driver-arista-pci-aer-disable-recovery.patch
 driver-arista-pci-dpc-disable.patch
+driver-arista-pci-clear-aer-error-on-recovery-failure.patch
 driver-support-sff-8436-eeprom.patch
 driver-support-sff-8436-eeprom-update.patch
 driver-sff-8436-use-nvmem-framework.patch
