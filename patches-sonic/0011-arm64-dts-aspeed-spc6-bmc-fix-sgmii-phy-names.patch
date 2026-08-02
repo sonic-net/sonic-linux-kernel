@@ -1,0 +1,60 @@
+From: Sergejs Hatinecs <shatinecs@nvidia.com>
+Date: Thu, 12 Jun 2026 12:30:00 +0300
+Subject: [PATCH 6.12 1/1] arm64: dts: aspeed: spc6-bmc: fix mac2 SGMII phy-names
+
+Upstream-Status: Pending
+
+ftgmac100 probes the optional SGMII serdes PHY with devm_phy_optional_get()
+using the name "sgmii". mac2 in the SPC6 BMC device trees used
+phy-names = "sgmii-phy", so the serdes PHY was never bound and SGMII
+management traffic did not run through the expected path.
+
+Use phy-names = "sgmii" on mac2 in the A1, SONiC, and OpenBMC SPC6 BMC
+DTS variants so the name matches the driver.
+
+Signed-off-by: Sergejs Hatinecs <shatinecs@nvidia.com>
+---
+ arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-a1-bmc.dts      | 2 +-
+ arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc-openbmc.dts | 2 +-
+ arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts         | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-a1-bmc.dts b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-a1-bmc.dts
+index 810d50fe11ac..741bd588ec2a 100644
+--- a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-a1-bmc.dts
++++ b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-a1-bmc.dts
+@@ -170,7 +170,7 @@
+ 	phy-mode = "sgmii";
+ 	phy-handle = <&ethphy2>;
+ 	phys = <&sgmii>;
+-	phy-names = "sgmii-phy";
++	phy-names = "sgmii";
+ };
+ 
+ /*
+diff --git a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts
+index 0817034b8658..e16559039ed5 100644
+--- a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts
++++ b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts
+@@ -207,7 +207,7 @@
+ 	phy-mode = "sgmii";
+ 	phy-handle = <&ethphy2>;
+ 	phys = <&sgmii>;
+-	phy-names = "sgmii-phy";
++	phy-names = "sgmii";
+ };
+ 
+ /*
+diff --git a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc-openbmc.dts b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc-openbmc.dts
+index cfe5743b90fe..bcdb5a463b42 100644
+--- a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc-openbmc.dts
++++ b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc-openbmc.dts
+@@ -215,7 +215,7 @@
+ 	phy-mode = "sgmii";
+ 	phy-handle = <&ethphy2>;
+ 	phys = <&sgmii>;
+-	phy-names = "sgmii-phy";
++	phy-names = "sgmii";
+ };
+ 
+ /*
