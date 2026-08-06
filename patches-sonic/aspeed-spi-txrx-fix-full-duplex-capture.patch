@@ -1,0 +1,47 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chandrasekaran Swaminathan <chander@nexthop.ai>
+Date: Thu, 2 Jul 2026 00:00:00 +0000
+Subject: [PATCH] spi: aspeed-txrx: capture full-duplex RX for distinct buffers
+
+The aspeed-txrx controller implements its own transfer_one_message and
+only latches MISO during the clocked TX loop when tx_buf == rx_buf (a
+single shared buffer). For any transfer that supplies separate tx_buf
+and rx_buf pointers it skipped the in-clock capture and instead issued a
+second, post-transfer ioread8_rep burst from the AHB window, which reads
+back zeros because the device has already returned its data.
+
+That shared-pointer requirement is not expressible through the standard
+spidev full-duplex ABI, which always hands the driver distinct bounce
+buffers. As a result userspace SPI_IOC_MESSAGE full-duplex reads (e.g.
+the FPGA register bridge) always returned zeros.
+
+Capture MISO during the TX loop whenever an rx buffer is present,
+regardless of pointer identity, and restrict the separate read burst to
+pure reads (no tx_buf). Behaviour is unchanged for write-only,
+read-only, and shared-buffer full-duplex (e.g. the TPM) transfers.
+
+Signed-off-by: Chandrasekaran Swaminathan <chander@nexthop.ai>
+---
+ drivers/spi/spi-aspeed-txrx.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/spi/spi-aspeed-txrx.c b/drivers/spi/spi-aspeed-txrx.c
+--- a/drivers/spi/spi-aspeed-txrx.c
++++ b/drivers/spi/spi-aspeed-txrx.c
+@@ -346,7 +346,7 @@ static void aspeed_spi_transfer_tx(struct aspeed_spi_host *host, const u8 *tx_buf,
+ 	for (i = 0; i < len; i++) {
+ 		writeb(tx_buf[i], dst);
+ 
+-		if (rx_buf && tx_buf == rx_buf)
++		if (rx_buf)
+ 			rx_buf[i] = readb(host->ctrl_reg + SPI_FULL_DUPLEX_RX_REG);
+ 	}
+ }
+@@ -407,6 +407,6 @@ static int aspeed_spi_transfer(struct spi_controller *ctlr,
+ 		}
+
+-		if (rx_buf && rx_buf != tx_buf) {
++		if (rx_buf && !tx_buf) {
+ 			ctrl_val &= ~SPI_IO_MASK;
+ 			if (spi->mode & SPI_RX_DUAL)
+ 				ctrl_val |= SPI_DUAL_IO_MODE;
