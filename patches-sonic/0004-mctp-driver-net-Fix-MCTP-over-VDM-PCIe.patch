@@ -1,0 +1,52 @@
+From ef1be57f590ab3df679fb591f22065561c796c56 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Sun, 10 May 2026 14:37:56 +0300
+Subject: [PATCH 6.12 4/5] mctp: driver: net: Fix MCTP over VDM/PCIe
+
+Add fixes for MCTP over VDM/PCIe (option MCTP_TRANSPORT_PCIE_VDM).
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/net/mctp/mctp-pcie-vdm.c | 3 +++
+ include/linux/mctp-pcie-vdm.h    | 7 ++++---
+ 2 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/mctp/mctp-pcie-vdm.c b/drivers/net/mctp/mctp-pcie-vdm.c
+index f715fc085..43f35c46e 100644
+--- a/drivers/net/mctp/mctp-pcie-vdm.c
++++ b/drivers/net/mctp/mctp-pcie-vdm.c
+@@ -359,3 +359,6 @@ void mctp_pcie_vdm_remove_dev(struct net_device *vdm_dev)
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(mctp_pcie_vdm_remove_dev);
++
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("MCTP PCIe VDM transport (DSP0238) helpers");
+diff --git a/include/linux/mctp-pcie-vdm.h b/include/linux/mctp-pcie-vdm.h
+index 25fac3499..1aee02126 100644
+--- a/include/linux/mctp-pcie-vdm.h
++++ b/include/linux/mctp-pcie-vdm.h
+@@ -8,10 +8,11 @@
+ #ifndef __LINUX_MCTP_PCIE_VDM_H
+ #define __LINUX_MCTP_PCIE_VDM_H
+ 
++#include <linux/kconfig.h>
+ #include <linux/device.h>
+ #include <linux/notifier.h>
+ 
+-#ifdef CONFIG_MCTP_TRANSPORT_PCIE_VDM
++#if IS_ENABLED(CONFIG_MCTP_TRANSPORT_PCIE_VDM)
+ 
+ /**
+  * @send_packet: referenced to send packets with PCIe VDM header packed.
+@@ -32,5 +33,5 @@ struct net_device *mctp_pcie_vdm_add_dev(struct device *dev,
+ void mctp_pcie_vdm_receive_packet(struct net_device *ndev);
+ void mctp_pcie_vdm_remove_dev(struct net_device *ndev);
+ 
+-#endif	/* CONFIG_MCTP_TRANSPORT_PCIE_VDM */
+-#endif	/* __LINUX_MCTP_PCIE_VDM_H */
++#endif /* IS_ENABLED(CONFIG_MCTP_TRANSPORT_PCIE_VDM) */
++#endif /* __LINUX_MCTP_PCIE_VDM_H */
+-- 
+2.34.1
+

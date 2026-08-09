@@ -1,0 +1,31 @@
+Upstream-Status: Pending
+
+From 9f11c71d770ea5a66ef3a4e6bea134aaaf62adaa Mon Sep 17 00:00:00 2001
+From: Aaron Komisar <akomisar@nvidia.com>
+Date: Thu, 28 Aug 2025 20:57:42 +0300
+Subject: [PATCH] platform/mellanox: mlxreg-io: Increase max supported
+ attributes
+
+Increase the number of supported mlxreg-io attributes.
+
+Signed-off-by: Aaron Komisar <akomisar@nvidia.com>
+---
+ drivers/platform/mellanox/mlxreg-io.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/platform/mellanox/mlxreg-io.c b/drivers/platform/mellanox/mlxreg-io.c
+index ee7bd623ba44..ef290ac9082a 100644
+--- a/drivers/platform/mellanox/mlxreg-io.c
++++ b/drivers/platform/mellanox/mlxreg-io.c
+@@ -17,7 +17,7 @@
+ 
+ /* Attribute parameters. */
+ #define MLXREG_IO_ATT_SIZE	10
+-#define MLXREG_IO_ATT_NUM	128
++#define MLXREG_IO_ATT_NUM	250
+ 
+ /**
+  * struct mlxreg_io_priv_data - driver's private data:
+-- 
+2.34.1
+

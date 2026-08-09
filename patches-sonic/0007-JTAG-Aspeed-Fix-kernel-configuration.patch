@@ -1,0 +1,37 @@
+From 7e6b94349b5fb51f0792b31cb186585f6466d8c0 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Thu, 23 Apr 2026 21:40:40 +0300
+Subject: [PATCH 6.12 1/1] JTAG: Aspeed: Fix kernel configuration
+
+Change Kconfig and Makefile.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/Kconfig  | 2 ++
+ drivers/Makefile | 2 +-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/Kconfig b/drivers/Kconfig
+index 7bdad836f..c13e0a575 100644
+--- a/drivers/Kconfig
++++ b/drivers/Kconfig
+@@ -245,4 +245,6 @@ source "drivers/cdx/Kconfig"
+ 
+ source "drivers/dpll/Kconfig"
+ 
++source "drivers/jtag/Kconfig"
++
+ endmenu
+diff --git a/drivers/Makefile b/drivers/Makefile
+index 47ae5636e..8e1dc078f 100644
+--- a/drivers/Makefile
++++ b/drivers/Makefile
+@@ -195,4 +195,4 @@ obj-$(CONFIG_CDX_BUS)		+= cdx/
+ obj-$(CONFIG_DPLL)		+= dpll/
+ 
+ obj-$(CONFIG_S390)		+= s390/
+-obj-$(CONFIG_JTAG_ASPEED)	+= jtag/
++obj-$(CONFIG_JTAG)		+= jtag/
+-- 
+2.34.1
+
