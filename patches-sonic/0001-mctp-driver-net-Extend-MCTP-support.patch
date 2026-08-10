@@ -3,7 +3,15 @@ From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Sun, 10 May 2026 18:26:40 +0300
 Subject: [PATCH 6.12 1/5] mctp: driver: net: Extend MCTP support.
 
-Add support for MCTP over SPI, VRoT.
+Extend the in-kernel MCTP stack with additional transports and the
+supporting infrastructure used by NVIDIA BMC platforms.
+
+This adds new MCTP transport backends, including MCTP over SPI and the
+NVIDIA OP-TEE VRoT transport, together with their headers and the
+associated Kconfig and Makefile entries. It also adds infrastructure
+shared by the transports: MCTP tracepoints, transport statistics, and
+error-injection helpers (I2C/SPI/USB/socket) used for testing, and
+extends the core MCTP routing, device and socket code accordingly.
 
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
 ---

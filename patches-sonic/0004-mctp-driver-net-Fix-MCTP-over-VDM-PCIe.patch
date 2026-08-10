@@ -3,7 +3,17 @@ From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Sun, 10 May 2026 14:37:56 +0300
 Subject: [PATCH 6.12 4/5] mctp: driver: net: Fix MCTP over VDM/PCIe
 
-Add fixes for MCTP over VDM/PCIe (option MCTP_TRANSPORT_PCIE_VDM).
+Fix two issues in the MCTP over VDM/PCIe transport
+(CONFIG_MCTP_TRANSPORT_PCIE_VDM):
+
+- mctp-pcie-vdm.c was missing MODULE_LICENSE() and MODULE_DESCRIPTION(),
+  which causes a module taint/warning when the transport is built and
+  loaded as a module. Add both.
+- The header guarded its declarations with
+  "#ifdef CONFIG_MCTP_TRANSPORT_PCIE_VDM", which does not handle the
+  option being built as a module (=m). Include <linux/kconfig.h> and use
+  IS_ENABLED() so the declarations are visible in both built-in and
+  module configurations.
 
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
 ---

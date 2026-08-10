@@ -3,6 +3,12 @@ From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Sun, 10 May 2026 18:29:00 +0300
 Subject: [PATCH 6.12 3/5] mctp: driver: net: Add global APIs for MCTP
 
+Export the MCTP transport tracepoints (mctp_transport_tx,
+mctp_transport_rx and mctp_transport_error) via
+EXPORT_TRACEPOINT_SYMBOL_GPL() so that MCTP transport drivers built as
+loadable modules can emit them, and add the missing
+MODULE_LICENSE("GPL") to the MCTP I2C error-injection module.
+
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
 ---
  drivers/net/mctp/mctp-i2c-error-inject.c | 2 ++

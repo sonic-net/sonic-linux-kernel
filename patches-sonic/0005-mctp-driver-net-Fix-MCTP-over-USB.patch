@@ -3,7 +3,14 @@ From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Sun, 10 May 2026 18:58:36 +0300
 Subject: [PATCH 6.12 5/5] mctp: driver: net: Fix MCTP over USB
 
-Add fixes for MCTP over USB (option MCTP_TRANSPORT_USB).
+Fix and extend the MCTP over USB transport (CONFIG_MCTP_TRANSPORT_USB).
+
+This reworks the USB TX error statistics so that errors which cannot be
+attributed to a single destination EID (for example batched transfers)
+are accounted under a dedicated unknown-EID bucket rather than a
+specific EID, removes a stale Makefile reference to a USB
+error-injection object, and adds a USB gadget function (f_mctp) so the
+device side can expose an MCTP-over-USB interface.
 
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
 ---
