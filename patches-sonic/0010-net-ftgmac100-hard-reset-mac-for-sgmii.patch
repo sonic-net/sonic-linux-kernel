@@ -1,0 +1,48 @@
+From: Sergejs Hatinecs <shatinecs@nvidia.com>
+Date: Thu, 12 Jun 2026 12:00:00 +0300
+Subject: [PATCH 6.12 1/1] net: ftgmac100: hard-reset MAC for SGMII to clear RX stall
+
+Upstream-Status: Pending
+
+On AST2700 + Marvell 88E151x over SGMII, an "ifconfig down/up" (or a
+partner-side link flap) intermittently leaves the MAC receive path wedged:
+the link comes back up and reports resolved, TX works, but RX stays frozen
+(no DHCP, no ping). The MDIO/serdes registers look identical to a healthy
+link in this state, so the wedge is below the register layer.
+
+The only reliable recovery is "modprobe -r ftgmac100 / modprobe ftgmac100",
+which re-runs probe and performs a full reset_control cycle of the MAC IP
+block. The ndo_open/ftgmac100_reset() path only issues the soft MACCR reset,
+which does not clear the wedged RX path.
+
+ftgmac100_reset_and_config_mac() already does the reset_control assert/
+deassert for RMII; extend it to SGMII so every MAC reset hard-resets the IP
+block and clears the RX path, matching the modprobe-reload behaviour. With
+this, repeated down/up cycles and partner link flaps recover reliably.
+
+Signed-off-by: Sergejs Hatinecs <shatinecs@nvidia.com>
+---
+ drivers/net/ethernet/faraday/ftgmac100.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/ethernet/faraday/ftgmac100.c b/drivers/net/ethernet/faraday/ftgmac100.c
+index 8ef2b736f23e..a3534b467aa6 100644
+--- a/drivers/net/ethernet/faraday/ftgmac100.c
++++ b/drivers/net/ethernet/faraday/ftgmac100.c
+@@ -157,8 +157,14 @@ static int ftgmac100_reset_and_config_mac(struct ftgmac100 *priv)
+ {
+ 	u32 maccr = 0;
+ 
+-	/* RMII needs SCU reset to clear status */
+-	if (priv->netdev->phydev->interface == PHY_INTERFACE_MODE_RMII) {
++	/* RMII needs SCU reset to clear status. SGMII (AST2700 + 88E151x) needs
++	 * it too: after ifconfig down/up the soft MACCR reset alone leaves the
++	 * MAC RX path wedged (link reads resolved but RX stays frozen). Only a
++	 * full reset_control cycle clears it - this is why "modprobe -r/modprobe"
++	 * (which hard-resets at probe) always recovers while down/up does not.
++	 */
++	if (priv->netdev->phydev->interface == PHY_INTERFACE_MODE_RMII ||
++	    priv->netdev->phydev->interface == PHY_INTERFACE_MODE_SGMII) {
+ 		int err;
+ 
+ 		err = reset_control_assert(priv->rst);
