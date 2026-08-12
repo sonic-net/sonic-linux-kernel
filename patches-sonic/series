@@ -45,7 +45,7 @@ driver-net-tg3-change-dma-mask-for-57766.patch
 0005-dt-bindings-hwmon-Add-tmp75b-to-lm75.txt.patch
 0006-device-tree-bindinds-add-NXP-PCT2075-as-compatible-d.patch
 revert-acpi-osl-use-threaded-irq-for-sci.patch
-platform-x86-int0002-remove-irqf-oneshot.patch
+#platform-x86-int0002-remove-irqf-oneshot.patch # Upstreamed
 #Support-for-fullcone-nat.patch # TODO(trixie): update for current version
 
 #
@@ -100,7 +100,7 @@ driver-i2c-smbus-add-disable_spd-module-parameter.patch
 0027-platform-mellanox-mlx-platform-Change-register-name.patch
 0028-platform-mellanox-mlxreg-dpu-Add-initial-support-for.patch
 0029-platform-mellanox-Introduce-support-of-Nvidia-smart-.patch
-0030-hwmon-mlxreg-fan-Separate-methods-of-fan-setting-com.patch
+#0030-hwmon-mlxreg-fan-Separate-methods-of-fan-setting-com.patch
 0031-platform-mellanox-indicate-deferred-I2C-bus-creation.patch
 0032-platform_data-mlxreg-Add-capability-bit-and-mask-fie.patch
 0033-platform-mellanox-mlxreg-hotplug-Add-support-for-new.patch
@@ -117,7 +117,7 @@ driver-i2c-smbus-add-disable_spd-module-parameter.patch
 0044-platform_data-mlxreg-Add-non-sticky-bit-indication-f.patch
 0045-platform-mellanox-mlxreg-hotplug-Add-handling-of-non.patch
 0046-platform-mellanox-nvsw-bmc-Add-system-control-and-mo.patch
-0047-hwmon-mlxreg-fan-Prevent-fans-from-getting-stuck-at-.patch
+#0047-hwmon-mlxreg-fan-Prevent-fans-from-getting-stuck-at-.patch
 0052-platform-mellanox-Introduce-support-for-switches-equ.patch
 0053-platform-mellanox-mlx-platform-Add-support-for-new-X.patch
 0054-i2c-asf-Introduce-MCTP-support-over-ASF-controller.patch
@@ -150,11 +150,9 @@ driver-i2c-smbus-add-disable_spd-module-parameter.patch
 # Cisco patches for 5.10 kernel
 cisco-mtd-part.patch
 cisco-mdio-mux-support-acpi.patch
-#cisco-x86-gpio-config.patch # Deprecated, GPIOs are effectively unlimited
 cisco-acpi-spi-nor.patch
 cisco-Enable-static-memory-reservation-for-OIRable-PCIe-de.patch
 cisco-npu-disable-other-bars.patch
-#cisco-hwmon-pmbus_core-pec-support-check.patch # Upstreamed
 0001-regmap-i2c-add-SMBus-byte-word-reg16-bus-for-adapter.patch
 0002-regmap-i2c-fix-sparse-warning-in-regmap_smbus_word_w.patch
 
@@ -164,12 +162,7 @@ cisco-npu-disable-other-bars.patch
 #
 # Marvell platform patches for 6.1 kernel
 0001-armhf_secondary_boot_online.patch
-#0002-arm64-dts-Update-cache-properties-for-marvell.patch # Upstreamed
-#0003-arm64-dts-marvell-Add-NAND-flash-controller-to-AC5.patch # Upstreamed
-#0004-arm64-dts-ac5-add-mmc-node-and-clock.patch # Upstreamed
 0005-dts-ac5-marvell-Add-switching-watchdog-node.patch
-#0006-mmc-xenon-Add-ac5-support-via-bounce-buffer.patch # Upstreamed
-#0007-usb-ehci-Add-support-for-ac5.patch # Upstreamed but no 64-bit, so the next 0007
 0007-usb-ehci-Add-support-for-ac5-with-DMA-mask-64-bit.patch
 0008-mv6xxx-Fix-i2c-lock-due-to-arb-loss.patch
 0009-dt-bindings-marvell-Add-ARMADA-7K-properties.patch
@@ -216,7 +209,7 @@ cisco-npu-disable-other-bars.patch
 0027-pcie-if-hotplug-enabled-do-immediate-reset-on-panic.patch
 
 # amd sfh hid
-0001-amd_sfh_hid_client_init_log_no_error_for_EOPNOTSUPP.patch
+#0001-amd_sfh_hid_client_init_log_no_error_for_EOPNOTSUPP.patch
 
 # Security patch
 #0001-Change-the-system.map-file-permission-only-readable-.patch
@@ -232,7 +225,7 @@ cisco-npu-disable-other-bars.patch
 0004-xilinx-spi-platform_get_irq_optional.patch
 0005-xilinx-spi-use-device-property.patch
 driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pending 
-0001-PM-runtime-Add-new-devm-functions.patch
+#0001-PM-runtime-Add-new-devm-functions.patch
 0007-i2c-xiic-Relocate-xiic_i2c_runtime_suspend-and-xiic_.patch
 0008-i2c-xiic-Add-atomic-transfer-support.patch
 0009-i2c-i2c-xiic-Replace-dev_err-with-dev_err_probe-in-p.patch
@@ -243,10 +236,6 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 0014-i2c-xiic-cosmetic-use-resource-format-specifier-in-d.patch
 0015-i2c-xiic-use-numbered-adapter-registration.patch
 0016-i2c-xiic-skip-input-clock-setup-on-non-OF-systems.patch
-
-# Fix to avoid kernel panic on Kernel 6.1.94
-# https://github.com/sonic-net/sonic-buildimage/issues/20901
-#PCI-ASPM-Fix-link-state-exit-during-switch-upstream.patch # Upstreamed
 
 # 
 0001-PCI-AER-Simplify-pci_print_aer.patch
@@ -262,18 +251,6 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 0011-PCI-AER-Fix-NULL-pointer-access-by-aer_info.patch
 0012-PCI-AER-Avoid-NULL-pointer-dereference-in-aer_rateli.patch
 
-# QID-45097: Crackarmor fixes
-qsa-2026-apparmor/0001-apparmor-validate-DFA-start-states-are-in-bounds-in-.patch
-qsa-2026-apparmor/0002-apparmor-fix-memory-leak-in-verify_header.patch
-qsa-2026-apparmor/0003-apparmor-replace-recursive-profile-removal-with-iter.patch
-qsa-2026-apparmor/0004-apparmor-fix-limit-the-number-of-levels-of-policy-na.patch
-qsa-2026-apparmor/0005-apparmor-fix-side-effect-bug-in-match_char-macro-usa.patch
-qsa-2026-apparmor/0006-apparmor-fix-missing-bounds-check-on-DEFAULT-table-i.patch
-qsa-2026-apparmor/0007-apparmor-Fix-double-free-of-ns_name-in-aa_replace_pr.patch
-qsa-2026-apparmor/0008-apparmor-fix-unprivileged-local-user-can-do-privileg.patch
-qsa-2026-apparmor/0009-apparmor-fix-differential-encoding-verification.patch
-qsa-2026-apparmor/0010-apparmor-fix-race-on-rawdata-dereference.patch
-qsa-2026-apparmor/0011-apparmor-fix-race-between-freeing-data-and-fs-access.patch
 # Patches for EVPN MH
 0001-vxlan-bridge-Add-NDA_FLAGS_EXT-support-with-NTF_EXT_.patch
 0002-net-bridge-vxlan-Protocol-field-in-bridge-fdb.patch
@@ -286,28 +263,28 @@ qsa-2026-apparmor/0011-apparmor-fix-race-between-freeing-data-and-fs-access.patc
 #
 ############################################################
 ###-> aspeed
-0001-aspeed-ast2700-support.patch
-0002-aspeed-ast2700-aspeed-new-files-update-to-6.12-00.07.02.patch
-0003-aspeed-ast2700-aspeed-diff-vendor-independent-changes-update-to-6.12-00.07.02.patch
-mmc-sdhci-of-aspeed-Improve-CMD6-timing_v6.18.patch
-mmc-sdhci-of-aspeed-Optimize-tuning-mechanism_v6.12.patch
-aspeed-spi-txrx-fix-full-duplex-capture.patch
-nexthop-b27-dts.patch
-0001-Add-device-tree-for-Nokia-BMC-H6-128-platform.patch
-arista_goldfinch-dts.patch
-0001-DTS-Aspeed-Nvidia-spc6-a1-bmc-dts.patch
-0002-DTS-Aspeed-Nvidia-spc6-bmc-dts.patch
-micas-m2-w6950-128oc-dts.patch
+#0001-aspeed-ast2700-support.patch
+#0002-aspeed-ast2700-aspeed-new-files-update-to-6.12-00.07.02.patch
+#0003-aspeed-ast2700-aspeed-diff-vendor-independent-changes-update-to-6.12-00.07.02.patch
+#mmc-sdhci-of-aspeed-Improve-CMD6-timing_v6.18.patch
+#mmc-sdhci-of-aspeed-Optimize-tuning-mechanism_v6.12.patch
+#aspeed-spi-txrx-fix-full-duplex-capture.patch
+#nexthop-b27-dts.patch
+#0001-Add-device-tree-for-Nokia-BMC-H6-128-platform.patch
+#arista_goldfinch-dts.patch
+#0001-DTS-Aspeed-Nvidia-spc6-a1-bmc-dts.patch
+#0002-DTS-Aspeed-Nvidia-spc6-bmc-dts.patch
+#micas-m2-w6950-128oc-dts.patch
 ###-> aspeed-end
 
 ###-> nvidia_aspeed_bmc-start
-0001-mctp-driver-net-Extend-MCTP-support.patch
-0002-mctp-aspeed-IRoT-Add-initial-support.patch
-0003-mctp-driver-net-Add-global-APIs-for-MCTP.patch
-0004-mctp-driver-net-Fix-MCTP-over-VDM-PCIe.patch
-0005-mctp-driver-net-Fix-MCTP-over-USB.patch
-0006-jtag-Add-JTAG-core-headers-GPIO-mux-and-locking-support.patch
-0007-JTAG-Aspeed-Fix-kernel-configuration.patch
+#0001-mctp-driver-net-Extend-MCTP-support.patch
+#0002-mctp-aspeed-IRoT-Add-initial-support.patch
+#0003-mctp-driver-net-Add-global-APIs-for-MCTP.patch
+#0004-mctp-driver-net-Fix-MCTP-over-VDM-PCIe.patch
+#0005-mctp-driver-net-Fix-MCTP-over-USB.patch
+#0006-jtag-Add-JTAG-core-headers-GPIO-mux-and-locking-support.patch
+#0007-JTAG-Aspeed-Fix-kernel-configuration.patch
 ###-> nvidia_aspeed_bmc-end
 
 #
