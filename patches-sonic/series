@@ -45,7 +45,7 @@ driver-net-tg3-change-dma-mask-for-57766.patch
 0005-dt-bindings-hwmon-Add-tmp75b-to-lm75.txt.patch
 0006-device-tree-bindinds-add-NXP-PCT2075-as-compatible-d.patch
 revert-acpi-osl-use-threaded-irq-for-sci.patch
-platform-x86-int0002-remove-irqf-oneshot.patch
+#platform-x86-int0002-remove-irqf-oneshot.patch # Upstreamed
 #Support-for-fullcone-nat.patch # TODO(trixie): update for current version
 
 #
