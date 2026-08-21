@@ -1,8 +1,9 @@
 #!/bin/bash
-# Script to generate Aspeed AST2700 support patch for SONiC kernel
-# This script downloads the Aspeed kernel source and SONiC kernel source,
-# applies SONiC patches (excluding Aspeed), merges Aspeed files, and generates
-# a new patch file.
+# Generates an incremental Aspeed AST2700 patch for the SONiC kernel.
+# Diffs (kernel with all currently-committed series patches applied) against
+# (kernel with a fresh Aspeed upstream merge). The output captures whatever
+# is new in upstream relative to the existing patches-sonic/ series. See the
+# design comment further below for details.
 
 set -e
 
@@ -12,24 +13,45 @@ BUILD_DIR="$(dirname "$(dirname "$KERNEL_DIR")")"
 
 # Configuration
 # Example, run with ASPEED_TAG=v00.07.02 ./scripts/generate-aspeed-patch.sh
-ASPEED_BRANCH="${ASPEED_TAG:-aspeed-master-v6.12}"
+ASPEED_REF="${ASPEED_TAG:-aspeed-master-v6.12}"
 ASPEED_REPO="https://github.com/AspeedTech-BMC/linux.git"
 WORK_DIR="${TMPDIR:-/tmp}/aspeed-patch-gen"
 ASPEED_SRC="$WORK_DIR/aspeed-src"
 SONIC_SRC="$WORK_DIR/sonic-src"
+BASELINE_TREE="$WORK_DIR/baseline"
 SONIC_ASPEED="$WORK_DIR/sonic-src-aspeed"
-OUTPUT_PATCH="$WORK_DIR/aspeed-ast2700-support-new.patch"
+OUTPUT_PATCH="$WORK_DIR/aspeed-ast2700-incremental.patch"
 
 # Read kernel version from Makefile
 KERNEL_VERSION=$(sed -nE 's/^KERNEL_VERSION[[:space:]]*[?:+]?=[[:space:]]*//p' "$KERNEL_DIR/Makefile")
 SONIC_KERNEL_URL="https://packages.trafficmanager.net/public/debian-security/pool/updates/main/l/linux/linux_${KERNEL_VERSION}.orig.tar.xz"
 
+# Patch author for the generated From:/Signed-off-by: lines. Resolution order:
+#   1. $PATCH_AUTHOR if provided ("Name <email>")
+#   2. the invoking user's git identity (git config user.name/user.email)
+#   3. a generic fallback if git config is unset
+if [ -z "$PATCH_AUTHOR" ]; then
+    git_name=$(git -C "$KERNEL_DIR" config user.name 2>/dev/null)
+    git_email=$(git -C "$KERNEL_DIR" config user.email 2>/dev/null)
+    if [ -n "$git_name" ] && [ -n "$git_email" ]; then
+        PATCH_AUTHOR="$git_name <$git_email>"
+    else
+        echo "WARNING: no PATCH_AUTHOR arg and git user.name/user.email unset;"
+        exit 1
+    fi
+fi
+
+# Accumulated across all apply_patches invocations.
+TOTAL_APPLY_FAILURES=0
+
 echo "========================================="
-echo "Aspeed Patch Generation Script"
+echo "Aspeed Patch Generation Script (incremental)"
 echo "========================================="
-echo "Kernel Version: $KERNEL_VERSION"
-echo "Aspeed Branch: $ASPEED_BRANCH"
-echo "Work Directory: $WORK_DIR"
+echo "Kernel Version:         $KERNEL_VERSION"
+echo "Aspeed Upstream Ref:    $ASPEED_REF"
+echo "Patch Author:           $PATCH_AUTHOR"
+echo "Work Directory:         $WORK_DIR"
+echo "Output Patch:           $OUTPUT_PATCH"
 echo "========================================="
 
 # Clean up previous run (optional - comment out to preserve for analysis)
@@ -50,15 +72,24 @@ fi
 echo ""
 echo "Step 1: Downloading Aspeed kernel source..."
 if [ -d "$ASPEED_SRC/.git" ]; then
-    echo "Aspeed source already exists, assuming its valid"
-#    cd "$ASPEED_SRC"
-#    git fetch origin "$ASPEED_BRANCH"
-#    git reset --hard "origin/$ASPEED_BRANCH"
-#    cd - > /dev/null
+    cached_branch=$(git -C "$ASPEED_SRC" rev-parse --abbrev-ref HEAD 2>/dev/null)
+    head_commit=$(git -C "$ASPEED_SRC" rev-parse -q --verify HEAD 2>/dev/null)
+    ref_commit=$(git -C "$ASPEED_SRC" rev-parse -q --verify "${ASPEED_REF}^{commit}" 2>/dev/null)
+    if [ "$cached_branch" = "$ASPEED_REF" ] || { [ -n "$head_commit" ] && [ "$head_commit" = "$ref_commit" ]; }; then
+        echo "Aspeed source already exists at $ASPEED_SRC and is at $ASPEED_REF, reusing"
+    else
+        echo "  WARNING: cached Aspeed source at $ASPEED_SRC is NOT at $ASPEED_REF"
+        echo "  WARNING:   checked out: ${cached_branch:-<unknown>} ($head_commit)"
+        echo "  WARNING:   expected:    $ASPEED_REF"
+        echo "  WARNING: reusing it as-is — the generated diff may not reflect $ASPEED_REF."
+        echo "  WARNING: remove $ASPEED_SRC and re-run to force a fresh clone."
+    fi
 else
     rm -rf "$ASPEED_SRC"
-    git clone --depth 1 --branch "$ASPEED_BRANCH" "$ASPEED_REPO" "$ASPEED_SRC"
+    echo "Cloning $ASPEED_REPO @ $ASPEED_REF -> $ASPEED_SRC"
+    git clone --depth 1 --branch "$ASPEED_REF" "$ASPEED_REPO" "$ASPEED_SRC"
 fi
+
 echo "Aspeed source ready (size on disk: $(du -sh "$ASPEED_SRC" | cut -f1))"
 
 # Step 2: Download SONiC kernel source
@@ -80,95 +111,194 @@ cd "$SONIC_SRC"
 tar -xf "$SONIC_TARBALL" --strip-components=1
 echo "SONiC kernel source ready (size on disk: $(du -sh "$SONIC_SRC" | cut -f1))"
 
-# Step 3: Apply SONiC patches (excluding Aspeed)
-echo ""
-echo "Step 3: Applying SONiC patches (excluding Aspeed)..."
-cd "$SONIC_SRC"
-PATCH_COUNT=0
+# validate_series_ordering: assert that every hand-written aspeed-section patch
+# (one inside ###-> aspeed but outside any ###-> aspeed-upstream sub-section)
+# comes AFTER all ###-> aspeed-upstream sub-sections. See above for motivation
+validate_series_ordering() {
+    local series_file="$KERNEL_DIR/patches-sonic/series"
+    local in_aspeed=0 in_upstream=0 seen_handwritten=0
+    local handwritten_example=""
 
-# Temporarily disable exit-on-error for patch application
-set +e
+    # Reads via redirection (not a pipe), so this loop runs in the current
+    # shell — exiting on the first violation aborts the whole script directly.
+    while IFS= read -r line; do
+        case "$line" in
+            "###-> aspeed")              in_aspeed=1; continue ;;
+            "###-> aspeed-end")          in_aspeed=0; continue ;;
+            "###-> aspeed-upstream-end") in_upstream=0; continue ;;
+            "###-> aspeed-upstream")
+                if [ $seen_handwritten -eq 1 ]; then
+                    echo "  ERROR: ###-> aspeed-upstream sub-section opens after hand-written" >&2
+                    echo "         patch '$handwritten_example' — all upstream sub-sections must" >&2
+                    echo "         precede every hand-written aspeed-section patch." >&2
+                    echo "ABORT: patches-sonic/series ordering invariant violated." >&2
+                    exit 1
+                fi
+                in_upstream=1
+                continue
+                ;;
+        esac
 
-while IFS= read -r line; do
-    # Stop at the aspeed section. Patches at or after the "###-> aspeed"
-    # marker (the aspeed patches themselves and anything listed after the
-    # "###-> aspeed-end" marker) MUST NOT be applied 
-    if [[ "$line" == "###-> aspeed" ]]; then
-        echo "Reached aspeed section, stopping patch application."
-        break
-    fi
+        # Comments and blanks don't affect ordering.
+        [[ "$line" =~ ^#.*$ ]] && continue
+        [[ -z "$line" ]] && continue
 
-    # Skip comments and empty lines
-    if [[ "$line" =~ ^#.*$ ]] || [[ -z "$line" ]]; then
-        continue
-    fi
-
-    # Apply patch
-    patch_file="$KERNEL_DIR/patches-sonic/$line"
-    if [ -f "$patch_file" ]; then
-        echo "Applying: $line"
-        if ! patch -p1 < "$patch_file"; then
-            echo "Warning: Patch $line had issues, continuing..."
+        # A real patch entry inside the aspeed section, outside any upstream
+        # sub-section, is hand-written.
+        if [ $in_aspeed -eq 1 ] && [ $in_upstream -eq 0 ]; then
+            seen_handwritten=1
+            local stripped="${line%%#*}"
+            stripped="${stripped%"${stripped##*[![:space:]]}"}"
+            [ -n "$stripped" ] && handwritten_example="$stripped"
         fi
-        PATCH_COUNT=$((PATCH_COUNT + 1))
-    else
-        echo "Warning: Patch file not found: $line"
-    fi
-done < "$KERNEL_DIR/patches-sonic/series"
+    done < "$series_file"
+}
 
-# Re-enable exit-on-error
-set -e
+# apply_patches: iterate patches-sonic/series in order and apply patches into
+# $target_dir, filtered by $mode.
+#
+# Modes:
+#   non-aspeed      - apply entries OUTSIDE the ###-> aspeed section
+#   aspeed-upstream - apply entries INSIDE the ###-> aspeed section AND inside an
+#                     ###-> aspeed-upstream sub-section. Patches  outside any 
+#                     ###-> aspeed-upstream sub-section (i.e. handwritten patc)
+#                     are deliberately NOT applied — see the design comment at
+#                     the top of this file.
+apply_patches() {
+    local target_dir="$1"
+    local mode="$2"
+    local label="$3"
 
-echo "Applied $PATCH_COUNT patches (stopped at aspeed section)"
+    echo ""
+    echo "Applying patches into $target_dir [$label, mode=$mode]"
 
-# List patches that follow the "###-> aspeed-end" marker. They are NOT
-# applied here (the loop above stopped at "###-> aspeed"), so the diff
-# generated in Step 6 reflects a tree that does not have them yet. At
-# SONiC build time these patches are applied AFTER the regenerated
-# aspeed patch -- if any of them touch a file that the aspeed patch
-# also modifies, their context lines / hunk offsets will be stale and
-# `quilt push` will fail. Surface the list here so the maintainer can
-# review and regenerate them if needed.
+    local applied=0
+    local skipped=0
+    local failed=0
+    local in_aspeed=0
+    local in_upstream=0
+    local series_file="$KERNEL_DIR/patches-sonic/series"
+
+    pushd "$target_dir" > /dev/null
+    set +e
+
+    while IFS= read -r line; do
+        if [[ "$line" == "###-> aspeed" ]]; then
+            in_aspeed=1
+            continue
+        elif [[ "$line" == "###-> aspeed-end" ]]; then
+            in_aspeed=0
+            continue
+        elif [[ "$line" == "###-> aspeed-upstream" ]]; then
+            in_upstream=1
+            continue
+        elif [[ "$line" == "###-> aspeed-upstream-end" ]]; then
+            in_upstream=0
+            continue
+        fi
+
+        if [[ "$line" =~ ^#.*$ ]] || [[ -z "$line" ]]; then
+            continue
+        fi
+
+        # Quilt-style trailing comments: "<filename>.patch # some note".
+        # Strip the comment and surrounding whitespace before we look up
+        # the patch file. (Marker lines are matched above by full equality,
+        # so this stripping doesn't affect them.)
+        line="${line%%#*}"
+        line="${line%"${line##*[![:space:]]}"}"
+        line="${line#"${line%%[![:space:]]*}"}"
+        if [[ -z "$line" ]]; then
+            continue
+        fi
+
+        local should_apply=0
+        case "$mode" in
+            non-aspeed)
+                [ $in_aspeed -eq 0 ] && should_apply=1
+                ;;
+            aspeed-upstream)
+                if [ $in_aspeed -eq 1 ] && [ $in_upstream -eq 1 ]; then
+                    should_apply=1
+                fi
+                ;;
+            *)
+                echo "apply_patches: unknown mode '$mode'" >&2
+                set -e
+                popd > /dev/null
+                return 2
+                ;;
+        esac
+
+        if [ $should_apply -eq 0 ]; then
+            skipped=$((skipped + 1))
+            continue
+        fi
+
+        local patch_file="$KERNEL_DIR/patches-sonic/$line"
+        if [ -f "$patch_file" ]; then
+            echo "  Applying: $line"
+            local patch_output patch_rc
+            patch_output=$(patch -p1 < "$patch_file" 2>&1)
+            patch_rc=$?
+            echo "$patch_output" | sed 's/^/    /'
+
+            if [ $patch_rc -ne 0 ]; then
+                echo "  ERROR: $line FAILED to apply (exit $patch_rc)"
+                failed=$((failed + 1))
+            else
+                applied=$((applied + 1))
+            fi
+        else
+            echo "  ERROR: patch file not found: $line"
+            failed=$((failed + 1))
+        fi
+    done < "$series_file"
+
+    set -e
+    popd > /dev/null
+
+    echo "  Result: applied=$applied skipped=$skipped failed=$failed"
+
+    TOTAL_APPLY_FAILURES=$((TOTAL_APPLY_FAILURES + failed))
+}
+
+# Validate series ordering before building any trees (cheap, fail-fast).
 echo ""
-echo "========================================="
-echo "WARNING: Patches listed AFTER '###-> aspeed-end' marker"
-echo "========================================="
-echo "These patches were NOT applied to sonic-src and are replayed"
-echo "AFTER aspeed-ast2700-support.patch at SONiC build time. If any"
-echo "of them modify files that are also touched by the regenerated"
-echo "aspeed patch, they may need to be regenerated against the new"
-echo "tree state."
+echo "Validating patches-sonic/series ordering..."
+validate_series_ordering
+echo "Series ordering OK"
+
+# Step 3: Apply non-aspeed patches into sonic-src (shared by both trees).
 echo ""
-echo "Patches to review:"
+echo "Step 3: Applying non-Aspeed SONiC patches into sonic-src..."
+apply_patches "$SONIC_SRC" "non-aspeed" "sonic-src (shared base)"
 
-POST_ASPEED_COUNT=0
-PAST_ASPEED_END=0
-while IFS= read -r line; do
-    if [[ "$line" == "###-> aspeed-end" ]]; then
-        PAST_ASPEED_END=1
-        continue
-    fi
-
-    if [ $PAST_ASPEED_END -eq 0 ]; then
-        continue
-    fi
-
-    # Skip comments and empty lines
-    if [[ "$line" =~ ^#.*$ ]] || [[ -z "$line" ]]; then
-        continue
-    fi
-
-    echo "  - $line"
-    POST_ASPEED_COUNT=$((POST_ASPEED_COUNT + 1))
-done < "$KERNEL_DIR/patches-sonic/series"
-
-if [ $POST_ASPEED_COUNT -eq 0 ]; then
-    echo "  (none -- no patches listed after the aspeed section)"
+# Step 3b: Build baseline tree = sonic-src + the ###-> aspeed-upstream patches.
+# Represents the committed upstream-merge state the incremental will diff
+# against. Hand-written aspeed-section patches are intentionally skipped (they
+# cancel by absence — they're applied to neither tree).
+echo ""
+echo "Step 3b: Building baseline tree..."
+if [ -d "$BASELINE_TREE" ]; then
+    echo "Baseline tree already exists, removing and recreating..."
+    rm -rf "$BASELINE_TREE"
 fi
-echo ""
-echo "Total post-aspeed patches to review: $POST_ASPEED_COUNT"
-echo "========================================="
-echo ""
+cp -a "$SONIC_SRC" "$BASELINE_TREE"
+apply_patches "$BASELINE_TREE" "aspeed-upstream" "baseline"
+echo "Baseline tree ready: $(du -sh $BASELINE_TREE | cut -f1)"
+
+# Steps 4 + 5: build the target tree by merging fresh Aspeed upstream content
+# into a copy of sonic-src. Wrapped in a function purely to keep the merge
+# logic isolated from the control flow above.
+merge_aspeed_files() {
+    local merge_label="$1"
+    echo ""
+    echo "========================================="
+    echo "Building target tree: $merge_label"
+    echo "  ASPEED_SRC:   $ASPEED_SRC"
+    echo "  SONIC_ASPEED: $SONIC_ASPEED"
+    echo "========================================="
 
 # Step 4: Create sonic-src-aspeed by copying sonic-src
 echo ""
@@ -621,21 +751,59 @@ echo "Include files: Copied all Aspeed/AST* header files"
 echo "Dependencies: Copied $DEPENDENCY_COUNT dependency files (headers, drivers, trace events)"
 echo "DTC includes: Skipped (symlinks excluded from diff to avoid duplicates)"
 echo "========================================="
+}  # end merge_aspeed_files
+
+# Build the target tree:
+#   - copy sonic-src (already has non-aspeed patches applied)
+#   - merge in upstream Aspeed source (replaces what the ###-> aspeed-upstream
+#     patches do in baseline)
+# Hand-written aspeed-section patches are NOT applied here — they're skipped in
+# baseline too, so they cancel by absence.
+merge_aspeed_files "target"
+
+# Bail out if any patch failed while building the baseline (or the shared
+# non-aspeed base). Those patches feed one side of the diff, so a half-applied
+# tree would encode their missing changes as a giant phantom delta.
+if [ "$TOTAL_APPLY_FAILURES" -gt 0 ]; then
+    echo ""
+    echo "========================================="
+    echo "ABORT: $TOTAL_APPLY_FAILURES patch(es) failed to apply"
+    echo "========================================="
+    echo "Tree state is invalid; refusing to produce $OUTPUT_PATCH"
+    echo "Look above for 'ERROR:' lines, fix the underlying issue, then re-run."
+    rm -f "$OUTPUT_PATCH"
+    exit 1
+fi
 
 # Step 6: Generate diff (excluding symlinked directories)
+DIFF_FROM_DIR="$(basename "$BASELINE_TREE")"
+DIFF_TO_DIR="$(basename "$SONIC_ASPEED")"
+
 echo ""
-echo "Step 6: Generating diff between sonic-src and sonic-src-aspeed..."
+echo "Step 6: Generating diff: $DIFF_FROM_DIR -> $DIFF_TO_DIR"
 echo "Note: Excluding scripts/dtc/include-prefixes (symlinks to arch/*/boot/dts)"
 cd "$WORK_DIR"
-diff -Naur --exclude='.git' --exclude='include-prefixes' sonic-src sonic-src-aspeed > "$WORK_DIR/aspeed-changes.diff" || true
+diff -Naur --exclude='.git' --exclude='include-prefixes' "$DIFF_FROM_DIR" "$DIFF_TO_DIR" > "$WORK_DIR/aspeed-changes.diff" || true
 echo "Diff created: $(du -sh $WORK_DIR/aspeed-changes.diff | cut -f1)"
+
+# Bail out early on empty diff — nothing to ship.
+if [ ! -s "$WORK_DIR/aspeed-changes.diff" ]; then
+    rm -f "$OUTPUT_PATCH"
+    echo ""
+    echo "========================================="
+    echo "Diff is empty — baseline already matches the fresh upstream merge."
+    echo "Nothing new in $ASPEED_REF relative to the current series state."
+    echo "No patch file written."
+    echo "========================================="
+    exit 0
+fi
 
 # Step 7: Convert diff to git format (a/ and b/ prefixes)
 echo ""
 echo "Step 7: Converting to git patch format..."
-sed -e 's|^--- sonic-src/|--- a/|' \
-    -e 's|^+++ sonic-src-aspeed/|+++ b/|' \
-    -e 's|^diff -Naur .* sonic-src/\(.*\) sonic-src-aspeed/\1|diff --git a/\1 b/\1|' \
+sed -e "s|^--- ${DIFF_FROM_DIR}/|--- a/|" \
+    -e "s|^+++ ${DIFF_TO_DIR}/|+++ b/|" \
+    -e "s|^diff -Naur .* ${DIFF_FROM_DIR}/\(.*\) ${DIFF_TO_DIR}/\1|diff --git a/\1 b/\1|" \
     "$WORK_DIR/aspeed-changes.diff" > "$WORK_DIR/aspeed-changes-git.diff"
 echo "Converted to git format: $(du -sh $WORK_DIR/aspeed-changes-git.diff | cut -f1)"
 
@@ -643,17 +811,17 @@ echo "Converted to git format: $(du -sh $WORK_DIR/aspeed-changes-git.diff | cut 
 echo ""
 echo "Step 8: Creating git patch with header..."
 cat > "$OUTPUT_PATCH" << PATCH_HEADER
-From: Chander <chander@nexthop.ai>
+From: ${PATCH_AUTHOR}
 Date: $(date -R)
-Subject: [PATCH] Add Aspeed AST2700 support
+Subject: [PATCH] Aspeed AST2700 incremental update
 
-This patch adds support for Aspeed AST2700 ARM64 SoC including:
-- Device tree files for AST2700 and related boards
-- Aspeed-specific drivers (pinctrl, clk, soc, crypto, etc.)
-- Faraday ethernet driver support
-- Kconfig and Makefile updates
+Incremental patch capturing the delta between the currently-committed
+patches-sonic/ series state and a fresh Aspeed upstream merge at
+${ASPEED_REF}. Stage by appending inside the existing ###-> aspeed-upstream
+sub-section in patches-sonic/series (after the prior upstream patches, before
+###-> aspeed-upstream-end), so it stays ahead of the hand-written patches.
 
-Signed-off-by: Chander <chander@nexthop.ai>
+Signed-off-by: ${PATCH_AUTHOR}
 ---
 PATCH_HEADER
 
@@ -668,81 +836,29 @@ echo "========================================="
 echo "Output patch: $OUTPUT_PATCH"
 echo "Patch size: $(du -sh $OUTPUT_PATCH | cut -f1)"
 echo "Total lines: $(wc -l < $OUTPUT_PATCH)"
-echo "Files changed: $(grep -c '^diff -Naur' $OUTPUT_PATCH)"
+echo "Files changed: $(grep -c '^diff --git' $OUTPUT_PATCH)"
 echo ""
 echo "Sample of changed files:"
-grep '^diff -Naur' "$OUTPUT_PATCH" | head -20
+grep '^diff --git' "$OUTPUT_PATCH" | head -20
 echo ""
 
-# Step 10: Sanity check for non-Aspeed deletions
-echo "========================================="
-echo "Step 10: Sanity Check for Non-Aspeed Deletions"
-echo "========================================="
-echo "Scanning patch for suspicious deletions in Kconfig/Makefile files..."
+echo "To stage the incremental patch:"
+echo "  # 1. Rename to reflect what the bump represents, e.g."
+echo "  #      aspeed-ast2700-v00.07.02-to-v00.07.03.patch"
+echo "  cp $OUTPUT_PATCH $KERNEL_DIR/patches-sonic/<new-name>.patch"
 echo ""
-
-SUSPICIOUS_DELETIONS_FOUND=0
-
-# Check for deletions in Kconfig files (config entries)
-echo "Checking Kconfig deletions..."
-KCONFIG_DELETIONS=$(grep -B2 "^-config " "$OUTPUT_PATCH" | grep -v "^--$" | grep "^diff.*Kconfig" || true)
-
-if [ -n "$KCONFIG_DELETIONS" ]; then
-    echo "⚠️  WARNING: Found config deletions in Kconfig files:"
-    grep -B1 -A5 "^-config " "$OUTPUT_PATCH" | grep -v "aspeed\|ast2[567]00\|ast1[78]00" | head -50
-    SUSPICIOUS_DELETIONS_FOUND=1
-    echo ""
-fi
-
-# Check for deletions in Makefile files (obj- entries)
-echo "Checking Makefile deletions..."
-MAKEFILE_OBJ_DELETIONS=$(grep "^-obj-\|^-subdir-y" "$OUTPUT_PATCH" | grep -v "aspeed\|ast2[567]00\|ast1[78]00" || true)
-
-if [ -n "$MAKEFILE_OBJ_DELETIONS" ]; then
-    echo "⚠️  WARNING: Found non-Aspeed obj/subdir deletions in Makefile files:"
-    echo "$MAKEFILE_OBJ_DELETIONS" | head -50
-    SUSPICIOUS_DELETIONS_FOUND=1
-    echo ""
-
-    # Show specific problematic patterns
-    echo "Known problematic deletions to review:"
-    grep "^-.*pensando\|^-.*elba\|^-.*IRQ_PENSANDO\|^-.*EDAC_ELBA\|^-.*RESET_ELBASR\|^-.*STM32MP_EXTI\|^-.*I2C_RD1173" "$OUTPUT_PATCH" || echo "  (None of the known problematic patterns found)"
-    echo ""
-fi
-
-# Check for deletions in arch/arm64/boot/dts/Makefile specifically
-echo "Checking arch/arm64/boot/dts/Makefile deletions..."
-AARCH64_DTS_DELETIONS=$(grep -A20 "^diff.*arch/arm64/boot/dts/Makefile" "$OUTPUT_PATCH" | grep "^-subdir-y" | grep -v "aspeed" || true)
-
-if [ -n "$AARCH64_DTS_DELETIONS" ]; then
-    echo "⚠️  WARNING: Found subdirectory deletions in arch/arm64/boot/dts/Makefile:"
-    echo "$AARCH64_DTS_DELETIONS"
-    SUSPICIOUS_DELETIONS_FOUND=1
-    echo ""
-fi
-
-# Summary
-echo "========================================="
-if [ $SUSPICIOUS_DELETIONS_FOUND -eq 1 ]; then
-    echo "❌ SANITY CHECK FAILED!"
-    echo "Found suspicious non-Aspeed deletions in the patch."
-    echo "Please review the patch carefully before applying."
-    echo "Look for deletions of:"
-    echo "  - config entries (pensando, elba, etc.)"
-    echo "  - Makefile obj- entries"
-    echo "  - subdir-y entries"
-    echo ""
-    echo "To review deletions:"
-    echo "  grep '^-config ' $OUTPUT_PATCH | grep -v aspeed"
-    echo "  grep '^-obj-\\|^-subdir-y' $OUTPUT_PATCH | grep -v aspeed"
-else
-    echo "✅ SANITY CHECK PASSED!"
-    echo "No suspicious non-Aspeed deletions found."
-fi
-echo "========================================="
-echo ""
-
-echo "To copy to patches directory:"
-echo "  cp $OUTPUT_PATCH $KERNEL_DIR/patches-sonic/aspeed-ast2700-support-new.patch"
+echo "  # 2. Append the new patch INSIDE the existing ###-> aspeed-upstream"
+echo "  #    sub-section in patches-sonic/series (after the prior upstream"
+echo "  #    patches, before ###-> aspeed-upstream-end). It must stay ahead of"
+echo "  #    the hand-written patches, and it applies on top of the upstream"
+echo "  #    patches the diff was generated against. Example:"
+echo "  #"
+echo "  #      ###-> aspeed"
+echo "  #      ###-> aspeed-upstream"
+echo "  #      aspeed-ast2700-support.patch"
+echo "  #      <new-name>.patch              <-- new"
+echo "  #      ###-> aspeed-upstream-end"
+echo "  #      <vendor>-board-dts.patch"
+echo "  #      ###-> aspeed-end"
 echo ""
 
