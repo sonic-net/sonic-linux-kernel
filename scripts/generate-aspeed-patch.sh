@@ -111,13 +111,31 @@ cd "$SONIC_SRC"
 tar -xf "$SONIC_TARBALL" --strip-components=1
 echo "SONiC kernel source ready (size on disk: $(du -sh "$SONIC_SRC" | cut -f1))"
 
+# Series sections (delimited by "###-> NAME-start" / "###-> NAME-end") whose
+# patches this script must NOT apply to either tree. Such blocks are managed
+# elsewhere (e.g. the NVIDIA hw-mgmt integration rewrites nvidia_aspeed_bmc
+# wholesale between its markers in sonic-buildimage) and/or depend on Aspeed
+# content this script never builds; they also cancel in the diff since they'd
+# land on both sides. To exclude a new section, add its base-name here — no
+# other code change needed. (The ###-> aspeed section is handled separately.)
+SKIP_SECTIONS=("nvidia_aspeed_bmc")
+
+# _is_skip_section NAME -> returns 0 if NAME is listed in SKIP_SECTIONS, else 1.
+_is_skip_section() {
+    local needle="$1" s
+    for s in "${SKIP_SECTIONS[@]}"; do
+        [ "$s" = "$needle" ] && return 0
+    done
+    return 1
+}
+
 # validate_series_ordering: assert that every hand-written aspeed-section patch
 # (one inside ###-> aspeed but outside any ###-> aspeed-upstream sub-section)
 # comes AFTER all ###-> aspeed-upstream sub-sections. See above for motivation
 validate_series_ordering() {
     local series_file="$KERNEL_DIR/patches-sonic/series"
-    local in_aspeed=0 in_upstream=0 seen_handwritten=0
-    local handwritten_example=""
+    local in_aspeed=0 in_upstream=0 in_skip=0 seen_handwritten=0
+    local handwritten_example="" sect=""
 
     # Reads via redirection (not a pipe), so this loop runs in the current
     # shell — exiting on the first violation aborts the whole script directly.
@@ -137,6 +155,16 @@ validate_series_ordering() {
                 in_upstream=1
                 continue
                 ;;
+            "###-> "*"-start")
+                sect="${line#"###-> "}"; sect="${sect%-start}"
+                if _is_skip_section "$sect"; then in_skip=1; fi
+                continue
+                ;;
+            "###-> "*"-end")
+                sect="${line#"###-> "}"; sect="${sect%-end}"
+                if _is_skip_section "$sect"; then in_skip=0; fi
+                continue
+                ;;
         esac
 
         # Comments and blanks don't affect ordering.
@@ -144,8 +172,8 @@ validate_series_ordering() {
         [[ -z "$line" ]] && continue
 
         # A real patch entry inside the aspeed section, outside any upstream
-        # sub-section, is hand-written.
-        if [ $in_aspeed -eq 1 ] && [ $in_upstream -eq 0 ]; then
+        # sub-section (and outside any skip section), is hand-written.
+        if [ $in_aspeed -eq 1 ] && [ $in_upstream -eq 0 ] && [ $in_skip -eq 0 ]; then
             seen_handwritten=1
             local stripped="${line%%#*}"
             stripped="${stripped%"${stripped##*[![:space:]]}"}"
@@ -158,9 +186,12 @@ validate_series_ordering() {
 # $target_dir, filtered by $mode.
 #
 # Modes:
-#   non-aspeed      - apply entries OUTSIDE the ###-> aspeed section
+#   non-aspeed      - apply entries OUTSIDE the ###-> aspeed section AND outside
+#                     any SKIP_SECTIONS block (see that list above). Skip-section
+#                     patches are vendor-managed and/or Aspeed-dependent and cancel
+#                     in the diff regardless, so they are never applied.
 #   aspeed-upstream - apply entries INSIDE the ###-> aspeed section AND inside an
-#                     ###-> aspeed-upstream sub-section. Patches  outside any 
+#                     ###-> aspeed-upstream sub-section. Patches  outside any
 #                     ###-> aspeed-upstream sub-section (i.e. handwritten patc)
 #                     are deliberately NOT applied — see the design comment at
 #                     the top of this file.
@@ -177,6 +208,8 @@ apply_patches() {
     local failed=0
     local in_aspeed=0
     local in_upstream=0
+    local in_skip=0
+    local sect=""
     local series_file="$KERNEL_DIR/patches-sonic/series"
 
     pushd "$target_dir" > /dev/null
@@ -194,6 +227,14 @@ apply_patches() {
             continue
         elif [[ "$line" == "###-> aspeed-upstream-end" ]]; then
             in_upstream=0
+            continue
+        elif [[ "$line" == "###-> "*"-start" ]]; then
+            sect="${line#"###-> "}"; sect="${sect%-start}"
+            if _is_skip_section "$sect"; then in_skip=1; fi
+            continue
+        elif [[ "$line" == "###-> "*"-end" ]]; then
+            sect="${line#"###-> "}"; sect="${sect%-end}"
+            if _is_skip_section "$sect"; then in_skip=0; fi
             continue
         fi
 
@@ -215,7 +256,7 @@ apply_patches() {
         local should_apply=0
         case "$mode" in
             non-aspeed)
-                [ $in_aspeed -eq 0 ] && should_apply=1
+                [ $in_aspeed -eq 0 ] && [ $in_skip -eq 0 ] && should_apply=1
                 ;;
             aspeed-upstream)
                 if [ $in_aspeed -eq 1 ] && [ $in_upstream -eq 1 ]; then
