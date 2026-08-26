@@ -1,0 +1,140 @@
+From a24b3e9f6f67bed07efe06efb3cee2bf8457120a Mon Sep 17 00:00:00 2001
+From: Yury Murashka <yurypm@arista.com>
+Date: Mon, 18 May 2026 12:42:53 +0000
+Subject: [PATCH] Clear non-fatal errors on AER recovery failure
+
+pci_aer_clear_nonfatal_status() is not called when AER recovery fails.
+
+A PCIe switch can report an AER error with the 0000:00:00.0 AER error
+source address (if the multi-error flag is not set). In this case, the
+AER driver rescans the whole bus and tries to find a device reporting
+the AER error.
+
+find_source_device() is called. When the AER error source is 0,
+is_error_source() returns 'true' for any device with a reported AER
+error. When is_error_source() reports 'true', the AER driver checks
+the e_info->multi_error_valid flag and stops iterating in
+find_device_iter(). Therefore, the error is reported only for the first
+device on the bus.
+
+Then, the AER driver initiates AER recovery. If AER recovery fails,
+AER error cleanup is not called for the devices. When any device on
+the same bus reports a new AER error, the bus rescan process is
+repeated, and the AER error is reported for the same first device with
+the uncleaned AER error.
+
+This is a side effect of an AER recovery failure. We should not be
+left with stale errors. We can either perform error cleanup in the
+kernel immediately after a failure, or we can leave the devices as-is
+and let user-space code recover the system/PCIe tree. The current
+Linux kernel leaves the devices as-is, which leads to visible side
+effects in the absence of user-space monitoring.
+
+Add a kernel boot parameter pci=aer_clear_on_recovery_failure to
+enable AER error cleanup for cases where recovery fails. This prevents
+stale errors from causing incorrect device identification on subsequent
+AER error events.
+
+The kernel boot parameter allows enabling this functionality on demand.
+By default, it is disabled, because there could be software that
+expects to see the device in an unchanged state when AER recovery
+fails.
+
+The patch was discussed with Linux maintainers here:
+https://lore.kernel.org/linux-pci/CAPzpGcRCTCZtaX1EVaJNZ103THZKsoszZduY7=gwfYdcrMo-SQ@mail.gmail.com/
+They prefer to fix the reason for the issue - AER recovery failure.
+Proposed fix introduces new crashes in the SONiC Linux kernel during
+AER error recovery and cannot be used as-is.
+
+We are planning to enable the new functionality only for Arista
+devices.
+
+Signed-off-by: Yury Murashka <yurypm@arista.com>
+---
+ Documentation/admin-guide/kernel-parameters.txt |  4 ++++
+ drivers/pci/pci.c                               |  2 ++
+ drivers/pci/pci.h                               |  2 ++
+ drivers/pci/pcie/err.c                          | 13 +++++++++++++
+ 4 files changed, 21 insertions(+)
+
+diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+index 068891e..58ee606 100644
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -4490,6 +4490,10 @@
+ 				enabled, this kernel boot option can be used to
+ 				disable AER error recovery when an uncorrectable
+ 				error is reported.
++		aer_clear_on_recovery_failure	[PCIE] If the PCIEAER kernel config parameter is
++				enabled, this kernel boot option can be used to
++				enable AER errors cleanup even if error recovery
++				failed.
+ 		nodomains	[PCI] Disable support for multiple PCI
+ 				root domains (aka PCI segments, in ACPI-speak).
+ 		nommconf	[X86] Disable use of MMCONFIG for PCI
+diff --git a/drivers/pci/pci.c b/drivers/pci/pci.c
+index f6a4c2f..e6aaec1 100644
+--- a/drivers/pci/pci.c
++++ b/drivers/pci/pci.c
+@@ -6946,6 +6946,8 @@ static int __init pci_setup(char *str)
+ 				disable_acs_redir_param = str + 18;
+ 			} else if (!strncmp(str, "config_acs=", 11)) {
+ 				config_acs_param = str + 11;
++			} else if (!strncmp(str, "aer_clear_on_recovery_failure", 29)) {
++				pci_enable_aer_clear_on_recovery_failure();
+ 			} else {
+ 				pr_err("PCI: Unknown option `%s'\n", str);
+ 			}
+diff --git a/drivers/pci/pci.h b/drivers/pci/pci.h
+index bece8b9..a6e5d1c 100644
+--- a/drivers/pci/pci.h
++++ b/drivers/pci/pci.h
+@@ -837,6 +837,7 @@ int pci_aer_clear_status(struct pci_dev *dev);
+ int pci_aer_raw_clear_status(struct pci_dev *dev);
+ void pci_save_aer_state(struct pci_dev *dev);
+ void pci_restore_aer_state(struct pci_dev *dev);
++void pci_enable_aer_clear_on_recovery_failure(void);
+ #else
+ static inline void pci_no_aer(void) { }
+ static inline void pci_no_aer_recovery(void) { }
+@@ -847,6 +848,7 @@ static inline int pci_aer_clear_status(struct pci_dev *dev) { return -EINVAL; }
+ static inline int pci_aer_raw_clear_status(struct pci_dev *dev) { return -EINVAL; }
+ static inline void pci_save_aer_state(struct pci_dev *dev) { }
+ static inline void pci_restore_aer_state(struct pci_dev *dev) { }
++static inline void pci_enable_aer_clear_on_recovery_failure(void) { }
+ #endif
+
+ #ifdef CONFIG_ACPI
+diff --git a/drivers/pci/pcie/err.c b/drivers/pci/pcie/err.c
+index bb5ec0c..898d4d4 100644
+--- a/drivers/pci/pcie/err.c
++++ b/drivers/pci/pcie/err.c
+@@ -28,6 +28,13 @@ void pci_no_aer_recovery(void)
+ 	pcie_aer_recovery_disable = 1;
+ }
+
++static int enable_aer_clear_on_recovery_failure;
++
++void pci_enable_aer_clear_on_recovery_failure(void)
++{
++	enable_aer_clear_on_recovery_failure = 1;
++}
++
+ static pci_ers_result_t merge_result(enum pci_ers_result orig,
+ 				  enum pci_ers_result new)
+ {
+@@ -282,6 +289,12 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
+ 	return status;
+
+ failed:
++	if (enable_aer_clear_on_recovery_failure &&
++	    (host->native_aer || pcie_ports_native)) {
++		pcie_clear_device_status(dev);
++		pci_aer_clear_nonfatal_status(dev);
++	}
++
+ 	pci_walk_bridge(bridge, pci_pm_runtime_put, NULL);
+
+ 	pci_uevent_ers(bridge, PCI_ERS_RESULT_DISCONNECT);
+--
+2.51.0

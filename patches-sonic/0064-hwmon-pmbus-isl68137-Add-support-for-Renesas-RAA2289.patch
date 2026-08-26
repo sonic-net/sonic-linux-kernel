@@ -1,0 +1,66 @@
+From cc38b3dd3d977941a93831f44cd0326a8e8ab34b Mon Sep 17 00:00:00 2001
+From: Vasily Vityukov <vvityukov@nvidia.com>
+Date: Mon, 20 Apr 2026 12:19:20 +0300
+Subject: [PATCH] hwmon: pmbus/isl68137: Add support for Renesas RAA228942 and
+ RAA228943
+
+Add I2C device IDs for Renesas RAA228942 and RAA228943.
+
+At the Linux PMBus hwmon interface level currently supported by this
+driver, these devices are compatible with the existing 2-rail non-TC
+controllers, so devicetree will use fallback compatibles and no
+dedicated OF match entries are needed.
+
+Signed-off-by: Dawei Liu <dawei.liu.jy@renesas.com>
+---
+ Documentation/hwmon/isl68137.rst | 20 ++++++++++++++++++++
+ drivers/hwmon/pmbus/isl68137.c   |  2 ++
+ 2 files changed, 22 insertions(+)
+
+diff --git a/Documentation/hwmon/isl68137.rst b/Documentation/hwmon/isl68137.rst
+index 0e71b22047f8..1a1424dd640f 100644
+--- a/Documentation/hwmon/isl68137.rst
++++ b/Documentation/hwmon/isl68137.rst
+@@ -374,6 +374,26 @@ Supported chips:
+ 
+       Publicly available (after August 2020 launch) at the Renesas website
+ 
++  * Renesas RAA228942
++
++    Prefix: 'raa228942'
++
++    Addresses scanned: -
++
++    Datasheet:
++
++      Provided by Renesas upon request and NDA
++
++  * Renesas RAA228943
++
++    Prefix: 'raa228943'
++
++    Addresses scanned: -
++
++    Datasheet:
++
++      Provided by Renesas upon request and NDA
++
+   * Renesas RAA229001
+ 
+     Prefix: 'raa229001'
+diff --git a/drivers/hwmon/pmbus/isl68137.c b/drivers/hwmon/pmbus/isl68137.c
+index 7e53fb1d5ea3..f3baaee6227a 100644
+--- a/drivers/hwmon/pmbus/isl68137.c
++++ b/drivers/hwmon/pmbus/isl68137.c
+@@ -311,6 +311,8 @@ static const struct i2c_device_id raa_dmpvr_id[] = {
+ 	{"raa228004", raa_dmpvr2_hv},
+ 	{"raa228006", raa_dmpvr2_hv},
+ 	{"raa228228", raa_dmpvr2_2rail_nontc},
++	{"raa228942", raa_dmpvr2_2rail_nontc},
++	{"raa228943", raa_dmpvr2_2rail_nontc},
+ 	{"raa229001", raa_dmpvr2_2rail},
+ 	{"raa229004", raa_dmpvr2_2rail},
+ 	{}
+-- 
+2.34.1
+

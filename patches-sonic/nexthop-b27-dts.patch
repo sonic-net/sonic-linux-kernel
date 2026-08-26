@@ -16,8 +16,8 @@ production hardware that does not have PHY chips.
 Signed-off-by: Chandrasekaran Swaminathan <chander@nexthop.ai>
 ---
  arch/arm64/boot/dts/aspeed/Makefile           |   1 +
- arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts | 538 ++++++++++++++++++
- 2 files changed, 539 insertions(+)
+ arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts | 542 ++++++++++++++++++
+ 2 files changed, 543 insertions(+)
  create mode 100644 arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts
 
 diff --git a/arch/arm64/boot/dts/aspeed/Makefile b/arch/arm64/boot/dts/aspeed/Makefile
@@ -37,7 +37,7 @@ new file mode 100644
 index 0000000..7d1f339
 --- /dev/null
 +++ b/arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts
-@@ -0,0 +1,538 @@
+@@ -0,0 +1,542 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +//
 +// NextHop AST2700 based B27 R0 Device Tree
@@ -249,11 +249,6 @@ index 0000000..7d1f339
 +	/*AC0-AC7*/	"","","","","","","","";
 +
 +	/* TODO: Add more GPIOs hogs as needed, rename & add labels for clarity */
-+	cpe-ctrl-hog {
-+		gpio-hog;
-+		gpios = <ASPEED_GPIO(E, 2) GPIO_ACTIVE_HIGH>;
-+		output-low;
-+	};
 +
 +	bmc-gpio2-hog {
 +		gpio-hog;
@@ -280,6 +275,7 @@ index 0000000..7d1f339
 +};
 +
 +&uart12 {
++	dma-mode;
 +	status = "okay";
 +};
 +
@@ -566,10 +562,18 @@ index 0000000..7d1f339
 +
 +&wdt0 {
 +	status = "okay";
++	aspeed,reset-type = "soc";
 +};
 +
 +&wdt1 {
 +	status = "okay";
++};
++
++/ {
++	aliases {
++		watchdog0 = &wdt0;
++		watchdog1 = &wdt1;
++	};
 +};
 +
 +&otp {
