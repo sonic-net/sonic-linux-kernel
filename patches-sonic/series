@@ -278,8 +278,9 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 
 # Patches for EVPN MH
 0001-vxlan-bridge-Add-NDA_FLAGS_EXT-support-with-NTF_EXT_.patch
-0002-net-bridge-vxlan-Protocol-field-in-bridge-fdb.patch
-# Drop 0003 when kernel >= 6.12 (merged upstream: torvalds/linux 03dc03fa0432)
+# Do NOT drop 0003 while on 6.12: NTF_EXT_EXT_VALIDATED is absent from the
+# 6.12.41 uapi, and zebra sends that bit as NTF_E_MH_PEER_SYNC (0x04). Without it
+# NTF_EXT_MASK excludes 0x04 and nda_policy rejects RTM_NEWNEIGH with -EINVAL.
 0003-neighbor-Add-NTF_EXT_VALIDATED-flag-for-externally-v.patch
 
 ############################################################
