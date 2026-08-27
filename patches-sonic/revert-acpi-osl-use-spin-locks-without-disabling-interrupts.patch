@@ -1,0 +1,59 @@
+From: Connor Roos <croos@nvidia.com>
+Date: 2026-08-05
+Subject: Revert "ACPI: OSL: Use spin locks without disabling interrupts"
+
+This reverts commit 8e57de43076477c5cce113f2579bef02ce3e8b27.
+
+That commit dropped the local interrupt disable from the ACPICA spinlock
+primitives, arguing it was no longer needed because commit 7a36b901a6eb
+("ACPI: OSL: Use a threaded interrupt handler for SCI") had moved all
+ACPICA code out of hardirq context.
+
+We revert 7a36b901a6eb in
+revert-acpi-osl-use-threaded-irq-for-sci.patch, which puts the SCI
+handler back in hardirq context.  With that revert in place the premise
+of 8e57de4307 no longer holds: ACPICA can once again run from a hardirq
+handler, so acpi_os_acquire_lock()/acpi_os_release_lock() must disable
+and restore local interrupts again.  Restore the irqsave/irqrestore
+variants.
+
+The same applies to
+revert-acpi-ec-use-threaded-handler-for-dedicated-irq.patch, which
+puts the EC dedicated-IRQ handler back in hardirq context: this patch is
+what makes that one safe.  Do not apply one without the other, and keep
+both ordered after revert-acpi-osl-use-threaded-irq-for-sci.patch in the
+series.
+
+Signed-off-by: Connor Roos <croos@nvidia.com>
+---
+ drivers/acpi/osl.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/acpi/osl.c b/drivers/acpi/osl.c
+--- a/drivers/acpi/osl.c
++++ b/drivers/acpi/osl.c
+@@ -1515,18 +1515,20 @@
+ acpi_cpu_flags acpi_os_acquire_lock(acpi_spinlock lockp)
+ 	__acquires(lockp)
+ {
+-	spin_lock(lockp);
+-	return 0;
++	acpi_cpu_flags flags;
++
++	spin_lock_irqsave(lockp, flags);
++	return flags;
+ }
+
+ /*
+  * Release a spinlock. See above.
+  */
+
+-void acpi_os_release_lock(acpi_spinlock lockp, acpi_cpu_flags not_used)
++void acpi_os_release_lock(acpi_spinlock lockp, acpi_cpu_flags flags)
+ 	__releases(lockp)
+ {
+-	spin_unlock(lockp);
++	spin_unlock_irqrestore(lockp, flags);
+ }
+
+ #ifndef ACPI_USE_LOCAL_CACHE
