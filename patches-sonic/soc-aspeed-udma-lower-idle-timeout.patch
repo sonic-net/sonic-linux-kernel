@@ -1,0 +1,44 @@
+From f44354616dbeb759578361e00fed118e5bdef2ee Mon Sep 17 00:00:00 2001
+From: Jack Cai <jack@nexthop.ai>
+Date: Wed, 29 Jul 2026 22:30:09 +0000
+Subject: [PATCH 2/2] soc: aspeed: udma: lower the idle timeout to bound
+ console latency
+
+The UDMA idle timeout is the only event that flushes a partially filled
+ring to the CPU, so it bounds the delivery latency of small transfers: a
+single keystroke on a UDMA console is not delivered (or echoed) until it
+fires. The current value of 0x200 was measured at ~98.5 ms on AST2700
+(~192 us per tick), which is a human-visible lag on every keypress.
+
+Lower it to 0x40 (~12 ms): imperceptible interactively, while bulk
+transfers remain batched by the ring buffer threshold interrupts and are
+not affected by this timer. The worst-case extra interrupt load (one IRQ
+per ~12 ms on a trickling line) is still far below the
+interrupt-per-character rate of the pre-DMA 16550 path.
+
+Signed-off-by: Jack Cai <jack@nexthop.ai>
+---
+ drivers/soc/aspeed/aspeed-udma.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/soc/aspeed/aspeed-udma.c b/drivers/soc/aspeed/aspeed-udma.c
+index 387c67e..1998ce6 100644
+--- a/drivers/soc/aspeed/aspeed-udma.c
++++ b/drivers/soc/aspeed/aspeed-udma.c
+@@ -48,7 +48,15 @@
+ #define   UDMA_RX_CTRL_BUFSZ		GENMASK(1, 0)
+ 
+ #define UDMA_MAX_CHANNEL	16
+-#define UDMA_TMOUT		0x200
++/*
++ * Idle-timeout ticks before a partial ring buffer raises an interrupt.
++ * This bounds the delivery latency of small transfers (a single keystroke
++ * on a console sits in the RX ring until this fires). 0x200 was measured
++ * at ~98.5 ms on AST2700 (~192 us/tick); 0x40 brings interactive echo
++ * latency down to ~12 ms while still batching bulk traffic, which is
++ * driven by buffer-threshold interrupts rather than this timer.
++ */
++#define UDMA_TMOUT		0x40
+ 
+ enum aspeed_udma_bufsz_code {
+ 	UDMA_BUFSZ_CODE_1KB,

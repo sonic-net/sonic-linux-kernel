@@ -296,6 +296,8 @@ mmc-sdhci-of-aspeed-Optimize-tuning-mechanism_v6.12.patch
 ###-> aspeed-upstream-end
 aspeed-spi-txrx-fix-full-duplex-capture.patch
 nexthop-b27-dts.patch
+serial-8250_aspeed-fix-UDMA-ring-pointer-desync.patch
+soc-aspeed-udma-lower-idle-timeout.patch
 0001-Add-device-tree-for-Nokia-BMC-H6-128-platform.patch
 arista_goldfinch-dts.patch
 0001-DTS-Aspeed-Nvidia-spc6-a1-bmc-dts.patch
