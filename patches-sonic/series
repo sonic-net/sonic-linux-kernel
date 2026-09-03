@@ -44,8 +44,17 @@ driver-net-tg3-change-dma-mask-for-57766.patch
 0004-dt-bindings-hwmon-Add-missing-documentation-for-lm75.patch
 0005-dt-bindings-hwmon-Add-tmp75b-to-lm75.txt.patch
 0006-device-tree-bindinds-add-NXP-PCT2075-as-compatible-d.patch
+# The four patches below are one dependent set and must stay in this order.
+# The SCI revert puts the ACPI SCI back in hardirq context and requests it with
+# plain IRQF_SHARED; the three that follow restore the rest of the interrupt
+# configuration that assumed a threaded, IRQF_ONESHOT SCI.  The osl.c and ec.c
+# reverts are additionally a pair.  Dropping or reordering any of them
+# reintroduces either a genirq flags mismatch on the shared SCI line or an
+# ACPI locking deadlock.
 revert-acpi-osl-use-threaded-irq-for-sci.patch
 platform-x86-int0002-remove-irqf-oneshot.patch
+revert-acpi-osl-use-spin-locks-without-disabling-interrupts.patch
+revert-acpi-ec-use-threaded-handler-for-dedicated-irq.patch
 #Support-for-fullcone-nat.patch # TODO(trixie): update for current version
 
 #

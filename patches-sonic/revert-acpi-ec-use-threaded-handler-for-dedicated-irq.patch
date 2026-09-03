@@ -1,0 +1,45 @@
+From: Connor Roos <croos@nvidia.com>
+Date: 2026-08-05
+Subject: Revert "ACPI: EC: Use a threaded handler for dedicated IRQ"
+
+This reverts commit 655a6e7c0d83d47c36218525708c9fcfdd7f4b43.
+
+That commit moved the ACPI EC dedicated-IRQ handler to a threaded
+handler, on the grounds that commit 7a36b901a6eb ("ACPI: OSL: Use a
+threaded interrupt handler for SCI") had already made all EC code run in
+thread context on GPE-signalled systems, so the dedicated-IRQ path may as
+well match.
+
+We revert 7a36b901a6eb in
+revert-acpi-osl-use-threaded-irq-for-sci.patch, restoring hardirq
+context for the SCI.  Revert this commit too so the EC dedicated-IRQ
+path goes back to the non-threaded request_irq() handler and the EC
+interrupt handling is consistent with the pre-7a36b901a6eb behaviour.
+
+This patch and
+revert-acpi-osl-use-spin-locks-without-disabling-interrupts.patch are a
+pair: with the EC dedicated-IRQ handler back in hardirq context, ACPICA
+can once again be entered from a hardirq, so the irqsave/irqrestore
+variants that patch restores are what keep the EC path safe.  Do not
+apply one without the other, and keep both ordered after
+revert-acpi-osl-use-threaded-irq-for-sci.patch in the series.
+
+Signed-off-by: Connor Roos <croos@nvidia.com>
+---
+ drivers/acpi/ec.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/acpi/ec.c b/drivers/acpi/ec.c
+--- a/drivers/acpi/ec.c
++++ b/drivers/acpi/ec.c
+@@ -1506,8 +1506,8 @@
+
+ static bool install_gpio_irq_event_handler(struct acpi_ec *ec)
+ {
+-	return request_threaded_irq(ec->irq, NULL, acpi_ec_irq_handler,
+-				    IRQF_SHARED | IRQF_ONESHOT, "ACPI EC", ec) >= 0;
++	return request_irq(ec->irq, acpi_ec_irq_handler, IRQF_SHARED,
++			   "ACPI EC", ec) >= 0;
+ }
+
+ /**
