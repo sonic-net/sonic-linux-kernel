@@ -1,0 +1,620 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Thu, 4 Jun 2026 11:03:21 +0300
+Subject: [PATCH 6.12 1/1] arm64: dts: aspeed: split SPC6 BMC DTS for SONiC
+ and OpenBMC boot
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+SONiC and OpenBMC use different rootfs boot paths on the same board.
+
+OpenBMC loads rootfs from SPI via phram:
+(phram.phram=ramrofs,0x403920000,… and root=/dev/ram).
+The device tree therefore reserves ramrofs@403920000.
+
+SONiC boots from eMMC (root=UUID, squashfs loop) and does not use
+phram. Keeping ramrofs in the SONiC DTB causes early boot failures
+when the kernel cannot reserve that region (it overlaps the kernel
+load window around 0x403000000).
+
+Add SONiC-specific irot/sunda fragments without the ramrofs
+reservation and build aspeed-nvidia-spc6-bmc.dtb from them so
+SONiC FIT configs stay unchanged.
+Add aspeed-nvidia-spc6-bmc-openbmc.dts for OpenBMC (phram/SPI)
+with the existing ramrofs node and irot.dtsi.
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ .../aspeed/aspeed-nvidia-spc6-bmc-openbmc.dts | 527 ++++++++++++++++++
+ .../dts/aspeed/aspeed-nvidia-spc6-bmc.dts     |   2 +-
+ .../dts/aspeed/nvidia-ast27xx-irot-sonic.dtsi |  14 +
+ .../aspeed/nvidia-ast27xx-sunda-sonic.dtsi    |   8 +
+ 4 files changed, 549 insertions(+), 1 deletion(-)
+ create mode 100644 arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc-openbmc.dts
+ create mode 100644 arch/arm64/boot/dts/aspeed/nvidia-ast27xx-irot-sonic.dtsi
+ create mode 100644 arch/arm64/boot/dts/aspeed/nvidia-ast27xx-sunda-sonic.dtsi
+
+diff --git a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc-openbmc.dts b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc-openbmc.dts
+new file mode 100644
+index 000000000..e825c106d
+--- /dev/null
++++ b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc-openbmc.dts
+@@ -0,0 +1,527 @@
++// SPDX-License-Identifier: GPL-2.0+
++/dts-v1/;
++
++#include "aspeed-nvidia-spc6-bmc-core.dtsi"
++#include <dt-bindings/leds/common.h>
++#include <dt-bindings/gpio/aspeed-gpio.h>
++#include <dt-bindings/i2c/i2c.h>
++#include "nvidia-ast27xx-sunda.dtsi"
++
++#define PCIE0_EP 1     // 1: EP, 0: RC
++
++/ {
++	model = "AST2700-A2 SPC6 CPU BMC";
++	compatible = "aspeed,ast2700";
++
++	aliases {
++		rtc0 = &ext_rtc;  /* Forces PCF85053A to be rtc0 */
++		rtc1 = &rtc;      /* Moves Aspeed Internal RTC to rtc1 */
++	};
++
++	chosen {
++		stdout-path = &uart12;
++		bootargs = "console=ttyS12,115200 earlyprintk";
++	};
++
++	memory@400000000 {
++		device_type = "memory";
++		reg = <0x4 0x00000000 0x0 0x40000000>;
++	};
++
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
++
++		#include "ast2700-reserved-mem.dtsi"
++
++		// (before bmc-dev0 @0x423800000).
++		// Persistent phram region for fw_env variables across warm boots.
++		phram_env: phram-env@4237ff000 {
++			compatible = "phram";
++			label = "phram-env";
++			reg = <0x00000004 0x237ff000 0x0 0x00001000>;
++			no-map;
++		};
++	};
++};
++
++/*
++ * SPI0: BIOS recovery (CS0, CPLD selects which flash) and TPM (CS1, AST2700 only).
++ * AST2700 uses &spi0; AST2600 uses &spi1raw.
++ * Remove default flash@0/flash@1 from dtsi so spidev and tpm are the only children.
++ */
++&spi0 {
++	compatible = "aspeed,ast2700-spi-txrx";
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_spi0_default &pinctrl_spi0_cs1_default>;
++	/delete-node/ flash@0;
++	/delete-node/ flash@1;
++	spidev@0 {
++		/* BIOS flash: CPLD (spi_chnl_select) selects which of two flashes */
++		compatible = "rohm,dh2228fv";
++		reg = <0>;
++		status = "okay";
++	};
++	/* TPM on chip select 1; both ST33 and Infineon SLB9672 use tpm_tis_spi */
++	tpm@1 {
++		compatible = "st,st33htpm-spi", "infineon,slb9670", "tcg,tpm_tis-spi";
++		reg = <1>;
++		spi-max-frequency = <10000000>;
++		/*
++		 * NOTE: this property is NOT consumed by any driver. Stock
++		 * tpm_tis_spi (and all other drivers matching the compatibles
++		 * above) does not call gpiod_get() for this name. That is
++		 * intentional -- the SPI/TPM level shifters are enabled by the
++		 * gpio-hogs on exp0 (see below), not by this device.
++		 *
++		 * It is kept purely as an fw_devlink ordering hint: any property
++		 * whose name ends in "-gpios" is parsed by the DT core to build
++		 * a supplier/consumer link. The phandle to exp0 therefore makes
++		 * exp0 a supplier of tpm@1, so tpm@1 is not probed until the
++		 * pcal6524 has probed and its hogs have run. Without this hint
++		 * there is no ordering between the i2c5 and spi0 buses, and the
++		 * TPM could be accessed before the buffers are enabled (races to
++		 * "no TPM found"). Do not delete it.
++		 *
++		 * The property name is deliberately a private one
++		 * ("buf-en-link-gpios") that no upstream driver consumes. If
++		 * the property were called "enable-gpios" and a future kernel
++		 * added gpiod_get(dev, "enable", ...) to tpm_tis_spi, it would
++		 * collide with the hogs and fail -EBUSY.
++		 */
++		buf-en-link-gpios = <&exp0 4 GPIO_ACTIVE_LOW>,
++				    <&exp0 5 GPIO_ACTIVE_LOW>;
++	};
++};
++
++#if 0
++&fmc {
++	status = "okay";
++	pinctrl-0 = <&pinctrl_fwspi_quad_default>;
++	pinctrl-names = "default";
++
++	flash@0 {
++		status = "okay";
++		m25p,fast-read;
++		label = "bmc";
++		spi-max-frequency = <20000000>;
++		spi-tx-bus-width = <4>;
++		spi-rx-bus-width = <4>;
++
++		partitions {
++			compatible = "fixed-partitions";
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			u-boot@0 {
++				reg = <0x0 0x300000>; // 3MB
++				label = "u-boot";
++			};
++
++			/* TODO: move to eMMC */
++			u-boot-env@300000 {
++				reg = <0x300000 0x20000>; // 128KB
++				label = "u-boot-env";
++			};
++
++			kernel@320000 {
++				reg = <0x320000 0x900000>; // 9MB
++				label = "kernel";
++			};
++			rofs@c20000 {
++				reg = <0xc20000 0x3000000>; // 48MB
++				label = "rofs";
++			};
++			rwfs@3c20000 {
++				reg = <0x3C20000 0x3E0000>; // ~4MB
++				label = "rwfs";
++			};
++		};
++	};
++
++	flash@1 {
++		status = "okay";
++		m25p,fast-read;
++		label = "fmc0:1";
++		spi-max-frequency = <20000000>;
++		spi-tx-bus-width = <4>;
++		spi-rx-bus-width = <4>;
++	};
++
++	flash@2 {
++		status = "disabled";
++		m25p,fast-read;
++		label = "fmc0:2";
++		spi-max-frequency = <20000000>;
++		spi-tx-bus-width = <4>;
++		spi-rx-bus-width = <4>;
++	};
++};
++#endif
++
++&rtc {
++	status = "okay";
++};
++
++&uart1 {
++	status = "okay";
++};
++
++&uart12 {
++	// BMC Debug Console
++	status = "okay";
++};
++
++&mdio0 {
++	status = "disabled";
++};
++
++&mdio1 {
++	status = "disabled";
++};
++
++&mac0 {
++	status = "disabled";
++};
++
++&mac1 {
++	status = "disabled";
++};
++
++&sgmii {
++	status = "okay";
++	#phy-cells = <0>;
++};
++
++&mdio2 {
++	status = "okay";
++	reset-gpios = <&exp0 10 GPIO_ACTIVE_LOW>;
++	reset-delay-us = <30000>;
++	reset-post-delay-us = <30000>;
++
++	ethphy2: ethernet-phy@0 {
++		compatible = "ethernet-phy-ieee802.3-c22";
++		reg = <0>;
++		marvell,reg-init = <0 0x10 0xffff 0x3060>,
++		                   <3 0x10 0xF000 0x0117>,
++		                   <3 0x11 0x00C0 0x4405>;
++	};
++};
++
++&mac2 {
++	status = "okay";
++	phy-mode = "sgmii";
++	phy-handle = <&ethphy2>;
++	phys = <&sgmii>;
++	phy-names = "sgmii-phy";
++};
++
++/*
++ * Enable port A as device (via the virtual hub) and port B as
++ * host by default on the eval board. This can be easily changed
++ * by replacing the override below with &ehci0 { ... } to enable
++ * host on both ports.
++ */
++&vhuba0 {
++	status = "okay";
++};
++
++/* USB PORT B - MCU and Power bank */
++/* This is an assembly option */
++&ehci1 {
++	status = "okay";
++};
++
++&i2c0 {
++	status = "okay";
++};
++
++/* I2C bus connecting BMC to CPU for IPMI */
++/* Note : On Chameleon SPC6 on 2600 it will be i2c-0, on 2700 i2c-16 */
++&i2c1 {
++	status = "okay";
++	bus-frequency = <100000>;    /* 100 KHz standard mode */
++	/* BMC as I2C slave for IPMB */
++	ipmb@20 {
++		compatible = "ipmb-dev";
++		reg = <0x20>;           /* BMC slave address (7-bit) */
++		slave-dev;              /* This is a slave device */
++	};
++};
++
++
++&i2c2 {
++	status = "disabled";
++};
++
++&i2c3 {
++	status = "okay";
++	bus-frequency = <100000>;         /* 100 KHz */
++	aspeed,hw-timeout-ms = <1000>;
++	multi-master;
++};
++
++&i2c4 {
++	status = "okay";
++
++	ext_rtc: rtc@6f {
++		compatible = "nxp,pcf85053a";
++		reg = <0x6f>;
++	};
++};
++
++&i2c5 {
++	status = "okay";
++	exp0: pcal6524@20 {
++	status = "okay";
++		compatible = "nxp,pcal6524";
++		reg = <0x20>;
++		gpio-controller;
++		#gpio-cells = <2>;
++		#address-cells = <1>;
++		#size-cells = <0>;
++		reset-gpios = <&gpio1 ASPEED_GPIO(S, 0) GPIO_ACTIVE_LOW>; /*GPIO_BMC_GPIO_EXP_RESET_L*/
++
++		gpio-line-names =
++			"RSRVD_0", "GP_EROT_RST_IN_L",
++			"GP_3V3_BMC_PHY_PG", "GP_BMC_PWR_CYCLE_3V3_MASK_L",
++			"GP_BMC_SPI_BUF_OE_L", "GP_BMC_SPI_TPM_BUF_OE_L",
++			"SE_CPLD_EROT_BOOT_COMPLETE", "GP_BMC_WP_CTRL_L",
++			"GP_BMC_REC_SPI_MUX1_SEL", "RSRVD_1",
++			"S_BMC_GPIO_PHY_RST_L", "GP_JTAG_BMC_CPLD_BURN_EN_L",
++			"GP_PWR_BANK_PRESENT_L", "RSRVD_2",
++			"RSRVD_3", "RSRVD_4",
++			"RSRVD_5", "RSRVD_6",
++			"RSRVD_7", "GP_PROD_CS_FLASH0_EN",
++			"RSRVD_8", "GP_PROD_CS_FLASH1_EN",
++			"RSRVD_9", "RSRVD_10";
++		/*
++		 * Enable the SPI/TPM level shifters at gpiochip registration,
++		 * i.e. during this node's probe -- before tpm@1 (ordered after
++		 * us via the buf-en-link-gpios phandle above) touches
++		 * the bus.
++		 *
++		 * POLARITY: these nets are active-low (..._OE_L), so physical low
++		 * enables the buffer. In a gpio-hog, output-low/output-high are
++		 * LOGICAL values and are inverted by GPIO_ACTIVE_LOW. Therefore
++		 * "output-high" = logical 1 = physical low = buffer ENABLED.
++		 * Using "output-low" here would drive the pin high and DISABLE
++		 * the buffers -- the opposite of what we want.
++		 */
++		spi-buf-oe {
++			gpio-hog;
++			gpios = <4 GPIO_ACTIVE_LOW>;	/* GP_BMC_SPI_BUF_OE_L     */
++			output-high;			/* -> physical low -> enabled */
++		};
++
++		spi-tpm-buf-oe {
++			gpio-hog;
++			gpios = <5 GPIO_ACTIVE_LOW>;	/* GP_BMC_SPI_TPM_BUF_OE_L */
++			output-high;			/* -> physical low -> enabled */
++		};
++	};
++};
++
++&i2c6 {
++	status = "okay";
++};
++
++&i2c7 {
++	status = "okay";
++	clock-frequency = <400000>;
++	i2c-tck-thddat-config = <0x0099EC00>;
++};
++
++&i2c8 {
++	status = "okay";
++	clock-frequency = <400000>;
++	i2c-tck-thddat-config = <0x0099EC00>;
++};
++
++/* Used by I3C */
++&i2c9 {
++    status = "disabled";
++};
++
++&i2c10 {
++	status = "okay";
++	clock-frequency = <400000>;
++	i2c-tck-thddat-config = <0x0099EC00>;
++};
++
++&i2c11 {
++    status = "disabled";
++};
++
++&i2c12 {
++    status = "disabled";
++};
++
++/* CPU master to BMC slave recovery interface */
++/* Note: On Chameleon SPC6 multi - on 2600 it will be i2c-9, on 2700 - i2c-13 */
++&i2c13 {
++	status = "okay";
++	clock-frequency = <400000>;
++	i2c-tck-thddat-config = <0x0099EC00>;
++	/*
++	* BMC slave device (slave-24c02 at 0x42) is to be instantiated via
++	* bmc-i2c-slave-setup.service at boot. This approach ensures the
++	* I2C_CLIENT_SLAVE flag (0x1042) is properly set, which is required
++	* for the Aspeed I2C controller to register the hardware slave address.
++	*
++	* DTS-based instantiation doesn't set the I2C_CLIENT_SLAVE flag, causing:
++	*   "i2c_slave_register: client slave flag not set. You might see address collisions"
++	* and preventing proper slave address registration in hardware.
++	*
++	* Note: "multi-master" is not required.
++	*
++	* Manual instantiation: echo slave-24c02 0x1042 > /sys/bus/i2c/devices/i2c-9/new_device
++	* Consider to provide service: /etc/systemd/system/bmc-i2c-slave-setup.service
++	*/
++};
++
++&i2c14 {
++	status = "okay";
++	cpld: nvsw_bmc_hid189@31 {
++		compatible = "nvidia,hid189";
++		reg = <0x31>;
++		interrupt-parent = <&gpio1>;
++		interrupts = <ASPEED_GPIO(R, 7) GPIO_ACTIVE_HIGH>;
++	};
++};
++
++&i2c15 {
++	status = "okay";
++};
++
++&pcie0 {
++	status = "okay";
++};
++
++&mctp0 {
++	status = "okay";
++};
++
++&jtag0 {
++	status = "okay";
++};
++
++&jtag1 {
++	status = "okay";
++};
++
++// Enable emmc
++&emmc_controller {
++	status = "okay";
++	mmc-hs200-1_8v;
++};
++
++&emmc {
++	status = "okay";
++	non-removable;
++	bus-width = <4>;
++	max-frequency = <52000000>;
++};
++
++/* eSPI Controller - Communication with host CPU */
++&espi0 {
++	status = "okay";
++	perif-dma-mode;
++	perif-mmbi-enable;
++	perif-mmbi-src-addr = <0x0 0xa8000000>;
++	perif-mmbi-tgt-memory = <&espi0_mmbi_memory>;
++	perif-mmbi-instance-num = <0x1>;
++	perif-mcyc-enable;
++	perif-mcyc-src-addr = <0x0 0x98000000>;
++	perif-mcyc-size = <0x0 0x10000>;
++	oob-dma-mode;
++	flash-dma-mode;
++};
++
++// TODO: FIXME probably N/A for in 2700
++#if 0
++&lpc_ctrl {
++	status = "okay";
++	memory-region = <&espi_memory>;
++};
++
++&lpc_reset {
++	status = "okay";
++};
++#endif
++
++/*
++ * LPC SNOOP for POST code capture (simpler alternative to PCC)
++ *
++ * SNOOP driver benefits:
++ * - Mainline Linux driver (well-tested, stable)
++ * - Two independent channels for monitoring multiple ports
++ * - Simple FIFO-based interface via /dev/aspeed-lpc-snoop0/1
++ *
++ * Usage:
++ *   modprobe aspeed-lpc-snoop
++ *   hexdump -C /dev/aspeed-lpc-snoop0    # Monitor port 0x80
++ *   hexdump -C /dev/aspeed-lpc-snoop1    # Monitor port 0x81 (if configured)
++ */
++&pcie_lpc0_snoop {
++	status = "okay";
++	snoop-ports = <0x80>;  /* Capture POST codes from port 0x80 */
++	/*
++	* Optional: Add second port for dual-channel monitoring
++	* snoop-ports = <0x80>, <0x81>;
++	*/
++};
++
++/*
++ * PCC disabled - cannot run simultaneously with SNOOP
++ * (both use same hardware registers: SNPWADR, HICR5, HICR6)
++ */
++&pcie_lpc0_pcc {
++	status = "disabled";
++};
++
++&pcie_lpc0_kcs0 {
++	status = "okay";
++	kcs-io-addr = <0x3a0>;
++	kcs-channel = <1>;
++};
++
++&pcie_lpc0_kcs1 {
++	status = "okay";
++	kcs-io-addr = <0x3a8>;
++	kcs-channel = <2>;
++};
++
++&pcie_lpc0_kcs2 {
++	status = "okay";
++	/* Primary IPMI interface */
++	kcs-io-addr = <0x3a2>;
++	kcs-channel = <3>;
++};
++
++&pcie_lpc0_kcs3 {
++	status = "disabled";
++};
++
++// TODO: FIXME
++#if 0
++&pinctrl0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_espi0_default>,
++		<&pinctrl_espialt_default>;  pinctrl_salt0_default ????
++};
++#endif
++
++/*
++ * I3C Controller for MCTP communication
++ * Note: pinctrl is already configured in aspeed-g7.dtsi base DTS
++ */
++&i3c1 {
++	status = "okay";
++	pinctrl-names = "default";
++	i3c-scl-hz = <12500000>;
++	internal-pullup = <1>;
++	mctp-controller;
++};
+diff --git a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts
+index b16c766ec..3cdda09d7 100644
+--- a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts
++++ b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts
+@@ -5,7 +5,7 @@
+ #include <dt-bindings/leds/common.h>
+ #include <dt-bindings/gpio/aspeed-gpio.h>
+ #include <dt-bindings/i2c/i2c.h>
+-#include "nvidia-ast27xx-sunda.dtsi"
++#include "nvidia-ast27xx-sunda-sonic.dtsi"
+ 
+ #define PCIE0_EP 1     // 1: EP, 0: RC
+ 
+diff --git a/arch/arm64/boot/dts/aspeed/nvidia-ast27xx-irot-sonic.dtsi b/arch/arm64/boot/dts/aspeed/nvidia-ast27xx-irot-sonic.dtsi
+new file mode 100644
+index 000000000..650a72359
+--- /dev/null
++++ b/arch/arm64/boot/dts/aspeed/nvidia-ast27xx-irot-sonic.dtsi
+@@ -0,0 +1,14 @@
++// SPDX-License-Identifier: GPL-2.0+
++
++/ {
++	mctpirot0 {
++		compatible = "nvidia,ast27xx,irot";
++		mboxes = <&mbox0 0>;
++		mbox-names = "irot";
++		status = "okay";
++	};
++};
++
++&mbox0 {
++	status = "okay";
++};
+diff --git a/arch/arm64/boot/dts/aspeed/nvidia-ast27xx-sunda-sonic.dtsi b/arch/arm64/boot/dts/aspeed/nvidia-ast27xx-sunda-sonic.dtsi
+new file mode 100644
+index 000000000..db26b5096
+--- /dev/null
++++ b/arch/arm64/boot/dts/aspeed/nvidia-ast27xx-sunda-sonic.dtsi
+@@ -0,0 +1,8 @@
++#include "nvidia-ast27xx-irot-sonic.dtsi"
++// OP-TEE vROT not used on SONiC BMC; same as meta nvidia-ast27xx-sunda.dtsi.
++//#include "nvidia-optee-vrot.dtsi"
++
++// Enable OTP; matches OpenBMC AST2700 sund stack (DTS node + ast2700_otp.cfg).
++&otp {
++	status = "okay";
++};
+-- 
+2.34.1
+

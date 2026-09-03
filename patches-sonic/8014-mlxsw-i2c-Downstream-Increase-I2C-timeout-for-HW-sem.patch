@@ -1,0 +1,36 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Nadav Hugi <nadavh@nvidia.com>
+Date: Mon, 25 May 2026 16:52:00 +0300
+Subject: [PATCH v6.12 1/1] mlxsw: i2c: Downstream: Increase I2C timeout for
+ HW semaphore stability
+
+When taking an IR core dump on SPC1 debug kernel, the firmware halts
+its IRISCs to capture a clean snapshot. This pause takes ~5 seconds
+and occasionally exceeds the driver's hardcoded 5-second I2C timeout,
+causing spurious "HW semaphore is not released" errors. The system
+recovers normally after the dump completes — this is not a real
+hardware failure.
+
+Increase MLXSW_I2C_TIMEOUT_MSECS from 5000 to 10000 to give the
+driver enough headroom to wait out the firmware pause.
+
+Signed-off-by: Nadav Hugi <nadavh@nvidia.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/i2c.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/i2c.c b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+index XXXXXXX..YYYYYYY 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/i2c.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+@@ -50,7 +50,7 @@
+ #define MLXSW_I2C_BLK_DEF		32
+ #define MLXSW_I2C_BLK_MAX		100
+ #define MLXSW_I2C_RETRY			5
+-#define MLXSW_I2C_TIMEOUT_MSECS		5000
++#define MLXSW_I2C_TIMEOUT_MSECS		10000
+ #define MLXSW_I2C_CMD_RETRY_FW_ERR	3
+ #define MLXSW_I2C_MAX_DATA_SIZE		256
+ 
+-- 
+2.20.1

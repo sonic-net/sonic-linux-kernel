@@ -1,0 +1,79 @@
+From: Ryan Chen <ryan_chen@aspeedtech.com>
+Date: Sun, 28 Sep 2025 03:24:07 +0000
+Subject: [PATCH 6.12 1/1] usb: ehci: Add Aspeed AST2700 support
+
+Upstream-Status: Backport [274f2232a94f6ca626d60288044e13d9a58c7612]
+
+Unlike earlier Aspeed SoCs (AST2400/2500/2600) which are limited to
+32-bit DMA addressing, the EHCI controller in AST2700 supports 64-bit
+DMA. Update the EHCI platform driver to make use of this capability by
+selecting a 64-bit DMA mask when the "aspeed,ast2700-ehci" compatible
+is present in device tree.
+
+Without this, ehci-platform probe of usb@12063000 (EHCI1, USB Port B)
+on SPC6 AST2700 BMC fails with -ENOMEM when DTS enables &ehci1.
+
+Signed-off-by: Ryan Chen <ryan_chen@aspeedtech.com>
+Reviewed-by: Alan Stern <stern@rowland.harvard.edu>
+---
+ drivers/usb/host/ehci-platform.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/usb/host/ehci-platform.c b/drivers/usb/host/ehci-platform.c
+index cdf41886e8ca..dd6a93edf4de 100644
+--- a/drivers/usb/host/ehci-platform.c
++++ b/drivers/usb/host/ehci-platform.c
+@@ -27,6 +27,7 @@
+ #include <linux/io.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
++#include <linux/of_device.h>
+ #include <linux/platform_device.h>
+ #include <linux/reset.h>
+ #include <linux/sys_soc.h>
+@@ -238,9 +239,11 @@ static int ehci_platform_probe(struct platform_device *dev)
+ 	struct usb_hcd *hcd;
+ 	struct resource *res_mem;
+ 	struct usb_ehci_pdata *pdata = dev_get_platdata(&dev->dev);
++	const struct of_device_id *match;
+ 	struct ehci_platform_priv *priv;
+ 	struct ehci_hcd *ehci;
+ 	int err, irq, clk = 0;
++	bool dma_mask_64;
+ 
+ 	if (usb_disabled())
+ 		return -ENODEV;
+@@ -252,8 +255,13 @@ static int ehci_platform_probe(struct platform_device *dev)
+ 	if (!pdata)
+ 		pdata = &ehci_platform_defaults;
+ 
++	dma_mask_64 = pdata->dma_mask_64;
++	match = of_match_device(dev->dev.driver->of_match_table, &dev->dev);
++	if (match && match->data)
++		dma_mask_64 = true;
++
+ 	err = dma_coerce_mask_and_coherent(&dev->dev,
+-		pdata->dma_mask_64 ? DMA_BIT_MASK(64) : DMA_BIT_MASK(32));
++		dma_mask_64 ? DMA_BIT_MASK(64) : DMA_BIT_MASK(32));
+ 	if (err) {
+ 		dev_err(&dev->dev, "Error: DMA mask configuration failed\n");
+ 		return err;
+@@ -297,7 +305,9 @@ static int ehci_platform_probe(struct platform_device *dev)
+ 		if (of_device_is_compatible(dev->dev.of_node,
+ 					    "aspeed,ast2500-ehci") ||
+ 		    of_device_is_compatible(dev->dev.of_node,
+-					    "aspeed,ast2600-ehci"))
++					    "aspeed,ast2600-ehci") ||
++		    of_device_is_compatible(dev->dev.of_node,
++					    "aspeed,ast2700-ehci"))
+ 			ehci->is_aspeed = 1;
+ 
+ 		if (soc_device_match(quirk_poll_match))
+@@ -484,6 +494,7 @@ static const struct of_device_id vt8500_ehci_ids[] = {
+ 	{ .compatible = "wm,prizm-ehci", },
+ 	{ .compatible = "generic-ehci", },
+ 	{ .compatible = "cavium,octeon-6335-ehci", },
++	{ .compatible = "aspeed,ast2700-ehci",	.data = (void *)1 },
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(of, vt8500_ehci_ids);

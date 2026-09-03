@@ -1,0 +1,186 @@
+From ac1dcaac74bbfc305add230936df03a161110334 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@nvidia.com>
+Date: Mon, 23 Mar 2026 17:31:25 +0200
+Subject: [PATCH 6.12 2/4] platform/mellanox: nvsw-bmc: Downstream: Add
+ protection for mux access
+
+Since mux ownership could be moved between CPU and BMC sides, mux setting
+should be allowed only by designated owner.
+Otherwise, not granted access could cause I2C transaction cutoff during
+execution.
+
+Add callback to validate if mux setting is allowed.
+If not - just skip setting operation.
+
+Upstream-Status: Pending
+
+Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+---
+ drivers/i2c/muxes/i2c-mux-regmap.c           | 13 ++++++
+ drivers/platform/mellanox/nvsw-bmc-hid162.c  | 45 ++++++++++++++++++++
+ include/linux/platform_data/i2c-mux-regmap.h |  2 +
+ 3 files changed, 60 insertions(+)
+
+diff --git a/drivers/i2c/muxes/i2c-mux-regmap.c b/drivers/i2c/muxes/i2c-mux-regmap.c
+index fb5e89c82423..cd8b45fa4dba 100644
+--- a/drivers/i2c/muxes/i2c-mux-regmap.c
++++ b/drivers/i2c/muxes/i2c-mux-regmap.c
+@@ -30,6 +30,12 @@ static int i2c_mux_regmap_select_chan(struct i2c_mux_core *muxc, u32 chan)
+ 	struct i2c_mux_regmap *mux = i2c_mux_priv(muxc);
+ 	int err = 0;
+ 
++	if (mux->pdata.mux_access_grant) {
++		err = mux->pdata.mux_access_grant(mux->pdata.handle);
++		if (err <= 0)
++			return err;
++	}
++
+ 	/* Only select the channel if its different from the last channel */
+ 	if (mux->last_val != chan) {
+ 		err = regmap_write(mux->pdata.regmap, mux->pdata.sel_reg_addr, chan);
+@@ -42,6 +48,13 @@ static int i2c_mux_regmap_select_chan(struct i2c_mux_core *muxc, u32 chan)
+ static int i2c_mux_regmap_deselect(struct i2c_mux_core *muxc, u32 chan)
+ {
+ 	struct i2c_mux_regmap *mux = i2c_mux_priv(muxc);
++	int err;
++
++	if (mux->pdata.mux_access_grant) {
++		err = mux->pdata.mux_access_grant(mux->pdata.handle);
++		if (err <= 0)
++			return err;
++	}
+ 
+ 	/* Deselect active channel */
+ 	mux->last_val = -1;
+diff --git a/drivers/platform/mellanox/nvsw-bmc-hid162.c b/drivers/platform/mellanox/nvsw-bmc-hid162.c
+index 89343d7660a4..1a0bd9093dd9 100644
+--- a/drivers/platform/mellanox/nvsw-bmc-hid162.c
++++ b/drivers/platform/mellanox/nvsw-bmc-hid162.c
+@@ -6965,6 +6965,19 @@ nvsw_bmc_hid162_completion_notify(void *handle, struct i2c_adapter *parent,
+ 	return 0;
+ }
+ 
++static int nvsw_bmc_hid162_mux_access_grant(void *handle)
++{
++	struct nvsw_core *nvsw_core = handle;
++	u32 regval;
++	int err;
++
++	err = regmap_read(nvsw_core->regmap, NVSW_REG_GP1_OFFSET, &regval);
++	if (err)
++		return err;
++
++	return regval & NVSW_MASTER_MASK;
++}
++
+ static int nvsw_bmc_hid162_platform_data_init(struct nvsw_core *nvsw_core)
+ {
+ 	int i;
+@@ -6976,6 +6989,7 @@ static int nvsw_bmc_hid162_platform_data_init(struct nvsw_core *nvsw_core)
+ 		mux_data[i] = &nvsw_bmc_hid162_mux_data[i];
+ 		mux_data[i]->handle = nvsw_core;
+ 		mux_data[i]->completion_notify = nvsw_bmc_hid162_completion_notify;
++		mux_data[i]->mux_access_grant = nvsw_bmc_hid162_mux_access_grant;
+ 		mux_brdinfo[i] = &nvsw_bmc_hid162_mux_brdinfo;
+ 		mux_brdinfo[i]->platform_data = mux_data[i];
+ 	}
+@@ -7002,6 +7016,7 @@ static int nvsw_bmc_hid176_platform_data_init(struct nvsw_core *nvsw_core)
+ 		mux_data[i] = &nvsw_bmc_hid176_mux_data[i];
+ 		mux_data[i]->handle = nvsw_core;
+ 		mux_data[i]->completion_notify = nvsw_bmc_hid162_completion_notify;
++		mux_data[i]->mux_access_grant = nvsw_bmc_hid162_mux_access_grant;
+ 		mux_brdinfo[i] = &nvsw_bmc_hid162_mux_brdinfo;
+ 		mux_brdinfo[i]->platform_data = mux_data[i];
+ 	}
+@@ -7027,6 +7042,7 @@ static int nvsw_bmc_hid177_platform_data_init(struct nvsw_core *nvsw_core)
+ 		mux_data[i] = &nvsw_bmc_hid176_mux_data[i];
+ 		mux_data[i]->handle = nvsw_core;
+ 		mux_data[i]->completion_notify = nvsw_bmc_hid162_completion_notify;
++		mux_data[i]->mux_access_grant = nvsw_bmc_hid162_mux_access_grant;
+ 		mux_brdinfo[i] = &nvsw_bmc_hid162_mux_brdinfo;
+ 		mux_brdinfo[i]->platform_data = mux_data[i];
+ 	}
+@@ -7052,6 +7068,7 @@ static int nvsw_bmc_hid180_platform_data_init(struct nvsw_core *nvsw_core)
+ 		mux_data[i] = &nvsw_bmc_hid180_mux_data[i];
+ 		mux_data[i]->handle = nvsw_core;
+ 		mux_data[i]->completion_notify = nvsw_bmc_hid162_completion_notify;
++		mux_data[i]->mux_access_grant = nvsw_bmc_hid162_mux_access_grant;
+ 		mux_brdinfo[i] = &nvsw_bmc_hid162_mux_brdinfo;
+ 		mux_brdinfo[i]->platform_data = mux_data[i];
+ 	}
+@@ -7077,10 +7094,20 @@ static int nvsw_bmc_hid181_platform_data_init(struct nvsw_core *nvsw_core)
+ 		mux_data[i] = &nvsw_bmc_hid181_mux_data[i];
+ 		mux_data[i]->handle = nvsw_core;
+ 		mux_data[i]->completion_notify = nvsw_bmc_hid162_completion_notify;
++		mux_data[i]->mux_access_grant = nvsw_bmc_hid162_mux_access_grant;
+ 		mux_brdinfo[i] = &nvsw_bmc_hid162_mux_brdinfo;
+ 		mux_brdinfo[i]->platform_data = mux_data[i];
+ 	}
+ 
++	/*
++	 *  Mux access locking is required for NVSW_REG_MUX1.
++	 *  NVSW_REG_MUX2 CPLD reg, which controls the leak detector A2Ds,
++	 *  is accessed also when CPU controls the I2C muxing.
++	 *  Therefore, we only set mux_access_grant for the second cell in
++	 *  the i2c_mux_regmap_platform_data array.
++	 */
++	mux_data[0]->mux_access_grant = nvsw_bmc_hid162_mux_access_grant;
++
+ 	nvsw_core->regio_data = &nvsw_bmc_hid181_regio;
+ 	nvsw_core->led_data = &nvsw_bmc_hid177_led;
+ 	nvsw_core->hotplug_data = &nvsw_bmc_hid181_hotplug;
+@@ -7106,6 +7133,15 @@ static int nvsw_bmc_hid189_platform_data_init(struct nvsw_core *nvsw_core)
+ 		mux_brdinfo[i]->platform_data = mux_data[i];
+ 	}
+ 
++	/*
++	 *  Mux access locking is required for NVSW_REG_MUX1.
++	 *  NVSW_REG_MUX2 CPLD reg, which controls the leak detector A2Ds,
++	 *  is accessed also when CPU controls the I2C muxing.
++	 *  Therefore, we only set mux_access_grant for the second cell in
++	 *  the i2c_mux_regmap_platform_data array.
++	 */
++	mux_data[0]->mux_access_grant = nvsw_bmc_hid162_mux_access_grant;
++
+ 	nvsw_core->regio_data = &nvsw_bmc_hid193_regio; /* hid189 uses info from 193 */
+ 	nvsw_core->led_data = &nvsw_bmc_hid177_led;
+ 	nvsw_core->hotplug_data = &nvsw_bmc_hid193_hotplug;
+@@ -7156,6 +7192,15 @@ static int nvsw_bmc_hid193_platform_data_init(struct nvsw_core *nvsw_core)
+ 		mux_brdinfo[i]->platform_data = mux_data[i];
+ 	}
+ 
++	/*
++	 *  Mux access locking is required for NVSW_REG_MUX1.
++	 *  NVSW_REG_MUX2 CPLD reg, which controls the leak detector A2Ds,
++	 *  is accessed also when CPU controls the I2C muxing.
++	 *  Therefore, we only set mux_access_grant for the second cell in
++	 *  the i2c_mux_regmap_platform_data array.
++	 */
++	mux_data[0]->mux_access_grant = nvsw_bmc_hid162_mux_access_grant;
++
+ 	nvsw_core->regio_data = &nvsw_bmc_hid193_regio;
+ 	nvsw_core->led_data = &nvsw_bmc_hid177_led;
+ 	nvsw_core->hotplug_data = &nvsw_bmc_hid193_hotplug;
+diff --git a/include/linux/platform_data/i2c-mux-regmap.h b/include/linux/platform_data/i2c-mux-regmap.h
+index a06614e5edd2..f92db6ca7851 100644
+--- a/include/linux/platform_data/i2c-mux-regmap.h
++++ b/include/linux/platform_data/i2c-mux-regmap.h
+@@ -18,6 +18,7 @@
+  * @reg_size: register size in bytes
+  * @handle: handle to be passed by callback
+  * @completion_notify: callback to notify when all the adapters are created
++ * @mux_access_grant: callback to validate if mux access is granted
+  */
+ struct i2c_mux_regmap_platform_data {
+ 	void *regmap;
+@@ -29,6 +30,7 @@ struct i2c_mux_regmap_platform_data {
+ 	void *handle;
+ 	int (*completion_notify)(void *handle, struct i2c_adapter *parent,
+ 				 struct i2c_adapter *adapters[]);
++	int (*mux_access_grant)(void *handle);
+ };
+ 
+ #endif	/* __LINUX_PLATFORM_DATA_I2C_MUX_REGMAP_H */
+-- 
+2.34.1
+
