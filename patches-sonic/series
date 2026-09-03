@@ -244,6 +244,8 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 0014-i2c-xiic-cosmetic-use-resource-format-specifier-in-d.patch
 0015-i2c-xiic-use-numbered-adapter-registration.patch
 0016-i2c-xiic-skip-input-clock-setup-on-non-OF-systems.patch
+0017-dt-bindings-trivial-devices-Add-Delta-Q54SN120A1-and-Q54SW120A7.patch
+0018-hwmon-pmbus-Add-Delta-Q54SN120A1-Q54SW120A7-chip.patch
 
 # Fix to avoid kernel panic on Kernel 6.1.94
 # https://github.com/sonic-net/sonic-buildimage/issues/20901
