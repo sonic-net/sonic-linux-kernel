@@ -89,6 +89,7 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	fi
 
 	patch -p1 -i ../patches-debian/disable-secureboot-config-checks.patch
+	patch -p1 -i ../patches-debian/verify-local-configs-are-applied.patch
 
 	# Enable secure boot configs if needed
 	../manage-config $(CONFIGURED_ARCH) $(SECURE_UPGRADE_MODE) $(SECURE_UPGRADE_KERNEL_CAFILE)
