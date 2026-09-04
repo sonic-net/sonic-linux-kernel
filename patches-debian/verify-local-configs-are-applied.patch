@@ -31,11 +31,11 @@ Index: linux-6.12.41/debian/bin/buildcheck.py
 +        missing_configs = set(merged_config.values()) - set(kconfig.values())
 +        actual_missing_configs = set([config for config in missing_configs if config.value != KConfigEntryTristate.VALUE_NO])
 +        if missing_configs - actual_missing_configs:
-+            print(f'Ignoring "no" configs that are not set in the final config: {missing_configs - actual_missing_configs}')
++            out.write(f'Ignoring "no" configs that are not set in the final config: {missing_configs - actual_missing_configs}\n')
 +
 +        if actual_missing_configs:
-+            print('Error: there are configs not set in the final config!')
-+            print(f'Unset configs: {actual_missing_configs}')
++            out.write('Error: there are configs not set in the final config!\n')
++            out.write(f'Unset configs: {actual_missing_configs}\n')
 +            fail = 1
 +
 +        return fail
