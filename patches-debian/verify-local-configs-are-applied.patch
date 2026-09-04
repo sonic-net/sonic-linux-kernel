@@ -1,0 +1,53 @@
+Index: linux-6.12.41/debian/bin/buildcheck.py
+===================================================================
+--- linux-6.12.41.orig/debian/bin/buildcheck.py
++++ linux-6.12.41/debian/bin/buildcheck.py
+@@ -6,7 +6,38 @@ import pathlib
+ import sys
+ 
+ from debian_linux.config_v2 import Config
+-from debian_linux.kconfig import KconfigFile
++from debian_linux.kconfig import KconfigFile, KConfigEntryTristate
++
++
++class CheckConfigsAreSet:
++    def __init__(self, config, dir, *_):
++        self.config = config
++        self.dir = pathlib.Path(dir)
++
++    def __call__(self, out):
++        fail = 0
++
++        kconfig = KconfigFile()
++        with (self.dir / '.config').open() as fh:
++            kconfig.read(fh)
++
++        merged_config = KconfigFile()
++        for c in self.config.config:
++            if (f := pathlib.Path('debian/config.local') / c).exists():
++                with f.open() as fh:
++                    merged_config.read(fh)
++
++        missing_configs = set(merged_config.values()) - set(kconfig.values())
++        actual_missing_configs = set([config for config in missing_configs if config.value != KConfigEntryTristate.VALUE_NO])
++        if missing_configs - actual_missing_configs:
++            print(f'Ignoring "no" configs that are not set in the final config: {missing_configs - actual_missing_configs}')
++
++        if actual_missing_configs:
++            print('Error: there are configs not set in the final config!')
++            print(f'Unset configs: {actual_missing_configs}')
++            fail = 1
++
++        return fail
+ 
+ 
+ class CheckSecureBootConfig:
+@@ -42,7 +73,7 @@ class CheckSecureBootConfig:
+ class Main(object):
+ 
+     checks = {
+-        'setup': [CheckSecureBootConfig],
++        'setup': [CheckSecureBootConfig, CheckConfigsAreSet],
+         'build': [],
+     }
+ 
