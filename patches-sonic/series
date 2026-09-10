@@ -292,6 +292,12 @@ qsa-2026-apparmor/0011-apparmor-fix-race-between-freeing-data-and-fs-access.patc
 # Drop 0003 when kernel >= 6.12 (merged upstream: torvalds/linux 03dc03fa0432)
 0003-neighbor-Add-NTF_EXT_VALIDATED-flag-for-externally-v.patch
 
+# Atlantic AQC (ATL2) descriptor cache invalidation on hw_stop().
+# Fixes IOMMU page faults and eth0 link flaps on ifdown/ifup (e.g. ZTP
+# networking restarts). Upstream 7526183cfdbe, in stable since v6.12.61.
+# Drop when kernel >= 6.12.61
+0001-net-aquantia-Add-missing-descriptor-cache-invalidati.patch
+
 ############################################################
 #
 # Let us keep Aspeed patches at the end
