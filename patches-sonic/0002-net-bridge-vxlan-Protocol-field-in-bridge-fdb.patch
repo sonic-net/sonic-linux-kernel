@@ -217,7 +217,7 @@ index ffb0b61..7e08ae3 100644
  	hash_index = fdb_head_index(vxlan, addr, src_vni);
  	spin_lock_bh(&vxlan->hash_lock[hash_index]);
 +	if (protocol != RTPROT_UNSPEC) {
-+		f = vxlan_find_mac(vxlan, addr, src_vni);
++		f = vxlan_find_mac_tx(vxlan, addr, src_vni);
 +		if (!f || f->protocol != protocol) {
 +			err = -ENOENT;
 +			goto out;
