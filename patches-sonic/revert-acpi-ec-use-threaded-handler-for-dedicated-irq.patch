@@ -1,6 +1,6 @@
-From c603ce1facc7bbf758ad8cc60bcda8384f2ff1f9 Mon Sep 17 00:00:00 2001
+From 40c2879dcb38cf19678cb4ebbafe180f22b3140a Mon Sep 17 00:00:00 2001
 From: Connor Roos <croos@nvidia.com>
-Date: Wed, 5 Aug 2026 12:00:00 -0700
+Date: Wed, 5 Aug 2026 15:10:50 -0700
 Subject: [PATCH 2/2] Revert "ACPI: EC: Use a threaded handler for dedicated
  IRQ"
 
