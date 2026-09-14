@@ -1,0 +1,90 @@
+Subject: [PATCH] nvme-pci: try PCIe FLR when controller disable/shutdown hangs
+
+The kernel upstream patch ("nvme-pci: try function level reset on
+init failure", upstream 5b2c214a9594, 6.12.y backport bc255fec6fd7)
+only attempts a PCIe Function Level Reset when the controller fails to
+disable from inside nvme_pci_configure_admin_queue() (the reset_work
+path).  However, nvme_disable_ctrl() is also called from
+nvme_dev_disable(), which is the first thing nvme_timeout() does for a
+hung admin or I/O command:
+
+    nvme_timeout()
+      -> nvme_dev_disable(dev, false)
+           -> nvme_disable_ctrl(&dev->ctrl, shutdown)   <-- can hang
+      -> nvme_try_sched_reset(&dev->ctrl)
+
+When the controller is wedged this nvme_disable_ctrl() times out with
+
+    nvme nvme0: Device not ready; aborting reset, CSTS=0x1
+
+but nvme_dev_disable() discards the return value and proceeds to
+pci_disable_device().  Depending on firmware behaviour the subsequent
+reset_work may not reach the patched nvme_pci_configure_admin_queue()
+site, because nvme_pci_enable() bails out earlier when
+pci_enable_device_mem() fails or when CSTS reads back as -1.  In that
+case the FLR fallback is never tried and the device is left needing a
+power cycle.
+
+Note on the 6.12 backport: v6.1 had a separate nvme_disable_admin_queue()
+helper, and a separate nvme_shutdown_ctrl().  Both were removed upstream;
+the helper body was inlined into nvme_dev_disable() and the shutdown
+variant folded into nvme_disable_ctrl(ctrl, shutdown).  The equivalent
+code is therefore the "if (!dead && dev->ctrl.queue_count > 0)" block of
+nvme_dev_disable(), which is where this patch now applies.
+
+Safety:
+  - The block only runs when !dead, i.e. nvme_pci_ctrl_is_dead() found
+    the device present, pci enabled, error_state normal, CSTS.CFS == 0
+    and CSTS.RDY == 1 -- exactly the "stuck controller" case where FLR
+    is appropriate.
+  - pci_save_state() was already done by nvme_pci_enable(), so
+    pci_restore_state() after FLR is correct.
+  - After FLR the controller is in its reset state (CC == 0,
+    CSTS.RDY == 0); the remainder of nvme_dev_disable() (poll irqdisable,
+    suspend queues, pci_free_irq_vectors, pci_disable_device) is
+    unaffected.
+  - On a subsequent reset_work, nvme_pci_configure_admin_queue()'s
+    nvme_disable_ctrl() will succeed immediately, so the upstream FLR
+    path will not double-FLR.
+  - nvme_dev_disable() returns void, so a failed FLR is only logged.
+
+---
+diff -Nur a/drivers/nvme/host/pci.c b/drivers/nvme/host/pci.c
+--- a/drivers/nvme/host/pci.c
++++ b/drivers/nvme/host/pci.c
+@@ -2787,9 +2787,31 @@
+ 	nvme_quiesce_io_queues(&dev->ctrl);
+ 
+ 	if (!dead && dev->ctrl.queue_count > 0) {
++		int result;
++
+ 		nvme_delete_io_queues(dev);
+-		nvme_disable_ctrl(&dev->ctrl, shutdown);
++		result = nvme_disable_ctrl(&dev->ctrl, shutdown);
++		if (result < 0) {
++			/*
++			 * The controller did not respond to a normal disable or
++			 * shutdown. Use the lower level and bigger hammer PCIe
++			 * Function Level Reset to restore the device to its
++			 * initial state, so that a subsequent reset can succeed
++			 * without a power cycle.
++			 */
++			result = pcie_reset_flr(pdev, false);
++			if (result < 0) {
++				dev_warn(dev->ctrl.device,
++					 "pcie flr fallback failed (%d)\n",
++					 result);
++			} else {
++				pci_restore_state(pdev);
++				dev_info(dev->ctrl.device,
++					 "controller %s completed after pcie flr\n",
++					 shutdown ? "shutdown" : "disable");
++			}
++		}
+ 		nvme_poll_irqdisable(&dev->queues[0]);
+ 	}
+ 	nvme_suspend_io_queues(dev);
+ 	nvme_suspend_queue(dev, 0);
+ 	pci_free_irq_vectors(pdev);
+-- 
+2.34.1
