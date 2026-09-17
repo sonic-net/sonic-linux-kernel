@@ -1,0 +1,208 @@
+Upstream-Status: Pending
+
+From be1f98335672645dee6b12c9c9eeed513838bc33 Mon Sep 17 00:00:00 2001
+From: Howard Tang <howardt@nvidia.com>
+Date: Wed, 17 Jul 2024 03:21:48 +0000
+Subject: [PATCH] iio: adc: max1363: Add ability to set scale of the ADC
+
+Adding the ability to set the voltage reference and the scale of the
+ADC. The voltage reference can be one of four supported modes based on
+the datasheet.  For internal references, the scale will automatically
+update based on the internal reference voltage.
+
+Fixes JIRA https://jirasw.nvidia.com/browse/DGXOPENBMC-12962
+
+Signed-off-by: Howard Tang <howardt@nvidia.com>
+---
+ drivers/iio/adc/max1363.c | 138 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 138 insertions(+)
+
+diff --git a/drivers/iio/adc/max1363.c b/drivers/iio/adc/max1363.c
+index d0c6e94f7204..edddd0f9d254 100644
+--- a/drivers/iio/adc/max1363.c
++++ b/drivers/iio/adc/max1363.c
+@@ -48,6 +48,7 @@
+ #define MAX1363_SETUP_AIN3_IS_REF_REF_IS_INT	0x60
+ #define MAX1363_SETUP_POWER_UP_INT_REF		0x10
+ #define MAX1363_SETUP_POWER_DOWN_INT_REF	0x00
++#define MAX1363_SETUP_VREF_MASK		        0x60
+ 
+ /* think about including max11600 etc - more settings */
+ #define MAX1363_SETUP_EXT_CLOCK			0x08
+@@ -91,6 +92,33 @@
+ #define MAX1363_SE_DE_MASK			0x01
+ 
+ #define MAX1363_MAX_CHANNELS 25
++
++enum max1363_vref_modes {
++	MAX1363_VREF_AIN3_IS_AIN3_REF_IS_VDD,
++	MAX1363_VREF_AIN3_IS_REF_EXT_TO_REF,
++	MAX1363_VREF_AIN3_IS_AIN3_REF_IS_INT,
++	MAX1363_VREF_AIN3_IS_REF_REF_IS_INT,
++	MAX1363_MAX_VREF_MODES
++};
++
++static const char *max1363_vref_mode_names[MAX1363_MAX_VREF_MODES] = {
++	[MAX1363_VREF_AIN3_IS_AIN3_REF_IS_VDD] = "Vdd",
++	[MAX1363_VREF_AIN3_IS_REF_EXT_TO_REF] = "External_AIn3",
++	[MAX1363_VREF_AIN3_IS_AIN3_REF_IS_INT] = "Internal",
++	[MAX1363_VREF_AIN3_IS_REF_REF_IS_INT] = "Internal_AIn3",
++};
++
++static const u8 max1363_vref_setup_byte[MAX1363_MAX_VREF_MODES] = {
++	[MAX1363_VREF_AIN3_IS_AIN3_REF_IS_VDD] =
++                    MAX1363_SETUP_AIN3_IS_AIN3_REF_IS_VDD,
++	[MAX1363_VREF_AIN3_IS_REF_EXT_TO_REF] =
++                    MAX1363_SETUP_AIN3_IS_REF_EXT_TO_REF,
++	[MAX1363_VREF_AIN3_IS_AIN3_REF_IS_INT] =
++                    MAX1363_SETUP_AIN3_IS_AIN3_REF_IS_INT,
++	[MAX1363_VREF_AIN3_IS_REF_REF_IS_INT] =
++                    MAX1363_SETUP_AIN3_IS_REF_REF_IS_INT,
++};
++
+ /**
+  * struct max1363_mode - scan mode information
+  * @conf:	The corresponding value of the configuration register
+@@ -434,6 +462,28 @@ static int max1363_read_raw(struct iio_dev *indio_dev,
+ 	return 0;
+ }
+ 
++static int max1363_write_raw(struct iio_dev *indio_dev,
++			     struct iio_chan_spec const *chan,
++			     int val, int val2, long mask)
++{
++	struct max1363_state *st = iio_priv(indio_dev);
++	int ret = 0;
++
++	mutex_lock(&st->lock);
++	switch (mask) {
++	case IIO_CHAN_INFO_SCALE:
++		st->vref_uv = div_s64((val * 1000000LL + val2) <<
++			(st->chip_info->bits), 1000);
++		break;
++	default:
++		ret = -EINVAL;
++		break;
++	}
++	mutex_unlock(&st->lock);
++
++	return ret;
++}
++
+ /* Applies to max1363 */
+ static const enum max1363_modes max1363_mode_list[] = {
+ 	_s0, _s1, _s2, _s3,
+@@ -717,6 +767,82 @@ static IIO_DEV_ATTR_SAMP_FREQ(S_IRUGO | S_IWUSR,
+ static IIO_CONST_ATTR(sampling_frequency_available,
+ 		"133000 665000 33300 16600 8300 4200 2000 1000");
+ 
++static ssize_t voltage_reference_show(struct device *dev,
++				      struct device_attribute *attr,
++				      char *buf)
++{
++	struct max1363_state *st = iio_priv(dev_to_iio_dev(dev));
++	enum max1363_vref_modes vref_mode;
++	u8 curr_vref = st->setupbyte & MAX1363_SETUP_VREF_MASK;
++
++	for (vref_mode = 0; vref_mode < MAX1363_MAX_VREF_MODES; vref_mode++) {
++		if (curr_vref == max1363_vref_setup_byte[vref_mode])
++			break;
++	}
++
++	if (vref_mode == MAX1363_MAX_VREF_MODES)
++        return 0;
++
++	return sysfs_emit(buf, "%s\n", max1363_vref_mode_names[vref_mode]);
++}
++
++static void max1363_set_voltage_reference(struct max1363_state *st,
++					  enum max1363_vref_modes vref_mode)
++{
++	st->setupbyte &= ~MAX1363_SETUP_VREF_MASK;
++	st->setupbyte |= max1363_vref_setup_byte[vref_mode];
++
++	// Update the scale if we are going back to internal reference.  For
++	// external and Vdd reference, the user is responsible for updating the
++	// scale themselves.
++	if (vref_mode == MAX1363_VREF_AIN3_IS_AIN3_REF_IS_INT ||
++		vref_mode == MAX1363_VREF_AIN3_IS_REF_REF_IS_INT)
++	{
++		st->vref_uv = st->chip_info->int_vref_mv * 1000;
++	}
++}
++
++static ssize_t voltage_reference_store(struct device *dev,
++				       struct device_attribute *attr,
++				       const char *buf, size_t len)
++{
++	struct max1363_state *st = iio_priv(dev_to_iio_dev(dev));
++	enum max1363_vref_modes vref_mode;
++
++	for (vref_mode = 0; vref_mode < MAX1363_MAX_VREF_MODES; vref_mode++) {
++		if (!strncmp(max1363_vref_mode_names[vref_mode], buf,
++			strlen(max1363_vref_mode_names[vref_mode])))
++			break;
++	}
++
++	if (vref_mode == MAX1363_MAX_VREF_MODES)
++		return -EINVAL;
++
++	mutex_lock(&st->lock);
++	max1363_set_voltage_reference(st, vref_mode);
++	mutex_unlock(&st->lock);
++
++	return len;
++}
++
++static IIO_DEVICE_ATTR_RW(voltage_reference, 0);
++
++static ssize_t voltage_reference_available_show(struct device *dev,
++					        struct device_attribute *attr,
++					        char *buf)
++{
++	struct max1363_state *st = iio_priv(dev_to_iio_dev(dev));
++	enum max1363_vref_modes vref_mode;
++	int len = 0;
++
++	for (vref_mode = 0; vref_mode < MAX1363_MAX_VREF_MODES; vref_mode++)
++        len += sysfs_emit_at(buf, len, "%s\n", max1363_vref_mode_names[vref_mode]);
++
++	return len;
++}
++
++static IIO_DEVICE_ATTR_RO(voltage_reference_available, 0);
++
+ static int max1363_read_thresh(struct iio_dev *indio_dev,
+ 	const struct iio_chan_spec *chan, enum iio_event_type type,
+ 	enum iio_event_direction dir, enum iio_event_info info, int *val,
+@@ -1013,6 +1139,16 @@ static int max1363_update_scan_mode(struct iio_dev *indio_dev,
+ 	return 0;
+ }
+ 
++static struct attribute *max1363_attributes[] = {
++	&iio_dev_attr_voltage_reference.dev_attr.attr,
++	&iio_dev_attr_voltage_reference_available.dev_attr.attr,
++	NULL,
++};
++
++static const struct attribute_group max1363_attribute_group = {
++	.attrs = max1363_attributes,
++};
++
+ static const struct iio_info max1238_info = {
+ 	.read_raw = &max1363_read_raw,
+ 	.update_scan_mode = &max1363_update_scan_mode,
+@@ -1024,8 +1160,10 @@ static const struct iio_info max1363_info = {
+ 	.read_event_config = &max1363_read_event_config,
+ 	.write_event_config = &max1363_write_event_config,
+ 	.read_raw = &max1363_read_raw,
++	.write_raw = &max1363_write_raw,
+ 	.update_scan_mode = &max1363_update_scan_mode,
+ 	.event_attrs = &max1363_event_attribute_group,
++	.attrs = &max1363_attribute_group
+ };
+ 
+ /* max1363 and max1368 tested - rest from data sheet */
+-- 
+2.34.1
+
