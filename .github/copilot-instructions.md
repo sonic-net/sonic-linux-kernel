@@ -76,6 +76,12 @@ Kernel patches are accepted under these conditions:
 - **Upstream first**: Prefer upstream patches — include the original commit hash
 - **Justification**: Explain why a patch is needed and why it can't be done out-of-tree
 - **CI**: Azure pipeline checks must pass
+- **PR description template**: Fill out all sections of the [PR template](pull_request_template.md) when submitting a pull request:
+  - **What I did**: Summarize the change being made
+  - **Why I did it**: Explain motivation and context for the change
+  - **How I verified it**: Provide steps or commands to test the change
+  - **Details if related**: Include any additional context, links, or related information
+
 
 ## Gotchas
 
