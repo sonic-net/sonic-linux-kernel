@@ -271,21 +271,7 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 0008-PCI-AER-Ratelimit-correctable-and-non-fatal-error-lo.patch
 0009-PCI-AER-Add-sysfs-attributes-for-log-ratelimits.patch
 0010-fix-aer-ratelimiting-sysfs-output-units.patch
-0011-PCI-AER-Fix-NULL-pointer-access-by-aer_info.patch
-0012-PCI-AER-Avoid-NULL-pointer-dereference-in-aer_rateli.patch
 
-# QID-45097: Crackarmor fixes
-qsa-2026-apparmor/0001-apparmor-validate-DFA-start-states-are-in-bounds-in-.patch
-qsa-2026-apparmor/0002-apparmor-fix-memory-leak-in-verify_header.patch
-qsa-2026-apparmor/0003-apparmor-replace-recursive-profile-removal-with-iter.patch
-qsa-2026-apparmor/0004-apparmor-fix-limit-the-number-of-levels-of-policy-na.patch
-qsa-2026-apparmor/0005-apparmor-fix-side-effect-bug-in-match_char-macro-usa.patch
-qsa-2026-apparmor/0006-apparmor-fix-missing-bounds-check-on-DEFAULT-table-i.patch
-qsa-2026-apparmor/0007-apparmor-Fix-double-free-of-ns_name-in-aa_replace_pr.patch
-qsa-2026-apparmor/0008-apparmor-fix-unprivileged-local-user-can-do-privileg.patch
-qsa-2026-apparmor/0009-apparmor-fix-differential-encoding-verification.patch
-qsa-2026-apparmor/0010-apparmor-fix-race-on-rawdata-dereference.patch
-qsa-2026-apparmor/0011-apparmor-fix-race-between-freeing-data-and-fs-access.patch
 # Patches for EVPN MH
 0001-vxlan-bridge-Add-NDA_FLAGS_EXT-support-with-NTF_EXT_.patch
 0002-net-bridge-vxlan-Protocol-field-in-bridge-fdb.patch
@@ -330,6 +316,27 @@ micas-m2-w6950-128oc-dts.patch
 0011-arm64-dts-aspeed-spc6-bmc-fix-sgmii-phy-names.patch
 0012-usb-ehci-Add-Aspeed-AST2700-support.patch
 ###-> nvidia_aspeed_bmc-end
+
+# Fixes for CVEs, each named for the CVE it resolves so the SBOM
+# records it (sonic-buildimage's scripts/sbom_cve_refs.py). Kept last
+# among the public patches so a fix never reorders what it is applied
+# on top of.
+###-> security-start
+security/CVE-2025-68309-PCI-AER-Fix-NULL-pointer-access-by-aer_info.patch
+security/CVE-2025-40034-PCI-AER-Avoid-NULL-pointer-dereference-in-aer_rateli.patch
+# QID-45097: Crackarmor fixes
+security/CVE-2026-23269-apparmor-validate-DFA-start-states-are-in-bounds-in-.patch
+security/CVE-2026-23403-apparmor-fix-memory-leak-in-verify_header.patch
+security/CVE-2026-23404-apparmor-replace-recursive-profile-removal-with-iter.patch
+security/CVE-2026-23405-apparmor-fix-limit-the-number-of-levels-of-policy-na.patch
+security/CVE-2026-23406-apparmor-fix-side-effect-bug-in-match_char-macro-usa.patch
+security/CVE-2026-23407-apparmor-fix-missing-bounds-check-on-DEFAULT-table-i.patch
+security/CVE-2026-23408-apparmor-Fix-double-free-of-ns_name-in-aa_replace_pr.patch
+security/CVE-2026-23268-apparmor-fix-unprivileged-local-user-can-do-privileg.patch
+security/CVE-2026-23409-apparmor-fix-differential-encoding-verification.patch
+security/CVE-2026-23410-apparmor-fix-race-on-rawdata-dereference.patch
+security/CVE-2026-23411-apparmor-fix-race-between-freeing-data-and-fs-access.patch
+###-> security-end
 
 #
 #
