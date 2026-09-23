@@ -318,8 +318,9 @@ micas-m2-w6950-128oc-dts.patch
 ###-> nvidia_aspeed_bmc-end
 
 # Fixes for CVEs, each named for the CVE it resolves so the SBOM
-# records it (scripts/sbom_cve_refs.py). Kept last among the public
-# patches so a fix never reorders what it is applied on top of.
+# records it (sonic-buildimage's scripts/sbom_cve_refs.py). Kept last
+# among the public patches so a fix never reorders what it is applied
+# on top of.
 ###-> security-start
 security/CVE-2025-68309-PCI-AER-Fix-NULL-pointer-access-by-aer_info.patch
 security/CVE-2025-40034-PCI-AER-Avoid-NULL-pointer-dereference-in-aer_rateli.patch
