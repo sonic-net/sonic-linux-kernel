@@ -142,6 +142,10 @@ driver-i2c-smbus-add-disable_spd-module-parameter.patch
 0062-Add-support-for-NXP-s-PCF85053A-RTC-chip.patch
 0063-reset-phy-using-polling-function-not-register-write.patch
 0064-hwmon-pmbus-isl68137-Add-support-for-Renesas-RAA2289.patch
+0068-iio-adc-max1363-Add-ability-to-set-scale-of-the-ADC.patch
+0069-nvme-pci-try-function-level-reset-on-init-failure.patch
+0070-nvme-pci-try-flr-on-controller-disable-failure.patch
+0072-i2c-dev-Fix-duplicate-chardev-registration-during-mo.patch
 8000-mlxsw-Use-weak-reverse-dependencies-for-firmware-fla.patch
 8002-mlxsw-i2c-SONIC-ISSU-Prevent-transaction-execution-f.patch
 8003-mlxsw-minimal-Downstream-Ignore-error-reading-SPAD-r.patch
@@ -315,6 +319,7 @@ micas-m2-w6950-128oc-dts.patch
 0010-net-ftgmac100-hard-reset-mac-for-sgmii.patch
 0011-arm64-dts-aspeed-spc6-bmc-fix-sgmii-phy-names.patch
 0012-usb-ehci-Add-Aspeed-AST2700-support.patch
+0013-watchdog-aspeed-Set-WDT_RESET_MASK1-bit-1-on-AST2700.patch
 ###-> nvidia_aspeed_bmc-end
 
 # Fixes for CVEs, each named for the CVE it resolves so the SBOM
