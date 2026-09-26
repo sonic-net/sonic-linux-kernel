@@ -1,6 +1,4 @@
 [common]
-# Unset STRICT_DEVMEM according to Broadcom's requirement and for CENTEC arm64 arch
-CONFIG_STRICT_DEVMEM
 # Unset classid and priority network cgroups due to conflict between cgroups v1 and v2
 CONFIG_CGROUP_NET_CLASSID
 CONFIG_NET_CLS_CGROUP
@@ -28,6 +26,14 @@ CONFIG_MLXSW_PCI
 
 [arm64]
 CONFIG_SQUASHFS_DECOMP_MULTI_PERCPU
+
+[broadcom-arm64]
+# Required by Broadcom arm64 platforms only.
+CONFIG_STRICT_DEVMEM
+
+[centec-arm64]
+# Required by CENTEC arm64 platforms only.
+CONFIG_STRICT_DEVMEM
 
 [marvell-prestera-arm64]
 CONFIG_UBIFS_FS_ZSTD
@@ -67,4 +73,3 @@ CONFIG_SECONDARY_TRUSTED_KEYRING
 CONFIG_SYSTEM_BLACKLIST_KEYRING
 
 [mellanox-arm64]
-
