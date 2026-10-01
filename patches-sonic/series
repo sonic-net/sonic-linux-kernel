@@ -282,6 +282,20 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 # Drop 0003 when kernel >= 6.12 (merged upstream: torvalds/linux 03dc03fa0432)
 0003-neighbor-Add-NTF_EXT_VALIDATED-flag-for-externally-v.patch
 
+# ext4: correct behavior under errors=remount-ro mode
+# Upstream series (ext4, merged in v6.15-rc1): EXT4_FLAGS_SHUTDOWN was being set for
+# errors=remount-ro, which blocks reads as well as writes. These five patches
+# introduce EXT4_FLAGS_EMERGENCY_RO and use it for that case, so reads keep
+# working while writes are refused.
+# They are one dependent set and must stay in this order: 0002 defines the new
+# flag, 0003/0004 add the ext4_emergency_state() checks that make it effective,
+# and only then does 0005 switch the error path over to it.
+0001-ext4-convert-EXT4_FLAGS_-defines-to-enum.patch
+0002-ext4-add-EXT4_FLAGS_EMERGENCY_RO-bit.patch
+0003-ext4-add-ext4_emergency_state-helper-function.patch
+0004-ext4-add-more-ext4_emergency_state-checks-around-sb_.patch
+0005-ext4-correct-behavior-under-errors-remount-ro-mode.patch
+
 ############################################################
 #
 # Let us keep Aspeed patches at the end
