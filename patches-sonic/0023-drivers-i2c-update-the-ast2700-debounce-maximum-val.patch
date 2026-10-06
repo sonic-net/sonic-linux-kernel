@@ -1,0 +1,28 @@
+From: Tommy Huang <tommy_huang@aspeedtech.com>
+Date: Mon, 30 Mar 2026 17:49:39 +0800
+Subject: [PATCH 6.12 1/1] drivers: i2c: update the ast2700 debounce maximum value
+
+Upstream-Status: Backport [AspeedTech-BMC/linux aspeed-master-v6.12 2da726d54316abf3780b49491e61c3ae546d87a3, SDK v00.07.03]
+
+Update the ast2700 debounce maximum value.
+
+Signed-off-by: Tommy Huang <tommy_huang@aspeedtech.com>
+Change-Id: Ic65f971f3993687b8361b40544fe06030ce4f847
+(cherry picked from commit 717df7620c57f5e0060140e619ebb4432b034372)
+---
+ drivers/i2c/busses/i2c-ast2600.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/i2c/busses/i2c-ast2600.c b/drivers/i2c/busses/i2c-ast2600.c
+index f27aff994..2bb3627a8 100644
+--- a/drivers/i2c/busses/i2c-ast2600.c
++++ b/drivers/i2c/busses/i2c-ast2600.c
+@@ -282,7 +282,7 @@
+ /* 0x9c : Misc_2 Debounce Setting */
+ #define MSIC2_CONFIG				0x9C
+ #define AST2700_DEBOUNCE_MASK		GENMASK(7, 0)
+-#define AST2700_DEBOUNCE_LEVEL_MAX	0x20
++#define AST2700_DEBOUNCE_LEVEL_MAX	0xFF
+ #define AST2700_DEBOUNCE_LEVEL_MIN	0x2
+ 
+ #define I2C_TARGET_MSG_BUF_SIZE		4096
