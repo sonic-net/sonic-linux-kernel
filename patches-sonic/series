@@ -320,6 +320,22 @@ micas-m2-w6950-128oc-dts.patch
 0011-arm64-dts-aspeed-spc6-bmc-fix-sgmii-phy-names.patch
 0012-usb-ehci-Add-Aspeed-AST2700-support.patch
 0013-watchdog-aspeed-Set-WDT_RESET_MASK1-bit-1-on-AST2700.patch
+0014-i2c-ast2600-change-the-remove-driver-call-back-func.patch
+0015-i2c-ast2600-update-sync-with-upstream.patch
+0016-i2c-ast2600-update-align-with-upstream.patch
+0017-i2c-ast2600-use-function-point.patch
+0018-i2c-ast2600-fix-update.patch
+0019-i2c-ast2600-refine-bus-mode-logic.patch
+0020-i2c-ast2600-refine-the-code-style-and-arrange.patch
+0021-i2c-ast2600-introduce-buffer-transferring-support-t.patch
+0022-i2c-ast2600-arrange-the-transfer-judgement-rule.patch
+0023-drivers-i2c-update-the-ast2700-debounce-maximum-val.patch
+0024-i2c-i2c-ast2600-avoid-I2C-target-reads-with-zero-le.patch
+0025-i2c-ast2600-update-the-i2c-transfer-mode-as-buffer-.patch
+0026-i2c-ast2600-add-set-DMA-enable-flag-for-AST2700.patch
+0027-i2c-i2c-ast2600-add-zero-length-read-quirk.patch
+0028-i2c-ast2600-revert-back-AST2700-obtains-data-buffer.patch
+0029-i2c-ast2600-fix-NULL-deref-in-the-AST2700-buffer-mo.patch
 ###-> nvidia_aspeed_bmc-end
 
 # Fixes for CVEs, each named for the CVE it resolves so the SBOM

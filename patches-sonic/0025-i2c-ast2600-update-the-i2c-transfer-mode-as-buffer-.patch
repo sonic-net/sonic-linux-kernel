@@ -1,0 +1,42 @@
+From: Tommy Huang <tommy_huang@aspeedtech.com>
+Date: Mon, 4 May 2026 16:45:36 +0800
+Subject: [PATCH 6.12 1/1] i2c: ast2600: update the i2c transfer mode as buffer mode
+
+Upstream-Status: Backport [AspeedTech-BMC/linux aspeed-master-v6.12 d71de0f091b1d24088fbc88e8650e9ef7270b649, SDK v00.07.04]
+
+Due to the following privilege control limitations, set the
+default i2c transfer mode to buffer mode.
+
+Signed-off-by: Tommy Huang <tommy_huang@aspeedtech.com>
+Change-Id: I71e0e38245c212b0d126d3b6e190976f99bea949
+(cherry picked from commit b3df20c13b43d4d5f3ef92619c8298c10b39ff13)
+---
+ drivers/i2c/busses/i2c-ast2600.c | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-ast2600.c b/drivers/i2c/busses/i2c-ast2600.c
+index 69dfadc59..0d1508902 100644
+--- a/drivers/i2c/busses/i2c-ast2600.c
++++ b/drivers/i2c/busses/i2c-ast2600.c
+@@ -2920,18 +2920,15 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
+ 		i2c_bus->ac_timing_config = ast2700_i2c_ac_timing_config;
+ 		i2c_bus->irq_err_to_errno = ast2700_i2c_irq_err_to_errno;
+ 		i2c_bus->irq_clear = ast2700_i2c_irq_clear;
+-
+-		/* AST2700: default DMA, allow override */
+-		i2c_bus->mode = DMA_MODE;
+ 	} else {
+ 		i2c_bus->ac_timing_config = ast2600_i2c_ac_timing_config;
+ 		i2c_bus->irq_err_to_errno = ast2600_i2c_irq_err_to_errno;
+ 		i2c_bus->irq_clear = ast2600_i2c_irq_clear;
+-
+-		/* AST2600: default BUFF, allow override */
+-		i2c_bus->mode = BUFF_MODE;
+ 	}
+ 
++	/* Default BUFF mode, allow override */
++	i2c_bus->mode = BUFF_MODE;
++
+ 	/* override the transfer mode */
+ 	if (!device_property_read_string(dev, "aspeed,transfer-mode", &xfer_mode)) {
+ 		if (!strcmp(xfer_mode, "dma"))
