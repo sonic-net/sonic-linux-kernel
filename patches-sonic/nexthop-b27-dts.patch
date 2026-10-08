@@ -1,6 +1,6 @@
-From 00a401bfbf89926ecc24882259826427cfd32b7d Mon Sep 17 00:00:00 2001
+From 5637a7423fc91e5fc40a6c9ea54baf53f51cf1f3 Mon Sep 17 00:00:00 2001
 From: Chandrasekaran Swaminathan <chander@nexthop.ai>
-Date: Thu, 2 Jul 2026 16:53:15 +0000
+Date: Mon, 5 Oct 2026 09:07:15 +0000
 Subject: [PATCH] Add NextHop B27 R0 device tree
 
 This adds nexthop-b27-r0.dts for NextHop B27 R0 hardware.
@@ -16,8 +16,8 @@ production hardware that does not have PHY chips.
 Signed-off-by: Chandrasekaran Swaminathan <chander@nexthop.ai>
 ---
  arch/arm64/boot/dts/aspeed/Makefile           |   1 +
- arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts | 542 ++++++++++++++++++
- 2 files changed, 543 insertions(+)
+ arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts | 550 ++++++++++++++++++
+ 2 files changed, 551 insertions(+)
  create mode 100644 arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts
 
 diff --git a/arch/arm64/boot/dts/aspeed/Makefile b/arch/arm64/boot/dts/aspeed/Makefile
@@ -25,7 +25,7 @@ index 7c31f31..3e904b2 100644
 --- a/arch/arm64/boot/dts/aspeed/Makefile
 +++ b/arch/arm64/boot/dts/aspeed/Makefile
 @@ -2,6 +2,7 @@
- 
+
  dtb-$(CONFIG_ARCH_ASPEED) += \
  	ast2700-evb.dtb \
 +	nexthop-b27-r0.dtb \
@@ -34,10 +34,10 @@ index 7c31f31..3e904b2 100644
  	ast2700-evb-s1.dtb \
 diff --git a/arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts b/arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts
 new file mode 100644
-index 0000000..7d1f339
+index 0000000..a55bf3f
 --- /dev/null
 +++ b/arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts
-@@ -0,0 +1,542 @@
+@@ -0,0 +1,550 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +//
 +// NextHop AST2700 based B27 R0 Device Tree
@@ -536,6 +536,14 @@ index 0000000..7d1f339
 +
 +&i2c10 {
 +	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_i2c10_default>;
++
++	eeprom@50 {
++		compatible = "atmel,24c64";
++		reg = <0x50>;
++		pagesize = <32>;
++	};
 +};
 +
 +&i2c11 {
