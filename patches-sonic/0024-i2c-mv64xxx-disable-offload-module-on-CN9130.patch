@@ -1,0 +1,32 @@
+From 9469a49dd7742b2fc2dcf5abe96013afc8343e41 Mon Sep 17 00:00:00 2001
+From: hshah <hshah@marvell.com>
+Date: Tue, 22 Sep 2026 14:02:33 -0700
+Subject: [PATCH] i2c: mv64xxx: disable offload module on CN9130
+
+The I2C offload/transaction-generator feature on the CN9130/
+mv78230 platform can trigger a bus lockup under certain
+conditions. Disable offload mode for this platform to avoid
+the lockup.
+
+Signed-off-by: Narendra Hadke <nhadke@marvell.com>
+Signed-off-by: hshah <hshah@marvell.com>
+---
+ drivers/i2c/busses/i2c-mv64xxx.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/i2c/busses/i2c-mv64xxx.c b/drivers/i2c/busses/i2c-mv64xxx.c
+index 1fb31f69a1fe..f2b35f3cc346 100644
+--- a/drivers/i2c/busses/i2c-mv64xxx.c
++++ b/drivers/i2c/busses/i2c-mv64xxx.c
+@@ -981,7 +981,7 @@ mv64xxx_of_config(struct mv64xxx_i2c_data *drv_data,
+ 	 * Transaction Generator support and the errata fix.
+ 	 */
+ 	if (of_device_is_compatible(np, "marvell,mv78230-i2c")) {
+-		drv_data->offload_enabled = true;
++		drv_data->offload_enabled = false;
+ 		/* The delay is only needed in standard mode (100kHz) */
+ 		if (bus_freq <= I2C_MAX_STANDARD_MODE_FREQ)
+ 			drv_data->errata_delay = true;
+-- 
+2.25.1
+
