@@ -200,6 +200,10 @@ cisco-npu-disable-other-bars.patch
 0001-mmc-sdhci-cadence-Add-CN10K-eMMC-support.patch
 0002-armhf-armada38x-disable-HW-UIE.patch
 
+# mtd: rawnand: marvell 4K/BCH-8 layout fixes, backported from linux-6.12.y v6.12.63
+0001-mtd-nand-relax-ECC-parameter-validation-check.patch
+0002-Revert-mtd-rawnand-marvell-fix-layouts.patch
+
 # amd-pensando elba support
 0001-Add-support-for-the-TI-TPS53659.patch
 0002-Adding-support-LTC3888.patch
