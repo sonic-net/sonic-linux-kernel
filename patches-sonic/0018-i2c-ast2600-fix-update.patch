@@ -1,0 +1,45 @@
+From: Ryan Chen <ryan_chen@aspeedtech.com>
+Date: Tue, 10 Feb 2026 17:00:30 +0800
+Subject: [PATCH 6.12 1/1] i2c: ast2600 fix update
+
+Upstream-Status: Backport [AspeedTech-BMC/linux aspeed-master-v6.12 a26677183e1943c299417323bd94a4a76252b994, SDK v00.07.03]
+
+1. fix byte mode slave timeout slave_operate = 0
+2. use DIV_ROUND_UP replace divide.
+
+Signed-off-by: Ryan Chen <ryan_chen@aspeedtech.com>
+Change-Id: Iba60b40276241bc9f3e3aae060eb71fabb7967e0
+(cherry picked from commit 1fd9cbccdc7d785c6b9edd236c40e1a64e1315bd)
+
+Taken from the Aspeed original, not the dgx/bmc/linux version: that one
+carries [NvBMC] conflict resolutions against NVIDIA-only downstream code
+(slave SW watchdog, tout-baseclk-div, disable-master, i2c_retries sysfs)
+that the SONiC driver, plain Aspeed v00.07.02, does not have.
+---
+ drivers/i2c/busses/i2c-ast2600.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-ast2600.c b/drivers/i2c/busses/i2c-ast2600.c
+index 4e6d9912f..9b9a4eced 100644
+--- a/drivers/i2c/busses/i2c-ast2600.c
++++ b/drivers/i2c/busses/i2c-ast2600.c
+@@ -1416,6 +1416,7 @@ static void ast2600_i2c_target_byte_irq(struct ast2600_i2c_bus *i2c_bus, u32 sts
+ 		writel(sts, i2c_bus->reg_base + AST2600_I2CS_ISR);
+ 		readl(i2c_bus->reg_base + AST2600_I2CS_ISR);
+ 		i2c_slave_event(i2c_bus->target, I2C_SLAVE_STOP, &value);
++		i2c_bus->target_operate = 0;
+ 		return;
+ 	}
+ 
+@@ -2364,10 +2365,7 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
+ 	 */
+ 	ret = device_property_read_u32(dev, "i2c-scl-clk-low-timeout-us", &i2c_bus->timeout);
+ 	if (!ret) {
+-		i2c_bus->timeout /= 1024;
+-
+-		if (!i2c_bus->timeout)
+-			i2c_bus->timeout = 1;
++		i2c_bus->timeout = DIV_ROUND_UP(i2c_bus->timeout, 1024);
+ 	}
+ 
+ 	init_completion(&i2c_bus->cmd_complete);
