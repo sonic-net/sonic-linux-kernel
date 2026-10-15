@@ -1,0 +1,95 @@
+From fac603a5d713b8f85cb731f9702fc74d652a9633 Mon Sep 17 00:00:00 2001
+From: Felix Radensky <fradensky@nvidia.com>
+Date: Mon, 7 Sep 2026 17:33:03 +0300
+Subject: [PATCH] i2c: dev: Fix duplicate chardev registration during module
+ init
+
+i2c_dev_init() first registers a bus notifier and only then walks the
+adapters that are already registered:
+
+	res = bus_register_notifier(&i2c_bus_type, &i2cdev_notifier);
+	if (res)
+		goto out_unreg_class;
+
+	/* Bind to already existing adapters right away */
+	i2c_for_each_dev(NULL, i2c_dev_attach_adapter);
+
+device_add() links a new device into the bus klist in bus_add_device(),
+which runs before BUS_NOTIFY_ADD_DEVICE is emitted.  An adapter that is
+registered while i2c_dev_init() is running can therefore be observed by
+both paths: the notifier creates its chardev, and i2c_for_each_dev(),
+which has no way to tell that the notifier already ran, tries to create
+it a second time.
+
+The second cdev_device_add() fails with -EEXIST:
+
+  sysfs: cannot create duplicate filename '/devices/platform/mlxplat/i2c_mlxcpld.1/i2c-1/i2c-2/i2c-dev/i2c-2'
+  Call Trace:
+   <TASK>
+   dump_stack_lvl+0x5d/0x80
+   sysfs_warn_dup.cold+0x17/0x23
+   sysfs_create_dir_ns+0xca/0xe0
+   kobject_add_internal+0xba/0x250
+   kobject_add+0x96/0xc0
+   device_add+0xe2/0x890
+   cdev_device_add+0x48/0x90
+   i2cdev_attach_adapter+0x137/0x170 [i2c_dev]
+   i2c_dev_attach_adapter+0xe/0xf60 [i2c_dev]
+   bus_for_each_dev+0x88/0xe0
+   i2c_for_each_dev+0x31/0x50
+   i2c_dev_init+0x77/0xa0 [i2c_dev]
+   do_one_initcall+0x58/0x2f0
+   do_init_module+0x60/0x230
+   </TASK>
+  kobject: kobject_add_internal failed for i2c-2 with -EEXIST, don't try
+  to register things with the same name in the same directory.
+
+This is reproducible on systems where adapters appear asynchronously
+while i2c-dev is being loaded, for example when an i2c mux instantiates
+its child adapters from a deferred probe.
+
+Registering the notifier before walking the bus is intentional, as the
+reverse order would silently miss adapters registered in between, so the
+attach path has to tolerate being called twice for the same adapter.
+Make it idempotent: look for an existing i2c_dev while holding
+i2c_dev_list_lock, which serialises the lookup against a parallel
+insertion, and let the loser return -EBUSY.  i2cdev_attach_adapter()
+already ignores get_free_i2c_dev() failures, so it just backs off.
+
+Fixes: 9ea3e941d161 ("i2c-dev: Use standard bus notification mechanism")
+Cc: stable@vger.kernel.org
+Signed-off-by: Felix Radensky <fradensky@nvidia.com>
+---
+ drivers/i2c/i2c-dev.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/i2c/i2c-dev.c b/drivers/i2c/i2c-dev.c
+index e9577f9..d1de6d2 100644
+--- a/drivers/i2c/i2c-dev.c
++++ b/drivers/i2c/i2c-dev.c
+@@ -67,7 +67,7 @@ found:
+ 
+ static struct i2c_dev *get_free_i2c_dev(struct i2c_adapter *adap)
+ {
+-	struct i2c_dev *i2c_dev;
++	struct i2c_dev *i2c_dev, *tmp;
+ 
+ 	if (adap->nr >= I2C_MINORS) {
+ 		pr_err("Out of device minors (%d)\n", adap->nr);
+@@ -80,6 +80,13 @@ static struct i2c_dev *get_free_i2c_dev(struct i2c_adapter *adap)
+ 	i2c_dev->adap = adap;
+ 
+ 	spin_lock(&i2c_dev_list_lock);
++	list_for_each_entry(tmp, &i2c_dev_list, list) {
++		if (tmp->adap->nr == adap->nr) {
++			spin_unlock(&i2c_dev_list_lock);
++			kfree(i2c_dev);
++			return ERR_PTR(-EBUSY);
++		}
++	}
+ 	list_add_tail(&i2c_dev->list, &i2c_dev_list);
+ 	spin_unlock(&i2c_dev_list_lock);
+ 	return i2c_dev;
+-- 
+2.34.1
+

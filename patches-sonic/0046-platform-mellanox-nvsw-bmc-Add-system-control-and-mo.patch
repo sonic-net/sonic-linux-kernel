@@ -16,6 +16,12 @@ This control includes:
 - LED control.
 - FAN control.
 
+mlxreg-io treats .bit as the 1-based LSB of a field, not the MSB of
+GENMASK(hi, lo). The bios_status, bios_status_ro, cpu_spi_ctrl, psu_qty,
+asic_clk_brd_hw_id, and config1 descriptors used the high bit, shifting
+their sysfs values; for example, psu_qty returned 2147483648 instead of
+2 on a two-PSU system. Set .bit to the field's low bit plus one.
+
 Upstream-Status: Pending
 
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
@@ -4162,7 +4168,7 @@ index 000000000..9f4c94f5d
 +		.label = "bios_status",
 +		.reg = NVSW_REG_GPCOM0_OFFSET,
 +		.mask = GENMASK(3, 1),
-+		.bit = 3,
++		.bit = 2,
 +		.mode = 0444,
 +	},
 +	{
@@ -4522,7 +4528,7 @@ index 000000000..9f4c94f5d
 +		.label = "cpu_spi_ctrl",
 +		.reg = NVSW_REG_GP5_OFFSET,
 +		.mask = GENMASK(4, 2),
-+		.bit = 4,
++		.bit = 3,
 +		.mode = 0644,
 +	},
 +	{
@@ -4801,7 +4807,7 @@ index 000000000..9f4c94f5d
 +		.label = "bios_status",
 +		.reg = NVSW_REG_GPCOM0_OFFSET,
 +		.mask = GENMASK(3, 1),
-+		.bit = 3,
++		.bit = 2,
 +		.mode = 0444,
 +	},
 +	{
@@ -5353,7 +5359,7 @@ index 000000000..9f4c94f5d
 +		.label = "cpu_spi_ctrl",
 +		.reg = NVSW_REG_GP5_OFFSET,
 +		.mask = GENMASK(4, 2),
-+		.bit = 4,
++		.bit = 3,
 +		.mode = 0644,
 +	},
 +	{
@@ -5747,7 +5753,7 @@ index 000000000..9f4c94f5d
 +		.label = "bios_status_ro",
 +		.reg = NVSW_REG_GPCOM0_OFFSET,
 +		.mask = GENMASK(3, 1),
-+		.bit = 3,
++		.bit = 2,
 +		.mode = 0444,
 +	},
 +	{
@@ -6088,7 +6094,7 @@ index 000000000..9f4c94f5d
 +		.label = "bios_status",
 +		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
 +		.mask = GENMASK(2, 0),
-+		.bit = 2,
++		.bit = 1,
 +		.mode = 0644,
 +	},
 +	{
@@ -6161,7 +6167,7 @@ index 000000000..9f4c94f5d
 +		.label = "cpu_spi_ctrl",
 +		.reg = NVSW_REG_GP5_OFFSET,
 +		.mask = GENMASK(4, 2),
-+		.bit = 4,
++		.bit = 3,
 +		.mode = 0644,
 +	},
 +	{
@@ -6211,7 +6217,7 @@ index 000000000..9f4c94f5d
 +		.label = "psu_qty",
 +		.reg = NVSW_REG_SYS_CPBLTY0,
 +		.mask = GENMASK(3, 0),
-+		.bit = 3,
++		.bit = 1,
 +		.mode = 0444,
 +	},
 +	{
@@ -6316,7 +6322,7 @@ index 000000000..9f4c94f5d
 +		.label = "bios_status_ro",
 +		.reg = NVSW_REG_GPCOM0_OFFSET,
 +		.mask = GENMASK(3, 1),
-+		.bit = 3,
++		.bit = 2,
 +		.mode = 0444,
 +	},
 +	{
@@ -6645,7 +6651,7 @@ index 000000000..9f4c94f5d
 +		.label = "bios_status",
 +		.reg = NVSW_REG_SAFE_BIOS_OFFSET,
 +		.mask = GENMASK(2, 0),
-+		.bit = 2,
++		.bit = 1,
 +		.mode = 0644,
 +	},
 +	{
@@ -6718,7 +6724,7 @@ index 000000000..9f4c94f5d
 +		.label = "cpu_spi_ctrl",
 +		.reg = NVSW_REG_GP5_OFFSET,
 +		.mask = GENMASK(4, 2),
-+		.bit = 4,
++		.bit = 3,
 +		.mode = 0644,
 +	},
 +	{
@@ -6750,14 +6756,14 @@ index 000000000..9f4c94f5d
 +		.label = "asic_clk_brd_hw_id",
 +		.reg = NVSW_REG_CONFIG1_OFFSET,
 +		.mask = GENMASK(2, 0),
-+		.bit = 2,
++		.bit = 1,
 +		.mode = 0444,
 +	},
 +	{
 +		.label = "config1",
 +		.reg = NVSW_REG_CONFIG1_OFFSET,
 +		.mask = GENMASK(7, 3),
-+		.bit = 7,
++		.bit = 4,
 +		.mode = 0444,
 +	},
 +	{
@@ -8291,7 +8297,7 @@ index 000000000..6fb8cf07a
 +		.label = "bios_status",
 +		.reg = NVSW_REG_GPCOM0_OFFSET,
 +		.mask = GENMASK(3, 1),
-+		.bit = 3,
++		.bit = 2,
 +		.mode = 0444,
 +	},
 +	{

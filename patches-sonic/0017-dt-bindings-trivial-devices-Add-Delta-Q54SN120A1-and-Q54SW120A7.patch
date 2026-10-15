@@ -1,0 +1,32 @@
+From 32a7bdbd201be809c690c64a3a233c7bb640c48c Mon Sep 17 00:00:00 2001
+From: Colin Huang <u8813345@gmail.com>
+Date: Mon, 16 Mar 2026 16:39:33 +0800
+Subject: [PATCH] dt-bindings: trivial-devices: Add Delta Q54SN120A1 and
+ Q54SW120A7
+
+Add two additional Delta 1/4-brick DC/DC power modules,
+Q54SN120A1 and Q54SW120A7, to the trivial-devices list.
+
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Signed-off-by: Colin Huang <u8813345@gmail.com>
+Link: https://lore.kernel.org/r/20260316-add-q54sn120a1-q54q54sw120a7-v2-1-60e6182cc4a7@gmail.com
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
+---
+ Documentation/devicetree/bindings/trivial-devices.yaml | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/trivial-devices.yaml b/Documentation/devicetree/bindings/trivial-devices.yaml
+index ccac768f5380a5..03a27494322364 100644
+--- a/Documentation/devicetree/bindings/trivial-devices.yaml
++++ b/Documentation/devicetree/bindings/trivial-devices.yaml
+@@ -101,6 +101,10 @@ properties:
+           - delta,dps920ab
+             # 1/4 Brick DC/DC Regulated Power Module
+           - delta,q54sj108a2
++            # 1300W 1/4 Brick DC/DC Regulated Power Module
++          - delta,q54sn120a1
++            # 2000W 1/4 Brick DC/DC Regulated Power Module
++          - delta,q54sw120a7
+             # Devantech SRF02 ultrasonic ranger in I2C mode
+           - devantech,srf02
+             # Devantech SRF08 ultrasonic ranger

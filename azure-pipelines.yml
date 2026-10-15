@@ -65,3 +65,13 @@ stages:
       old_linux_deb_pattern: linux-image-*-unsigned_*deb
       linux_deb_pattern: linux-image-*-unsigned_*deb
 
+  - template: .azure-pipelines/build-template.yml
+    parameters:
+      arch: arm64
+      platform: aspeed
+      pool: sonicso1ES-arm64
+      old_artifact_name: sonic-linux-kernel.aspeed.arm64
+      artifact_name: sonic-linux-kernel.aspeed.arm64
+      old_linux_deb_pattern: linux-image-*-unsigned_*deb
+      linux_deb_pattern: linux-image-*-unsigned_*deb
+

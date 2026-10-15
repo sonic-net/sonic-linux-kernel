@@ -1,0 +1,339 @@
+From 6597f269846a2528db76bee6b1627073a80668b5 Mon Sep 17 00:00:00 2001
+From: Jack Cai <jack@nexthop.ai>
+Date: Wed, 29 Jul 2026 22:30:09 +0000
+Subject: [PATCH 1/2] serial: 8250_aspeed: fix UDMA ring pointer desync on the
+ console
+
+The AST2700 UDMA console driver keeps its software view of the TX/RX ring
+positions in places the serial core resets without the driver's knowledge,
+while the engine's own ring pointers are not software-writable and survive
+a channel reset. Any path that resets one side but not the other desyncs
+the two, with three user-visible failures on a UDMA console (all reproduced
+on AST2700 hardware and verified fixed there):
+
+  - Every output flush (login's tcsetattr(TCSAFLUSH) before the password
+    prompt, Ctrl-C's output flush) resets the xmit kfifo but leaves the
+    engine's TX read pointer mid-ring, so the engine re-transmits up to a
+    full 4 KiB of stale output (observed as boot messages replayed before
+    every login/password prompt).
+
+  - A TX completion arriving while the two sides disagree can compute a
+    completed-byte count far larger than what was queued and advance the
+    kfifo 'out' counter past 'in'. kfifo counters are free-running, so
+    kfifo_len() (in - out) then underflows to ~2^32 and can never return
+    to zero. Writes still succeed, but any output-drain wait -- notably
+    tcsetattr(TCSADRAIN/TCSAFLUSH), which sleeps in set_termios() on
+    !tty_chars_in_buffer() with no timeout -- blocks forever, and the
+    uart_write_wakeup() that would wake it is gated on kfifo_len() <
+    WAKEUP_CHARS, which is also never true again (observed as login
+    hanging in tcsetattr before printing the password prompt on the
+    second and later logins).
+
+  - The generic 8250 termios path clears the RX FIFO and reprograms
+    FCR/IER without touching the UDMA RX ring, wedging RX on the first
+    termios change (e.g. login clearing ECHO).
+
+Fix this by always aligning software to the engine:
+
+  - Implement uart_ops.flush_buffer: after the serial core resets the xmit
+    kfifo, realign the kfifo indices and the TX write pointer to the
+    engine's read pointer, so discarded output is actually discarded and
+    subsequent bytes land where the engine reads next.
+
+  - Clamp the TX completion count to the number of bytes actually queued,
+    so a spurious or mid-realignment completion can never corrupt the
+    kfifo.
+
+  - On startup, align the fresh session's kfifo and RX ring indices to the
+    engine's current pointers instead of assuming they reset to zero.
+
+  - Implement uart_ops.set_termios to resync the RX ring to the engine's
+    write pointer after serial8250_do_set_termios() and re-arm the RX
+    channel.
+
+While here, fix TX completion accounting for a full ring (CIRC_CNT() == 0
+is ambiguous between "nothing transmitted" and "whole ring transmitted"),
+reduce the free-running kfifo 'in' counter modulo the ring size before
+programming it as the engine's TX write pointer, honour tty flip-buffer
+back-pressure in the RX path, use ordered unwind labels in the startup
+error path instead of a single label that leaked the DMA mappings and
+channels, and fix the devm_kzalloc() sizeof for the RX ring descriptor
+(sizeof(ptr) instead of sizeof(*ptr) under-allocated it).
+
+aspeed-udma: export aspeed_udma_get_rx_wptr() and aspeed_udma_get_tx_rptr()
+(with header declarations) for the resync/realignment paths above.
+
+Signed-off-by: Jack Cai <jack@nexthop.ai>
+---
+ drivers/soc/aspeed/aspeed-udma.c       |   6 +-
+ drivers/tty/serial/8250/8250_aspeed.c  | 144 ++++++++++++++++++++++---
+ include/linux/soc/aspeed/aspeed-udma.h |   2 +
+ 3 files changed, 137 insertions(+), 15 deletions(-)
+
+diff --git a/drivers/soc/aspeed/aspeed-udma.c b/drivers/soc/aspeed/aspeed-udma.c
+index 8dc6f3c..387c67e 100644
+--- a/drivers/soc/aspeed/aspeed-udma.c
++++ b/drivers/soc/aspeed/aspeed-udma.c
+@@ -97,15 +97,17 @@ static int aspeed_udma_get_bufsz_code(u32 buf_sz)
+ 	return -1;
+ }
+ 
+-static u32 aspeed_udma_get_tx_rptr(u32 ch_no)
++u32 aspeed_udma_get_tx_rptr(u32 ch_no)
+ {
+ 	return readl(udma->regs + UDMA_CHX_TX_RD_PTR(ch_no));
+ }
++EXPORT_SYMBOL(aspeed_udma_get_tx_rptr);
+ 
+-static u32 aspeed_udma_get_rx_wptr(u32 ch_no)
++u32 aspeed_udma_get_rx_wptr(u32 ch_no)
+ {
+ 	return readl(udma->regs + UDMA_CHX_RX_WR_PTR(ch_no));
+ }
++EXPORT_SYMBOL(aspeed_udma_get_rx_wptr);
+ 
+ static void aspeed_udma_set_ptr(u32 ch_no, u32 ptr, bool is_tx)
+ {
+diff --git a/drivers/tty/serial/8250/8250_aspeed.c b/drivers/tty/serial/8250/8250_aspeed.c
+index 02fd6af..ae1b3e8 100644
+--- a/drivers/tty/serial/8250/8250_aspeed.c
++++ b/drivers/tty/serial/8250/8250_aspeed.c
+@@ -89,14 +89,29 @@ static void ast8250_dma_tx_complete(int tx_rb_rptr, void *id)
+ 	unsigned long flags;
+ 	struct uart_port *port = id;
+ 	struct ast8250_data *data = port->private_data;
+-	unsigned int count, tail;
++	unsigned int count, tail, queued;
+ 
+ 	uart_port_lock_irqsave(port, &flags);
+ 
++	queued = kfifo_len(&data->dma.tport->xmit_fifo);
+ 	count = kfifo_out_linear(&data->dma.tport->xmit_fifo, &tail, data->dma.tx_rbsz);
+ 	count = CIRC_CNT(tx_rb_rptr, tail, data->dma.tx_rbsz);
+-	if (!count)
++	/*
++	 * CIRC_CNT() == 0 is ambiguous: either nothing was transmitted or
++	 * the whole ring was. Only assume a full ring when the FIFO was
++	 * actually full; otherwise advancing 'out' by tx_rbsz would push it
++	 * past 'in' and corrupt the FIFO.
++	 */
++	if (!count && queued == data->dma.tx_rbsz)
+ 		count = data->dma.tx_rbsz;
++	/*
++	 * Clamp to what is actually queued: after a flush or session
++	 * realignment the engine's read pointer can be far ahead of the
++	 * kfifo; advancing 'out' past 'in' corrupts the FIFO (it then
++	 * reads as full forever and every console write blocks).
++	 */
++	if (count > queued)
++		count = queued;
+ 	kfifo_dma_out_finish(&data->dma.tport->xmit_fifo, count);
+ 	port->icount.tx += count;
+ 
+@@ -125,14 +140,20 @@ static void ast8250_dma_rx_complete(int rx_rb_wptr, void *id)
+ 			dma->rx_addr, dma->rx_rbsz, DMA_FROM_DEVICE);
+ 
+ 	while (CIRC_CNT(rx_rb->head, rx_rb->tail, rx_rbsz)) {
+-		count = CIRC_CNT_TO_END(rx_rb->head, rx_rb->tail, rx_rbsz);
++		u32 chunk = CIRC_CNT_TO_END(rx_rb->head, rx_rb->tail, rx_rbsz);
++		size_t inserted;
+ 
+-		tty_insert_flip_string(tp, rx_rb->buf + rx_rb->tail, count);
++		inserted = tty_insert_flip_string(tp, rx_rb->buf + rx_rb->tail, chunk);
+ 
+-		rx_rb->tail += count;
++		rx_rb->tail += inserted;
+ 		rx_rb->tail %= rx_rbsz;
+ 
+-		up->icount.rx += count;
++		count += inserted;
++		up->icount.rx += inserted;
++
++		/* flip buffer full: leave the rest in the ring for next time */
++		if (inserted < chunk)
++			break;
+ 	}
+ 
+ 	if (count) {
+@@ -153,7 +174,85 @@ static void ast8250_dma_start_tx(struct uart_port *port)
+ 	dma_sync_single_for_device(port->dev,
+ 			dma->tx_addr, dma->tx_rbsz, DMA_TO_DEVICE);
+ 
+-	aspeed_udma_set_tx_wptr(dma->ch, tx_rb->in);
++	aspeed_udma_set_tx_wptr(dma->ch, tx_rb->in % dma->tx_rbsz);
++}
++
++/*
++ * The UDMA ring pointers owned by the engine (the TX read pointer and the
++ * RX write pointer) are not software-writable and survive a channel reset,
++ * so the driver's view has to be aligned to the engine and never the other
++ * way round. The two helpers below do that for either direction; callers
++ * must serialise against the DMA completion callbacks by holding the port
++ * lock, except in startup() where the channels are not enabled yet.
++ */
++static void ast8250_dma_tx_realign(struct ast8250_udma *dma)
++{
++	struct __kfifo *tx_rb = &dma->tport->xmit_fifo.kfifo;
++	u32 rptr = aspeed_udma_get_tx_rptr(dma->ch);
++
++	tx_rb->in = rptr;
++	tx_rb->out = rptr;
++	aspeed_udma_set_tx_wptr(dma->ch, rptr);
++}
++
++static void ast8250_dma_rx_realign(struct ast8250_udma *dma)
++{
++	u32 wptr = aspeed_udma_get_rx_wptr(dma->ch);
++
++	dma->rx_rb->head = wptr;
++	dma->rx_rb->tail = wptr;
++	aspeed_udma_set_rx_rptr(dma->ch, wptr);
++}
++
++static void ast8250_dma_flush_buffer(struct uart_port *port)
++{
++	struct ast8250_data *data = port->private_data;
++
++	/*
++	 * Called from uart_flush_buffer() with the port lock held, right
++	 * after the serial core reset the xmit kfifo (in = out = 0). Realign
++	 * the kfifo indices to the engine so that subsequent bytes land at
++	 * the buffer offset the engine reads next, and the engine sees an
++	 * empty ring (wptr == rptr) rather than a stale full one. Without
++	 * this, every output flush (e.g. login's tcsetattr(TCSAFLUSH) before
++	 * the password prompt) re-transmits up to a full ring of stale data
++	 * and can wedge the TX accounting.
++	 */
++	ast8250_dma_tx_realign(&data->dma);
++}
++
++static void ast8250_dma_set_termios(struct uart_port *port,
++				    struct ktermios *termios,
++				    const struct ktermios *old)
++{
++	struct ast8250_data *data = port->private_data;
++	struct ast8250_udma *dma = &data->dma;
++	unsigned long flags;
++
++	/*
++	 * Apply baud / word-length / parity / flow via the generic 8250
++	 * path. That path is DMA-unaware: it clears the RX/TX FIFOs and
++	 * reprograms FCR/IER, which leaves the UDMA RX ring read pointer
++	 * stale relative to the engine's write pointer. Without the resync
++	 * below, the first termios change on a DMA console (e.g. login
++	 * clearing ECHO to read a password) wedges RX permanently.
++	 */
++	serial8250_do_set_termios(port, termios, old);
++
++	if (!data->use_dma)
++		return;
++
++	/*
++	 * Discard any bytes that arrived across the reconfigure; this
++	 * matches the input flush that normally accompanies a mode change
++	 * such as switching to no-echo.
++	 */
++	uart_port_lock_irqsave(port, &flags);
++	ast8250_dma_rx_realign(dma);
++	uart_port_unlock_irqrestore(port, flags);
++
++	/* Re-arm the RX channel in case the FIFO reset disturbed it. */
++	aspeed_udma_rx_chan_ctrl(dma->ch, ASPEED_UDMA_OP_ENABLE);
+ }
+ 
+ static void ast8250_dma_pops_hook(struct uart_port *port)
+@@ -163,6 +262,8 @@ static void ast8250_dma_pops_hook(struct uart_port *port)
+ 	if (first) {
+ 		ast8250_pops = *port->ops;
+ 		ast8250_pops.start_tx = ast8250_dma_start_tx;
++		ast8250_pops.set_termios = ast8250_dma_set_termios;
++		ast8250_pops.flush_buffer = ast8250_dma_flush_buffer;
+ 	}
+ 
+ 	first = 0;
+@@ -271,7 +372,7 @@ static int ast8250_startup(struct uart_port *port)
+ 		if (dma_mapping_error(port->dev, dma->tx_addr)) {
+ 			dev_err(port->dev, "failed to map streaming TX DMA region\n");
+ 			rc = -ENOMEM;
+-			goto free_dma_n_out;
++			goto free_buf;
+ 		}
+ 
+ 		dma->rx_addr = dma_map_single(port->dev, dma->rx_rb->buf,
+@@ -279,25 +380,36 @@ static int ast8250_startup(struct uart_port *port)
+ 		if (dma_mapping_error(port->dev, dma->rx_addr)) {
+ 			dev_err(port->dev, "failed to map streaming RX DMA region\n");
+ 			rc = -ENOMEM;
+-			goto free_dma_n_out;
++			goto unmap_tx;
+ 		}
+ 
+ 		rc = aspeed_udma_request_tx_chan(dma->ch, dma->tx_addr,
+ 				dma->tx_rbsz, ast8250_dma_tx_complete, port, dma->tx_tmout_dis);
+ 		if (rc) {
+ 			dev_err(port->dev, "failed to request DMA TX channel\n");
+-			goto free_dma_n_out;
++			goto unmap_rx;
+ 		}
+ 
+ 		rc = aspeed_udma_request_rx_chan(dma->ch, dma->rx_addr,
+ 				dma->rx_rbsz, ast8250_dma_rx_complete, port, dma->rx_tmout_dis);
+ 		if (rc) {
+ 			dev_err(port->dev, "failed to request DMA RX channel\n");
+-			goto free_dma_n_out;
++			goto free_tx_chan;
+ 		}
+ 
+ 		ast8250_dma_pops_hook(port);
+ 
++		/*
++		 * The engine's ring pointers survive channel reset (verified
++		 * on AST2700: they read back unchanged across a shutdown/
++		 * startup cycle), so a fresh session's zeroed kfifo and RX
++		 * ring indices start misaligned with the hardware. Align
++		 * software to the engine on every open, before the channels
++		 * are enabled below.
++		 */
++		ast8250_dma_tx_realign(dma);
++		ast8250_dma_rx_realign(dma);
++
+ 		aspeed_udma_tx_chan_ctrl(dma->ch, ASPEED_UDMA_OP_ENABLE);
+ 		aspeed_udma_rx_chan_ctrl(dma->ch, ASPEED_UDMA_OP_ENABLE);
+ 	}
+@@ -305,7 +417,13 @@ static int ast8250_startup(struct uart_port *port)
+ 	memset(&port->icount, 0, sizeof(port->icount));
+ 	return serial8250_do_startup(port);
+ 
+-free_dma_n_out:
++free_tx_chan:
++	aspeed_udma_free_tx_chan(dma->ch);
++unmap_rx:
++	dma_unmap_single(port->dev, dma->rx_addr, dma->rx_rbsz, DMA_FROM_DEVICE);
++unmap_tx:
++	dma_unmap_single(port->dev, dma->tx_addr, dma->tx_rbsz, DMA_TO_DEVICE);
++free_buf:
+ 	kfree(dma->rx_rb->buf);
+ out:
+ 	return rc;
+@@ -450,7 +568,7 @@ static int ast8250_probe(struct platform_device *pdev)
+ 	if (!data)
+ 		return -ENOMEM;
+ 
+-	data->dma.rx_rb = devm_kzalloc(dev, sizeof(data->dma.rx_rb), GFP_KERNEL);
++	data->dma.rx_rb = devm_kzalloc(dev, sizeof(*data->dma.rx_rb), GFP_KERNEL);
+ 	if (!data->dma.rx_rb)
+ 		return -ENOMEM;
+ 
+diff --git a/include/linux/soc/aspeed/aspeed-udma.h b/include/linux/soc/aspeed/aspeed-udma.h
+index 439d901..1cf11d5 100644
+--- a/include/linux/soc/aspeed/aspeed-udma.h
++++ b/include/linux/soc/aspeed/aspeed-udma.h
+@@ -11,6 +11,8 @@ enum aspeed_udma_ops {
+ 
+ void aspeed_udma_set_tx_wptr(u32 ch_no, u32 wptr);
+ void aspeed_udma_set_rx_rptr(u32 ch_no, u32 rptr);
++u32  aspeed_udma_get_rx_wptr(u32 ch_no);
++u32  aspeed_udma_get_tx_rptr(u32 ch_no);
+ 
+ void aspeed_udma_tx_chan_ctrl(u32 ch_no, enum aspeed_udma_ops op);
+ void aspeed_udma_rx_chan_ctrl(u32 ch_no, enum aspeed_udma_ops op);
