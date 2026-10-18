@@ -20,6 +20,7 @@ endif
 SECURE_UPGRADE_MODE ?=
 SECURE_UPGRADE_SIGNING_CERT ?=
 SECURE_UPGRADE_KERNEL_CAFILE ?= $(SECURE_UPGRADE_SIGNING_CERT)
+ADDITIONAL_BUILD_PROFILES ?=
 
 LINUX_HEADER_COMMON = linux-headers-$(KERNEL_VERSION)$(KERNEL_ABISUFFIX)-common-$(KERNEL_FEATURESET)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_all.deb
 LINUX_HEADER_ARCH = linux-headers-$(KVERSION)_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)_$(CONFIGURED_ARCH).deb
@@ -99,9 +100,9 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# TODO(trixie): Make a way to verify that our configs are being set
 
 ifeq ($(CROSS_BUILD_ENVIRON), y)
-	dpkg-buildpackage -b -us -uc -a$(CONFIGURED_ARCH) -Pcross,nocheck,nodoc -j$(SONIC_CONFIG_MAKE_JOBS)
+	dpkg-buildpackage -b -us -uc -a$(CONFIGURED_ARCH) -Pcross,nocheck,nodoc,$(ADDITIONAL_BUILD_PROFILES) -j$(SONIC_CONFIG_MAKE_JOBS)
 else
-	dpkg-buildpackage -b -us -uc -Pnodoc -j$(SONIC_CONFIG_MAKE_JOBS)
+	dpkg-buildpackage -b -us -uc -Pnodoc,$(ADDITIONAL_BUILD_PROFILES) -j$(SONIC_CONFIG_MAKE_JOBS)
 endif
 	popd
 
