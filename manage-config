@@ -19,6 +19,9 @@ if [ $# -ge 3 ]; then
     SECURE_UPGRADE_KERNEL_CAFILE=$3
 fi
 
+SONIC_CONFIG="debian/config.local/${ARCH}/config.sonic"
+SECUREBOOT_CONFIG="debian/config.local/${ARCH}/config.sonic-secureboot"
+
 #  Secure Boot support
 echo "Secure Boot params: SECURE_UPGRADE_MODE=${SECURE_UPGRADE_MODE}, SECURE_UPGRADE_KERNEL_CAFILE=${SECURE_UPGRADE_KERNEL_CAFILE}"
 if [ ${SECURE_UPGRADE_MODE} == "dev" -o ${SECURE_UPGRADE_MODE} == "prod" ]; then
@@ -29,12 +32,14 @@ if [ ${SECURE_UPGRADE_MODE} == "dev" -o ${SECURE_UPGRADE_MODE} == "prod" ]; then
 		exit 1
 	fi
 
-	if [ -f debian/config.local/${ARCH}/config.sonic-secureboot ]; then
-		cat debian/config.local/${ARCH}/config.sonic-secureboot >> debian/config.local/${ARCH}/config.sonic
+	if [ -f "${SECUREBOOT_CONFIG}" ]; then
+		# Add a new line to handle the case when SONIC_CONFIG does not end with a new line
+		printf '\n' >> "${SONIC_CONFIG}"
+		cat "${SECUREBOOT_CONFIG}" >> "${SONIC_CONFIG}"
 	fi
 
 	# save the new pub key in kernel
-	sed -i "s|^CONFIG_SYSTEM_TRUSTED_KEYS=.*|CONFIG_SYSTEM_TRUSTED_KEYS=\"$SECURE_UPGRADE_KERNEL_CAFILE\"|g" debian/config.local/${ARCH}/config.sonic
+	sed -i "s|^CONFIG_SYSTEM_TRUSTED_KEYS=.*|CONFIG_SYSTEM_TRUSTED_KEYS=\"$SECURE_UPGRADE_KERNEL_CAFILE\"|g" "${SONIC_CONFIG}"
 
 	echo "Secure Boot kernel configuration done."
 else
