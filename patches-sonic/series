@@ -296,6 +296,12 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 0004-ext4-add-more-ext4_emergency_state-checks-around-sb_.patch
 0005-ext4-correct-behavior-under-errors-remount-ro-mode.patch
 
+# Atlantic AQC (ATL2) descriptor cache invalidation on hw_stop().
+# Fixes IOMMU page faults and eth0 link flaps on ifdown/ifup (e.g. ZTP
+# networking restarts). Upstream 7526183cfdbe, in stable since v6.12.61.
+# Drop when kernel >= 6.12.61
+0001-net-aquantia-Add-missing-descriptor-cache-invalidati.patch
+
 ############################################################
 #
 # Let us keep Aspeed patches at the end
