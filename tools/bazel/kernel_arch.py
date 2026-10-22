@@ -50,12 +50,12 @@ def materialize_kernel_elf(architecture, source, image, symbols, output):
     validate_architecture(architecture)
     if architecture == "amd64":
         with output.open("wb") as stream:
-            subprocess.run(["/bin/sh", str(source / "scripts/extract-vmlinux"), str(image)],
+            subprocess.run(["sh", str(source / "scripts/extract-vmlinux"), str(image)],
                            stdout=stream, check=True)
         return
     reconstructed = output.with_name(output.name + ".Image")
-    subprocess.run(["/usr/bin/objcopy", "-O", "binary", "-R", ".note", "-R", ".note.gnu.build-id",
+    subprocess.run(["objcopy", "-O", "binary", "-R", ".note", "-R", ".note.gnu.build-id",
                     "-R", ".comment", "-S", str(symbols), str(reconstructed)], check=True)
     if _sha256(reconstructed) != _sha256(image):
         raise ValueError("ARM64 boot Image and debug vmlinux bytes differ")
-    subprocess.run(["/usr/bin/objcopy", "--strip-debug", str(symbols), str(output)], check=True)
+    subprocess.run(["objcopy", "--strip-debug", str(symbols), str(output)], check=True)

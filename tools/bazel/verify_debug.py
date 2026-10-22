@@ -52,7 +52,7 @@ print("SONIC_GDB_VERIFIED " + json.dumps({"function": name, "source": str(source
                "-ex", "set auto-load safe-path /nonexistent",
                "-ex", "set debuginfod enabled off",
                "-ex", "set debug-file-directory " + str(debug_root / "usr/lib/debug"),
-               "-ex", "set substitute-path /build/source/linux-6.12.41 " + json.dumps(str(source_root)),
+               "-ex", "set substitute-path /usr/src/debug/" + source_root.name + " " + json.dumps(str(source_root)),
                "-ex", "directory " + json.dumps(str(source_root / "debian/build/source_sonic")),
                "-ex", "file " + json.dumps(str(executable)),
                "-ex", "python exec(" + repr("\n".join(statements) + script) + ")"]

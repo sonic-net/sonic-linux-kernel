@@ -1,1 +1,2 @@
 # The kernel source module owns all source and Debian package targets.
+exports_files(["MODULE.bazel"])

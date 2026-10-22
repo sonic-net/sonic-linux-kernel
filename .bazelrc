@@ -8,5 +8,8 @@ common --platforms=@sonic_build_infra//platforms:x86_64_trixie
 common:arm64 --host_platform=@sonic_build_infra//platforms:aarch64_trixie
 common:arm64 --platforms=@sonic_build_infra//platforms:aarch64_trixie
 build --sandbox_default_allow_network=false
+build --strategy=SonicKernelBuild=linux-sandbox
+# Bootstrap executables must run independently of the host's glibc version.
+build --host_features=fully_static_link
 build --remote_download_outputs=all
 test --test_output=errors

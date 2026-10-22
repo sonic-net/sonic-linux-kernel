@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import struct
 import subprocess
 import tempfile
 
@@ -42,8 +43,55 @@ def link(target, destination):
     destination.symlink_to(target)
 
 
+def elf_interpreter(path):
+    """Read PT_INTERP without loading a build output or touching signed modules."""
+    with path.open("rb") as stream:
+        header = stream.read(64)
+        if len(header) < 64 or header[:6] != b"\x7fELF\x02\x01":
+            return None
+        if struct.unpack_from("<H", header, 16)[0] not in (2, 3):
+            return None
+        offset = struct.unpack_from("<Q", header, 32)[0]
+        size, count = struct.unpack_from("<HH", header, 54)
+        for index in range(count):
+            stream.seek(offset + index * size)
+            program = stream.read(size)
+            require(len(program) >= 56, "truncated ELF program header: " + str(path))
+            if struct.unpack_from("<I", program)[0] == 3:
+                stream.seek(struct.unpack_from("<Q", program, 8)[0])
+                length = struct.unpack_from("<Q", program, 32)[0]
+                return stream.read(length).rstrip(b"\0").decode()
+    return None
+
+
+def normalize_tools(package, architecture, runtime, patchelf):
+    """Remove the private build runtime before Debian strips/packages tools.
+
+    Kbuild's HOSTCC executables need the declared loader while building. The
+    installed kbuild tools need the ordinary Debian loader and dependencies.
+    Signed kernel modules have no PT_INTERP and are never modified here.
+    """
+    loader = {"amd64": "/lib64/ld-linux-x86-64.so.2", "arm64": "/lib/ld-linux-aarch64.so.1"}[architecture]
+    prefixes = tuple(str(path) + "/" for path in {runtime.absolute(), runtime.resolve()})
+    normalized = 0
+    for path in sorted(package.rglob("*")):
+        if path.is_symlink() or not path.is_file():
+            continue
+        interpreter = elf_interpreter(path)
+        if interpreter is None or not interpreter.startswith(prefixes):
+            continue
+        old_rpath = subprocess.check_output([str(patchelf), "--print-rpath", str(path)], text=True).strip()
+        kept = [entry for entry in old_rpath.split(":") if entry and not entry.startswith(prefixes)]
+        rpath_args = ["--set-rpath", ":".join(kept)] if kept else ["--remove-rpath"]
+        subprocess.run([str(patchelf), "--set-interpreter", loader, *rpath_args, str(path)], check=True)
+        require(elf_interpreter(path) == loader, "installed tool retained its build-time interpreter")
+        normalized += 1
+    print("SONIC_KERNEL_TOOLS_NORMALIZED " + str(normalized), flush=True)
+    return normalized
+
+
 def elf_info(path, architecture="amd64"):
-    result = subprocess.run(["/usr/bin/readelf", "-h", "-n", "-SW", str(path)],
+    result = subprocess.run(["readelf", "-h", "-n", "-SW", str(path)],
                             capture_output=True, text=True, check=True).stdout
     match = re.search(r"Build ID: ([0-9a-f]+)", result)
     require(match is not None, "ELF lacks a GNU build ID: " + str(path))
@@ -131,9 +179,17 @@ def stage(source, debug, artifacts, architecture="amd64"):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("source", type=Path)
-    parser.add_argument("debug", type=Path)
-    parser.add_argument("artifacts", type=Path)
+    parser.add_argument("source", type=Path, nargs="?")
+    parser.add_argument("debug", type=Path, nargs="?")
+    parser.add_argument("artifacts", type=Path, nargs="?")
+    parser.add_argument("--normalize-tools", type=Path)
     parser.add_argument("--architecture", choices=ARCHITECTURES, default="amd64")
     args = parser.parse_args()
-    stage(args.source, args.debug, args.artifacts, args.architecture)
+    if args.normalize_tools is not None:
+        normalize_tools(args.normalize_tools, args.architecture,
+                        Path(os.environ["SONIC_KERNEL_TOOLS"]).parent,
+                        Path(os.environ["SONIC_KERNEL_PATCHELF"]))
+    elif all(path is not None for path in (args.source, args.debug, args.artifacts)):
+        stage(args.source, args.debug, args.artifacts, args.architecture)
+    else:
+        parser.error("source, debug and artifacts are required for debug staging")

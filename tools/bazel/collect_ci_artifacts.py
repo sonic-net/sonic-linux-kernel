@@ -61,15 +61,14 @@ def timing_seconds(metrics):
         and re.fullmatch(r"[0-9]{1,9}(?:\.[0-9]{1,9})?s", value)}
 
 
-def success_summary(private, source, architecture):
-    proof = receipt(private, "verified/cache-proof.json", architecture)
-    require(all(proof.get(key) is True for key in (
-        "cold_compiled", "consumer_kernel_cache_hit", "kernel_compilation_skipped",
-    )) and proof.get("consumer_kernel_runner") == "remote cache hit", "missing remote cache proof")
-    hashes = proof.get("outputs_sha256")
-    require(isinstance(hashes, dict) and set(hashes) == package_names(architecture) | {MANIFEST}
-            and all(isinstance(value, str) and DIGEST.fullmatch(value) for value in hashes.values()),
+def output_digests(value, architecture):
+    require(isinstance(value, dict) and set(value) == package_names(architecture) | {MANIFEST}
+            and all(isinstance(digest, str) and DIGEST.fullmatch(digest) for digest in value.values()),
             "unexpected verified output digests")
+    return value
+
+
+def installation_summary(private, architecture):
     installation = receipt(private, "installation.json", architecture)
     require(installation.get("initramfs") is True and installation.get("external_module") is True,
             "package installation checks did not pass")
@@ -85,21 +84,49 @@ def success_summary(private, source, architecture):
         record = debugger.get(kind)
         require(isinstance(record, dict) and type(record.get("line")) is int and record["line"] > 0
                 and record.get("type_lookup") is (kind == "kernel"), "debugger checks did not pass")
+    return {"installation_verified": True, "debugger_verified": True}
+
+
+def success_summary(private, source, architecture, phase="all"):
     revision = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"],
                                        stderr=subprocess.DEVNULL, text=True, timeout=60).strip()
     require(re.fullmatch(r"[0-9a-f]{40}", revision), "invalid source revision")
-    # Copy no nested receipt/manifest fields except fixed names and validated hashes.
-    return {
-        "checkout_revision": revision, "outputs_sha256": hashes,
-        "cold_compiled": True, "consumer_kernel_cache_hit": True, "kernel_compilation_skipped": True,
-        "installation_verified": True, "debugger_verified": True,
-        "cold_timing_seconds": timing_seconds(proof.get("cold_metrics")),
-        "hit_timing_seconds": timing_seconds(proof.get("hit_metrics")),
-    }
+    result = {"checkout_revision": revision, "installation_verified": False, "debugger_verified": False}
+    if phase == "installation":
+        # The source job publishes only verified DEBs and this sanitized receipt.
+        # Bind installation to that exact checkout and every downloaded DEB hash.
+        path = file_at(private, "verified/validation.json")
+        require(path.stat().st_size <= 1024 * 1024, "source summary exceeds size limit")
+        proof = json.loads(path.read_text(), object_pairs_hook=unique_object)
+        require(isinstance(proof, dict) and type(proof.get("schema")) is int and proof["schema"] == 2
+                and proof.get("phase") == "source" and proof.get("architecture") == architecture
+                and proof.get("result") == "passed" and proof.get("job_status") == "success"
+                and proof.get("checkout_revision") == revision and proof.get("artifacts_published") is True,
+                "source package verification did not pass at this checkout")
+        require(all(proof.get(key) is True for key in (
+            "cold_compiled", "consumer_kernel_cache_hit", "kernel_compilation_skipped",
+            "linux_sandbox_verified", "unprivileged_build",
+        )), "missing unprivileged source and cache proof")
+        result["source_validation_sha256"] = sha256(path)
+    else:
+        proof = receipt(private, "verified/cache-proof.json", architecture)
+        require(all(proof.get(key) is True for key in (
+            "cold_compiled", "consumer_kernel_cache_hit", "kernel_compilation_skipped", "unprivileged_build",
+        )) and proof.get("consumer_kernel_runner") == "remote cache hit"
+                and proof.get("producer_kernel_runner") == "linux-sandbox", "missing Linux sandbox and remote cache proof")
+        result.update(cold_timing_seconds=timing_seconds(proof.get("cold_metrics")),
+                      hit_timing_seconds=timing_seconds(proof.get("hit_metrics")))
+    result.update(outputs_sha256=output_digests(proof.get("outputs_sha256"), architecture),
+                  cold_compiled=True, consumer_kernel_cache_hit=True, kernel_compilation_skipped=True,
+                  linux_sandbox_verified=True, unprivileged_build=True)
+    if phase != "source":
+        result.update(installation_summary(private, architecture))
+    return result
 
 
-def collect(private, source, output, job_status, architecture="amd64"):
+def collect(private, source, output, job_status, architecture="amd64", phase="all"):
     require(architecture in ARCHITECTURES, "unsupported architecture")
+    require(phase in ("all", "source", "installation"), "invalid validation phase")
     require(job_status in ("success", "failure", "cancelled"), "invalid job status")
     private, output = Path(private), Path(output)
     no_symlinks(output)
@@ -108,21 +135,23 @@ def collect(private, source, output, job_status, architecture="amd64"):
             and not private.resolve().is_relative_to(output.resolve()), "invalid artifact destination")
     temporary = Path(tempfile.mkdtemp(prefix=".kernel-artifacts-", dir=output.parent))
     try:
-        summary = {"schema": 2, "job_status": job_status, "architecture": architecture,
+        summary = {"schema": 2, "job_status": job_status, "architecture": architecture, "phase": phase,
                    "kernel_abi": kernel_abi(architecture), "result": "incomplete", "artifacts_published": False}
         if job_status == "success":
-            summary.update(success_summary(private, source, architecture))
+            summary.update(success_summary(private, source, architecture, phase))
             for name, expected_hash in sorted(summary["outputs_sha256"].items()):
+                if phase == "installation" and name == MANIFEST:
+                    continue
                 path = file_at(private, "verified/" + name)
                 require(sha256(path) == expected_hash, "verified output digest differs")
                 # The full manifest may contain extra metadata. Hash it for evidence,
                 # but publish only the five already verified Debian packages.
-                if name != MANIFEST:
+                if name != MANIFEST and phase != "installation":
                     destination = temporary / name
                     shutil.copyfile(path, destination)
                     destination.chmod(0o600)
                     require(sha256(destination) == expected_hash, "copied output digest differs")
-            summary.update(result="passed", artifacts_published=True)
+            summary.update(result="passed", artifacts_published=phase != "installation")
         report = temporary / "validation.json"
         report.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
         report.chmod(0o600)
@@ -142,9 +171,10 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--job-status", required=True, choices=("success", "failure", "cancelled"))
     parser.add_argument("--architecture", choices=ARCHITECTURES, default="amd64")
+    parser.add_argument("--phase", choices=("all", "source", "installation"), default="all")
     args = parser.parse_args()
     try:
-        result = collect(args.private_root, args.source_root, args.output, args.job_status, args.architecture)
+        result = collect(args.private_root, args.source_root, args.output, args.job_status, args.architecture, args.phase)
     except Exception:
         print("Kernel artifact collection failed; private evidence was not published.", file=sys.stderr)
         return 1

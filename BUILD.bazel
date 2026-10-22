@@ -2,7 +2,10 @@ load("//tools/bazel:kernel.bzl", "kernel_packages")
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files([".github/workflows/bazel.yml"])
+exports_files([
+    ".github/workflows/bazel.yml",
+    "MODULE.bazel",
+])
 
 _KERNEL_SOURCES = glob([
     "config.local/**",

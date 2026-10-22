@@ -40,6 +40,7 @@ def fixture(root, architecture="amd64"):
     write_json(verified / "cache-proof.json", {
         **common, "cold_compiled": True, "consumer_kernel_cache_hit": True,
         "kernel_compilation_skipped": True, "consumer_kernel_runner": "remote cache hit",
+        "producer_kernel_runner": "linux-sandbox", "unprivileged_build": True,
         "outputs_sha256": hashes, "cold_metrics": {"totalTime": "31.25s", "private": SECRET},
         "hit_metrics": {"fetchTime": "1.5s", "setupTime": SECRET},
     })
@@ -88,6 +89,53 @@ class CollectionTest(unittest.TestCase):
                         self.assertEqual(artifacts.sha256(path), hashes[path.name])
                 shutil.rmtree(self.output)
 
+    def test_source_job_publishes_packages_without_claiming_installation(self):
+        private, hashes = fixture(self.root)
+        (private / "installation.json").unlink()
+        (private / "debugger.json").unlink()
+        result = artifacts.collect(private, self.root, self.output, "success", phase="source")
+        self.assertEqual(result, {"result": "passed", "published_file_count": 6})
+        summary = json.loads((self.output / "validation.json").read_text())
+        self.assertEqual(summary["phase"], "source")
+        self.assertEqual(summary["outputs_sha256"], hashes)
+        self.assertTrue(summary["linux_sandbox_verified"])
+        self.assertTrue(summary["unprivileged_build"])
+        self.assertFalse(summary["installation_verified"])
+        self.assertFalse(summary["debugger_verified"])
+
+    def test_installation_job_binds_downloaded_packages_to_source_summary(self):
+        private, _ = fixture(self.root)
+        artifacts.collect(private, self.root, self.output, "success", phase="source")
+        shutil.copyfile(self.output / "validation.json", private / "verified/validation.json")
+        (private / "verified" / artifacts.MANIFEST).unlink()
+        (private / "verified/cache-proof.json").unlink()
+        shutil.rmtree(self.output)
+        result = artifacts.collect(private, self.root, self.output, "success", phase="installation")
+        self.assertEqual(result, {"result": "passed", "published_file_count": 1})
+        summary = json.loads((self.output / "validation.json").read_text())
+        self.assertEqual(summary["phase"], "installation")
+        self.assertTrue(summary["installation_verified"])
+        self.assertTrue(summary["debugger_verified"])
+        self.assertEqual(summary["source_validation_sha256"], artifacts.sha256(private / "verified/validation.json"))
+        self.assertFalse(summary["artifacts_published"])
+        shutil.rmtree(self.output)
+        (private / "verified" / sorted(artifacts.package_names())[0]).write_bytes(b"changed")
+        with self.assertRaisesRegex(ValueError, "digest differs"):
+            artifacts.collect(private, self.root, self.output, "success", phase="installation")
+
+    def test_installation_rejects_missing_sandbox_proof_or_different_source_revision(self):
+        private, _ = fixture(self.root)
+        artifacts.collect(private, self.root, self.output, "success", phase="source")
+        original = json.loads((self.output / "validation.json").read_text())
+        shutil.rmtree(self.output)
+        for field, value in (("checkout_revision", "2" * 40), ("linux_sandbox_verified", False),
+                             ("unprivileged_build", False), ("phase", "all")):
+            with self.subTest(field=field):
+                write_json(private / "verified/validation.json", {**original, field: value})
+                with self.assertRaises(ValueError):
+                    artifacts.collect(private, self.root, self.output, "success", phase="installation")
+                self.assertFalse(self.output.exists())
+
     def test_missing_or_changed_package_and_manifest_do_not_publish_partial_output(self):
         for name in (sorted(artifacts.package_names())[0], artifacts.MANIFEST):
             for change in ("missing", "changed"):
@@ -122,6 +170,8 @@ class CollectionTest(unittest.TestCase):
     def test_incomplete_cache_installation_and_debugger_proofs_are_rejected(self):
         cases = [
             ("verified/cache-proof.json", "consumer_kernel_runner", "local"),
+            ("verified/cache-proof.json", "producer_kernel_runner", "local"),
+            ("verified/cache-proof.json", "unprivileged_build", False),
             ("verified/cache-proof.json", "kernel_compilation_skipped", False),
             ("verified/cache-proof.json", "outputs_sha256", {}),
             ("installation.json", "initramfs", False),

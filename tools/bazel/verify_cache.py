@@ -4,7 +4,7 @@
 import argparse
 import hashlib
 import json
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import shutil
 import re
 import subprocess
@@ -62,9 +62,9 @@ def unique_object(pairs):
 def outputs(directory, architecture="amd64"):
     found = {}
     for line in (directory / "output-paths.txt").read_text().splitlines():
-        relative = PurePosixPath(line).relative_to("/work")
+        relative = Path(line).relative_to(directory.resolve())
         require(".." not in relative.parts, "output escaped the build directory")
-        path = directory
+        path = directory.resolve()
         for part in relative.parts:
             path = path / part
             require(not path.is_symlink(), "kernel output must not be a symlink")
@@ -107,15 +107,28 @@ def verify(cold, hit, destination, architecture="amd64"):
     require(cold.resolve() != hit.resolve(), "cache proof requires distinct Bazel output directories")
     first, second = kernel_record(cold), kernel_record(hit)
     require(first.get("cacheHit") is False, "producer did not execute kernel compilation")
+    require(first.get("runner") == "linux-sandbox", "producer did not compile in the Linux sandbox")
     require(second.get("cacheHit") is True and second.get("runner") == "remote cache hit",
             "consumer did not get the kernel action from the remote cache")
     for field in ("commandArgs", "environmentVariables", "platform", "inputs", "listedOutputs"):
         require(first.get(field) == second.get(field), "producer and consumer kernel actions differ: " + field)
+    invocations = []
     for directory in (cold, hit):
         invocation = json.loads((directory / "invocation.json").read_text())
+        invocations.append(invocation)
         require(invocation.get("disk_cache") is None, "cache proof must disable the disk cache")
-        require(invocation.get("architecture", "amd64") == architecture,
+        require(invocation.get("architecture") == architecture,
                 "cache proof invocation architecture differs from " + architecture.upper())
+        require(invocation.get("schema") == 2 and invocation.get("execution_strategy") == "linux-sandbox"
+                and type(invocation.get("uid")) is int and invocation["uid"] > 0,
+                "cache proof requires unprivileged Linux sandbox execution")
+        require(invocation.get("host_machine") == {"amd64": "x86_64", "arm64": "aarch64"}[architecture],
+                "cache proof requires native architecture execution")
+        require(invocation.get("work_dir") == str(directory.resolve()), "cache proof work directory differs")
+    require(invocations[0].get("remote_cache") and invocations[0]["remote_cache"] == invocations[1].get("remote_cache")
+            and invocations[0].get("remote_cache_read_only") is False
+            and invocations[1].get("remote_cache_read_only") is True,
+            "cache proof requires a producer and a read-only consumer of the same remote cache")
     first_outputs, second_outputs = outputs(cold, architecture), outputs(hit, architecture)
     hashes = {name: sha256(path) for name, path in first_outputs.items()}
     require(hashes == {name: sha256(path) for name, path in second_outputs.items()},
@@ -125,6 +138,7 @@ def verify(cold, hit, destination, architecture="amd64"):
     for name, path in second_outputs.items():
         shutil.copyfile(path, destination / name)
     receipt = {"schema": 1, "result": "passed", "architecture": architecture, "cold_compiled": True,
+               "producer_kernel_runner": first["runner"], "unprivileged_build": True,
                "consumer_kernel_runner": second["runner"], "consumer_kernel_cache_hit": True,
                "kernel_compilation_skipped": True, "outputs_sha256": hashes,
                "cold_metrics": first.get("metrics"), "hit_metrics": second.get("metrics")}

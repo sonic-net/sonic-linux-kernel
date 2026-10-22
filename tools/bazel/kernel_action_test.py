@@ -74,6 +74,7 @@ class KernelActionTest(unittest.TestCase):
                     identity = hashlib.sha256(json.dumps({"architecture": architecture, "inputs": inputs},
                                                          sort_keys=True).encode()).hexdigest()
                     marker = {"schema_version": 1, "kind": "debian-build-tools", "architecture": architecture,
+                              "execution": "relocatable",
                               "identity_sha256": identity, "input_sha256": inputs, "packages": {"make": "4.4.1"}}
                     (root / "kernel-runtime.json").write_text(json.dumps(marker))
                     self.assertEqual(action.runtime_identity(root, architecture), marker)
@@ -104,15 +105,36 @@ class KernelActionTest(unittest.TestCase):
     def test_compile_recipe_keeps_maintained_debian_packaging_for_each_architecture(self):
         for architecture in action.ARCHITECTURES:
             with self.subTest(architecture=architecture):
-                commands = action.compilation_commands(architecture)
-                self.assertEqual(commands[0][0:2], ["/usr/bin/dpkg-source", "-x"])
-                self.assertIn(f"manage-config {architecture} no_sign", commands[4][-1])
-                self.assertIn(f"debian/config.local/{architecture}/config.sonic-vs", commands[4][-1])
+                commands = action.compilation_commands(architecture, Path("/declared/source"), Path("/declared/archives"))
+                self.assertEqual(commands[0][0:2], ["dpkg-source", "-x"])
+                self.assertEqual(commands[5], ["bash", "/declared/source/manage-config", architecture, "no_sign", ""])
                 self.assertIn("bazel-debug-sources.patch", commands[3][-1])
-                self.assertIn("/usr/bin/dpkg-buildpackage -b -us -uc -Pnodoc -j4", commands[-1][-1])
+                self.assertIn("bazel-relocatable-tools.patch", commands[4][-1])
+                self.assertEqual(commands[-1][:6], ["dpkg-buildpackage", "-b", "-us", "-uc", "-Pnodoc", "-j4"])
                 self.assertNotIn("nokerneldbg", repr(commands))
         with self.assertRaisesRegex(ValueError, "unsupported kernel architecture"):
-            action.compilation_commands("armhf")
+            action.compilation_commands("armhf", Path("source"), Path("archives"))
+
+    def test_packaging_database_uses_declared_library_paths_without_modifying_input(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime, private = root / "runtime", root / "private-dpkg"
+            source = runtime / "var/lib/dpkg/info/libc6:amd64.list"
+            source.parent.mkdir(parents=True)
+            source.write_text("/.\n/usr/lib/x86_64-linux-gnu/libc.so.6\n")
+            source.chmod(0o444)
+            before = source.read_bytes()
+            alias = root / "sandbox-runtime"
+            alias.symlink_to(runtime, target_is_directory=True)
+            action.packaging_database(alias, private)
+            self.assertEqual(source.read_bytes(), before)
+            self.assertEqual((private / "info/libc6:amd64.list").read_text().splitlines(),
+                             [str(runtime), str(runtime / "usr/lib/x86_64-linux-gnu/libc.so.6")])
+
+    def test_kernel_action_rejects_privileged_execution(self):
+        config = {"schema": 4, "outputs": sorted(action.package_names()), "manifest": action.MANIFEST}
+        with patch.object(action.os, "geteuid", return_value=0), self.assertRaisesRegex(ValueError, "unprivileged"):
+            action.build(config)
 
     def test_package_inventory_checks_real_debian_control_and_records_unexported_packages(self):
         for architecture in action.ARCHITECTURES:

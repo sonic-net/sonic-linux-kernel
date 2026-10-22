@@ -17,11 +17,25 @@ The supported configurations are native Linux AMD64 and ARM64, VS, kernel versio
 Bazel execution and target constraints must match. This is not cross compilation.
 
 The kernel action uses checksum-pinned source archives, the repository's SONiC
-patches/configuration, and the declared `sonic-build-tools` tool tree. It runs
+patches/configuration, and the declared `sonic-build-infra` build-tools runtime. It runs
 `dpkg-buildpackage -b -us -uc -Pnodoc -j4`, the same maintained Debian binary recipe
-used by the normal Make build, offline in a disposable chroot. Debian owns the
+used by the normal Make build, as an ordinary user in Bazel's `linux-sandbox`.
+The action neither launches Docker nor uses root, chroot or device creation.
+The relocated compiler, Python, Perl, dpkg and debhelper tools use their declared
+libraries and data. Debian owns the
 control metadata, dependencies, maintainer scripts, image, headers and kbuild
 installation layouts. The existing Make contract is unchanged.
+
+Bazel statically links its bootstrap executables, including package-metadata
+`gawk`, with `--host_features=fully_static_link`, so they do not depend on the host
+glibc. The kernel recipe and installed kbuild tools retain their normal link flags.
+
+Bazel-only adaptations select the declared tools in Debian's build rules and
+give DWARF source paths the stable `/usr/src/debug/linux-<ABI>` prefix. Programs
+compiled with `HOSTCC` use the private tool runtime while building. Before Debian
+strips and packages installed kbuild tools, their ordinary Debian ELF interpreter
+is restored and private runtime search paths are removed. Kernel modules and their
+signatures are untouched.
 
 A Bazel-only patch adds a staging hook to Debian's `binary_image-dbg` recipe before
 its maintained debhelper packaging sequence. It includes the actual patched
@@ -40,8 +54,11 @@ including whether it was exported. Metadata is read from actual packages with
 
 ## Local build and cache reuse
 
-Use Docker on a native Linux AMD64 or ARM64 host. The launcher selects a pinned
-Bazel8.5.1 executable, worker image and matching Bazel platform. Sources and tools
+Use a native Linux AMD64 or ARM64 host with unprivileged user namespaces enabled.
+Run as your ordinary user, with Python 3.10 or newer, a POSIX shell and GNU `env` available.
+The launcher selects a checksum-pinned Bazel8.5.1 executable and matching platform.
+The kernel action explicitly requires `linux-sandbox`; an unavailable sandbox is
+an error rather than a fallback to unsandboxed compilation. Sources and tools
 are fetched by Bazel; the kernel action itself has no network access. Registry
 resolution uses the canonical SONiC registry `main` plus the Bazel Central Registry.
 
@@ -78,7 +95,7 @@ python3 tools/bazel/verify_cache.py \
   --artifacts /tmp/kernel-verified
 ```
 
-`verify_cache.py` requires one successful local `SonicKernelBuild` action followed
+`verify_cache.py` requires one successful `linux-sandbox` `SonicKernelBuild` action followed
 by a `remote cache hit` with identical command/environment/platform/input/output
 identities and byte-identical five DEBs plus manifest. Timing alone is insufficient.
 
@@ -90,26 +107,33 @@ kernel/module flow and consumes the debug package when requested.
 
 ## Native CI and publication boundary
 
-CI builds from source independently on `ubuntu-24.04` AMD64 and
-`ubuntu-24.04-arm` ARM64, then proves a fresh read-only remote-cache hit. A fresh
-native Trixie container installs all five DEBs with apt, verifies dpkg package
+CI builds from source independently on `ubuntu-22.04` AMD64 and
+`ubuntu-22.04-arm` ARM64, then proves a fresh read-only remote-cache hit. The
+source jobs avoid Ubuntu 24.04's default AppArmor namespace restriction and
+check unprivileged namespace support before building; the declared compiler and
+packaging runtime remain Debian Trixie on both architectures. Kernel
+compilation and the checksum-pinned native loopback cache run without root or
+Docker. Runner disk preparation is separate from the build.
+
+A separate installation job uses a disposable native Trixie container to install
+the already built DEBs with apt. It verifies dpkg package
 identities/configuration and ARM64 device trees, verifies the postinst-generated
 ABI initramfs, compiles an external module using installed headers/kbuild, and checks its native ELF
 architecture and vermagic. GDB then verifies installed build-ID symbol selection,
 `start_kernel` and representative module source lines, and `struct task_struct`
 without access to the compiler tree or debuginfod.
 
-Successful CI publishes the five verified DEBs and a compact `validation.json`
+The source job publishes the five verified DEBs and a compact `validation.json`
 with the checkout revision, architecture, package and manifest hashes, and
-cache/install/debug check results. The collector checks those receipts and the
+cache check results. The installation job adds install/debug results to its
+validation summary. The collector checks those receipts and the
 copied bytes; package validation remains with the build, cache and installed-package
 checks above. Failed jobs publish only a fixed incomplete-validation summary.
 
 The full `kernel-packages.json` remains an unchanged Bazel output for consumers
-such as buildimage. CI keeps it, the generated module locks/graphs, raw logs,
-profiles and cache diagnostics private instead of copying or sanitizing their
-contents into the public artifact. The previous public `resolution.json` is no
-longer produced. Public artifacts expire after seven days.
+such as buildimage. The public artifacts omit that full manifest, generated
+module locks/graphs, profiles and cache diagnostics. Compilation output is
+visible in Actions logs. Public artifacts expire after seven days.
 
 The five source-owned regression-test targets cover input identity, actual Debian
 control fixtures, cache provenance, debug pairing, launcher architecture and the

@@ -5,7 +5,7 @@
  	mkdir -p $(DEBUG_DIR)/lib/modules/$(REAL_VERSION)
  	ln -s ../../../boot/vmlinux-$(REAL_VERSION) $(DEBUG_DIR)/lib/modules/$(REAL_VERSION)/vmlinux
 +	if [ -n "$(SONIC_KERNEL_DEBUG_STAGE)" ]; then \
-+		python3 "$(SONIC_KERNEL_DEBUG_STAGE)" "$(CURDIR)" "$(DESTDIR)" /build/artifacts --architecture "$(ARCH)"; \
++		python3 "$(SONIC_KERNEL_DEBUG_STAGE)" "$(CURDIR)" "$(DESTDIR)" "$(SONIC_KERNEL_ARTIFACTS)" --architecture "$(ARCH)"; \
 +	fi
  	$(dh_binary_post)
  

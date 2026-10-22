@@ -41,6 +41,10 @@ py_test(
         "build.py",
         "build_test.py",
     ],
+    data = [
+        "//:MODULE.bazel",
+        "//tools/bazel/cache-consumer:MODULE.bazel",
+    ],
     main = "build_test.py",
 )
 

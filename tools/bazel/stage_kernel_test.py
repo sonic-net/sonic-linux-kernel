@@ -2,6 +2,7 @@
 """Focused regressions for signed kernel runtime/debug payloads."""
 import hashlib
 import lzma
+import struct
 from pathlib import Path
 import tempfile
 import sys
@@ -62,10 +63,10 @@ class StageKernelTest(unittest.TestCase):
             with patch.object(kernel_arch.subprocess, "run", side_effect=objcopy) as child:
                 kernel_arch.materialize_kernel_elf("arm64", root, image, symbols, output)
                 self.assertEqual(child.call_args_list[0].args[0], [
-                    "/usr/bin/objcopy", "-O", "binary", "-R", ".note", "-R", ".note.gnu.build-id",
+                    "objcopy", "-O", "binary", "-R", ".note", "-R", ".note.gnu.build-id",
                     "-R", ".comment", "-S", str(symbols), str(output) + ".Image",
                 ])
-                self.assertEqual(child.call_args_list[1].args[0], ["/usr/bin/objcopy", "--strip-debug", str(symbols), str(output)])
+                self.assertEqual(child.call_args_list[1].args[0], ["objcopy", "--strip-debug", str(symbols), str(output)])
                 self.assertEqual(output.read_bytes(), b"stripped ELF probe")
                 image.write_bytes(b"different kernel image")
                 child.reset_mock()
@@ -80,7 +81,7 @@ class StageKernelTest(unittest.TestCase):
                 kwargs["stdout"].write(b"embedded ELF")
             with patch.object(kernel_arch.subprocess, "run", side_effect=extract) as child:
                 kernel_arch.materialize_kernel_elf("amd64", root, root / "vmlinuz", root / "debug", root / "vmlinux")
-                self.assertEqual(child.call_args.args[0], ["/bin/sh", str(root / "scripts/extract-vmlinux"), str(root / "vmlinuz")])
+                self.assertEqual(child.call_args.args[0], ["sh", str(root / "scripts/extract-vmlinux"), str(root / "vmlinuz")])
                 self.assertEqual((root / "vmlinux").read_bytes(), b"embedded ELF")
 
     def test_elf_machine_must_match_selected_kernel_architecture(self):
@@ -91,6 +92,45 @@ class StageKernelTest(unittest.TestCase):
                 self.assertEqual(stage.elf_info(Path("fixture"), architecture), ("a" * 40, True))
                 with self.assertRaisesRegex(ValueError, "kernel artifact"):
                     stage.elf_info(Path("fixture"), other)
+
+    def test_interpreter_reader_ignores_signed_modules_and_reads_native_executables(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "tool"
+            interpreter = b"/declared/runtime/ld-linux.so\0"
+            header = bytearray(64)
+            header[:6] = b"\x7fELF\x02\x01"
+            struct.pack_into("<H", header, 16, 2)
+            struct.pack_into("<Q", header, 32, 64)
+            struct.pack_into("<HH", header, 54, 56, 1)
+            program = struct.pack("<IIQQQQQQ", 3, 4, 120, 0, 0, len(interpreter), len(interpreter), 1)
+            path.write_bytes(header + program + interpreter)
+            self.assertEqual(stage.elf_interpreter(path), interpreter[:-1].decode())
+            struct.pack_into("<H", header, 16, 1)
+            path.write_bytes(header + program + interpreter + b"~Module signature appended~")
+            before = path.read_bytes()
+            self.assertIsNone(stage.elf_interpreter(path))
+            self.assertEqual(path.read_bytes(), before)
+
+    def test_packaged_tools_restore_native_loader_and_preserve_nonprivate_rpath(self):
+        for architecture, loader in [("amd64", "/lib64/ld-linux-x86-64.so.2"), ("arm64", "/lib/ld-linux-aarch64.so.1")]:
+            with self.subTest(architecture=architecture), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                runtime, package = root / "runtime", root / "package"
+                tool = package / "usr/lib/linux-kbuild/scripts/tool"
+                tool.parent.mkdir(parents=True)
+                tool.write_bytes(b"native host tool")
+                module = package / "signed.ko"
+                module.write_bytes(b"~Module signature appended~")
+                inspections = {tool: iter([str(runtime / "ld.so"), loader])}
+                def inspect(path):
+                    return next(inspections[path]) if path in inspections else None
+                with patch.object(stage, "elf_interpreter", side_effect=inspect), \
+                        patch.object(stage.subprocess, "check_output", return_value=str(runtime / "usr/lib") + ":$ORIGIN/../lib\n"), \
+                        patch.object(stage.subprocess, "run") as child:
+                    self.assertEqual(stage.normalize_tools(package, architecture, runtime, Path("/declared/patchelf")), 1)
+                    self.assertEqual(child.call_args.args[0], ["/declared/patchelf", "--set-interpreter", loader,
+                                                              "--set-rpath", "$ORIGIN/../lib", str(tool)])
+                self.assertEqual(module.read_bytes(), b"~Module signature appended~")
 
     def test_debug_package_adds_patched_sources_and_generated_native_headers(self):
         for architecture in kernel_arch.ARCHITECTURES:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build maintained Debian kernel packages offline in a verified shared worker."""
+"""Build maintained Debian kernel packages with declared, unprivileged tools."""
 
 import hashlib
 import json
@@ -9,7 +9,6 @@ from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
 import sys
-import stat
 import tempfile
 
 from kernel_arch import ARCHITECTURES, kernel_abi, validate_architecture
@@ -18,6 +17,15 @@ SOURCE_DATE_EPOCH = 1754969284  # Debian linux 6.12.41-1 changelog timestamp.
 MANIFEST = "kernel-packages.json"
 PACKAGE_VERSION = "6.12.41-1"
 EXTRA_SOURCES = ("tools/bazel/kernel_arch.py", "tools/bazel/stage_kernel.py")
+
+# Debian's control-real target deliberately fails after regeneration, to reject
+# stale metadata during packaging. Prepare both outputs before that validation
+# using its maintained prerequisite list, without changing the validation rule.
+CONTROL_PREPARATION = """.PHONY: bazel-prepare-control
+bazel-prepare-control: debian/bin/gencontrol.py $(CONTROL_FILES)
+\tPYTHONHASHSEED=0 python3 $<
+\tmd5sum $(sort $^) > debian/control.md5sum
+"""
 
 
 def package_kinds(architecture="amd64"):
@@ -58,6 +66,7 @@ def runtime_identity(runtime, architecture="amd64"):
     require(marker.get("schema_version") == 1 and marker.get("kind") == "debian-build-tools",
             "unsupported declared build-tools runtime")
     require(marker.get("architecture") == architecture, "kernel tools must execute on " + architecture.upper())
+    require(marker.get("execution") == "relocatable", "kernel tools must support unprivileged direct execution")
     inputs = marker.get("input_sha256")
     require(isinstance(inputs, list) and inputs
             and all(isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) for value in inputs)
@@ -72,11 +81,21 @@ def runtime_identity(runtime, architecture="amd64"):
     return marker
 
 
-def in_chroot(root, command, **kwargs):
-    def enter():
-        os.chroot(root)
-        os.chdir("/build/source")
-    return subprocess.run(command, preexec_fn=enter, **kwargs)
+def packaging_database(runtime, destination):
+    """Let dpkg resolve declared libraries without modifying the shared input.
+
+    dpkg-shlibdeps looks up the resolved library filename in dpkg's file lists.
+    The libraries live beneath the declared runtime, so its private database
+    needs those same paths instead of paths on the build host.
+    """
+    runtime = runtime.resolve(strict=True)
+    shutil.copytree(runtime / "var/lib/dpkg", destination, copy_function=shutil.copyfile)
+    for listing in sorted((destination / "info").glob("*.list")):
+        paths = listing.read_text().splitlines()
+        listing.write_text("\n".join(
+            str(runtime / path.lstrip("/")) if path.startswith("/") else path
+            for path in paths
+        ) + "\n")
 
 
 def source_inventory(sources, destination=None):
@@ -128,28 +147,26 @@ def validate_outputs(config):
             "kernel action must declare " + MANIFEST)
 
 
-def compilation_commands(architecture="amd64"):
+def compilation_commands(architecture, source, archives):
     """Use the same source/configuration and Debian binary recipe as Makefile."""
     validate_architecture(architecture)
-    kernel = "/build/source/linux-6.12.41"
+    source, archives = Path(source), Path(archives)
+    kernel = source / "linux-6.12.41"
     return [
-        ["/usr/bin/dpkg-source", "-x", "/build/archives/linux_6.12.41-1.dsc", kernel],
-        ["/bin/cp", "-a", "/build/source/config.local", "/build/source/patches-sonic", kernel + "/debian/"],
-        ["/usr/bin/patch", "-d", kernel, "-p1", "-i", "/build/source/patches-debian/disable-secureboot-config-checks.patch"],
-        ["/usr/bin/patch", "-d", kernel, "-p1", "-i", "/build/source/patches-debian/bazel-debug-sources.patch"],
-        ["/bin/bash", "-ec", "cd " + kernel +
-         f" && if test -f debian/config.local/{architecture}/config.sonic-vs; then "
-         f"cp debian/config.local/{architecture}/config.sonic-vs debian/config.local/{architecture}/config.sonic-platform-specific; fi"
-         f" && /build/source/manage-config {architecture} no_sign '' && debian/bin/gencontrol.py"],
-        ["/bin/bash", "-ec", "cd " + kernel + " && /usr/bin/dpkg-buildpackage -b -us -uc -Pnodoc -j4"],
+        ["dpkg-source", "-x", str(archives / "linux_6.12.41-1.dsc"), str(kernel)],
+        ["cp", "-a", str(source / "config.local"), str(source / "patches-sonic"), str(kernel / "debian")],
+        ["patch", "--batch", "--fuzz=0", "-d", str(kernel), "-p1", "-i", str(source / "patches-debian/disable-secureboot-config-checks.patch")],
+        ["patch", "--batch", "--fuzz=0", "-d", str(kernel), "-p1", "-i", str(source / "patches-debian/bazel-debug-sources.patch")],
+        ["patch", "--batch", "--fuzz=0", "-d", str(kernel), "-p1", "-i", str(source / "patches-debian/bazel-relocatable-tools.patch")],
+        ["bash", str(source / "manage-config"), architecture, "no_sign", ""],
+        ["make", "-f", "debian/rules", "-f", "-", "bazel-prepare-control"],
+        ["dpkg-buildpackage", "-b", "-us", "-uc", "-Pnodoc", "-j4", "--rules-file=make -f debian/rules"],
     ]
 
 
-def package_record(path, architecture="amd64", root=None):
-    command = ["/usr/bin/dpkg-deb", "--show", "--showformat=${Package}\t${Version}\t${Architecture}",
-               "/" + str(path.relative_to(root)) if root is not None else str(path)]
-    result = (in_chroot(root, command, check=True, text=True, capture_output=True) if root is not None
-              else subprocess.run(command, check=True, text=True, capture_output=True))
+def package_record(path, architecture="amd64", environment=None):
+    command = ["dpkg-deb", "--show", "--showformat=${Package}\t${Version}\t${Architecture}", str(path)]
+    result = subprocess.run(command, check=True, text=True, capture_output=True, env=environment)
     package, version, binary_arch = result.stdout.split("\t")
     require(version == PACKAGE_VERSION and binary_arch in (architecture, "all"),
             "unexpected Debian kernel package version or architecture")
@@ -159,37 +176,33 @@ def package_record(path, architecture="amd64", root=None):
             "sha256": sha256(path), "size": path.stat().st_size}
 
 
-def created_package_records(directory, architecture="amd64", root=None):
-    records = [package_record(path, architecture, root) for path in sorted(directory.glob("*.deb"))]
+def created_package_records(directory, architecture="amd64", environment=None):
+    records = [package_record(path, architecture, environment) for path in sorted(directory.glob("*.deb"))]
     names = {item["name"] for item in records}
     require(package_names(architecture) <= names, "Debian build omitted required kernel packages")
     return [{**item, "exported": item["name"] in package_names(architecture)} for item in records]
 
 
 def build(config):
-    require(config.get("schema") == 3, "unsupported kernel action schema")
+    require(config.get("schema") == 4, "unsupported kernel action schema")
     validate_outputs(config)
     architecture = config.get("architecture", "amd64")
-    require(os.geteuid() == 0, "kernel action requires root in its disposable worker for chroot")
-    runtime = Path(config["build_tools"])
+    require(os.geteuid() != 0, "kernel compilation must run as an unprivileged user")
+    runtime = Path(config["build_tools"]).resolve(strict=True)
     marker = runtime_identity(runtime, architecture)
-    # The tool tree is a declared input. Copy it before building so no action
-    # mutates the shared runtime. Chroot makes Kbuild's /build path independent
-    # of the Bazel output base, checkout path, and host tool installation.
+    # Bazel's Linux sandbox isolates the action. The declared runtime stays
+    # read-only; only source, packaging metadata and build outputs are copied.
     with tempfile.TemporaryDirectory(prefix="kernel-action-", dir=Path.cwd()) as temporary:
-        root = Path(temporary) / "root"
-        shutil.copytree(runtime, root, symlinks=True)
-        source = root / "build/source"
+        root = Path(temporary)
+        source = root / "source"
         source.mkdir(parents=True)
-        archives = root / "build/archives"
+        archives = root / "archives"
         archives.mkdir()
-        dest = root / "build/artifacts"
+        dest = root / "artifacts"
         dest.mkdir()
-        (root / "build/home").mkdir()
-        (root / "build/tmp").mkdir()
-        (root / "dev").mkdir(exist_ok=True)
-        for name, minor in (("null", 3), ("zero", 5), ("random", 8), ("urandom", 9)):
-            os.mknod(root / "dev" / name, stat.S_IFCHR | 0o666, os.makedev(1, minor))
+        (root / "home").mkdir()
+        (root / "tmp").mkdir()
+        packaging_database(runtime, root / "dpkg")
         inventory = source_inventory(config["sources"], source)
         archive_records = []
         for archive in config["archives"]:
@@ -198,8 +211,13 @@ def build(config):
             shutil.copyfile(archive["path"], archives / archive["name"])
             archive_records.append({"name": archive["name"], "sha256": archive["sha256"]})
         environment = {
-            "PATH": "/usr/sbin:/usr/bin:/sbin:/bin",
-            "HOME": "/build/home", "TMPDIR": "/build/tmp",
+            "PATH": str(runtime / "bin"),
+            "HOME": str(root / "home"), "TMPDIR": str(root / "tmp"),
+            "SHELL": str(runtime / "bin/bash"), "CONFIG_SHELL": str(runtime / "bin/bash"),
+            "DPKG_ADMINDIR": str(root / "dpkg"),
+            "DPKG_DATADIR": str(runtime / "usr/share/dpkg"),
+            "DPKG_ORIGINS_DIR": str(runtime / "etc/dpkg/origins"),
+            "DEB_RULES_REQUIRES_ROOT": "no",
             "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "TZ": "UTC",
             "SOURCE_DATE_EPOCH": str(SOURCE_DATE_EPOCH), "PYTHONHASHSEED": "0",
             "KBUILD_BUILD_USER": "sonic", "KBUILD_BUILD_HOST": "kernel-builder",
@@ -207,19 +225,30 @@ def build(config):
             "KBUILD_BUILD_VERSION": "1", "DEB_BUILD_OPTIONS": "parallel=4",
             "DEB_BUILD_PROFILES": "nodoc",
             "INCLUDE_EXTERNAL_PATCHES": "n",
-            "SONIC_KERNEL_DEBUG_STAGE": "/build/source/tools/bazel/stage_kernel.py",
+            "SONIC_KERNEL_DEBUG_STAGE": str(source / "tools/bazel/stage_kernel.py"),
+            "SONIC_KERNEL_ARTIFACTS": str(dest),
+            "SONIC_KERNEL_TOOLS": str(runtime / "bin"),
+            "SONIC_KERNEL_ARCHITECTURE": architecture,
+            "SONIC_KERNEL_PATCHELF": str(Path(config["patchelf"]).absolute()),
         }
         print("SONIC_KERNEL_COMPILATION_STARTED", flush=True)
-        for command in compilation_commands(architecture):
-            in_chroot(root, command, env=environment, check=True)
+        kernel = source / "linux-6.12.41"
+        for index, command in enumerate(compilation_commands(architecture, source, archives)):
+            subprocess.run(command, cwd=source if index < 5 else kernel, env=environment,
+                           input=CONTROL_PREPARATION if index == 6 else None,
+                           text=True, check=True)
+            if index == 1:
+                configuration = kernel / "debian/config.local" / architecture
+                if (configuration / "config.sonic-vs").is_file():
+                    shutil.copyfile(configuration / "config.sonic-vs", configuration / "config.sonic-platform-specific")
         # Record every package before removing the disposable build tree. Only
         # the five declared image/debug/headers/kbuild DEBs become Bazel outputs.
-        created = created_package_records(source, architecture, root)
+        created = created_package_records(source, architecture, environment)
         packages = []
         for name in config["outputs"]:
             output = Path(name)
             package = source / output.name
-            packages.append(package_record(package, architecture, root))
+            packages.append(package_record(package, architecture, environment))
             output.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(package, output)
         manifest = {

@@ -15,7 +15,7 @@ import verify_cache as proof
 from deb_test_support import write_deb
 
 
-def record(hit=False, runner="local"):
+def record(hit=False, runner="linux-sandbox"):
     return {"mnemonic": "SonicKernelBuild", "exitCode": 0, "status": "", "cacheable": True,
             "remoteCacheable": True, "cacheHit": hit, "runner": runner,
             "inputs": [{"path": "config", "digest": {"hash": "same"}}]}
@@ -32,8 +32,13 @@ def outputs_fixture(root, architecture="amd64"):
     (root / proof.MANIFEST).write_text(json.dumps({
         "schema": 3, "architecture": architecture, "kernel_abi": proof.kernel_abi(architecture), "packages": records,
     }))
-    (root / "output-paths.txt").write_text("\n".join("/work/" + name for name in names + [proof.MANIFEST]))
-    (root / "invocation.json").write_text(json.dumps({"disk_cache": None, "architecture": architecture}))
+    (root / "output-paths.txt").write_text("\n".join(str(root / name) for name in names + [proof.MANIFEST]))
+    (root / "invocation.json").write_text(json.dumps({
+        "schema": 2, "disk_cache": None, "architecture": architecture,
+        "execution_strategy": "linux-sandbox", "uid": 1001, "work_dir": str(root),
+        "host_machine": {"amd64": "x86_64", "arm64": "aarch64"}[architecture],
+        "remote_cache": "http://127.0.0.1:8080", "remote_cache_read_only": root.name == "hit",
+    }))
 
 
 class CacheProofTest(unittest.TestCase):
@@ -50,6 +55,15 @@ class CacheProofTest(unittest.TestCase):
                 path.write_text("\n".join(json.dumps(entry) for entry in entries))
                 with self.assertRaises(ValueError):
                     proof.kernel_record(path.parent)
+
+    def test_rejects_unsandboxed_kernel_compilation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for runner in ("local", "processwrapper-sandbox"):
+                with self.subTest(runner=runner), patch.object(proof, "kernel_record", side_effect=[
+                        record(False, runner), record(True, "remote cache hit")]):
+                    with self.assertRaisesRegex(ValueError, "Linux sandbox"):
+                        proof.verify(root / "cold", root / "hit", root / "evidence")
 
     def test_rejects_local_hits_and_changed_action_inputs(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -113,6 +127,23 @@ class CacheProofTest(unittest.TestCase):
             (hit / "invocation.json").write_text(json.dumps({"disk_cache": None, "architecture": "amd64"}))
             with self.assertRaisesRegex(ValueError, "invocation architecture"):
                 proof.verify(cold, hit, root / "evidence", "arm64")
+
+    def test_rejects_root_execution_or_writable_cache_consumer(self):
+        for field, value in (("uid", 0), ("uid", True), ("execution_strategy", "local"),
+                             ("remote_cache_read_only", False), ("work_dir", "/different"),
+                             ("host_machine", "aarch64")):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                cold, hit = root / "cold", root / "hit"
+                for path, action in ((cold, record()), (hit, record(True, "remote cache hit"))):
+                    outputs_fixture(path)
+                    (path / "execution.json").write_text(json.dumps(action))
+                path = hit / "invocation.json"
+                invocation = json.loads(path.read_text())
+                invocation[field] = value
+                path.write_text(json.dumps(invocation))
+                with self.assertRaises(ValueError):
+                    proof.verify(cold, hit, root / "evidence")
 
     def test_rejects_changed_debian_manifest_and_symlink_outputs(self):
         for change in ("bytes", "duplicate", "kind", "symlink", "schema"):
