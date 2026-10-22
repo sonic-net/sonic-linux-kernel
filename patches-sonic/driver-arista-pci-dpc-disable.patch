@@ -11,28 +11,69 @@ would be nice to have an option to disable DPC on some chassis.
 
 Add pci=nodpc kernel boot option to disable PCI DPC.
 
+These changes were submitted to the Linux PCI mailing list for upstream
+review.
+
+Link: https://lore.kernel.org/linux-pci/20261022165842.1463451-1-yurypm@arista.com/
 Signed-off-by: Yury Murashka <yurypm@arista.com>
 ---
- Documentation/admin-guide/kernel-parameters.txt |  3 +++
+ Documentation/admin-guide/kernel-parameters.txt |  4 ++++
+ drivers/acpi/pci_root.c                         |  7 +++---
  drivers/pci/pci.c                               |  2 ++
  drivers/pci/pci.h                               |  2 ++
- drivers/pci/pcie/dpc.c                          | 16 +++++++++++++---
- 4 files changed, 20 insertions(+), 3 deletions(-)
+ drivers/pci/pcie/dpc.c                          | 24 ++++++++++++++++---
+ drivers/pci/pcie/edr.c                          |  5 +++-
+ drivers/pci/pcie/portdrv.c                      |  3 ++-
+ include/linux/pci.h                             |  6 +++++
+ 8 files changed, 45 insertions(+), 8 deletions(-)
 
 diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
-index 2bbd7ab..068891e 100644
+index 671eabc..e9d9daa 100644
 --- a/Documentation/admin-guide/kernel-parameters.txt
 +++ b/Documentation/admin-guide/kernel-parameters.txt
-@@ -4480,6 +4480,9 @@
+@@ -4482,6 +4482,10 @@
  				through ports 0xC000-0xCFFF).
  				See http://wiki.osdev.org/PCI for more info
  				on the configuration access mechanisms.
-+		nodpc		[PCIE] If the PCIE_DPC kernel config parameter is
-+				enabled, this kernel boot option can be used to
-+				disable the use of PCIE DPC.
++		nodpc		[PCIE] Disable Linux DPC and EDR support. Linux
++				neither requests DPC control from firmware nor
++				enables DPC through EDR. Firmware-owned DPC
++				settings are not changed. Requires CONFIG_PCIE_DPC.
  		noaer		[PCIE] If the PCIEAER kernel config parameter is
  				enabled, this kernel boot option can be used to
  				disable the use of PCIE advanced error reporting.
+diff --git a/drivers/acpi/pci_root.c b/drivers/acpi/pci_root.c
+index d0bfb37..3e6cc4e 100644
+--- a/drivers/acpi/pci_root.c
++++ b/drivers/acpi/pci_root.c
+@@ -443,7 +443,7 @@ static u32 calculate_support(void)
+ 		support |= OSC_PCI_ASPM_SUPPORT | OSC_PCI_CLOCK_PM_SUPPORT;
+ 	if (pci_msi_enabled())
+ 		support |= OSC_PCI_MSI_SUPPORT;
+-	if (IS_ENABLED(CONFIG_PCIE_EDR))
++	if (IS_ENABLED(CONFIG_PCIE_EDR) && pci_dpc_available())
+ 		support |= OSC_PCI_EDR_SUPPORT;
+ 
+ 	return support;
+@@ -522,7 +522,7 @@ static u32 calculate_control(void)
+ 	 * OSC_PCI_EXPRESS_DPC_CONTROL indicates the OS supports both DPC
+ 	 * and EDR.
+ 	 */
+-	if (IS_ENABLED(CONFIG_PCIE_DPC) && IS_ENABLED(CONFIG_PCIE_EDR))
++	if (pci_dpc_available() && IS_ENABLED(CONFIG_PCIE_EDR))
+ 		control |= OSC_PCI_EXPRESS_DPC_CONTROL;
+ 
+ 	return control;
+@@ -1038,7 +1038,8 @@ struct pci_bus *acpi_pci_root_create(struct acpi_pci_root *root,
+ 		host_bridge->native_pme = 0;
+ 	if (!(root->osc_control_set & OSC_PCI_EXPRESS_LTR_CONTROL))
+ 		host_bridge->native_ltr = 0;
+-	if (!(root->osc_control_set & OSC_PCI_EXPRESS_DPC_CONTROL))
++	if (!pci_dpc_available() ||
++	    !(root->osc_control_set & OSC_PCI_EXPRESS_DPC_CONTROL))
+ 		host_bridge->native_dpc = 0;
+ 
+ 	if (!(root->osc_ext_control_set & OSC_CXL_ERROR_REPORTING_CONTROL))
 diff --git a/drivers/pci/pci.c b/drivers/pci/pci.c
 index 77d0786..f6a4c2f 100644
 --- a/drivers/pci/pci.c
@@ -67,18 +108,23 @@ index 551b6e8..bece8b9 100644
  static inline void pci_restore_dpc_state(struct pci_dev *dev) { }
  static inline void pci_dpc_init(struct pci_dev *pdev) { }
 diff --git a/drivers/pci/pcie/dpc.c b/drivers/pci/pcie/dpc.c
-index cdc5431..8eb2a1f 100644
+index cdc5431..3dfdfda 100644
 --- a/drivers/pci/pcie/dpc.c
 +++ b/drivers/pci/pcie/dpc.c
-@@ -43,12 +43,19 @@ static const char * const rp_pio_error_string[] = {
+@@ -43,12 +43,24 @@ static const char * const rp_pio_error_string[] = {
  	"Memory Request Completion Timeout",		 /* Bit Position 18 */
  };
 
-+static int pcie_dpc_disable = 0;
++static bool pcie_dpc_disable;
 +
 +void pci_no_dpc(void)
 +{
-+	pcie_dpc_disable = 1;
++	pcie_dpc_disable = true;
++}
++
++bool pci_dpc_available(void)
++{
++	return !pcie_dpc_disable;
 +}
 +
  void pci_save_dpc_state(struct pci_dev *dev)
@@ -87,35 +133,98 @@ index cdc5431..8eb2a1f 100644
  	u16 *cap;
 
 -	if (!pci_is_pcie(dev))
-+	if (pcie_dpc_disable || !pci_is_pcie(dev))
++	if (!pci_dpc_available() || !pci_is_pcie(dev))
  		return;
 
  	save_state = pci_find_saved_ext_cap(dev, PCI_EXT_CAP_ID_DPC);
-@@ -64,7 +71,7 @@ void pci_restore_dpc_state(struct pci_dev *dev)
+@@ -64,7 +76,7 @@ void pci_restore_dpc_state(struct pci_dev *dev)
  	struct pci_cap_saved_state *save_state;
  	u16 *cap;
 
 -	if (!pci_is_pcie(dev))
-+	if (pcie_dpc_disable || !pci_is_pcie(dev))
++	if (!pci_dpc_available() || !pci_is_pcie(dev))
  		return;
 
  	save_state = pci_find_saved_ext_cap(dev, PCI_EXT_CAP_ID_DPC);
-@@ -104,7 +111,7 @@ bool pci_dpc_recovered(struct pci_dev *pdev)
+@@ -104,7 +116,7 @@ bool pci_dpc_recovered(struct pci_dev *pdev)
  {
  	struct pci_host_bridge *host;
 
 -	if (!pdev->dpc_cap)
-+	if (pcie_dpc_disable || !pdev->dpc_cap)
++	if (!pci_dpc_available() || !pdev->dpc_cap)
  		return false;
 
  	/*
-@@ -398,6 +405,9 @@ void pci_dpc_init(struct pci_dev *pdev)
+@@ -398,6 +410,9 @@ void pci_dpc_init(struct pci_dev *pdev)
  {
  	u16 cap;
 
-+	if (pcie_dpc_disable)
++	if (!pci_dpc_available())
 +		return;
 +
  	pdev->dpc_cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_DPC);
  	if (!pdev->dpc_cap)
  		return;
+@@ -514,5 +529,8 @@ static struct pcie_port_service_driver dpcdriver = {
+ 
+ int __init pcie_dpc_init(void)
+ {
++	if (!pci_dpc_available())
++		return 0;
++
+ 	return pcie_port_service_register(&dpcdriver);
+ }
+diff --git a/drivers/pci/pcie/edr.c b/drivers/pci/pcie/edr.c
+index e86298d..8567dd1 100644
+--- a/drivers/pci/pcie/edr.c
++++ b/drivers/pci/pcie/edr.c
+@@ -223,6 +223,9 @@ void pci_acpi_add_edr_notifier(struct pci_dev *pdev)
+ 	struct acpi_device *adev = ACPI_COMPANION(&pdev->dev);
+ 	acpi_status status;
+ 
++	if (!pci_dpc_available())
++		return;
++
+ 	if (!adev) {
+ 		pci_dbg(pdev, "No valid ACPI node, skipping EDR init\n");
+ 		return;
+@@ -246,7 +249,7 @@ void pci_acpi_remove_edr_notifier(struct pci_dev *pdev)
+ {
+ 	struct acpi_device *adev = ACPI_COMPANION(&pdev->dev);
+ 
+-	if (!adev)
++	if (!pci_dpc_available() || !adev)
+ 		return;
+ 
+ 	acpi_remove_notify_handler(adev->handle, ACPI_SYSTEM_NOTIFY,
+diff --git a/drivers/pci/pcie/portdrv.c b/drivers/pci/pcie/portdrv.c
+index 604c055..c06f9d0 100644
+--- a/drivers/pci/pcie/portdrv.c
++++ b/drivers/pci/pcie/portdrv.c
+@@ -262,7 +262,8 @@ static int get_port_device_capability(struct pci_dev *dev)
+ 	 * With dpc-native, allow Linux to use DPC even if it doesn't have
+ 	 * permission to use AER.
+ 	 */
+-	if (pci_find_ext_capability(dev, PCI_EXT_CAP_ID_DPC) &&
++	if (pci_dpc_available() &&
++	    pci_find_ext_capability(dev, PCI_EXT_CAP_ID_DPC) &&
+ 	    pci_aer_available() &&
+ 	    (pcie_ports_dpc_native || (services & PCIE_PORT_SERVICE_AER)))
+ 		services |= PCIE_PORT_SERVICE_DPC;
+diff --git a/include/linux/pci.h b/include/linux/pci.h
+index 25ea4b6..56321cd 100644
+--- a/include/linux/pci.h
++++ b/include/linux/pci.h
+@@ -1848,6 +1848,12 @@ bool pci_aer_available(void);
+ static inline bool pci_aer_available(void) { return false; }
+ #endif
+ 
++#ifdef CONFIG_PCIE_DPC
++bool pci_dpc_available(void);
++#else
++static inline bool pci_dpc_available(void) { return false; }
++#endif
++
+ bool pci_ats_disabled(void);
+ 
+ #ifdef CONFIG_PCIE_PTM
