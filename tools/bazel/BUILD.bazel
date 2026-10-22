@@ -1,0 +1,67 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("@sonic_build_infra//tools/build_tools:defs.bzl", "python_runtime")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "kernel_action.py",
+    "kernel_arch.py",
+    "stage_kernel.py",
+])
+
+python_runtime(name = "python_runtime")
+
+py_test(
+    name = "kernel_action_test",
+    srcs = [
+        "deb_test_support.py",
+        "kernel_action.py",
+        "kernel_action_test.py",
+        "kernel_arch.py",
+        "verify_install.py",
+    ],
+    main = "kernel_action_test.py",
+)
+
+py_test(
+    name = "verify_cache_test",
+    srcs = [
+        "deb_test_support.py",
+        "kernel_action.py",
+        "kernel_arch.py",
+        "verify_cache.py",
+        "verify_cache_test.py",
+    ],
+    main = "verify_cache_test.py",
+)
+
+py_test(
+    name = "build_test",
+    srcs = [
+        "build.py",
+        "build_test.py",
+    ],
+    main = "build_test.py",
+)
+
+py_test(
+    name = "collect_ci_artifacts_test",
+    srcs = [
+        "collect_ci_artifacts.py",
+        "collect_ci_artifacts_test.py",
+        "kernel_action.py",
+        "kernel_arch.py",
+    ],
+    main = "collect_ci_artifacts_test.py",
+)
+
+py_test(
+    name = "stage_kernel_test",
+    srcs = [
+        "kernel_arch.py",
+        "stage_kernel.py",
+        "stage_kernel_test.py",
+        "verify_debug.py",
+    ],
+    main = "stage_kernel_test.py",
+)

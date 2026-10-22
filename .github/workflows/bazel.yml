@@ -1,0 +1,215 @@
+name: Bazel kernel
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bazel-kernel-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Kernel input checks
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s tools/bazel -p '*_test.py'
+      - run: python3 -m compileall -q tools/bazel
+
+  source-and-cache:
+    name: ${{ matrix.name }} VS kernel source and remote cache
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            name: AMD64
+            machine: x86_64
+            runner: ubuntu-24.04
+          - architecture: arm64
+            name: ARM64
+            machine: aarch64
+            runner: ubuntu-24.04-arm
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify native execution architecture
+        run: |
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = '${{ matrix.machine }}'
+          test "$(dpkg --print-architecture)" = '${{ matrix.architecture }}'
+          echo 'Native Linux ${{ matrix.name }} runner verified.'
+      - name: Prepare independent consumers using the canonical registry
+        run: |
+          python3 - <<'PY_REGISTRY'
+          import os
+          from pathlib import Path
+          import shutil
+          os.umask(0o077)
+          root = Path(os.environ["RUNNER_TEMP"]) / "kernel-private"
+          root.mkdir(mode=0o700)
+          template = Path("tools/bazel/cache-consumer")
+          prefix = "common --registry=https://raw.githubusercontent.com/securely1g/sonic-bazel-registry/"
+          original = (template / ".bazelrc").read_text()
+          if [line for line in original.splitlines() if line.startswith(prefix)] != [prefix + "main"]:
+              raise SystemExit("Expected one SONiC registry entry selecting main")
+          for run in ("cold", "hit"):
+              consumer = root / (run + "-consumer")
+              consumer.mkdir()
+              for name in ("BUILD.bazel", "MODULE.bazel"):
+                  source = template / name
+                  if not source.is_file() or source.is_symlink():
+                      raise SystemExit("Expected regular consumer template files")
+                  shutil.copyfile(source, consumer / name)
+              (consumer / ".bazelrc").write_text(original)
+          PY_REGISTRY
+      - name: Allocate space on this disposable runner
+        run: |
+          # These preinstalled SDKs are unused: all kernel tools are declared Bazel inputs.
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          python3 - <<'PY'
+          import os, shutil
+          free = shutil.disk_usage(os.environ['RUNNER_TEMP']).free
+          print(f'Free build disk: {free / 2**30:.1f} GiB')
+          if free < 45 * 2**30:
+              raise SystemExit('Kernel source/cache validation requires 45 GiB free scratch space')
+          PY
+      - name: Start an empty remote action cache
+        run: |
+          umask 077
+          if docker run -d --name sonic-kernel-cache \
+            --publish 127.0.0.1:8080:8080 \
+            buchgr/bazel-remote-cache@sha256:d9b104d02bea731f5a8ce6d3c518f814953ef54c2e0218744ce7643ff9d85ca8 \
+            --dir=/data --max_size=8 --http_address=:8080 --grpc_address=none \
+            > "$RUNNER_TEMP/kernel-private/cache-start.log" 2>&1; then
+            echo "Started the empty loopback action cache."
+          else
+            status=$?
+            echo "Cache startup failed with exit code $status."
+            exit "$status"
+          fi
+      - name: Compile the kernel from declared sources
+        run: |
+          umask 077
+          if curl --fail --show-error --silent --retry 15 --retry-delay 1 \
+            --retry-connrefused --retry-all-errors --retry-max-time 30 --max-time 2 \
+            http://127.0.0.1:8080/status > "$RUNNER_TEMP/kernel-private/cache-before-cold.json" \
+            2> "$RUNNER_TEMP/kernel-private/cold-cache-probe.log"; then
+            echo "The empty action cache is ready."
+          else
+            status=$?
+            echo "Cache status probe failed with exit code $status."
+            exit "$status"
+          fi
+          if python3 tools/bazel/build.py \
+            --architecture '${{ matrix.architecture }}' \
+            --workspace "$RUNNER_TEMP/kernel-private/cold-consumer" \
+            --work-dir "$RUNNER_TEMP/kernel-private/cold" \
+            --repository-cache "$RUNNER_TEMP/kernel-private/downloads" \
+            --module-override "sonic-linux-kernel=$GITHUB_WORKSPACE" \
+            --target @sonic_linux_kernel//:kernel_packages \
+            --remote-cache http://127.0.0.1:8080 \
+            --bazel-arg=--strategy=SonicKernelBuild=local \
+            > "$RUNNER_TEMP/kernel-private/cold-launcher.log" 2>&1; then
+            echo "Kernel source command completed."
+          else
+            status=$?
+            echo "Kernel source command failed with exit code $status."
+            exit "$status"
+          fi
+      - name: Fetch from the remote cache in a fresh Bazel output directory
+        timeout-minutes: 10
+        run: |
+          umask 077
+          if curl --fail --show-error --silent --retry 15 --retry-delay 1 \
+            --retry-connrefused --retry-all-errors --retry-max-time 30 --max-time 2 \
+            http://127.0.0.1:8080/status > "$RUNNER_TEMP/kernel-private/cache-before-hit.json" \
+            2> "$RUNNER_TEMP/kernel-private/hit-cache-probe.log"; then
+            echo "The action cache is ready for the fresh consumer."
+          else
+            status=$?
+            echo "Cache status probe failed with exit code $status."
+            exit "$status"
+          fi
+          if python3 tools/bazel/build.py \
+            --architecture '${{ matrix.architecture }}' \
+            --workspace "$RUNNER_TEMP/kernel-private/hit-consumer" \
+            --work-dir "$RUNNER_TEMP/kernel-private/hit" \
+            --repository-cache "$RUNNER_TEMP/kernel-private/downloads" \
+            --module-override "sonic-linux-kernel=$GITHUB_WORKSPACE" \
+            --target @sonic_linux_kernel//:kernel_packages \
+            --remote-cache http://127.0.0.1:8080 --remote-cache-read-only \
+            --bazel-arg=--strategy=SonicKernelBuild=local \
+            > "$RUNNER_TEMP/kernel-private/hit-launcher.log" 2>&1; then
+            echo "Kernel cache consumer command completed."
+          else
+            status=$?
+            echo "Kernel cache consumer command failed with exit code $status."
+            exit "$status"
+          fi
+      - name: Verify compilation was skipped and Debian packages are identical
+        run: |
+          umask 077
+          if python3 tools/bazel/verify_cache.py \
+            --architecture '${{ matrix.architecture }}' \
+            --cold "$RUNNER_TEMP/kernel-private/cold" --hit "$RUNNER_TEMP/kernel-private/hit" \
+            --artifacts "$RUNNER_TEMP/kernel-private/verified" \
+            > "$RUNNER_TEMP/kernel-private/verify.log" 2>&1; then
+            echo "Kernel source and cache verification passed."
+          else
+            status=$?
+            echo "Kernel source and cache verification failed with exit code $status."
+            exit "$status"
+          fi
+      - name: Install packages and verify hooks, headers and debugger lookup
+        run: |
+          umask 077
+          docker run --rm --platform=linux/${{ matrix.architecture }} \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/source,readonly" \
+            --mount "type=bind,src=$RUNNER_TEMP/kernel-private,dst=/evidence" \
+            debian:trixie-20260918@sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c \
+            /bin/sh -ec '
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gdb python3 binutils xz-utils zstd build-essential kmod initramfs-tools
+              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends /evidence/verified/*.deb
+              python3 /source/tools/bazel/verify_install.py --architecture ${{ matrix.architecture }} --output /evidence/installation.json
+              python3 /source/tools/bazel/verify_debug.py --architecture ${{ matrix.architecture }} --root / --output /evidence/debugger.json
+            ' > "$RUNNER_TEMP/kernel-private/debugger.log" 2>&1
+          echo "Installed package metadata, initramfs, external-module build and debugger lookup passed."
+      - name: Collect private cache service diagnostics
+        if: always()
+        run: docker logs sonic-kernel-cache > "$RUNNER_TEMP/kernel-private/cache.log" 2>&1 || true
+      - name: Collect verified Debian packages and a validation summary
+        id: collect
+        if: always()
+        env:
+          KERNEL_JOB_STATUS: ${{ job.status }}
+        run: |
+          python3 tools/bazel/collect_ci_artifacts.py \
+            --architecture '${{ matrix.architecture }}' \
+            --private-root "$RUNNER_TEMP/kernel-private" --source-root "$GITHUB_WORKSPACE" \
+            --output "$RUNNER_TEMP/kernel-artifacts" --job-status "$KERNEL_JOB_STATUS"
+      - name: Upload Debian packages and validation summary
+        if: always() && steps.collect.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kernel-${{ matrix.architecture }}-vs-cache-evidence
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/kernel-artifacts/*.deb
+            ${{ runner.temp }}/kernel-artifacts/validation.json
+      - name: Stop this job's cache
+        if: always()
+        run: docker rm -f sonic-kernel-cache > "$RUNNER_TEMP/kernel-private/cache-stop.log" 2>&1 || true

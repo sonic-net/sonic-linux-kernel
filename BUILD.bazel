@@ -1,0 +1,78 @@
+load("//tools/bazel:kernel.bzl", "kernel_packages")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files([".github/workflows/bazel.yml"])
+
+_KERNEL_SOURCES = glob([
+    "config.local/**",
+    "patches-debian/**",
+    "patches-sonic/**",
+]) + [
+    "Makefile",
+    "manage-config",
+    "//tools/bazel:kernel_arch.py",
+    "//tools/bazel:stage_kernel.py",
+]
+
+# Debian's source recipe builds natively: execution and target must agree.
+[
+    kernel_packages(
+        name = "kernel_packages_" + architecture,
+        srcs = _KERNEL_SOURCES,
+        architecture = architecture,
+        build_tools = "@sonic_build_infra//tools/build_tools:kernel_runtime",
+        debian = "@kernel_debian//file",
+        dsc = "@kernel_dsc//file",
+        exec_compatible_with = [
+            "@platforms//os:linux",
+            "@platforms//cpu:" + cpu,
+        ],
+        makefile = "Makefile",
+        orig = "@kernel_orig//file",
+        target_compatible_with = [
+            "@platforms//os:linux",
+            "@platforms//cpu:" + cpu,
+        ],
+    )
+    for architecture, cpu in [
+        ("amd64", "x86_64"),
+        ("arm64", "aarch64"),
+    ]
+]
+
+alias(
+    name = "kernel_packages",
+    actual = select({
+        "@platforms//cpu:x86_64": ":kernel_packages_amd64",
+        "@platforms//cpu:aarch64": ":kernel_packages_arm64",
+    }),
+)
+
+# Consumers can select a Debian package group from the same compiled kernel.
+filegroup(
+    name = "runtime_deb",
+    srcs = [":kernel_packages"],
+    output_group = "runtime",
+)
+
+filegroup(
+    name = "debug_deb",
+    srcs = [":kernel_packages"],
+    output_group = "debug",
+)
+
+filegroup(
+    name = "development_debs",
+    srcs = [":kernel_packages"],
+    output_group = "development",
+)
+
+filegroup(
+    name = "manifest",
+    srcs = [":kernel_packages"],
+    output_group = "manifest",
+)
+
+# Retain the original aggregate target name for existing Bazel callers.
+alias(name = "kernel_artifacts", actual = ":kernel_packages")

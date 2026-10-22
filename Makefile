@@ -45,7 +45,10 @@ LINUX_SOURCE_BASE_URL=https://packages.trafficmanager.net/public/debian-security
 DSC_FILE_URL = "$(LINUX_SOURCE_BASE_URL)/$(DSC_FILE)"
 DEBIAN_FILE_URL = "$(LINUX_SOURCE_BASE_URL)/$(DEBIAN_FILE)"
 ORIG_FILE_URL = "$(LINUX_SOURCE_BASE_URL)/$(ORIG_FILE)"
-NON_UP_DIR = /tmp/non_upstream_patches
+NON_UP_DIR ?= /tmp/non_upstream_patches
+# Bazel supplies checksum-verified archives here and disables network fetching.
+# Leave empty to preserve the existing standalone Make build.
+KERNEL_SOURCE_DIR ?=
 
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 	# Include any non upstream patches
@@ -76,9 +79,15 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 
 	# Obtaining the Debian kernel source
 	rm -rf $(BUILD_DIR)
-	wget -O $(DSC_FILE) $(DSC_FILE_URL)
-	wget -O $(ORIG_FILE) $(ORIG_FILE_URL)
-	wget -O $(DEBIAN_FILE) $(DEBIAN_FILE_URL)
+	if [ -n "$(KERNEL_SOURCE_DIR)" ]; then
+		cp "$(KERNEL_SOURCE_DIR)/$(DSC_FILE)" $(DSC_FILE)
+		cp "$(KERNEL_SOURCE_DIR)/$(ORIG_FILE)" $(ORIG_FILE)
+		cp "$(KERNEL_SOURCE_DIR)/$(DEBIAN_FILE)" $(DEBIAN_FILE)
+	else
+		wget -O $(DSC_FILE) $(DSC_FILE_URL)
+		wget -O $(ORIG_FILE) $(ORIG_FILE_URL)
+		wget -O $(DEBIAN_FILE) $(DEBIAN_FILE_URL)
+	fi
 
 	dpkg-source -x $(DSC_FILE)
 

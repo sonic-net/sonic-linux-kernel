@@ -1,0 +1,12 @@
+common --enable_bzlmod
+common --lockfile_mode=update
+# Local builds and normal CI use the same maintained SONiC registry.
+common --registry=https://raw.githubusercontent.com/securely1g/sonic-bazel-registry/main
+common --registry=https://bcr.bazel.build
+common --host_platform=@sonic_build_infra//platforms:x86_64_trixie
+common --platforms=@sonic_build_infra//platforms:x86_64_trixie
+common:arm64 --host_platform=@sonic_build_infra//platforms:aarch64_trixie
+common:arm64 --platforms=@sonic_build_infra//platforms:aarch64_trixie
+build --sandbox_default_allow_network=false
+build --remote_download_outputs=all
+test --test_output=errors

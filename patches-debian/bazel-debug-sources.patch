@@ -1,0 +1,12 @@
+--- a/debian/rules.real
++++ b/debian/rules.real
+@@ -506,6 +506,9 @@
+ 	ln -s boot/vmlinux-$(REAL_VERSION) $(DEBUG_DIR)/
+ 	mkdir -p $(DEBUG_DIR)/lib/modules/$(REAL_VERSION)
+ 	ln -s ../../../boot/vmlinux-$(REAL_VERSION) $(DEBUG_DIR)/lib/modules/$(REAL_VERSION)/vmlinux
++	if [ -n "$(SONIC_KERNEL_DEBUG_STAGE)" ]; then \
++		python3 "$(SONIC_KERNEL_DEBUG_STAGE)" "$(CURDIR)" "$(DESTDIR)" /build/artifacts --architecture "$(ARCH)"; \
++	fi
+ 	$(dh_binary_post)
+ 
+ build_signed-template:
