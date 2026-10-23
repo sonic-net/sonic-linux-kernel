@@ -1,7 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_test")
 load("@sonic_build_infra//tools/build_tools:defs.bzl", "python_runtime")
 
-load(":kernel.bzl", "kernel_config")
+load(":kernel.bzl", "kernel_config", "kernel_execution")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -17,6 +17,8 @@ kernel_config(
 )
 
 python_runtime(name = "python_runtime")
+
+kernel_execution(name = "kernel_execution")
 
 py_test(
     name = "kernel_action_test",

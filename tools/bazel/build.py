@@ -21,7 +21,7 @@ EXECUTION_STRATEGY = "linux-sandbox"
 # Buildimage consumers inspect these literal launcher pins.
 BAZEL_URL = "https://releases.bazel.build/8.5.1/release/bazel-8.5.1-linux-x86_64"
 BAZEL_SHA256 = "61d89402f0368e64b6c827be5de79d8e65382e8124c3cbb97325611a1851392e"
-ARCHITECTURES = {
+HOST_ARCHITECTURES = {
     "amd64": {
         "machine": "x86_64", "platform": "x86_64_trixie",
         "bazel_url": BAZEL_URL, "bazel_sha256": BAZEL_SHA256,
@@ -34,17 +34,24 @@ ARCHITECTURES = {
 }
 
 
+TARGET_PLATFORMS = {
+    "amd64": "x86_64_trixie",
+    "arm64": "aarch64_trixie",
+    "armhf": "armv7_trixie",
+}
 
-def kernel_configuration(architecture, requested):
+
+def kernel_configuration(architecture, requested, host_architecture=None):
     """Expand Make defaults without deciding which configurations Bazel supports."""
     if isinstance(requested, str):
         requested = json.loads(requested)
     if not isinstance(requested, dict) or not all(isinstance(key, str) and isinstance(value, str)
                                                 for key, value in requested.items()):
         raise ValueError("--kernel-config requires a JSON object of Make variable strings")
+    host_architecture = host_architecture or architecture
     values = {
         "CONFIGURED_ARCH": architecture, "CONFIGURED_PLATFORM": "vs", "BLDENV": "trixie",
-        "CROSS_BUILD_ENVIRON": "n", "MULTIARCH_QEMU_ENVIRON": "n",
+        "CROSS_BUILD_ENVIRON": "y" if host_architecture != architecture else "n", "MULTIARCH_QEMU_ENVIRON": "n",
         "KERNEL_VERSION": "6.12.41", "KERNEL_ABISUFFIX": "+deb13", "KERNEL_SUBVERSION": "1",
         "KERNEL_FEATURESET": "sonic", "ADDITIONAL_BUILD_PROFILES": "",
         "SECURE_UPGRADE_MODE": "no_sign", "SECURE_UPGRADE_KERNEL_CAFILE": "",
@@ -64,23 +71,28 @@ def kernel_config_option(args):
     if not re.fullmatch(r"(?:@{1,2}[^/]+)?//[^:]*:[^:]+", args.target):
         raise ValueError("--target must be an absolute Bazel label")
     repository = args.target.split("//", 1)[0]
-    values = kernel_configuration(args.architecture, args.kernel_config)
+    values = kernel_configuration(args.architecture, args.kernel_config, args.host_architecture)
     return "--" + repository + "//tools/bazel:kernel_config=" + json.dumps(values, sort_keys=True, separators=(",", ":"))
 
 
-def native_architecture(requested=None):
+def native_architecture():
     host = os.uname()
-    native = next((name for name, config in ARCHITECTURES.items()
+    native = next((name for name, config in HOST_ARCHITECTURES.items()
                    if host.sysname == "Linux" and host.machine == config["machine"]), None)
     if native is None:
         raise ValueError("kernel source builds require native Linux AMD64 or ARM64 execution")
-    if requested is not None and requested != native:
-        raise ValueError("requested architecture must match the native Linux host")
     return native
 
 
+def target_architecture(host, requested=None):
+    target = requested or host
+    if host not in HOST_ARCHITECTURES or target not in TARGET_PLATFORMS or (host != "amd64" and target != host):
+        raise ValueError("supported kernel builds are native AMD64/ARM64 and AMD64 cross builds for ARM64/ARMHF")
+    return target
+
+
 def bazel_binary(directory, ca_bundle=None, architecture="amd64"):
-    config = ARCHITECTURES[architecture]
+    config = HOST_ARCHITECTURES[architecture]
     url = config["bazel_url"]
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / ("bazel-8.5.1-" + architecture)
@@ -137,8 +149,10 @@ def selected_bazelrc(args):
 
 def build_commands(args, executable):
     """Use caller-owned paths and preserve declared platform and execution policy."""
-    config = ARCHITECTURES[args.architecture]
-    platform = "@sonic_build_infra//platforms:" + config["platform"]
+    host = args.host_architecture
+    target_architecture(host, args.architecture)
+    host_platform = "@sonic_build_infra//platforms:" + HOST_ARCHITECTURES[host]["platform"]
+    platform = "@sonic_build_infra//platforms:" + TARGET_PLATFORMS[args.architecture]
     work = args.work_dir.resolve()
     repository_cache = (args.repository_cache or work / "repository-cache").resolve()
     bazel = [str(executable), "--output_user_root=" + str(work / "output"),
@@ -155,7 +169,7 @@ def build_commands(args, executable):
         "--remote_download_outputs=all", "--jobs=1",
         "--sandbox_default_allow_network=false",
         "--strategy=SonicKernelBuild=" + EXECUTION_STRATEGY,
-        "--host_platform=" + platform, "--platforms=" + platform,
+        "--host_platform=" + host_platform, "--platforms=" + platform,
         kernel_config_option(args),
     ]
     if args.remote_cache:
@@ -253,8 +267,8 @@ def main():
     parser.add_argument("--remote-cache")
     parser.add_argument("--remote-cache-read-only", action="store_true")
     parser.add_argument("--target", default="@sonic_linux_kernel//:kernel_packages")
-    parser.add_argument("--architecture", choices=tuple(ARCHITECTURES),
-                        help="native build architecture (defaults to the Linux host architecture)")
+    parser.add_argument("--architecture", choices=tuple(TARGET_PLATFORMS),
+                        help="target architecture (defaults to the Linux host); AMD64 can also build ARM64/ARMHF")
     parser.add_argument("--kernel-config", default="{}", help="JSON object of kernel Make variables; producer validates support")
     parser.add_argument("--bazel-arg", action="append", default=[], help="additional --registry=URL only")
     parser.add_argument("--module-override", action="append", default=[], metavar="NAME=PATH")
@@ -263,8 +277,9 @@ def main():
     parser.add_argument("--distdir", type=Path)
     args = parser.parse_args()
     try:
-        args.architecture = native_architecture(args.architecture)
-        args.kernel_config = kernel_configuration(args.architecture, args.kernel_config)
+        args.host_architecture = native_architecture()
+        args.architecture = target_architecture(args.host_architecture, args.architecture)
+        args.kernel_config = kernel_configuration(args.architecture, args.kernel_config, args.host_architecture)
     except ValueError as error:
         parser.error(str(error))
     if os.geteuid() == 0:
@@ -318,19 +333,20 @@ def main():
     registry_configuration = selected_bazelrc(args)
     if registry_configuration is not None:
         (work / "selected.bazelrc").write_text(registry_configuration)
-    executable = bazel_binary(work / "bootstrap", args.ca_bundle, args.architecture).resolve()
+    executable = bazel_binary(work / "bootstrap", args.ca_bundle, args.host_architecture).resolve()
     commands = build_commands(args, executable)
-    config = ARCHITECTURES[args.architecture]
+    config = HOST_ARCHITECTURES[args.host_architecture]
     (work / "invocation.json").write_text(json.dumps({
-        "schema": 2, "target": args.target, "execution_strategy": EXECUTION_STRATEGY,
-        "architecture": args.architecture, "host_machine": os.uname().machine,
-        "kernel_config": args.kernel_config,
+        "schema": 3, "target": args.target, "execution_strategy": EXECUTION_STRATEGY,
+        "architecture": args.architecture, "host_architecture": args.host_architecture,
+        "host_machine": os.uname().machine, "kernel_config": args.kernel_config,
         "uid": os.geteuid(), "bazel_version": BAZEL_VERSION,
         "bazel_url": config["bazel_url"], "bazel_sha256": config["bazel_sha256"],
         "workspace": str(workspace), "work_dir": str(work),
         "repository_cache": str((args.repository_cache or work / "repository-cache").resolve()),
         "remote_cache": args.remote_cache, "remote_cache_read_only": args.remote_cache_read_only,
         "disk_cache": str(args.disk_cache.resolve()) if args.disk_cache else None,
+        "registry_overrides": args.bazel_arg,
     }, indent=2) + "\n")
     return run_build(args, commands)
 

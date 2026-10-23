@@ -19,7 +19,7 @@ import struct
 import subprocess
 import tempfile
 
-from kernel_arch import (ARCHITECTURES, build_directory, elf_machine,
+from kernel_arch import (ARCHITECTURES, binutils_tool, build_directory, elf_class, elf_machine,
                          kernel_abi, kernel_architecture, materialize_kernel_elf)
 
 
@@ -47,20 +47,25 @@ def elf_interpreter(path):
     """Read PT_INTERP without loading a build output or touching signed modules."""
     with path.open("rb") as stream:
         header = stream.read(64)
-        if len(header) < 64 or header[:6] != b"\x7fELF\x02\x01":
+        if len(header) < 52 or header[:4] != b"\x7fELF" or header[5] != 1 or header[4] not in (1, 2):
             return None
         if struct.unpack_from("<H", header, 16)[0] not in (2, 3):
             return None
-        offset = struct.unpack_from("<Q", header, 32)[0]
-        size, count = struct.unpack_from("<HH", header, 54)
+        is_64 = header[4] == 2
+        require(not is_64 or len(header) >= 64, "truncated ELF header: " + str(path))
+        offset = struct.unpack_from("<Q" if is_64 else "<I", header, 32 if is_64 else 28)[0]
+        size, count = struct.unpack_from("<HH", header, 54 if is_64 else 42)
         for index in range(count):
             stream.seek(offset + index * size)
             program = stream.read(size)
-            require(len(program) >= 56, "truncated ELF program header: " + str(path))
+            require(len(program) >= (56 if is_64 else 32), "truncated ELF program header: " + str(path))
             if struct.unpack_from("<I", program)[0] == 3:
-                stream.seek(struct.unpack_from("<Q", program, 8)[0])
-                length = struct.unpack_from("<Q", program, 32)[0]
-                return stream.read(length).rstrip(b"\0").decode()
+                stream.seek(struct.unpack_from("<Q" if is_64 else "<I", program, 8 if is_64 else 4)[0])
+                length = struct.unpack_from("<Q" if is_64 else "<I", program, 32 if is_64 else 16)[0]
+                interpreter = stream.read(length)
+                require(length > 1 and len(interpreter) == length and interpreter.endswith(b"\0"),
+                        "truncated ELF interpreter: " + str(path))
+                return interpreter[:-1].decode()
     return None
 
 
@@ -71,13 +76,38 @@ def normalize_tools(package, architecture, runtime, patchelf):
     installed kbuild tools need the ordinary Debian loader and dependencies.
     Signed kernel modules have no PT_INTERP and are never modified here.
     """
-    loader = {"amd64": "/lib64/ld-linux-x86-64.so.2", "arm64": "/lib/ld-linux-aarch64.so.1"}[architecture]
+    loader = {"amd64": "/lib64/ld-linux-x86-64.so.2", "arm64": "/lib/ld-linux-aarch64.so.1",
+              "armhf": "/lib/ld-linux-armhf.so.3"}[architecture]
     prefixes = tuple(str(path) + "/" for path in {runtime.absolute(), runtime.resolve()})
     normalized = 0
     for path in sorted(package.rglob("*")):
         if path.is_symlink() or not path.is_file():
             continue
+        # Debian rebuilds shipped kbuild tools for its host (package) arch.
+        # A HOSTCC override must never leak build-machine binaries into a DEB.
+        with path.open("rb") as stream:
+            header = stream.read(20)
         interpreter = elf_interpreter(path)
+        if len(header) == 20 and header[:4] == b"\x7fELF":
+            require(header[5] == 1, "packaged kernel ELF must be little-endian")
+            kind, machine = struct.unpack_from("<HH", header, 16)
+            # Debian installs compatibility vDSOs with the debug kernel.
+            # They are shared objects for 32-bit applications, not shipped
+            # kbuild executables. Accept only the maintained ABI/path and
+            # ELF combinations; an executable/interpreter is never valid.
+            compat_vdsos = {
+                "arm64": {"vdso32.so": (1, 40)},
+                "amd64": {"vdso32.so": (1, 3), "vdsox32.so": (1, 62)},
+            }.get(architecture, {})
+            compat_directory = package / "usr/lib/debug/lib/modules" / kernel_abi(architecture) / "vdso"
+            compat_elf = compat_vdsos.get(path.name) if path.parent == compat_directory else None
+            if compat_elf is not None:
+                require(kind == 3 and interpreter is None and (header[4], machine) == compat_elf,
+                        "packaged compatibility vDSO has the wrong target architecture or ELF type: " + str(path))
+            elif kind in (2, 3):
+                expected = {"amd64": (2, 62), "arm64": (2, 183), "armhf": (1, 40)}[architecture]
+                require((header[4], machine) == expected,
+                        "packaged kernel tool has the wrong target architecture: " + str(path))
         if interpreter is None or not interpreter.startswith(prefixes):
             continue
         old_rpath = subprocess.check_output([str(patchelf), "--print-rpath", str(path)], text=True).strip()
@@ -91,11 +121,12 @@ def normalize_tools(package, architecture, runtime, patchelf):
 
 
 def elf_info(path, architecture="amd64"):
-    result = subprocess.run(["readelf", "-h", "-n", "-SW", str(path)],
+    result = subprocess.run([binutils_tool("readelf"), "-h", "-n", "-SW", str(path)],
                             capture_output=True, text=True, check=True).stdout
     match = re.search(r"Build ID: ([0-9a-f]+)", result)
     require(match is not None, "ELF lacks a GNU build ID: " + str(path))
-    require("ELF64" in result and elf_machine(architecture) in result,
+    require(re.search(r"Class:\s+" + elf_class(architecture) + r"\b", result)
+            and re.search(r"Machine:\s+" + re.escape(elf_machine(architecture)) + r"\s*(?:\n|$)", result),
             "ELF is not an " + architecture.upper() + " kernel artifact: " + str(path))
     return match[1], ".debug_info" in result
 

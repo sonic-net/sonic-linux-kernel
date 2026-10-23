@@ -4,3 +4,10 @@ common --registry=https://bcr.bazel.build
 common --lockfile_mode=update
 # Bootstrap executables must run independently of the host's glibc version.
 build --host_features=fully_static_link
+# Explicit direct Bazel configurations; the launcher selects the same platforms.
+common:arm64 --host_platform=@sonic_build_infra//platforms:aarch64_trixie
+common:arm64 --platforms=@sonic_build_infra//platforms:aarch64_trixie
+common:cross_arm64 --host_platform=@sonic_build_infra//platforms:x86_64_trixie
+common:cross_arm64 --platforms=@sonic_build_infra//platforms:aarch64_trixie
+common:cross_armhf --host_platform=@sonic_build_infra//platforms:x86_64_trixie
+common:cross_armhf --platforms=@sonic_build_infra//platforms:armv7_trixie

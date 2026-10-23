@@ -9,7 +9,8 @@ import shutil
 import re
 import subprocess
 
-from kernel_action import ARCHITECTURES, MANIFEST, kernel_abi, package_kinds, package_record
+from kernel_action import ARCHITECTURES, MANIFEST, kernel_abi, package_kinds, package_record, validate_runtime_identity, validate_configuration
+from kernel_arch import HOST_ARCHITECTURES, validate_build_pair
 
 
 def require(condition, message):
@@ -59,7 +60,9 @@ def unique_object(pairs):
     return result
 
 
-def outputs(directory, architecture="amd64"):
+def outputs(directory, architecture="amd64", host_architecture=None):
+    host_architecture = host_architecture or architecture
+    validate_build_pair(host_architecture, architecture)
     found = {}
     for line in (directory / "output-paths.txt").read_text().splitlines():
         relative = Path(line).relative_to(directory.resolve())
@@ -73,10 +76,14 @@ def outputs(directory, architecture="amd64"):
         found[path.name] = path
     require(set(found) == set(package_kinds(architecture)) | {MANIFEST}, "expected five Debian packages and their manifest")
     manifest = json.loads(found[MANIFEST].read_text(), object_pairs_hook=unique_object)
-    require(type(manifest.get("schema")) is int and manifest["schema"] == 3,
-            "expected Debian package manifest schema 3")
+    require(type(manifest.get("schema")) is int and manifest["schema"] == 4,
+            "expected Debian package manifest schema 4")
     require(manifest.get("architecture") == architecture and manifest.get("kernel_abi") == kernel_abi(architecture),
             "kernel manifest architecture or ABI differs from cache proof")
+    require(manifest.get("host_architecture") == host_architecture,
+            "kernel manifest host architecture differs from cache proof")
+    validate_runtime_identity(manifest.get("build_tools"), host_architecture, architecture)
+    validate_configuration(manifest.get("kernel_config"), architecture, host_architecture)
     records = manifest.get("packages")
     require(isinstance(records, list) and len(records) == 5, "manifest must describe five Debian packages")
     names = []
@@ -102,7 +109,9 @@ def outputs(directory, architecture="amd64"):
     return found
 
 
-def verify(cold, hit, destination, architecture="amd64"):
+def verify(cold, hit, destination, architecture="amd64", host_architecture=None):
+    host_architecture = host_architecture or architecture
+    validate_build_pair(host_architecture, architecture)
     kernel_abi(architecture)
     require(cold.resolve() != hit.resolve(), "cache proof requires distinct Bazel output directories")
     first, second = kernel_record(cold), kernel_record(hit)
@@ -119,23 +128,30 @@ def verify(cold, hit, destination, architecture="amd64"):
         require(invocation.get("disk_cache") is None, "cache proof must disable the disk cache")
         require(invocation.get("architecture") == architecture,
                 "cache proof invocation architecture differs from " + architecture.upper())
-        require(invocation.get("schema") == 2 and invocation.get("execution_strategy") == "linux-sandbox"
+        require(invocation.get("schema") == 3 and invocation.get("execution_strategy") == "linux-sandbox"
                 and type(invocation.get("uid")) is int and invocation["uid"] > 0,
                 "cache proof requires unprivileged Linux sandbox execution")
-        require(invocation.get("host_machine") == {"amd64": "x86_64", "arm64": "aarch64"}[architecture],
-                "cache proof requires native architecture execution")
+        require(invocation.get("host_architecture") == host_architecture
+                and invocation.get("host_machine") == {"amd64": "x86_64", "arm64": "aarch64"}[host_architecture],
+                "cache proof requires the declared native host architecture")
         require(invocation.get("work_dir") == str(directory.resolve()), "cache proof work directory differs")
+    registries = invocations[0].get("registry_overrides")
+    require(isinstance(registries, list)
+            and all(isinstance(option, str) and option.startswith("--registry=") for option in registries)
+            and invocations[1].get("registry_overrides") == registries,
+            "cache proof registry selections differ or are missing")
     require(invocations[0].get("remote_cache") and invocations[0]["remote_cache"] == invocations[1].get("remote_cache")
             and invocations[0].get("remote_cache_read_only") is False
             and invocations[1].get("remote_cache_read_only") is True,
             "cache proof requires a producer and a read-only consumer of the same remote cache")
-    first_outputs, second_outputs = outputs(cold, architecture), outputs(hit, architecture)
+    first_outputs, second_outputs = outputs(cold, architecture, host_architecture), outputs(hit, architecture, host_architecture)
     kernel_config = invocations[0].get("kernel_config")
     require(isinstance(kernel_config, dict) and kernel_config
             and all(isinstance(key, str) and isinstance(value, str) for key, value in kernel_config.items())
             and kernel_config.get("CONFIGURED_ARCH") == architecture
             and invocations[1].get("kernel_config") == kernel_config,
             "cache proof kernel configurations differ or are missing")
+    validate_configuration(kernel_config, architecture, host_architecture)
     for found in (first_outputs, second_outputs):
         manifest = json.loads(found[MANIFEST].read_text())
         require(manifest.get("kernel_config") == kernel_config,
@@ -147,7 +163,7 @@ def verify(cold, hit, destination, architecture="amd64"):
     destination.mkdir(parents=True)
     for name, path in second_outputs.items():
         shutil.copyfile(path, destination / name)
-    receipt = {"schema": 1, "result": "passed", "architecture": architecture, "cold_compiled": True,
+    receipt = {"schema": 1, "result": "passed", "architecture": architecture, "host_architecture": host_architecture, "cold_compiled": True,
                "kernel_config": kernel_config,
                "producer_kernel_runner": first["runner"], "unprivileged_build": True,
                "consumer_kernel_runner": second["runner"], "consumer_kernel_cache_hit": True,
@@ -163,12 +179,15 @@ def main():
     parser.add_argument("--hit", required=True, type=Path)
     parser.add_argument("--artifacts", required=True, type=Path)
     parser.add_argument("--architecture", choices=ARCHITECTURES, default="amd64")
+    parser.add_argument("--host-architecture", choices=HOST_ARCHITECTURES,
+                        help="execution architecture; defaults to target for native builds")
     args = parser.parse_args()
-    receipt = verify(args.cold, args.hit, args.artifacts, args.architecture)
+    receipt = verify(args.cold, args.hit, args.artifacts, args.architecture, args.host_architecture)
     # The full receipt stays in the private destination. CLI output contains no
     # arbitrary execution metrics, environment values, or output paths.
     print(json.dumps({
-        "result": receipt["result"], "architecture": receipt["architecture"], "cold_compiled": receipt["cold_compiled"],
+        "result": receipt["result"], "architecture": receipt["architecture"],
+        "host_architecture": receipt["host_architecture"], "cold_compiled": receipt["cold_compiled"],
         "consumer_kernel_cache_hit": receipt["consumer_kernel_cache_hit"],
         "kernel_compilation_skipped": receipt["kernel_compilation_skipped"],
         "verified_output_count": len(receipt["outputs_sha256"]),

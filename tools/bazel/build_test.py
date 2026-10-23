@@ -16,13 +16,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build
 
 
-def arguments(root, architecture="amd64"):
+def arguments(root, architecture="amd64", host_architecture=None):
     return argparse.Namespace(
         workspace=root / "consumer", work_dir=root / "work", repository_cache=root / "downloads",
         disk_cache=None, remote_cache="http://127.0.0.1:8080", remote_cache_read_only=True,
         java_trust_store=None, ca_bundle=None, distdir=None,
         module_override=[("sonic-linux-kernel", root / "source")], bazel_arg=[],
-        target="@sonic_linux_kernel//:kernel_packages", architecture=architecture, kernel_config="{}",
+        target="@sonic_linux_kernel//:kernel_packages", architecture=architecture,
+        host_architecture=host_architecture or architecture, kernel_config="{}",
     )
 
 
@@ -90,13 +91,17 @@ class KernelLauncherTest(unittest.TestCase):
                                     and node.name in ("kernel_configuration", "_kernel_packages_impl")], type_ignores=[])
         def fail(message):
             raise ValueError(message)
-        provider = object()
-        namespace = {"fail": fail, "KernelConfigInfo": provider}
+        provider, execution_provider = object(), object()
+        namespace = {"fail": fail, "KernelConfigInfo": provider, "KernelExecutionInfo": execution_provider}
         exec(compile(selected, str(source), "exec"), namespace)
-        for architecture in ("amd64", "arm64"):
-            default = build.kernel_configuration(architecture, {})
-            self.assertEqual(namespace["kernel_configuration"](architecture, {}), default)
-            self.assertEqual(namespace["kernel_configuration"](architecture, default), default)
+        for host, architecture in (("amd64", "amd64"), ("arm64", "arm64"),
+                                   ("amd64", "arm64"), ("amd64", "armhf")):
+            default = build.kernel_configuration(architecture, {}, host)
+            self.assertEqual(namespace["kernel_configuration"](architecture, {}, host), default)
+            self.assertEqual(namespace["kernel_configuration"](architecture, default, host), default)
+            self.assertEqual(default["CROSS_BUILD_ENVIRON"], "y" if host != architecture else "n")
+            self.assertEqual(default["KVERSION"], "6.12.41+deb13-sonic-"
+                             + ("armmp" if architecture == "armhf" else architecture))
             inactive = {
                 "SECURE_UPGRADE_KERNEL_CAFILE": "/nonexistent/signing/certificate.pem",
                 "EXTERNAL_KERNEL_PATCH_URL": "https://example.invalid/unused.patch",
@@ -104,33 +109,37 @@ class KernelLauncherTest(unittest.TestCase):
             }
             # Disabled features retain their Make values without trying to read
             # nonexistent certificates/patches or fetching an inactive URL.
-            accepted = namespace["kernel_configuration"](architecture, inactive)
+            accepted = namespace["kernel_configuration"](architecture, inactive, host)
             self.assertEqual(accepted, dict(default, **inactive))
             for key, value in {
-                "CONFIGURED_ARCH": "armhf", "CONFIGURED_PLATFORM": "asic", "BLDENV": "bookworm",
-                "CROSS_BUILD_ENVIRON": "y", "MULTIARCH_QEMU_ENVIRON": "y", "KERNEL_VERSION": "6.12.42",
+                "CONFIGURED_ARCH": "arm64" if architecture == "armhf" else "armhf",
+                "CONFIGURED_PLATFORM": "asic", "BLDENV": "bookworm",
+                "CROSS_BUILD_ENVIRON": "n" if host != architecture else "y", "MULTIARCH_QEMU_ENVIRON": "y", "KERNEL_VERSION": "6.12.42",
                 "KERNEL_ABISUFFIX": "+custom", "KERNEL_SUBVERSION": "2", "KERNEL_FEATURESET": "other",
                 "KVERSION": "custom", "ADDITIONAL_BUILD_PROFILES": "nokerneldbg",
                 "SECURE_UPGRADE_MODE": "unsupported", "INCLUDE_EXTERNAL_PATCHES": "y",
                 "SOURCE_DATE_EPOCH": "0", "TYPO": "n",
             }.items():
-                with self.subTest(architecture=architecture, key=key):
+                with self.subTest(host=host, architecture=architecture, key=key):
                     # No action or tool attributes exist: rejection must happen
                     # before the implementation attempts to declare an output.
                     ctx = SimpleNamespace(attr=SimpleNamespace(architecture=architecture,
-                                          _kernel_config={provider: SimpleNamespace(values={key: value})}))
+                                          _kernel_config={provider: SimpleNamespace(values={key: value})},
+                                          _execution={execution_provider: SimpleNamespace(architecture=host)}))
                     with self.assertRaisesRegex(ValueError, "Unsupported kernel configuration.*" + key):
                         namespace["_kernel_packages_impl"](ctx)
 
-    def test_native_architecture_rejects_emulated_or_cross_configuration(self):
+    def test_host_detection_and_supported_cross_pairs(self):
         for architecture, machine in (("amd64", "x86_64"), ("arm64", "aarch64")):
             with self.subTest(architecture=architecture), patch.object(
                     build.os, "uname", return_value=os.uname_result(("Linux", "runner", "", "", machine))):
                 self.assertEqual(build.native_architecture(), architecture)
-                self.assertEqual(build.native_architecture(architecture), architecture)
-                other = "arm64" if architecture == "amd64" else "amd64"
-                with self.assertRaisesRegex(ValueError, "must match"):
-                    build.native_architecture(other)
+                self.assertEqual(build.target_architecture(architecture), architecture)
+        for target in ("amd64", "arm64", "armhf"):
+            self.assertEqual(build.target_architecture("amd64", target), target)
+        for host, target in (("arm64", "amd64"), ("arm64", "armhf"), ("armhf", "armhf")):
+            with self.subTest(host=host, target=target), self.assertRaisesRegex(ValueError, "supported kernel"):
+                build.target_architecture(host, target)
         with patch.object(build.os, "uname", return_value=os.uname_result(("Linux", "runner", "", "", "riscv64"))):
             with self.assertRaisesRegex(ValueError, "native Linux"):
                 build.native_architecture()
@@ -156,6 +165,42 @@ class KernelLauncherTest(unittest.TestCase):
                     self.assertIn("--lockfile_mode=off", graph)
                     self.assertFalse(any(option.startswith(("--strategy=", "--jobs=", "--platforms=", "--host_platform="))
                                          for option in graph))
+
+    def test_cross_commands_run_amd64_bazel_with_arm_target_platform(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for target, platform in (("arm64", "aarch64_trixie"), ("armhf", "armv7_trixie")):
+                args = arguments(root, target, "amd64")
+                for kind in ("build", "query"):
+                    command = build.build_commands(args, root / "bazel")[kind]
+                    self.assertIn("--host_platform=@sonic_build_infra//platforms:x86_64_trixie", command)
+                    self.assertIn("--platforms=@sonic_build_infra//platforms:" + platform, command)
+                    self.assertIn("--strategy=SonicKernelBuild=linux-sandbox", command)
+                    setting = "--@sonic_linux_kernel//tools/bazel:kernel_config="
+                    config, = [json.loads(value[len(setting):]) for value in command if value.startswith(setting)]
+                    self.assertEqual(config["CROSS_BUILD_ENVIRON"], "y")
+                    self.assertEqual(config["CONFIGURED_ARCH"], target)
+                    self.assertEqual(config["KVERSION"], "6.12.41+deb13-sonic-"
+                                     + ("armmp" if target == "armhf" else target))
+
+    def test_cross_launcher_downloads_host_bazel_and_records_host_target(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace, work = root / "source", root / "work"
+            workspace.mkdir()
+            (workspace / "MODULE.bazel").write_text("module(name='consumer')\n")
+            argv = ["build", "--workspace", str(workspace), "--work-dir", str(work), "--architecture", "armhf"]
+            with patch.object(sys, "argv", argv), patch.object(build, "native_architecture", return_value="amd64"), \
+                    patch.object(build.os, "geteuid", return_value=1001), \
+                    patch.object(build, "bazel_binary", return_value=root / "bazel") as bootstrap, \
+                    patch.object(build, "run_build", return_value=0):
+                self.assertEqual(build.main(), 0)
+            self.assertEqual(bootstrap.call_args.args[2], "amd64")
+            invocation = json.loads((work / "invocation.json").read_text())
+            self.assertEqual(invocation["architecture"], "armhf")
+            self.assertEqual(invocation["host_architecture"], "amd64")
+            self.assertEqual(invocation["bazel_url"], build.BAZEL_URL)
+            self.assertEqual(invocation["kernel_config"], build.kernel_configuration("armhf", {}, "amd64"))
 
     def test_extra_options_cannot_change_execution_or_cache_policy(self):
         with tempfile.TemporaryDirectory() as directory:

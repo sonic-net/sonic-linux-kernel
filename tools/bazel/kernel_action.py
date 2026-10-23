@@ -11,7 +11,8 @@ import subprocess
 import sys
 import tempfile
 
-from kernel_arch import ARCHITECTURES, kernel_abi, validate_architecture
+from kernel_arch import (ARCHITECTURES, HOST_ARCHITECTURES, kernel_abi,
+                         validate_architecture, validate_build_pair)
 
 SOURCE_DATE_EPOCH = 1754969284  # Debian linux 6.12.41-1 changelog timestamp.
 MANIFEST = "kernel-packages.json"
@@ -32,7 +33,7 @@ def package_kinds(architecture="amd64"):
     abi = kernel_abi(architecture)
     suffix = "_" + PACKAGE_VERSION + "_" + architecture + ".deb"
     return {
-        "linux-image-" + abi + "-unsigned" + suffix: "runtime",
+        "linux-image-" + abi + ("" if architecture == "armhf" else "-unsigned") + suffix: "runtime",
         "linux-image-" + abi + "-dbg" + suffix: "debug",
         "linux-headers-" + abi + suffix: "headers",
         "linux-headers-6.12.41+deb13-common-sonic_" + PACKAGE_VERSION + "_all.deb": "headers_common",
@@ -60,12 +61,31 @@ def sha256(path):
     return digest.hexdigest()
 
 
-def runtime_identity(runtime, architecture="amd64"):
-    validate_architecture(architecture)
+def runtime_identity(runtime, architecture=None, target_architecture=None):
     marker = json.loads((runtime / "kernel-runtime.json").read_text())
+    return validate_runtime_identity(marker, architecture, target_architecture)
+
+
+def validate_runtime_identity(marker, architecture=None, target_architecture=None):
+    require(isinstance(marker, dict), "missing declared build-tools provenance")
     require(marker.get("schema_version") == 1 and marker.get("kind") == "debian-build-tools",
             "unsupported declared build-tools runtime")
+    if architecture is None:
+        architecture = marker.get("architecture")
+    require(architecture in HOST_ARCHITECTURES, "unsupported kernel execution architecture")
     require(marker.get("architecture") == architecture, "kernel tools must execute on " + architecture.upper())
+    cross_architectures = marker.get("cross_architectures", [])
+    require(isinstance(cross_architectures, list)
+            and all(isinstance(target, str) for target in cross_architectures)
+            and cross_architectures == sorted(set(cross_architectures)),
+            "invalid build-tools cross architectures")
+    for target in cross_architectures:
+        validate_build_pair(architecture, target)
+        require(target != architecture, "cross architectures must exclude the execution architecture")
+    if target_architecture is not None:
+        validate_build_pair(architecture, target_architecture)
+        require(target_architecture == architecture or target_architecture in cross_architectures,
+                "kernel tools do not support the target architecture")
     require(marker.get("execution") == "relocatable", "kernel tools must support unprivileged direct execution")
     inputs = marker.get("input_sha256")
     require(isinstance(inputs, list) and inputs
@@ -147,9 +167,35 @@ def validate_outputs(config):
             "kernel action must declare " + MANIFEST)
 
 
-def compilation_commands(architecture, source, archives, kernel_config):
+def validate_configuration(kernel_config, architecture, host_architecture):
+    """Check the normalized producer contract before invoking build tools."""
+    validate_build_pair(host_architecture, architecture)
+    expected = {
+        "CONFIGURED_ARCH": architecture, "CONFIGURED_PLATFORM": "vs", "BLDENV": "trixie",
+        "CROSS_BUILD_ENVIRON": "y" if host_architecture != architecture else "n",
+        "MULTIARCH_QEMU_ENVIRON": "n", "KERNEL_VERSION": "6.12.41", "KERNEL_ABISUFFIX": "+deb13",
+        "KERNEL_SUBVERSION": "1", "KERNEL_FEATURESET": "sonic", "KVERSION": kernel_abi(architecture),
+        "ADDITIONAL_BUILD_PROFILES": "", "SECURE_UPGRADE_MODE": "no_sign", "INCLUDE_EXTERNAL_PATCHES": "n",
+    }
+    inactive = {"SECURE_UPGRADE_KERNEL_CAFILE", "EXTERNAL_KERNEL_PATCH_URL", "EXTERNAL_KERNEL_PATCH_LOC"}
+    require(isinstance(kernel_config, dict) and set(kernel_config) == set(expected) | inactive
+            and all(isinstance(value, str) for value in kernel_config.values()),
+            "kernel configuration must contain all normalized Make variables")
+    for name, value in expected.items():
+        require(kernel_config[name] == value, "unsupported kernel configuration: " + name)
+
+
+def build_profiles(kernel_config, cross):
+    profiles = ["cross", "nocheck", "nodoc"] if cross else ["nodoc"]
+    return profiles + list(filter(None, kernel_config["ADDITIONAL_BUILD_PROFILES"].split(",")))
+
+
+def compilation_commands(architecture, source, archives, kernel_config, host_architecture=None):
     """Use the same source/configuration and Debian binary recipe as Makefile."""
-    validate_architecture(architecture)
+    host_architecture = host_architecture or architecture
+    validate_build_pair(host_architecture, architecture)
+    validate_configuration(kernel_config, architecture, host_architecture)
+    cross = architecture != host_architecture
     source, archives = Path(source), Path(archives)
     kernel = source / ("linux-" + kernel_config["KERNEL_VERSION"])
     return [
@@ -160,8 +206,29 @@ def compilation_commands(architecture, source, archives, kernel_config):
         ["patch", "--batch", "--fuzz=0", "-d", str(kernel), "-p1", "-i", str(source / "patches-debian/bazel-relocatable-tools.patch")],
         ["bash", str(source / "manage-config"), architecture, kernel_config["SECURE_UPGRADE_MODE"], kernel_config["SECURE_UPGRADE_KERNEL_CAFILE"]],
         ["make", "-f", "debian/rules", "-f", "-", "bazel-prepare-control"],
-        ["dpkg-buildpackage", "-b", "-us", "-uc", "-P" + ",".join(filter(None, ["nodoc", kernel_config["ADDITIONAL_BUILD_PROFILES"]])), "-j4", "--rules-file=make -f debian/rules"],
+        ["dpkg-buildpackage", "-b", "-us", "-uc"]
+        + (["-a" + architecture] if cross else [])
+        + ["-P" + ",".join(build_profiles(kernel_config, cross)), "-j4", "--rules-file=make -f debian/rules"],
     ]
+
+
+def debian_architecture(runtime, architecture, host_architecture, environment):
+    """Resolve the complete Debian build/host tuple before generating controls."""
+    validate_build_pair(host_architecture, architecture)
+    result = subprocess.run([str(runtime / "bin/dpkg-architecture"), "-a" + architecture, "-l"],
+                            env=environment, text=True, capture_output=True, check=True)
+    values = {}
+    for line in result.stdout.splitlines():
+        name, separator, value = line.partition("=")
+        require(separator and re.fullmatch(r"DEB_(BUILD|HOST|TARGET)_[A-Z_]+", name)
+                and value and not any(c.isspace() for c in value),
+                "invalid declared dpkg architecture output")
+        require(name not in values, "duplicate declared dpkg architecture output")
+        values[name] = value
+    require(values.get("DEB_BUILD_ARCH") == host_architecture
+            and values.get("DEB_HOST_ARCH") == architecture
+            and values.get("DEB_HOST_GNU_TYPE"), "declared Debian build/host architecture differs")
+    return values
 
 
 def package_record(path, architecture="amd64", environment=None):
@@ -184,14 +251,17 @@ def created_package_records(directory, architecture="amd64", environment=None):
 
 
 def build(config):
-    require(config.get("schema") == 4, "unsupported kernel action schema")
+    require(config.get("schema") == 5, "unsupported kernel action schema")
     validate_outputs(config)
     architecture = config.get("architecture", "amd64")
     require(os.geteuid() != 0, "kernel compilation must run as an unprivileged user")
     kernel_config = config["kernel_config"]
-    require(kernel_config["CONFIGURED_ARCH"] == architecture, "kernel configuration architecture differs from target")
     runtime = Path(config["build_tools"]).resolve(strict=True)
-    marker = runtime_identity(runtime, architecture)
+    marker = runtime_identity(runtime, target_architecture=architecture)
+    host_architecture = config["host_architecture"]
+    require(host_architecture == marker["architecture"], "declared kernel execution host differs from runtime")
+    validate_configuration(kernel_config, architecture, host_architecture)
+    cross = host_architecture != architecture
     # Bazel's Linux sandbox isolates the action. The declared runtime stays
     # read-only; only source, packaging metadata and build outputs are copied.
     with tempfile.TemporaryDirectory(prefix="kernel-action-", dir=Path.cwd()) as temporary:
@@ -225,7 +295,7 @@ def build(config):
             "KBUILD_BUILD_USER": "sonic", "KBUILD_BUILD_HOST": "kernel-builder",
             "KBUILD_BUILD_TIMESTAMP": "@" + str(SOURCE_DATE_EPOCH),
             "KBUILD_BUILD_VERSION": "1", "DEB_BUILD_OPTIONS": "parallel=4",
-            "DEB_BUILD_PROFILES": " ".join(filter(None, ["nodoc", kernel_config["ADDITIONAL_BUILD_PROFILES"].replace(",", " ")])),
+            "DEB_BUILD_PROFILES": " ".join(build_profiles(kernel_config, cross)),
             **kernel_config,
             "SONIC_KERNEL_DEBUG_STAGE": str(source / "tools/bazel/stage_kernel.py"),
             "SONIC_KERNEL_ARTIFACTS": str(dest),
@@ -233,9 +303,16 @@ def build(config):
             "SONIC_KERNEL_ARCHITECTURE": architecture,
             "SONIC_KERNEL_PATCHELF": str(Path(config["patchelf"]).absolute()),
         }
+        environment.update(debian_architecture(runtime, architecture, host_architecture, environment))
+        if cross:
+            prefix = environment["DEB_HOST_GNU_TYPE"] + "-"
+            for tool in ("gcc", "ld", "objcopy", "readelf", "strip", "pkg-config"):
+                require((runtime / "bin" / (prefix + tool)).is_file(),
+                        "declared runtime lacks cross tool: " + prefix + tool)
+            environment["SONIC_KERNEL_CROSS_COMPILE"] = prefix
         print("SONIC_KERNEL_COMPILATION_STARTED", flush=True)
         kernel = source / ("linux-" + kernel_config["KERNEL_VERSION"])
-        for index, command in enumerate(compilation_commands(architecture, source, archives, kernel_config)):
+        for index, command in enumerate(compilation_commands(architecture, source, archives, kernel_config, host_architecture)):
             subprocess.run(command, cwd=source if index < 5 else kernel, env=environment,
                            input=CONTROL_PREPARATION if index == 6 else None,
                            text=True, check=True)
@@ -255,8 +332,8 @@ def build(config):
             output.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(package, output)
         manifest = {
-            "schema": 3, "architecture": architecture, "platform": kernel_config["CONFIGURED_PLATFORM"],
-            "kernel_config": kernel_config,
+            "schema": 4, "architecture": architecture, "host_architecture": host_architecture,
+            "platform": kernel_config["CONFIGURED_PLATFORM"], "kernel_config": kernel_config,
             "kernel_version": kernel_config["KERNEL_VERSION"], "kernel_abi": kernel_config["KVERSION"],
             "package_version": "6.12.41-1", "signing": "unsigned",
             "source_date_epoch": SOURCE_DATE_EPOCH,

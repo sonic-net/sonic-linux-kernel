@@ -18,7 +18,7 @@ _KERNEL_SOURCES = glob([
     "//tools/bazel:stage_kernel.py",
 ]
 
-# Debian's source recipe builds natively: execution and target must agree.
+# Build tools run on the execution platform; Debian cross-compiles the target.
 [
     kernel_packages(
         name = "kernel_packages_" + architecture,
@@ -29,8 +29,7 @@ _KERNEL_SOURCES = glob([
         dsc = "@kernel_dsc//file",
         exec_compatible_with = [
             "@platforms//os:linux",
-            "@platforms//cpu:" + cpu,
-        ],
+        ] + (["@platforms//cpu:x86_64"] if architecture in ["amd64", "armhf"] else []),
         makefile = "Makefile",
         orig = "@kernel_orig//file",
         target_compatible_with = [
@@ -41,6 +40,7 @@ _KERNEL_SOURCES = glob([
     for architecture, cpu in [
         ("amd64", "x86_64"),
         ("arm64", "aarch64"),
+        ("armhf", "armv7e-mf"),
     ]
 ]
 
@@ -49,6 +49,7 @@ alias(
     actual = select({
         "@platforms//cpu:x86_64": ":kernel_packages_amd64",
         "@platforms//cpu:aarch64": ":kernel_packages_arm64",
+        "@platforms//cpu:armv7e-mf": ":kernel_packages_armhf",
     }),
 )
 

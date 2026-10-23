@@ -7,14 +7,14 @@ import subprocess
 import tempfile
 
 from kernel_action import ARCHITECTURES, PACKAGE_VERSION, package_names, kernel_abi
-from kernel_arch import elf_machine
+from kernel_arch import elf_class, elf_machine
 
 
 def verify_device_trees(root, architecture):
-    if architecture == "arm64":
+    if architecture in ("arm64", "armhf"):
         directory = root / "usr/lib" / ("linux-image-" + kernel_abi(architecture))
         if not any(path.is_file() for path in directory.rglob("*.dtb")):
-            raise ValueError("ARM64 kernel package did not install device trees for its ABI")
+            raise ValueError(architecture.upper() + " kernel package did not install device trees for its ABI")
 
 
 def verify(architecture):
@@ -46,7 +46,7 @@ def verify(architecture):
         module = directory / "sonic_header_check.ko"
         vermagic = subprocess.check_output(["modinfo", "-F", "vermagic", str(module)], text=True).strip()
         header = subprocess.check_output(["readelf", "-h", str(module)], text=True)
-        if vermagic.split()[0] != abi or elf_machine(architecture) not in header:
+        if vermagic.split()[0] != abi or elf_machine(architecture) not in header or elf_class(architecture) not in header:
             raise ValueError("External module architecture or ABI differs from installed kernel")
     return {"schema": 1, "result": "passed", "architecture": architecture,
             "installed_packages": packages, "initramfs": True,

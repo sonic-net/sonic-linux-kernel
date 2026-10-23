@@ -23,7 +23,8 @@ def write_json(path, value):
     path.write_text(json.dumps(value) + "\n")
 
 
-def fixture(root, architecture="amd64"):
+def fixture(root, architecture="amd64", host_architecture=None):
+    host_architecture = host_architecture or architecture
     private = root / "private"
     verified = private / "verified"
     verified.mkdir(parents=True)
@@ -38,7 +39,7 @@ def fixture(root, architecture="amd64"):
     hashes = {path.name: artifacts.sha256(path) for path in verified.iterdir()}
     common = {"schema": 1, "result": "passed", "architecture": architecture, "private_metadata": SECRET}
     write_json(verified / "cache-proof.json", {
-        **common, "cold_compiled": True, "consumer_kernel_cache_hit": True,
+        **common, "host_architecture": host_architecture, "cold_compiled": True, "consumer_kernel_cache_hit": True,
         "kernel_compilation_skipped": True, "consumer_kernel_runner": "remote cache hit",
         "producer_kernel_runner": "linux-sandbox", "unprivileged_build": True,
         "outputs_sha256": hashes, "cold_metrics": {"totalTime": "31.25s", "private": SECRET},
@@ -67,18 +68,19 @@ class CollectionTest(unittest.TestCase):
         self.git = git.start()
         self.addCleanup(git.stop)
 
-    def collect(self, private, architecture="amd64", status="success"):
-        return artifacts.collect(private, self.root, self.output, status, architecture)
+    def collect(self, private, architecture="amd64", status="success", host_architecture=None):
+        return artifacts.collect(private, self.root, self.output, status, architecture, host_architecture=host_architecture)
 
     def test_only_five_unchanged_packages_and_safe_summary_are_published(self):
-        for architecture in artifacts.ARCHITECTURES:
-            with self.subTest(architecture=architecture):
-                private, hashes = fixture(self.root / architecture, architecture)
-                self.assertEqual(self.collect(private, architecture), {"result": "passed", "published_file_count": 6})
+        for host, architecture in (("amd64", "amd64"), ("arm64", "arm64"), ("amd64", "arm64"), ("amd64", "armhf")):
+            with self.subTest(host=host, architecture=architecture):
+                private, hashes = fixture(self.root / (host + "-" + architecture), architecture, host)
+                self.assertEqual(self.collect(private, architecture, host_architecture=host), {"result": "passed", "published_file_count": 6})
                 self.assertEqual({p.name for p in self.output.iterdir()}, artifacts.package_names(architecture) | {"validation.json"})
                 summary = json.loads((self.output / "validation.json").read_text())
                 self.assertEqual(summary["schema"], 2)
                 self.assertEqual(summary["architecture"], architecture)
+                self.assertEqual(summary["host_architecture"], host)
                 self.assertEqual(summary["checkout_revision"], REVISION)
                 self.assertEqual(summary["outputs_sha256"], hashes)
                 self.assertEqual(summary["cold_timing_seconds"], {"totalTime": 31.25})
@@ -129,12 +131,25 @@ class CollectionTest(unittest.TestCase):
         original = json.loads((self.output / "validation.json").read_text())
         shutil.rmtree(self.output)
         for field, value in (("checkout_revision", "2" * 40), ("linux_sandbox_verified", False),
-                             ("unprivileged_build", False), ("phase", "all")):
+                             ("unprivileged_build", False), ("phase", "all"), ("host_architecture", "arm64")):
             with self.subTest(field=field):
                 write_json(private / "verified/validation.json", {**original, field: value})
                 with self.assertRaises(ValueError):
                     artifacts.collect(private, self.root, self.output, "success", phase="installation")
                 self.assertFalse(self.output.exists())
+
+    def test_cross_source_summary_cannot_be_relabelled_as_native(self):
+        private, _ = fixture(self.root, "arm64", "amd64")
+        with self.assertRaisesRegex(ValueError, "source host architecture differs"):
+            artifacts.collect(private, self.root, self.output, "success", "arm64", "source")
+        self.assertFalse(self.output.exists())
+        artifacts.collect(private, self.root, self.output, "success", "arm64", "source", "amd64")
+        shutil.copyfile(self.output / "validation.json", private / "verified/validation.json")
+        shutil.rmtree(self.output)
+        with self.assertRaisesRegex(ValueError, "source package verification"):
+            artifacts.collect(private, self.root, self.output, "success", "arm64", "installation", "arm64")
+        artifacts.collect(private, self.root, self.output, "success", "arm64", "installation", "amd64")
+        self.assertEqual(json.loads((self.output / "validation.json").read_text())["host_architecture"], "amd64")
 
     def test_missing_or_changed_package_and_manifest_do_not_publish_partial_output(self):
         for name in (sorted(artifacts.package_names())[0], artifacts.MANIFEST):

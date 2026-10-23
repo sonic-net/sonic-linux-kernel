@@ -2,6 +2,7 @@
 """Focused regressions for signed kernel runtime/debug payloads."""
 import hashlib
 import lzma
+import os
 import struct
 from pathlib import Path
 import tempfile
@@ -16,6 +17,16 @@ import verify_debug
 
 
 class StageKernelTest(unittest.TestCase):
+    def test_armhf_uses_the_existing_armmp_package_flavour(self):
+        self.assertEqual(kernel_arch.kernel_abi("armhf"), "6.12.41+deb13-sonic-armmp")
+        self.assertEqual(kernel_arch.build_directory("armhf"), "build_armhf_sonic_armmp")
+        self.assertEqual(kernel_arch.kernel_architecture("armhf"), "arm")
+        for host, target in (("amd64", "amd64"), ("amd64", "arm64"), ("amd64", "armhf"), ("arm64", "arm64")):
+            self.assertEqual(kernel_arch.validate_build_pair(host, target), target)
+        for host, target in (("arm64", "amd64"), ("arm64", "armhf"), ("armhf", "armhf")):
+            with self.assertRaisesRegex(ValueError, "unsupported kernel build pair"):
+                kernel_arch.validate_build_pair(host, target)
+
     def test_signed_runtime_keeps_bytes_and_pairs_original_debug_by_build_id(self):
         for architecture in kernel_arch.ARCHITECTURES:
             with self.subTest(architecture=architecture), tempfile.TemporaryDirectory() as temporary:
@@ -84,10 +95,38 @@ class StageKernelTest(unittest.TestCase):
                 self.assertEqual(child.call_args.args[0], ["sh", str(root / "scripts/extract-vmlinux"), str(root / "vmlinuz")])
                 self.assertEqual((root / "vmlinux").read_bytes(), b"embedded ELF")
 
+    def test_armhf_zimage_payload_matches_debug_elf_using_target_objcopy(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            image, symbols, output = root / "zImage", root / "debug", root / "vmlinux"
+            payload = b"ARM raw boot code" * 128
+            header = bytearray(48)
+            struct.pack_into("<I", header, 36, 0x016F2818)
+            image.write_bytes(header + lzma.compress(payload) + b"size and zImage trailer")
+            symbols.write_bytes(b"debug ELF")
+            def objcopy(command, **kwargs):
+                Path(command[-1]).write_bytes(payload if "binary" in command else b"stripped ARM ELF")
+            with patch.dict(os.environ, {"SONIC_KERNEL_CROSS_COMPILE": "arm-linux-gnueabihf-"}), \
+                    patch.object(kernel_arch.subprocess, "run", side_effect=objcopy) as child:
+                kernel_arch.materialize_kernel_elf("armhf", root, image, symbols, output)
+                self.assertEqual(child.call_args_list[0].args[0], [
+                    "arm-linux-gnueabihf-objcopy", "-O", "binary", "-R", ".comment", "-S",
+                    str(symbols), str(output) + ".Image",
+                ])
+                self.assertEqual(output.read_bytes(), b"stripped ARM ELF")
+                for incorrect in (lzma.compress(b"wrong kernel"), lzma.compress(payload)[:-15],
+                                  lzma.compress(payload + b"unexpected byte")):
+                    image.write_bytes(header + incorrect)
+                    with self.assertRaisesRegex(ValueError, "boot zImage and debug vmlinux bytes differ"):
+                        kernel_arch.materialize_kernel_elf("armhf", root, image, symbols, output)
+                image.write_bytes(b"not a zImage")
+                with self.assertRaisesRegex(ValueError, "zImage header"):
+                    kernel_arch.materialize_kernel_elf("armhf", root, image, symbols, output)
+
     def test_elf_machine_must_match_selected_kernel_architecture(self):
-        for architecture, other in (("amd64", "arm64"), ("arm64", "amd64")):
+        for architecture, other in (("amd64", "arm64"), ("arm64", "amd64"), ("armhf", "arm64")):
             with self.subTest(architecture=architecture), patch.object(stage.subprocess, "run") as child:
-                child.return_value.stdout = ("Class: ELF64\nMachine: " + kernel_arch.elf_machine(architecture)
+                child.return_value.stdout = ("Class: " + kernel_arch.elf_class(architecture) + "\nMachine: " + kernel_arch.elf_machine(architecture)
                                              + "\nBuild ID: " + "a" * 40 + "\n.debug_info\n")
                 self.assertEqual(stage.elf_info(Path("fixture"), architecture), ("a" * 40, True))
                 with self.assertRaisesRegex(ValueError, "kernel artifact"):
@@ -112,7 +151,8 @@ class StageKernelTest(unittest.TestCase):
             self.assertEqual(path.read_bytes(), before)
 
     def test_packaged_tools_restore_native_loader_and_preserve_nonprivate_rpath(self):
-        for architecture, loader in [("amd64", "/lib64/ld-linux-x86-64.so.2"), ("arm64", "/lib/ld-linux-aarch64.so.1")]:
+        for architecture, loader in [("amd64", "/lib64/ld-linux-x86-64.so.2"), ("arm64", "/lib/ld-linux-aarch64.so.1"),
+                                     ("armhf", "/lib/ld-linux-armhf.so.3")]:
             with self.subTest(architecture=architecture), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 runtime, package = root / "runtime", root / "package"
@@ -131,6 +171,92 @@ class StageKernelTest(unittest.TestCase):
                     self.assertEqual(child.call_args.args[0], ["/declared/patchelf", "--set-interpreter", loader,
                                                               "--set-rpath", "$ORIGIN/../lib", str(tool)])
                 self.assertEqual(module.read_bytes(), b"~Module signature appended~")
+
+    def test_armhf_interpreter_reader_handles_elf32(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "tool"
+            interpreter = b"/private/runtime/ld-linux-armhf.so.3\0"
+            header = bytearray(52)
+            header[:6] = b"\x7fELF\x01\x01"
+            struct.pack_into("<HH", header, 16, 2, 40)
+            struct.pack_into("<I", header, 28, 52)
+            struct.pack_into("<HH", header, 42, 32, 1)
+            program = struct.pack("<IIIIIIII", 3, 84, 0, 0, len(interpreter), len(interpreter), 4, 1)
+            path.write_bytes(header + program + interpreter)
+            self.assertEqual(stage.elf_interpreter(path), interpreter[:-1].decode())
+            path.write_bytes(header + program + interpreter[:-2])
+            with self.assertRaisesRegex(ValueError, "truncated ELF interpreter"):
+                stage.elf_interpreter(path)
+
+    def test_packaged_kbuild_tools_reject_build_machine_elf(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            package = root / "package"
+            package.mkdir()
+            tool = package / "modpost"
+            header = bytearray(64)
+            header[:6] = b"\x7fELF\x02\x01"
+            struct.pack_into("<HH", header, 16, 2, 62)
+            tool.write_bytes(header)
+            for architecture in ("arm64", "armhf"):
+                with self.assertRaisesRegex(ValueError, "wrong target architecture"), \
+                        patch.object(stage.subprocess, "run") as child:
+                    stage.normalize_tools(package, architecture, root / "runtime", Path("patchelf"))
+                child.assert_not_called()
+
+    def test_debug_compatibility_vdsos_preserve_their_foreign_elf(self):
+        for architecture, name, machine in (("arm64", "vdso32.so", 40),
+                                             ("amd64", "vdso32.so", 3),
+                                             ("amd64", "vdsox32.so", 62)):
+            with self.subTest(architecture=architecture, name=name), tempfile.TemporaryDirectory() as temporary:
+                package = Path(temporary) / "package"
+                vdso = package / "usr/lib/debug/lib/modules" / kernel_arch.kernel_abi(architecture) / "vdso" / name
+                vdso.parent.mkdir(parents=True)
+                header = bytearray(52)
+                header[:6] = b"\x7fELF\x01\x01"
+                struct.pack_into("<HH", header, 16, 3, machine)
+                vdso.write_bytes(header)
+                with patch.object(stage.subprocess, "run") as child:
+                    self.assertEqual(stage.normalize_tools(package, architecture, Path(temporary) / "runtime",
+                                                           Path("patchelf")), 0)
+                child.assert_not_called()
+                self.assertEqual(vdso.read_bytes(), header)
+
+    def test_compatibility_vdso_exception_rejects_tools_and_wrong_elf(self):
+        abi = kernel_arch.kernel_abi("arm64")
+        valid = "usr/lib/debug/lib/modules/" + abi + "/vdso/vdso32.so"
+        cases = [
+            (valid.replace(abi, "wrong-abi"), 3, 40, None),
+            (valid.replace("vdso32.so", "other.so"), 3, 40, None),
+            ("usr/lib/linux-kbuild/scripts/vdso32.so", 3, 40, None),
+            ("lib/modules/" + abi + "/vdso/vdso32.so", 3, 40, None),
+            (valid, 1, 40, None),
+            (valid, 2, 40, None),
+            (valid, 3, 3, None),
+            (valid, 3, 183, None),
+            (valid, 3, 40, b"/lib/ld-linux-armhf.so.3\0"),
+        ]
+        for relative, kind, machine, interpreter in cases:
+            with self.subTest(relative=relative, kind=kind, machine=machine, interpreter=interpreter), \
+                    tempfile.TemporaryDirectory() as temporary:
+                package = Path(temporary) / "package"
+                vdso = package / relative
+                vdso.parent.mkdir(parents=True)
+                elf_class = 2 if machine == 183 else 1
+                header = bytearray(64 if elf_class == 2 else 52)
+                header[:6] = b"\x7fELF" + bytes([elf_class, 1])
+                struct.pack_into("<HH", header, 16, kind, machine)
+                if interpreter:
+                    struct.pack_into("<I", header, 28, 52)
+                    struct.pack_into("<HH", header, 42, 32, 1)
+                    program = struct.pack("<IIIIIIII", 3, 84, 0, 0, len(interpreter), len(interpreter), 4, 1)
+                    header += program + interpreter
+                vdso.write_bytes(header)
+                with self.assertRaisesRegex(ValueError, "wrong target architecture"), \
+                        patch.object(stage.subprocess, "run") as child:
+                    stage.normalize_tools(package, "arm64", Path(temporary) / "runtime", Path("patchelf"))
+                child.assert_not_called()
+                self.assertEqual(vdso.read_bytes(), header)
 
     def test_debug_package_adds_patched_sources_and_generated_native_headers(self):
         for architecture in kernel_arch.ARCHITECTURES:

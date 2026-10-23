@@ -12,6 +12,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from kernel_action import ARCHITECTURES, MANIFEST, kernel_abi, package_names, sha256
+from kernel_arch import HOST_ARCHITECTURES, validate_build_pair
 
 DIGEST = re.compile(r"[0-9a-f]{64}")
 
@@ -87,7 +88,8 @@ def installation_summary(private, architecture):
     return {"installation_verified": True, "debugger_verified": True}
 
 
-def success_summary(private, source, architecture, phase="all"):
+def success_summary(private, source, architecture, phase="all", host_architecture=None):
+    host_architecture = host_architecture or architecture
     revision = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"],
                                        stderr=subprocess.DEVNULL, text=True, timeout=60).strip()
     require(re.fullmatch(r"[0-9a-f]{40}", revision), "invalid source revision")
@@ -100,6 +102,7 @@ def success_summary(private, source, architecture, phase="all"):
         proof = json.loads(path.read_text(), object_pairs_hook=unique_object)
         require(isinstance(proof, dict) and type(proof.get("schema")) is int and proof["schema"] == 2
                 and proof.get("phase") == "source" and proof.get("architecture") == architecture
+                and proof.get("host_architecture") == host_architecture
                 and proof.get("result") == "passed" and proof.get("job_status") == "success"
                 and proof.get("checkout_revision") == revision and proof.get("artifacts_published") is True,
                 "source package verification did not pass at this checkout")
@@ -114,6 +117,7 @@ def success_summary(private, source, architecture, phase="all"):
             "cold_compiled", "consumer_kernel_cache_hit", "kernel_compilation_skipped", "unprivileged_build",
         )) and proof.get("consumer_kernel_runner") == "remote cache hit"
                 and proof.get("producer_kernel_runner") == "linux-sandbox", "missing Linux sandbox and remote cache proof")
+        require(proof.get("host_architecture") == host_architecture, "source host architecture differs")
         result.update(cold_timing_seconds=timing_seconds(proof.get("cold_metrics")),
                       hit_timing_seconds=timing_seconds(proof.get("hit_metrics")))
     result.update(outputs_sha256=output_digests(proof.get("outputs_sha256"), architecture),
@@ -124,8 +128,9 @@ def success_summary(private, source, architecture, phase="all"):
     return result
 
 
-def collect(private, source, output, job_status, architecture="amd64", phase="all"):
-    require(architecture in ARCHITECTURES, "unsupported architecture")
+def collect(private, source, output, job_status, architecture="amd64", phase="all", host_architecture=None):
+    host_architecture = host_architecture or architecture
+    validate_build_pair(host_architecture, architecture)
     require(phase in ("all", "source", "installation"), "invalid validation phase")
     require(job_status in ("success", "failure", "cancelled"), "invalid job status")
     private, output = Path(private), Path(output)
@@ -136,9 +141,10 @@ def collect(private, source, output, job_status, architecture="amd64", phase="al
     temporary = Path(tempfile.mkdtemp(prefix=".kernel-artifacts-", dir=output.parent))
     try:
         summary = {"schema": 2, "job_status": job_status, "architecture": architecture, "phase": phase,
+                   "host_architecture": host_architecture,
                    "kernel_abi": kernel_abi(architecture), "result": "incomplete", "artifacts_published": False}
         if job_status == "success":
-            summary.update(success_summary(private, source, architecture, phase))
+            summary.update(success_summary(private, source, architecture, phase, host_architecture))
             for name, expected_hash in sorted(summary["outputs_sha256"].items()):
                 if phase == "installation" and name == MANIFEST:
                     continue
@@ -171,10 +177,12 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--job-status", required=True, choices=("success", "failure", "cancelled"))
     parser.add_argument("--architecture", choices=ARCHITECTURES, default="amd64")
+    parser.add_argument("--host-architecture", choices=HOST_ARCHITECTURES,
+                        help="source execution architecture; defaults to target for native builds")
     parser.add_argument("--phase", choices=("all", "source", "installation"), default="all")
     args = parser.parse_args()
     try:
-        result = collect(args.private_root, args.source_root, args.output, args.job_status, args.architecture, args.phase)
+        result = collect(args.private_root, args.source_root, args.output, args.job_status, args.architecture, args.phase, args.host_architecture)
     except Exception:
         print("Kernel artifact collection failed; private evidence was not published.", file=sys.stderr)
         return 1
