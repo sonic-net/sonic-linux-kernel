@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kernel_action as action
+import build
 import verify_install
 from deb_test_support import write_deb
 
@@ -105,7 +106,7 @@ class KernelActionTest(unittest.TestCase):
     def test_compile_recipe_keeps_maintained_debian_packaging_for_each_architecture(self):
         for architecture in action.ARCHITECTURES:
             with self.subTest(architecture=architecture):
-                commands = action.compilation_commands(architecture, Path("/declared/source"), Path("/declared/archives"))
+                commands = action.compilation_commands(architecture, Path("/declared/source"), Path("/declared/archives"), build.kernel_configuration(architecture, {}))
                 self.assertEqual(commands[0][0:2], ["dpkg-source", "-x"])
                 self.assertEqual(commands[5], ["bash", "/declared/source/manage-config", architecture, "no_sign", ""])
                 self.assertIn("bazel-debug-sources.patch", commands[3][-1])
@@ -113,7 +114,13 @@ class KernelActionTest(unittest.TestCase):
                 self.assertEqual(commands[-1][:6], ["dpkg-buildpackage", "-b", "-us", "-uc", "-Pnodoc", "-j4"])
                 self.assertNotIn("nokerneldbg", repr(commands))
         with self.assertRaisesRegex(ValueError, "unsupported kernel architecture"):
-            action.compilation_commands("armhf", Path("source"), Path("archives"))
+            action.compilation_commands("armhf", Path("source"), Path("archives"), {})
+
+    def test_recipe_uses_the_selected_configuration(self):
+        config = build.kernel_configuration("arm64", {"SECURE_UPGRADE_MODE": ""})
+        commands = action.compilation_commands("arm64", Path("/source"), Path("/archives"), config)
+        self.assertEqual(commands[5], ["bash", "/source/manage-config", "arm64", "no_sign", ""])
+        self.assertEqual(action.SOURCE_DATE_EPOCH, 1754969284)
 
     def test_packaging_database_uses_declared_library_paths_without_modifying_input(self):
         with tempfile.TemporaryDirectory() as directory:

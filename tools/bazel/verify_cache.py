@@ -130,6 +130,16 @@ def verify(cold, hit, destination, architecture="amd64"):
             and invocations[1].get("remote_cache_read_only") is True,
             "cache proof requires a producer and a read-only consumer of the same remote cache")
     first_outputs, second_outputs = outputs(cold, architecture), outputs(hit, architecture)
+    kernel_config = invocations[0].get("kernel_config")
+    require(isinstance(kernel_config, dict) and kernel_config
+            and all(isinstance(key, str) and isinstance(value, str) for key, value in kernel_config.items())
+            and kernel_config.get("CONFIGURED_ARCH") == architecture
+            and invocations[1].get("kernel_config") == kernel_config,
+            "cache proof kernel configurations differ or are missing")
+    for found in (first_outputs, second_outputs):
+        manifest = json.loads(found[MANIFEST].read_text())
+        require(manifest.get("kernel_config") == kernel_config,
+                "kernel manifest configuration differs from invocation")
     hashes = {name: sha256(path) for name, path in first_outputs.items()}
     require(hashes == {name: sha256(path) for name, path in second_outputs.items()},
             "cached Debian packages differ from freshly compiled packages")
@@ -138,6 +148,7 @@ def verify(cold, hit, destination, architecture="amd64"):
     for name, path in second_outputs.items():
         shutil.copyfile(path, destination / name)
     receipt = {"schema": 1, "result": "passed", "architecture": architecture, "cold_compiled": True,
+               "kernel_config": kernel_config,
                "producer_kernel_runner": first["runner"], "unprivileged_build": True,
                "consumer_kernel_runner": second["runner"], "consumer_kernel_cache_hit": True,
                "kernel_compilation_skipped": True, "outputs_sha256": hashes,

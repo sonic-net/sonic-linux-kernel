@@ -34,6 +34,40 @@ ARCHITECTURES = {
 }
 
 
+
+def kernel_configuration(architecture, requested):
+    """Expand Make defaults without deciding which configurations Bazel supports."""
+    if isinstance(requested, str):
+        requested = json.loads(requested)
+    if not isinstance(requested, dict) or not all(isinstance(key, str) and isinstance(value, str)
+                                                for key, value in requested.items()):
+        raise ValueError("--kernel-config requires a JSON object of Make variable strings")
+    values = {
+        "CONFIGURED_ARCH": architecture, "CONFIGURED_PLATFORM": "vs", "BLDENV": "trixie",
+        "CROSS_BUILD_ENVIRON": "n", "MULTIARCH_QEMU_ENVIRON": "n",
+        "KERNEL_VERSION": "6.12.41", "KERNEL_ABISUFFIX": "+deb13", "KERNEL_SUBVERSION": "1",
+        "KERNEL_FEATURESET": "sonic", "ADDITIONAL_BUILD_PROFILES": "",
+        "SECURE_UPGRADE_MODE": "no_sign", "SECURE_UPGRADE_KERNEL_CAFILE": "",
+        "INCLUDE_EXTERNAL_PATCHES": "n", "EXTERNAL_KERNEL_PATCH_URL": "", "EXTERNAL_KERNEL_PATCH_LOC": "",
+    }
+    values.update(requested)
+    for key in ("CROSS_BUILD_ENVIRON", "MULTIARCH_QEMU_ENVIRON", "INCLUDE_EXTERNAL_PATCHES"):
+        values[key] = values[key] or "n"
+    values["SECURE_UPGRADE_MODE"] = values["SECURE_UPGRADE_MODE"].strip('"') or "no_sign"
+    suffix = "armmp" if values["CONFIGURED_ARCH"] == "armhf" else values["CONFIGURED_ARCH"]
+    values.setdefault("KVERSION", values["KERNEL_VERSION"] + values["KERNEL_ABISUFFIX"] + "-"
+                      + values["KERNEL_FEATURESET"] + "-" + suffix)
+    return values
+
+
+def kernel_config_option(args):
+    if not re.fullmatch(r"(?:@{1,2}[^/]+)?//[^:]*:[^:]+", args.target):
+        raise ValueError("--target must be an absolute Bazel label")
+    repository = args.target.split("//", 1)[0]
+    values = kernel_configuration(args.architecture, args.kernel_config)
+    return "--" + repository + "//tools/bazel:kernel_config=" + json.dumps(values, sort_keys=True, separators=(",", ":"))
+
+
 def native_architecture(requested=None):
     host = os.uname()
     native = next((name for name, config in ARCHITECTURES.items()
@@ -122,6 +156,7 @@ def build_commands(args, executable):
         "--sandbox_default_allow_network=false",
         "--strategy=SonicKernelBuild=" + EXECUTION_STRATEGY,
         "--host_platform=" + platform, "--platforms=" + platform,
+        kernel_config_option(args),
     ]
     if args.remote_cache:
         common += ["--remote_cache=" + args.remote_cache,
@@ -220,6 +255,7 @@ def main():
     parser.add_argument("--target", default="@sonic_linux_kernel//:kernel_packages")
     parser.add_argument("--architecture", choices=tuple(ARCHITECTURES),
                         help="native build architecture (defaults to the Linux host architecture)")
+    parser.add_argument("--kernel-config", default="{}", help="JSON object of kernel Make variables; producer validates support")
     parser.add_argument("--bazel-arg", action="append", default=[], help="additional --registry=URL only")
     parser.add_argument("--module-override", action="append", default=[], metavar="NAME=PATH")
     parser.add_argument("--java-trust-store", type=Path)
@@ -228,6 +264,7 @@ def main():
     args = parser.parse_args()
     try:
         args.architecture = native_architecture(args.architecture)
+        args.kernel_config = kernel_configuration(args.architecture, args.kernel_config)
     except ValueError as error:
         parser.error(str(error))
     if os.geteuid() == 0:
@@ -287,6 +324,7 @@ def main():
     (work / "invocation.json").write_text(json.dumps({
         "schema": 2, "target": args.target, "execution_strategy": EXECUTION_STRATEGY,
         "architecture": args.architecture, "host_machine": os.uname().machine,
+        "kernel_config": args.kernel_config,
         "uid": os.geteuid(), "bazel_version": BAZEL_VERSION,
         "bazel_url": config["bazel_url"], "bazel_sha256": config["bazel_sha256"],
         "workspace": str(workspace), "work_dir": str(work),

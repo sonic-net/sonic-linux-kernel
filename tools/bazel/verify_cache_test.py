@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import verify_cache as proof
+import build
 from deb_test_support import write_deb
 
 
@@ -30,11 +31,11 @@ def outputs_fixture(root, architecture="amd64"):
         write_deb(path)
         records.append(proof.package_record(path, architecture))
     (root / proof.MANIFEST).write_text(json.dumps({
-        "schema": 3, "architecture": architecture, "kernel_abi": proof.kernel_abi(architecture), "packages": records,
+        "schema": 3, "kernel_config": build.kernel_configuration(architecture, {}), "architecture": architecture, "kernel_abi": proof.kernel_abi(architecture), "packages": records,
     }))
     (root / "output-paths.txt").write_text("\n".join(str(root / name) for name in names + [proof.MANIFEST]))
     (root / "invocation.json").write_text(json.dumps({
-        "schema": 2, "disk_cache": None, "architecture": architecture,
+        "schema": 2, "kernel_config": build.kernel_configuration(architecture, {}), "disk_cache": None, "architecture": architecture,
         "execution_strategy": "linux-sandbox", "uid": 1001, "work_dir": str(root),
         "host_machine": {"amd64": "x86_64", "arm64": "aarch64"}[architecture],
         "remote_cache": "http://127.0.0.1:8080", "remote_cache_read_only": root.name == "hit",
@@ -74,6 +75,21 @@ class CacheProofTest(unittest.TestCase):
                 with patch.object(proof, "kernel_record", side_effect=[record(), second]):
                     with self.assertRaises(ValueError):
                         proof.verify(cold, hit, root / "evidence")
+
+    def test_rejects_changed_configurations_or_manifest_disagreement(self):
+        for filename in ("invocation.json", proof.MANIFEST):
+            with self.subTest(filename=filename), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                cold, hit = root / "cold", root / "hit"
+                for path, action in ((cold, record()), (hit, record(True, "remote cache hit"))):
+                    outputs_fixture(path)
+                    (path / "execution.json").write_text(json.dumps(action))
+                changed = hit / filename
+                data = json.loads(changed.read_text())
+                data["kernel_config"]["SECURE_UPGRADE_MODE"] = "unsupported"
+                changed.write_text(json.dumps(data))
+                with self.assertRaisesRegex(ValueError, "kernel configurations differ|manifest configuration differs"):
+                    proof.verify(cold, hit, root / "proof")
 
     def test_rejects_reusing_one_output_directory(self):
         with tempfile.TemporaryDirectory() as directory:

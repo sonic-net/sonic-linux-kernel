@@ -1,6 +1,8 @@
 load("@rules_python//python:defs.bzl", "py_test")
 load("@sonic_build_infra//tools/build_tools:defs.bzl", "python_runtime")
 
+load(":kernel.bzl", "kernel_config")
+
 package(default_visibility = ["//visibility:public"])
 
 exports_files([
@@ -9,11 +11,17 @@ exports_files([
     "stage_kernel.py",
 ])
 
+kernel_config(
+    name = "kernel_config",
+    build_setting_default = "{}",
+)
+
 python_runtime(name = "python_runtime")
 
 py_test(
     name = "kernel_action_test",
     srcs = [
+        "build.py",
         "deb_test_support.py",
         "kernel_action.py",
         "kernel_action_test.py",
@@ -26,6 +34,7 @@ py_test(
 py_test(
     name = "verify_cache_test",
     srcs = [
+        "build.py",
         "deb_test_support.py",
         "kernel_action.py",
         "kernel_arch.py",
@@ -42,6 +51,7 @@ py_test(
         "build_test.py",
     ],
     data = [
+        ":kernel.bzl",
         "//:MODULE.bazel",
         "//tools/bazel/cache-consumer:MODULE.bazel",
     ],

@@ -3,6 +3,8 @@
 
 import argparse
 import ast
+import json
+from types import SimpleNamespace
 import os
 from pathlib import Path
 import sys
@@ -20,7 +22,7 @@ def arguments(root, architecture="amd64"):
         disk_cache=None, remote_cache="http://127.0.0.1:8080", remote_cache_read_only=True,
         java_trust_store=None, ca_bundle=None, distdir=None,
         module_override=[("sonic-linux-kernel", root / "source")], bazel_arg=[],
-        target="@sonic_linux_kernel//:kernel_packages", architecture=architecture,
+        target="@sonic_linux_kernel//:kernel_packages", architecture=architecture, kernel_config="{}",
     )
 
 
@@ -49,6 +51,76 @@ class KernelLauncherTest(unittest.TestCase):
         self.assertEqual(toolchain_version(root / "MODULE.bazel"),
                          toolchain_version(root / "tools/bazel/cache-consumer/MODULE.bazel"),
                          "The cache consumer must resolve the same declared kernel toolchain as the source module")
+
+    def test_configuration_forwarding_uses_the_target_repository_for_build_and_query(self):
+        with tempfile.TemporaryDirectory() as directory:
+            args = arguments(Path(directory))
+            for target, prefix in (("//:kernel_packages", "--//"),
+                                   ("@sonic_linux_kernel//:kernel_packages", "--@sonic_linux_kernel//")):
+                args.target = target
+                # The launcher passes unsupported settings to producer analysis.
+                args.kernel_config = '{"SECURE_UPGRADE_MODE":"unsupported","CONFIGURED_ARCH":"armhf"}'
+                commands = build.build_commands(args, Path(directory) / "bazel")
+                flag = prefix + "tools/bazel:kernel_config="
+                for name in ("build", "query"):
+                    value, = [option[len(flag):] for option in commands[name] if option.startswith(flag)]
+                    config = json.loads(value)
+                    self.assertEqual(config["SECURE_UPGRADE_MODE"], "unsupported")
+                    self.assertEqual(config["CONFIGURED_ARCH"], "armhf")
+                    self.assertEqual(config["KVERSION"], "6.12.41+deb13-sonic-armmp")
+                self.assertFalse(any(":kernel_config=" in option for option in commands["graph"]))
+
+    def test_configuration_rejects_non_string_values_and_normalizes_make_false_flags(self):
+        for invalid in ('[]', '{"KERNEL_VERSION":6}', '{invalid'):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                build.kernel_configuration("amd64", invalid)
+        self.assertEqual(build.kernel_configuration("arm64", {}), build.kernel_configuration("arm64", {
+            "CROSS_BUILD_ENVIRON": "", "MULTIARCH_QEMU_ENVIRON": "", "INCLUDE_EXTERNAL_PATCHES": "",
+            "SECURE_UPGRADE_MODE": '"no_sign"',
+        }))
+        self.assertEqual(build.kernel_configuration("amd64", {}),
+                         build.kernel_configuration("amd64", {"SECURE_UPGRADE_MODE": ""}))
+
+    def test_producer_configuration_rejects_unsupported_requests_before_actions(self):
+        # Execute the maintained Starlark validation body, which uses the same
+        # language subset as Python. No duplicate capability list lives in tests.
+        source = Path(__file__).with_name("kernel.bzl")
+        tree = ast.parse(source.read_text())
+        selected = ast.Module(body=[node for node in tree.body if isinstance(node, ast.FunctionDef)
+                                    and node.name in ("kernel_configuration", "_kernel_packages_impl")], type_ignores=[])
+        def fail(message):
+            raise ValueError(message)
+        provider = object()
+        namespace = {"fail": fail, "KernelConfigInfo": provider}
+        exec(compile(selected, str(source), "exec"), namespace)
+        for architecture in ("amd64", "arm64"):
+            default = build.kernel_configuration(architecture, {})
+            self.assertEqual(namespace["kernel_configuration"](architecture, {}), default)
+            self.assertEqual(namespace["kernel_configuration"](architecture, default), default)
+            inactive = {
+                "SECURE_UPGRADE_KERNEL_CAFILE": "/nonexistent/signing/certificate.pem",
+                "EXTERNAL_KERNEL_PATCH_URL": "https://example.invalid/unused.patch",
+                "EXTERNAL_KERNEL_PATCH_LOC": "/nonexistent/kernel/patches",
+            }
+            # Disabled features retain their Make values without trying to read
+            # nonexistent certificates/patches or fetching an inactive URL.
+            accepted = namespace["kernel_configuration"](architecture, inactive)
+            self.assertEqual(accepted, dict(default, **inactive))
+            for key, value in {
+                "CONFIGURED_ARCH": "armhf", "CONFIGURED_PLATFORM": "asic", "BLDENV": "bookworm",
+                "CROSS_BUILD_ENVIRON": "y", "MULTIARCH_QEMU_ENVIRON": "y", "KERNEL_VERSION": "6.12.42",
+                "KERNEL_ABISUFFIX": "+custom", "KERNEL_SUBVERSION": "2", "KERNEL_FEATURESET": "other",
+                "KVERSION": "custom", "ADDITIONAL_BUILD_PROFILES": "nokerneldbg",
+                "SECURE_UPGRADE_MODE": "unsupported", "INCLUDE_EXTERNAL_PATCHES": "y",
+                "SOURCE_DATE_EPOCH": "0", "TYPO": "n",
+            }.items():
+                with self.subTest(architecture=architecture, key=key):
+                    # No action or tool attributes exist: rejection must happen
+                    # before the implementation attempts to declare an output.
+                    ctx = SimpleNamespace(attr=SimpleNamespace(architecture=architecture,
+                                          _kernel_config={provider: SimpleNamespace(values={key: value})}))
+                    with self.assertRaisesRegex(ValueError, "Unsupported kernel configuration.*" + key):
+                        namespace["_kernel_packages_impl"](ctx)
 
     def test_native_architecture_rejects_emulated_or_cross_configuration(self):
         for architecture, machine in (("amd64", "x86_64"), ("arm64", "aarch64")):

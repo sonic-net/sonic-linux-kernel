@@ -52,6 +52,30 @@ Debian Package/Version/Architecture fields, kinds, hashes and sizes.
 including whether it was exported. Metadata is read from actual packages with
 `dpkg-deb`. Additional generated packages remain private to the action.
 
+## Build configuration
+
+The public string setting `//tools/bazel:kernel_config` accepts a JSON object of
+kernel Make variables. `tools/bazel/build.py --kernel-config JSON` applies the same
+configuration to its build and output query, using the target's repository label.
+For example, a buildimage consumer passes `--kernel-config
+'{"CONFIGURED_ARCH":"arm64","CONFIGURED_PLATFORM":"vs","BLDENV":"trixie"}'`
+on its native ARM64 runner. The launcher expands omitted values to the defaults
+above; empty false flags become `n` and an empty signing mode becomes `no_sign`.
+Execution architecture (`--architecture`) stays separate from `CONFIGURED_ARCH`.
+
+The producer validates the requested configuration during Bazel analysis.
+Unsupported values, such as `SECURE_UPGRADE_MODE=prod`, `CONFIGURED_ARCH=armhf`,
+custom profiles, or external patches, produce `Unsupported kernel configuration`
+before kernel compilation. Consumers can select Bazel directly and forward their
+configuration without maintaining a second capability allowlist or falling back
+to Make. This interface does not add support for those configurations.
+
+The normalized configuration is a declared action input and is recorded as
+`kernel_config` in both `invocation.json` and `kernel-packages.json`. Cache proof
+checks require these records to agree in both consumers. The source timestamp
+remains pinned to Debian's changelog (`SOURCE_DATE_EPOCH=1754969284`); unknown Make
+keys are rejected rather than silently ignored.
+
 ## Local build and cache reuse
 
 Use a native Linux AMD64 or ARM64 host with unprivileged user namespaces enabled.

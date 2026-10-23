@@ -147,20 +147,20 @@ def validate_outputs(config):
             "kernel action must declare " + MANIFEST)
 
 
-def compilation_commands(architecture, source, archives):
+def compilation_commands(architecture, source, archives, kernel_config):
     """Use the same source/configuration and Debian binary recipe as Makefile."""
     validate_architecture(architecture)
     source, archives = Path(source), Path(archives)
-    kernel = source / "linux-6.12.41"
+    kernel = source / ("linux-" + kernel_config["KERNEL_VERSION"])
     return [
-        ["dpkg-source", "-x", str(archives / "linux_6.12.41-1.dsc"), str(kernel)],
+        ["dpkg-source", "-x", str(archives / ("linux_" + kernel_config["KERNEL_VERSION"] + "-" + kernel_config["KERNEL_SUBVERSION"] + ".dsc")), str(kernel)],
         ["cp", "-a", str(source / "config.local"), str(source / "patches-sonic"), str(kernel / "debian")],
         ["patch", "--batch", "--fuzz=0", "-d", str(kernel), "-p1", "-i", str(source / "patches-debian/disable-secureboot-config-checks.patch")],
         ["patch", "--batch", "--fuzz=0", "-d", str(kernel), "-p1", "-i", str(source / "patches-debian/bazel-debug-sources.patch")],
         ["patch", "--batch", "--fuzz=0", "-d", str(kernel), "-p1", "-i", str(source / "patches-debian/bazel-relocatable-tools.patch")],
-        ["bash", str(source / "manage-config"), architecture, "no_sign", ""],
+        ["bash", str(source / "manage-config"), architecture, kernel_config["SECURE_UPGRADE_MODE"], kernel_config["SECURE_UPGRADE_KERNEL_CAFILE"]],
         ["make", "-f", "debian/rules", "-f", "-", "bazel-prepare-control"],
-        ["dpkg-buildpackage", "-b", "-us", "-uc", "-Pnodoc", "-j4", "--rules-file=make -f debian/rules"],
+        ["dpkg-buildpackage", "-b", "-us", "-uc", "-P" + ",".join(filter(None, ["nodoc", kernel_config["ADDITIONAL_BUILD_PROFILES"]])), "-j4", "--rules-file=make -f debian/rules"],
     ]
 
 
@@ -188,6 +188,8 @@ def build(config):
     validate_outputs(config)
     architecture = config.get("architecture", "amd64")
     require(os.geteuid() != 0, "kernel compilation must run as an unprivileged user")
+    kernel_config = config["kernel_config"]
+    require(kernel_config["CONFIGURED_ARCH"] == architecture, "kernel configuration architecture differs from target")
     runtime = Path(config["build_tools"]).resolve(strict=True)
     marker = runtime_identity(runtime, architecture)
     # Bazel's Linux sandbox isolates the action. The declared runtime stays
@@ -223,8 +225,8 @@ def build(config):
             "KBUILD_BUILD_USER": "sonic", "KBUILD_BUILD_HOST": "kernel-builder",
             "KBUILD_BUILD_TIMESTAMP": "@" + str(SOURCE_DATE_EPOCH),
             "KBUILD_BUILD_VERSION": "1", "DEB_BUILD_OPTIONS": "parallel=4",
-            "DEB_BUILD_PROFILES": "nodoc",
-            "INCLUDE_EXTERNAL_PATCHES": "n",
+            "DEB_BUILD_PROFILES": " ".join(filter(None, ["nodoc", kernel_config["ADDITIONAL_BUILD_PROFILES"].replace(",", " ")])),
+            **kernel_config,
             "SONIC_KERNEL_DEBUG_STAGE": str(source / "tools/bazel/stage_kernel.py"),
             "SONIC_KERNEL_ARTIFACTS": str(dest),
             "SONIC_KERNEL_TOOLS": str(runtime / "bin"),
@@ -232,15 +234,16 @@ def build(config):
             "SONIC_KERNEL_PATCHELF": str(Path(config["patchelf"]).absolute()),
         }
         print("SONIC_KERNEL_COMPILATION_STARTED", flush=True)
-        kernel = source / "linux-6.12.41"
-        for index, command in enumerate(compilation_commands(architecture, source, archives)):
+        kernel = source / ("linux-" + kernel_config["KERNEL_VERSION"])
+        for index, command in enumerate(compilation_commands(architecture, source, archives, kernel_config)):
             subprocess.run(command, cwd=source if index < 5 else kernel, env=environment,
                            input=CONTROL_PREPARATION if index == 6 else None,
                            text=True, check=True)
             if index == 1:
                 configuration = kernel / "debian/config.local" / architecture
-                if (configuration / "config.sonic-vs").is_file():
-                    shutil.copyfile(configuration / "config.sonic-vs", configuration / "config.sonic-platform-specific")
+                platform_config = configuration / ("config.sonic-" + kernel_config["CONFIGURED_PLATFORM"])
+                if platform_config.is_file():
+                    shutil.copyfile(platform_config, configuration / "config.sonic-platform-specific")
         # Record every package before removing the disposable build tree. Only
         # the five declared image/debug/headers/kbuild DEBs become Bazel outputs.
         created = created_package_records(source, architecture, environment)
@@ -252,8 +255,9 @@ def build(config):
             output.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(package, output)
         manifest = {
-            "schema": 3, "architecture": architecture, "platform": "vs",
-            "kernel_version": "6.12.41", "kernel_abi": kernel_abi(architecture),
+            "schema": 3, "architecture": architecture, "platform": kernel_config["CONFIGURED_PLATFORM"],
+            "kernel_config": kernel_config,
+            "kernel_version": kernel_config["KERNEL_VERSION"], "kernel_abi": kernel_config["KVERSION"],
             "package_version": "6.12.41-1", "signing": "unsigned",
             "source_date_epoch": SOURCE_DATE_EPOCH,
             "source_archives": sorted(archive_records, key=lambda entry: entry["name"]),
