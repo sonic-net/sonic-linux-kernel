@@ -98,11 +98,18 @@ keys are rejected rather than silently ignored.
 ## Shared build tools
 
 The root build and fresh cache consumer select
-`sonic-build-infra@0.0.19-46f471185c80ac5fd758f995195a428a43e3831e`
-from the maintained SONiC registry `main`. This landed runtime provides native
-AMD64 tools and both ARM cross compilers. Both consumers use their committed
-`.bazelrc` registry settings, so source and cache validation resolve the same
-published recipe without a temporary registry override.
+`sonic-build-infra@0.0.22-a12bc826d6f811a157db5c7c02a2fe033896cc14`
+from the maintained SONiC registry `main`. CI records the current
+`main` revision for both independent cache consumers. The runtime provides
+native AMD64 tools and both ARM cross compilers.
+
+Both root configurations and the launcher select cached kernel-tool trees with
+`--remote_download_regex=(^|.*/)tools/build_tools/kernel_runtime_(amd64|arm64)(/.*)?$`.
+The root and launcher retain their existing eager download of all outputs,
+including final package artifacts. The targeted option also protects callers
+that use top-level-only downloads. Bazel does not import a dependency's
+`.bazelrc`: external consumers must carry the option in their own root or pass
+it explicitly when using `--ignore_all_rc_files`.
 
 ## Local build and cache reuse
 

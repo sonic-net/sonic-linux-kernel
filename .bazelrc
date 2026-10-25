@@ -18,3 +18,6 @@ build --strategy=SonicKernelBuild=linux-sandbox
 build --host_features=fully_static_link
 build --remote_download_outputs=all
 test --test_output=errors
+
+# Dependencies do not import their .bazelrc; select cached kernel tools here.
+build --remote_download_regex=(^|.*/)tools/build_tools/kernel_runtime_(amd64|arm64)(/.*)?$

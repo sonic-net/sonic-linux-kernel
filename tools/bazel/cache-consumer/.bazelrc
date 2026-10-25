@@ -11,3 +11,6 @@ common:cross_arm64 --host_platform=@sonic_build_infra//platforms:x86_64_trixie
 common:cross_arm64 --platforms=@sonic_build_infra//platforms:aarch64_trixie
 common:cross_armhf --host_platform=@sonic_build_infra//platforms:x86_64_trixie
 common:cross_armhf --platforms=@sonic_build_infra//platforms:armv7_trixie
+
+# Dependencies do not import their .bazelrc; select cached kernel tools here.
+build --remote_download_regex=(^|.*/)tools/build_tools/kernel_runtime_(amd64|arm64)(/.*)?$

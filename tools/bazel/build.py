@@ -166,6 +166,7 @@ def build_commands(args, executable):
         "--symlink_prefix=" + str(work / "bazel-"),
         "--disk_cache=" + (str(args.disk_cache.resolve()) if args.disk_cache else ""),
         # Materialize all declared tools before the sandbox starts.
+        "--remote_download_regex=(^|.*/)tools/build_tools/kernel_runtime_(amd64|arm64)(/.*)?$",
         "--remote_download_outputs=all", "--jobs=1",
         "--sandbox_default_allow_network=false",
         "--strategy=SonicKernelBuild=" + EXECUTION_STRATEGY,

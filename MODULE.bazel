@@ -1,12 +1,12 @@
 module(
     name = "sonic-linux-kernel",
-    version = "0.0.1",
+    version = "0.0.2",
 )
 
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "patchelf", version = "0.18.0.bcr.1")
 bazel_dep(name = "rules_python", version = "1.7.0")
-bazel_dep(name = "sonic-build-infra", version = "0.0.19-46f471185c80ac5fd758f995195a428a43e3831e", repo_name = "sonic_build_infra")
+bazel_dep(name = "sonic-build-infra", version = "0.0.22-a12bc826d6f811a157db5c7c02a2fe033896cc14", repo_name = "sonic_build_infra")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(python_version = "3.13")

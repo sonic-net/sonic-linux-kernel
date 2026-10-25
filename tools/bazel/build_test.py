@@ -158,6 +158,7 @@ class KernelLauncherTest(unittest.TestCase):
                         self.assertIn("--host_platform=@sonic_build_infra//platforms:" + platform, command)
                         self.assertIn("--platforms=@sonic_build_infra//platforms:" + platform, command)
                         self.assertIn("--disk_cache=", command)
+                        self.assertIn("--remote_download_regex=(^|.*/)tools/build_tools/kernel_runtime_(amd64|arm64)(/.*)?$", command)
                         self.assertIn("--remote_upload_local_results=false", command)
                     graph = commands["graph"]
                     self.assertIn("--override_module=sonic-linux-kernel=" + str(root / "source"), graph)
@@ -176,6 +177,7 @@ class KernelLauncherTest(unittest.TestCase):
                     self.assertIn("--host_platform=@sonic_build_infra//platforms:x86_64_trixie", command)
                     self.assertIn("--platforms=@sonic_build_infra//platforms:" + platform, command)
                     self.assertIn("--strategy=SonicKernelBuild=linux-sandbox", command)
+                    self.assertIn("--remote_download_regex=(^|.*/)tools/build_tools/kernel_runtime_(amd64|arm64)(/.*)?$", command)
                     setting = "--@sonic_linux_kernel//tools/bazel:kernel_config="
                     config, = [json.loads(value[len(setting):]) for value in command if value.startswith(setting)]
                     self.assertEqual(config["CROSS_BUILD_ENVIRON"], "y")
@@ -222,7 +224,8 @@ class KernelLauncherTest(unittest.TestCase):
             args.workspace.mkdir()
             original = ("# workspace policy\ncommon --registry=https://registry.test/main --enable_bzlmod\n"
                         "common --registry=https://bcr.bazel.build\n"
-                        "build --sandbox_default_allow_network=false\n")
+                        "build --sandbox_default_allow_network=false\n"
+                        "build --remote_download_regex=(^|.*/)tools/build_tools/kernel_runtime_(amd64|arm64)(/.*)?$\n")
             (args.workspace / ".bazelrc").write_text(original)
             self.assertIsNone(build.selected_bazelrc(args))
             default = build.build_commands(args, Path(directory) / "bazel")
@@ -233,6 +236,7 @@ class KernelLauncherTest(unittest.TestCase):
                              ["common " + value for value in args.bazel_arg])
             self.assertIn("common --enable_bzlmod", selected)
             self.assertIn("build --sandbox_default_allow_network=false", selected)
+            self.assertIn("build --remote_download_regex=(^|.*/)tools/build_tools/kernel_runtime_(amd64|arm64)(/.*)?$", selected)
             self.assertEqual((args.workspace / ".bazelrc").read_text(), original)
             (args.workspace / ".bazelrc").write_text("import /tmp/extra.bazelrc\n" + original)
             with self.assertRaisesRegex(ValueError, "without imports"):
