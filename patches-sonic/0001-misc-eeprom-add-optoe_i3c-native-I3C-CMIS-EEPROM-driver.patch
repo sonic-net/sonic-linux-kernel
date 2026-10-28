@@ -1,0 +1,1048 @@
+misc: eeprom: Add optoe_i3c, native-I3C CMIS EEPROM driver
+
+Add optoe_i3c, an I3C sibling of the optoe driver, for optical
+transceivers that expose a native I3C management interface
+(single-address, paged CMIS: QSFP-DD / OSFP).
+
+The CMIS lower/upper page and bank state machine and the "eeprom" sysfs
+ABI are kept from optoe. At the bus level, the I2C combined transfers
+are replaced by I3C SDR private transfers issued through
+i3c_device_do_priv_xfers(), and a transceiver is matched by the
+Provisioned ID (PID) written to the driver's new_id attribute before
+targets are enumerated. Legacy two-address SFP optics have no native
+single-device I3C analogue and are not handled.
+
+Matching IDs are not compiled in. new_id must be populated before the
+I3C master runs DAA (dynamic address assignment): targets are bound as
+they are enumerated, so IDs written afterwards will not match devices
+that were already added. Write the manufacturer ID, optionally followed
+by the part ID, to new_id before the master is registered:
+
+  # manuf only: matches any part from that vendor
+  echo 0x1abc > /sys/bus/i3c/drivers/optoe_i3c/new_id
+
+  # manuf + part: matches that specific part only
+  echo 0x1abc 0x5678 > /sys/bus/i3c/drivers/optoe_i3c/new_id
+
+  # show the programmed IDs
+  cat /sys/bus/i3c/drivers/optoe_i3c/new_id
+
+The PID instance bits (15:12) are not compared. Once bound, the module
+EEPROM is exposed at /sys/bus/i3c/devices/<bus>-<pid>/eeprom.
+
+* Add drivers/misc/eeprom/optoe_i3c.c
+* Add Kconfig entry EEPROM_OPTOE_I3C (depends on I3C && SYSFS)
+* Build optoe_i3c from drivers/misc/eeprom/Makefile
+
+Signed-off-by: Pavan Naregundi <pnaregundi@marvell.com>
+--- a/drivers/misc/eeprom/Kconfig
++++ b/drivers/misc/eeprom/Kconfig
+@@ -137,4 +137,23 @@ config EEPROM_OPTOE
+ 
+ 	  If unsure, say N.
+ 
++config EEPROM_OPTOE_I3C
++	tristate "read/write access to native-I3C SFP*/QSFP* EEPROMs"
++	depends on I3C && SYSFS
++	help
++	  If you say yes here you get support for read and write access to the
++	  EEPROM/register space of optical transceivers that present a native
++	  I3C management interface (single-address, paged CMIS/QSFP-DD/OSFP
++	  modules). This is the I3C sibling of the optoe (I2C) driver: devices
++	  are matched by Provisioned ID and the EEPROM is exported at
++	  /sys/bus/i3c/devices/<bus>-<pid>/eeprom.
++
++	  This driver only manages read/write access to the EEPROM, all other
++	  features should be accessed via the I3C bus directly.
++
++	  This driver can also be built as a module.  If so, the module
++	  will be called optoe_i3c.
++
++	  If unsure, say N.
++
+ endmenu
+--- a/drivers/misc/eeprom/Makefile
++++ b/drivers/misc/eeprom/Makefile
+@@ -9,3 +9,4 @@ obj-$(CONFIG_EEPROM_IDT_89HPESX) += idt_
+ obj-$(CONFIG_EEPROM_EE1004)	+= ee1004.o
+ obj-$(CONFIG_EEPROM_SFF_8436)	+= sff_8436_eeprom.o
+ obj-$(CONFIG_EEPROM_OPTOE)	+= optoe.o
++obj-$(CONFIG_EEPROM_OPTOE_I3C)	+= optoe_i3c.o
+--- /dev/null
++++ b/drivers/misc/eeprom/optoe_i3c.c
+@@ -0,0 +1,975 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * optoe_i3c.c - read/write the EEPROM/register space of optical transceivers
++ * that present a native I3C management interface (single-address, paged
++ * CMIS modules (QSFP-DD / OSFP)).
++ *
++ * Copyright (C) 2026 Marvell International Ltd. and its affiliates
++ *
++ * Standalone I3C fork of optoe.c:
++ *   Copyright (C) 2014 Cumulus Networks Inc.
++ *   Copyright (C) 2017 Finisar Corp.
++ *
++ * The proven CMIS/QSFP-DD Lower/Upper page + bank state machine and the
++ * "eeprom" sysfs ABI are preserved from optoe. The changes are at the bus
++ * level: instead of I2C combined transfers (write offset, read N bytes) this
++ * driver issues I3C SDR private transfers via i3c_device_do_priv_xfers(), and
++ * the transceiver is matched by Provisioned IDs written to the driver
++ * new_id attribute before targets are enumerated. Legacy
++ * two-address SFP optics (I2C 0x50/0x51) have no native single-device I3C
++ * analogue and are intentionally NOT handled here.
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the Free
++ * Software Foundation; either version 2 of the License, or (at your option)
++ * any later version.
++ */
++
++#include <linux/kernel.h>
++#include <linux/init.h>
++#include <linux/module.h>
++#include <linux/slab.h>
++#include <linux/delay.h>
++#include <linux/mutex.h>
++#include <linux/sysfs.h>
++#include <linux/device.h>
++#include <linux/jiffies.h>
++#include <linux/types.h>
++#include <linux/mod_devicetable.h>
++#include <linux/i3c/device.h>
++#include <linux/i3c/master.h>
++
++/* The maximum length of a port name */
++#define MAX_PORT_NAME_LEN 20
++
++/* fundamental unit of addressing for EEPROM */
++#define OPTOE_PAGE_SIZE 128
++
++/*
++ * By default, banked pages are not supported (max_bank_size = 0), which limits
++ * the maximum linear address space to 256 pages. When max_bank_size is greater
++ * than 0, access to additional banked pages is supported, with the total
++ * address space increasing by 256 pages (32KB) for each additional bank.
++ */
++#define OPTOE_DEFAULT_BANK_SIZE       0
++
++/*
++ * CMIS single-address optics have 256 pages, plus the unpaged low 128 bytes.
++ * If the device does not support paging, it is only 2 'pages' long.
++ */
++#define OPTOE_ARCH_PAGES 256
++#define ONE_ADDR_EEPROM_UNPAGED_SIZE (2 * OPTOE_PAGE_SIZE)
++
++/* a few constants to find our way around the EEPROM */
++#define OPTOE_BANK_SELECT_REG   0x7E
++#define OPTOE_PAGE_SELECT_REG   0x7F
++#define ONE_ADDR_PAGEABLE_REG 0x02
++#define CMIS_NOT_PAGEABLE (1 << 7)
++#define OPTOE_READ_OP 0
++#define OPTOE_WRITE_OP 1
++#define OPTOE_EOF 0  /* used for access beyond end of device */
++
++/*
++ * dev_class mirrors optoe's value.  This native-I3C driver supports only CMIS
++ * single-address optics; SFF-8636 QSFP (ONE_ADDR) and two-address SFP are
++ * deliberately absent.
++ *   CMIS_ADDR (3) - CMIS style pageable bit (byte 2, bit 7)
++ */
++#define CMIS_ADDR 3
++
++/*
++ * specs often allow 5 msec for a page write, sometimes 20 msec;
++ * it's important to recover from write timeouts.
++ */
++#define OPTOE_DEFAULT_WRITE_TIMEOUT 25
++#define OPTOE_MAX_SUPPORTED_WRITE_TIMEOUT 500
++
++/*
++ * Cap the size of a single bus transfer.  Forced to a power of two so writes
++ * align on pages.
++ */
++static unsigned int io_limit = OPTOE_PAGE_SIZE;
++
++struct optoe_data {
++	struct i3c_device *i3cdev;
++	char port_name[MAX_PORT_NAME_LEN];
++
++	/*
++	 * Lock protects against activities from other Linux tasks, and
++	 * serialises use of the per-device transfer scratch buffers below.
++	 */
++	struct mutex lock;
++	struct bin_attribute bin;
++	struct attribute_group attr_group;
++
++	/*
++	 * Scratch buffers for I3C SDR private transfers (kmalloc is sufficient:
++	 * the platform amd-i3c-master copies via CPU to/from XI3C WR/RD FIFO
++	 * MMIO registers; it does not DMA from host RAM).  writebuf holds the
++	 * 1-byte offset followed by up to a page of write payload; readbuf is
++	 * the read bounce buffer.  Both are used only under ->lock.
++	 */
++	u8 *writebuf;
++	u8 *readbuf;
++	unsigned int write_max;
++	unsigned int write_timeout;
++	unsigned int max_bank_size; /* 0 => banked pages unsupported */
++
++	/*
++	 * Indicates if page restore has failed.  If true, the driver doesn't
++	 * skip writing to the page select register even for accesses to page 0.
++	 */
++	bool page_restore_failed;
++
++	/* dev_class: always CMIS_ADDR (the only supported class) */
++	int dev_class;
++};
++
++/*
++ * IDs are not compiled in. PDDF writes "manuf" or "manuf part" to the driver
++ * new_id attribute before the I3C master is created, so the table is populated
++ * before DAA adds targets and the core tries to bind them. part_id is
++ * optional: a manuf-only entry matches any part of that vendor.
++ * Instance ID (PID bits 15:12) is not compared. Every bound target is
++ * CMIS_ADDR, the only supported class.
++ *
++ * Sysfs: /sys/bus/i3c/drivers/optoe_i3c/new_id (write -> new_id_store,
++ * read -> new_id_show). Example (after modprobe optoe_i3c):
++ *
++ *   # manuf only (matches any part from that vendor)
++ *   echo 0x1abc > /sys/bus/i3c/drivers/optoe_i3c/new_id
++ *
++ *   # manuf + part
++ *   echo 0x1abc 0x5678 > /sys/bus/i3c/drivers/optoe_i3c/new_id
++ *
++ *   # show programmed IDs
++ *   cat /sys/bus/i3c/drivers/optoe_i3c/new_id
++ */
++#define OPTOE_I3C_MAX_IDS 16
++
++static struct i3c_device_id optoe_i3c_ids[OPTOE_I3C_MAX_IDS + 1];
++static int optoe_i3c_nids;
++static DEFINE_MUTEX(optoe_i3c_id_lock);
++static struct i3c_driver optoe_i3c_driver;
++
++static ssize_t new_id_show(struct device_driver *drv, char *buf)
++{
++	ssize_t len = 0;
++	int i;
++
++	mutex_lock(&optoe_i3c_id_lock);
++	for (i = 0; i < optoe_i3c_nids; i++) {
++		if (optoe_i3c_ids[i].match_flags & I3C_MATCH_PART)
++			len += scnprintf(buf + len, PAGE_SIZE - len,
++					 "%04x %04x\n",
++					 optoe_i3c_ids[i].manuf_id,
++					 optoe_i3c_ids[i].part_id);
++		else
++			len += scnprintf(buf + len, PAGE_SIZE - len,
++					 "%04x\n",
++					 optoe_i3c_ids[i].manuf_id);
++	}
++	mutex_unlock(&optoe_i3c_id_lock);
++	return len;
++}
++
++static ssize_t new_id_store(struct device_driver *drv, const char *buf,
++			    size_t count)
++{
++	unsigned int manuf, part = 0, match_flags;
++	int n, i;
++
++	/*
++	 * Accept "<manuf>" or "<manuf> <part>". part_id is optional: a
++	 * manuf-only entry matches any part of that vendor (I3C_MATCH_MANUF),
++	 * which lets PDDF bind optics whose part id is unspecified.
++	 */
++	n = sscanf(buf, "%x %x", &manuf, &part);
++	if (n < 1)
++		return -EINVAL;
++	if (manuf > 0x7fff)
++		return -EINVAL;
++	if (n >= 2) {
++		if (part > 0xffff)
++			return -EINVAL;
++		match_flags = I3C_MATCH_MANUF | I3C_MATCH_PART;
++	} else {
++		part = 0;
++		match_flags = I3C_MATCH_MANUF;
++	}
++
++	mutex_lock(&optoe_i3c_id_lock);
++	for (i = 0; i < optoe_i3c_nids; i++) {
++		if (optoe_i3c_ids[i].match_flags == match_flags &&
++		    optoe_i3c_ids[i].manuf_id == manuf &&
++		    (!(match_flags & I3C_MATCH_PART) ||
++		     optoe_i3c_ids[i].part_id == part)) {
++			mutex_unlock(&optoe_i3c_id_lock);
++			return count;
++		}
++	}
++	if (optoe_i3c_nids >= OPTOE_I3C_MAX_IDS) {
++		mutex_unlock(&optoe_i3c_id_lock);
++		return -ENOMEM;
++	}
++
++	optoe_i3c_ids[optoe_i3c_nids].manuf_id = manuf;
++	optoe_i3c_ids[optoe_i3c_nids].part_id = part;
++	/*
++	 * Match walks until match_flags == 0. Publish the flags last so a
++	 * concurrent bind cannot observe a half-filled entry.
++	 */
++	smp_wmb();
++	optoe_i3c_ids[optoe_i3c_nids].match_flags = match_flags;
++	optoe_i3c_nids++;
++	mutex_unlock(&optoe_i3c_id_lock);
++
++	/* Bind targets that were enumerated before this ID was added. */
++	driver_attach(&optoe_i3c_driver.driver);
++	return count;
++}
++static DRIVER_ATTR_RW(new_id);
++
++static uint32_t one_addr_eeprom_size_with_bank(uint32_t max_bank_size)
++{
++	max_bank_size = max_bank_size == 0 ? 1 : max_bank_size;
++	return (max_bank_size * OPTOE_ARCH_PAGES + 1) * OPTOE_PAGE_SIZE;
++}
++
++/*-------------------------------------------------------------------------*/
++/*
++ * Compute the addressing information for a given r/w request: the bank, the
++ * page, and the physical offset within the mapped 256-byte window.
++ *
++ * Single-address only (no client switching).  Offsets 0-127 live in the Lower
++ * Page (never paged).  Offsets >= 128 are mapped into 128-byte pages of the
++ * Upper Page area, organised as banks of 256 pages each.
++ *
++ * Callers must not read/write beyond the end of a page without recomputing
++ * the page. Hence offset (within page) plus length must be <= 128.
++ */
++static uint8_t optoe_translate_offset(struct optoe_data *optoe,
++		loff_t *offset, uint8_t *bank)
++{
++	unsigned int page = 0;
++	loff_t offset_in_paged_area;
++	const size_t bytes_per_bank = OPTOE_ARCH_PAGES * OPTOE_PAGE_SIZE;
++
++	/*
++	 * if offset is in the range 0-127, page doesn't matter (Lower Page),
++	 * return 0.  offset is already correct.
++	 */
++	if (*offset < OPTOE_PAGE_SIZE)
++		return page;
++
++	offset_in_paged_area = *offset - OPTOE_PAGE_SIZE;
++	*bank = offset_in_paged_area / bytes_per_bank;
++	page = (offset_in_paged_area / OPTOE_PAGE_SIZE) % OPTOE_ARCH_PAGES;
++	*offset = OPTOE_PAGE_SIZE + (offset_in_paged_area % OPTOE_PAGE_SIZE);
++
++	return page; /* also returning bank and offset */
++}
++
++static ssize_t optoe_eeprom_read(struct optoe_data *optoe,
++		    char *buf, unsigned int offset, size_t count)
++{
++	struct i3c_device *i3cdev = optoe->i3cdev;
++	struct i3c_priv_xfer xfers[2];
++	unsigned long timeout, read_time;
++	int status;
++
++	if (count > io_limit)
++		count = io_limit;
++
++	/*
++	 * Combined I3C SDR transfer: write the 1-byte offset, then read up to
++	 * io_limit data bytes.  The offset lives in writebuf and the data is
++	 * read into readbuf (see optoe_data buffer comment).
++	 */
++	optoe->writebuf[0] = offset;
++
++	memset(xfers, 0, sizeof(xfers));
++	xfers[0].rnw = false;
++	xfers[0].len = 1;
++	xfers[0].data.out = optoe->writebuf;
++	xfers[1].rnw = true;
++	xfers[1].len = count;
++	xfers[1].data.in = optoe->readbuf;
++
++	/*
++	 * Reads fail if the previous write didn't complete yet. We may loop a
++	 * few times until this one succeeds, waiting at least long enough for
++	 * one entire page write to work.
++	 */
++	timeout = jiffies + msecs_to_jiffies(optoe->write_timeout);
++	do {
++		read_time = jiffies;
++
++		status = i3c_device_do_priv_xfers(i3cdev, xfers, 2);
++		if (status == 0) {
++			memcpy(buf, optoe->readbuf, count);
++			status = count;
++		}
++
++		dev_dbg(&i3cdev->dev, "eeprom read %zu@%d --> %d (%ld)\n",
++				count, offset, status, jiffies);
++
++		if (status == count)  /* happy path */
++			return count;
++
++		/* NACK / no target: no device present */
++		if (status == -EIO)
++			return status;
++
++		/* REVISIT: at HZ=100, this is sloooow */
++		usleep_range(1000, 2000);
++	} while (time_before(read_time, timeout));
++
++	return -ETIMEDOUT;
++}
++
++static ssize_t optoe_eeprom_write(struct optoe_data *optoe,
++				const char *buf,
++				unsigned int offset, size_t count)
++{
++	struct i3c_device *i3cdev = optoe->i3cdev;
++	struct i3c_priv_xfer xfer;
++	ssize_t status;
++	unsigned long timeout, write_time;
++	unsigned int next_page_start;
++
++	/* write max is at most a page (write_max is often just one byte) */
++	if (count > optoe->write_max)
++		count = optoe->write_max;
++
++	/* shorten count if necessary to avoid crossing page boundary */
++	next_page_start = roundup(offset + 1, OPTOE_PAGE_SIZE);
++	if (offset + count > next_page_start)
++		count = next_page_start - offset;
++
++	/*
++	 * Single I3C SDR write: [offset][data...] in writebuf.
++	 */
++	optoe->writebuf[0] = offset;
++	memcpy(&optoe->writebuf[1], buf, count);
++
++	memset(&xfer, 0, sizeof(xfer));
++	xfer.rnw = false;
++	xfer.len = count + 1;
++	xfer.data.out = optoe->writebuf;
++
++	/*
++	 * Reads fail if the previous write didn't complete yet. We may loop a
++	 * few times until this one succeeds, waiting at least long enough for
++	 * one entire page write to work.
++	 */
++	timeout = jiffies + msecs_to_jiffies(optoe->write_timeout);
++	do {
++		write_time = jiffies;
++
++		status = i3c_device_do_priv_xfers(i3cdev, &xfer, 1);
++		if (status == 0)
++			status = count;
++
++		dev_dbg(&i3cdev->dev, "eeprom write %zu@%d --> %ld (%lu)\n",
++				count, offset, (long int)status, jiffies);
++
++		if (status == count)
++			return count;
++
++		/* NACK / no target: no device present */
++		if (status == -EIO)
++			return status;
++
++		/* REVISIT: at HZ=100, this is sloooow */
++		usleep_range(1000, 2000);
++	} while (time_before(write_time, timeout));
++
++	return -ETIMEDOUT;
++}
++
++static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
++				char *buf, loff_t off,
++				size_t count, int opcode)
++{
++	struct i3c_device *i3cdev = optoe->i3cdev;
++	ssize_t retval = 0;
++	uint8_t page = 0, bank = 0;
++	loff_t phy_offset = off;
++	int ret = 0;
++
++	page = optoe_translate_offset(optoe, &phy_offset, &bank);
++	dev_dbg(&i3cdev->dev,
++		"%s off %lld bank:%d page:%d phy_offset:%lld, count:%ld, opcode:%d\n",
++		__func__, off, bank, page, phy_offset, (long int)count, opcode);
++	if (optoe->page_restore_failed || page > 0) {
++		/*
++		 * CMIS 5.3 8.2.15 Page Mapping
++		 *
++		 * For an arbitrary Page Address change or for just a Bank Index
++		 * change, a host must write both BankSelect and PageSelect in
++		 * one WRITE access, even if the PageSelect value does not
++		 * change. The module does not begin processing the BankSelect
++		 * value until after the PageSelect register has been written.
++		 *
++		 * For just a Page Index change (mapping another Page in the
++		 * current Bank), or for mapping an arbitrary unbanked Page to
++		 * Upper Memory, a host may WRITE only the PageSelect Byte.
++		 */
++		if (bank > 0) {
++			char sel[2] = {bank, page};
++			unsigned int write_max_orig = optoe->write_max;
++
++			optoe->write_max = 2; /* bank and page written together */
++			ret = optoe_eeprom_write(optoe, sel,
++				OPTOE_BANK_SELECT_REG, 2);
++			optoe->write_max = write_max_orig;
++		} else {
++			ret = optoe_eeprom_write(optoe, &page,
++				OPTOE_PAGE_SELECT_REG, 1);
++		}
++		if (ret < 0) {
++			dev_dbg(&i3cdev->dev,
++				"Write page register for bank %d, page %d failed ret:%d!\n",
++					bank, page, ret);
++			return ret;
++		}
++		optoe->page_restore_failed = false;
++	}
++
++	while (count) {
++		ssize_t	status;
++
++		if (opcode == OPTOE_READ_OP) {
++			status = optoe_eeprom_read(optoe, buf, phy_offset, count);
++		} else {
++			status = optoe_eeprom_write(optoe, buf, phy_offset, count);
++		}
++		if (status <= 0) {
++			if (retval == 0)
++				retval = status;
++			break;
++		}
++		buf += status;
++		phy_offset += status;
++		count -= status;
++		retval += status;
++	}
++
++	if (page > 0) {
++		if (bank > 0) {
++			char sel[2] = {0, 0};
++			unsigned int write_max_orig = optoe->write_max;
++
++			optoe->write_max = 2; /* bank and page written together */
++			ret = optoe_eeprom_write(optoe, sel,
++				OPTOE_BANK_SELECT_REG, 2);
++			optoe->write_max = write_max_orig;
++		} else {
++			page = 0;
++			ret = optoe_eeprom_write(optoe, &page,
++				OPTOE_PAGE_SELECT_REG, 1);
++		}
++		if (ret < 0) {
++			dev_err(&i3cdev->dev,
++				"Restore bank, page register to (0, 0) failed:%d!\n", ret);
++			optoe->page_restore_failed = true;
++
++			/* error only if nothing has been transferred */
++			if (retval == 0)
++				retval = ret;
++		}
++	}
++	return retval;
++}
++
++/*
++ * Figure out if this access is within the range of supported pages.
++ * Note this is called on every access because we don't know if the module has
++ * been replaced since the last call.
++ *
++ * Returns updated len for this access:
++ *     - entire access is legal, original len is returned.
++ *     - access begins legal but is too long, len is truncated to fit.
++ *     - initial offset exceeds supported pages, return OPTOE_EOF (zero)
++ */
++static ssize_t optoe_page_legal(struct optoe_data *optoe,
++		loff_t off, size_t len)
++{
++	struct i3c_device *i3cdev = optoe->i3cdev;
++	u8 regval;
++	int not_pageable;
++	int status;
++	size_t maxlen;
++
++	if (off < 0)
++		return -EINVAL;
++
++	/* CMIS case: if no pages needed, we're good */
++	if ((off + len) <= ONE_ADDR_EEPROM_UNPAGED_SIZE)
++		return len;
++
++	maxlen = one_addr_eeprom_size_with_bank(optoe->max_bank_size);
++	/* if offset exceeds possible pages, we're not good */
++	if (off >= maxlen)
++		return OPTOE_EOF;
++	/* in between, are pages supported? */
++	status = optoe_eeprom_read(optoe, &regval, ONE_ADDR_PAGEABLE_REG, 1);
++	if (status < 0)
++		return status;  /* error out (no module?) */
++
++	/* CMIS single-address optic: the pageable flag is byte 2, bit 7. */
++	not_pageable = CMIS_NOT_PAGEABLE;
++	dev_dbg(&i3cdev->dev,
++		"Paging Register: 0x%x; not_pageable mask: 0x%x\n",
++		regval, not_pageable);
++
++	if (regval & not_pageable) {
++		/* pages not supported, trim len to unpaged size */
++		if (off >= ONE_ADDR_EEPROM_UNPAGED_SIZE)
++			return OPTOE_EOF;
++		maxlen = ONE_ADDR_EEPROM_UNPAGED_SIZE - off;
++	} else {
++		/* Pages supported, trim len to the end of pages */
++		maxlen = maxlen - off;
++	}
++	len = (len > maxlen) ? maxlen : len;
++	dev_dbg(&i3cdev->dev,
++		"page_legal, CMIS, off %lld len %ld\n",
++		off, (long int)len);
++	return len;
++}
++
++static ssize_t optoe_read_write(struct optoe_data *optoe,
++		char *buf, loff_t off, size_t len, int opcode)
++{
++	struct i3c_device *i3cdev = optoe->i3cdev;
++	int chunk;
++	int status = 0;
++	ssize_t retval;
++	size_t pending_len = 0, chunk_len = 0;
++	loff_t chunk_offset = 0, chunk_start_offset = 0;
++	loff_t chunk_end_offset = 0;
++
++	dev_dbg(&i3cdev->dev,
++		"%s: off %lld  len:%ld, opcode:%s\n",
++		__func__, off, (long int)len,
++		(opcode == OPTOE_READ_OP) ? "r" : "w");
++	if (unlikely(!len))
++		return len;
++
++	/*
++	 * Read data from chip, protecting against concurrent updates from this
++	 * host, but not from other I3C masters.
++	 */
++	mutex_lock(&optoe->lock);
++
++	/*
++	 * Confirm this access fits within the device supported addr range
++	 */
++	status = optoe_page_legal(optoe, off, len);
++	if ((status == OPTOE_EOF) || (status < 0)) {
++		mutex_unlock(&optoe->lock);
++		return status;
++	}
++	len = status;
++
++	/*
++	 * For each (128 byte) chunk involved in this request, issue a separate
++	 * call to optoe_eeprom_update_client(), to ensure that each access
++	 * recalculates the page and writes the page register as needed.
++	 */
++	pending_len = len; /* amount remaining to transfer */
++	retval = 0;  /* amount transferred */
++	for (chunk = off >> 7; chunk <= (off + len - 1) >> 7; chunk++) {
++
++		/*
++		 * Compute the offset and number of bytes to be read/write
++		 *
++		 * 1. start at an offset not equal to 0 (within the chunk)
++		 *    and read/write less than the rest of the chunk
++		 * 2. start at an offset not equal to 0 and read/write the rest
++		 *    of the chunk
++		 * 3. start at offset 0 (within the chunk) and read/write less
++		 *    than entire chunk
++		 * 4. start at offset 0 (within the chunk), and read/write
++		 *    the entire chunk
++		 */
++		chunk_start_offset = chunk * OPTOE_PAGE_SIZE;
++		chunk_end_offset = chunk_start_offset + OPTOE_PAGE_SIZE;
++
++		if (chunk_start_offset < off) {
++			chunk_offset = off;
++			if ((off + pending_len) < chunk_end_offset)
++				chunk_len = pending_len;
++			else
++				chunk_len = chunk_end_offset - off;
++		} else {
++			chunk_offset = chunk_start_offset;
++			if (pending_len < OPTOE_PAGE_SIZE)
++				chunk_len = pending_len;
++			else
++				chunk_len = OPTOE_PAGE_SIZE;
++		}
++
++		dev_dbg(&i3cdev->dev,
++			"read_write: off %lld, len %ld, chunk_start_offset %lld, chunk_offset %lld, chunk_len %ld, pending_len %ld\n",
++			off, (long int)len, chunk_start_offset, chunk_offset,
++			(long int)chunk_len, (long int)pending_len);
++
++		/*
++		 * note: chunk_offset is from the start of the EEPROM, not the
++		 * start of the chunk
++		 */
++		status = optoe_eeprom_update_client(optoe, buf,
++				chunk_offset, chunk_len, opcode);
++		if (status != chunk_len) {
++			/* This is another 'no device present' path */
++			dev_dbg(&i3cdev->dev,
++			"o_u_c: chunk %d c_offset %lld c_len %ld failed %d!\n",
++			chunk, chunk_offset, (long int)chunk_len, status);
++			if (status > 0)
++				retval += status;
++			if (retval == 0)
++				retval = status;
++			break;
++		}
++		buf += status;
++		pending_len -= status;
++		retval += status;
++	}
++	mutex_unlock(&optoe->lock);
++
++	return retval;
++}
++
++static ssize_t optoe_bin_read(struct file *filp, struct kobject *kobj,
++		struct bin_attribute *attr,
++		char *buf, loff_t off, size_t count)
++{
++	struct device *dev = kobj_to_dev(kobj);
++	struct optoe_data *optoe = dev_get_drvdata(dev);
++
++	return optoe_read_write(optoe, buf, off, count, OPTOE_READ_OP);
++}
++
++static ssize_t optoe_bin_write(struct file *filp, struct kobject *kobj,
++		struct bin_attribute *attr,
++		char *buf, loff_t off, size_t count)
++{
++	struct device *dev = kobj_to_dev(kobj);
++	struct optoe_data *optoe = dev_get_drvdata(dev);
++
++	return optoe_read_write(optoe, buf, off, count, OPTOE_WRITE_OP);
++}
++
++static ssize_t show_dev_write_max_size(struct device *dev,
++			struct device_attribute *dattr, char *buf)
++{
++	struct optoe_data *optoe = dev_get_drvdata(dev);
++	ssize_t count;
++
++	mutex_lock(&optoe->lock);
++	count = sprintf(buf, "%u\n", optoe->write_max);
++	mutex_unlock(&optoe->lock);
++
++	return count;
++}
++
++static ssize_t set_dev_write_max_size(struct device *dev,
++			struct device_attribute *attr,
++			const char *buf, size_t count)
++{
++	struct optoe_data *optoe = dev_get_drvdata(dev);
++	int write_max_size;
++
++	if (kstrtouint(buf, 0, &write_max_size) != 0 ||
++		write_max_size < 1 || write_max_size > OPTOE_PAGE_SIZE)
++		return -EINVAL;
++
++	mutex_lock(&optoe->lock);
++	optoe->write_max = write_max_size;
++	mutex_unlock(&optoe->lock);
++
++	return count;
++}
++
++static ssize_t show_dev_write_timeout_size(struct device *dev,
++			struct device_attribute *dattr, char *buf)
++{
++	struct optoe_data *optoe = dev_get_drvdata(dev);
++	ssize_t count;
++
++	mutex_lock(&optoe->lock);
++	count = sprintf(buf, "%u\n", optoe->write_timeout);
++	mutex_unlock(&optoe->lock);
++
++	return count;
++}
++
++static ssize_t set_dev_write_timeout_size(struct device *dev,
++			struct device_attribute *attr,
++			const char *buf, size_t count)
++{
++	struct optoe_data *optoe = dev_get_drvdata(dev);
++	unsigned int write_timeout_size;
++
++	if (kstrtouint(buf, 0, &write_timeout_size) != 0 ||
++		write_timeout_size > OPTOE_MAX_SUPPORTED_WRITE_TIMEOUT)
++		return -EINVAL;
++
++	mutex_lock(&optoe->lock);
++	optoe->write_timeout = write_timeout_size;
++	mutex_unlock(&optoe->lock);
++
++	return count;
++}
++
++static ssize_t show_dev_class(struct device *dev,
++			struct device_attribute *dattr, char *buf)
++{
++	struct optoe_data *optoe = dev_get_drvdata(dev);
++	ssize_t count;
++
++	mutex_lock(&optoe->lock);
++	count = sprintf(buf, "%d\n", optoe->dev_class);
++	mutex_unlock(&optoe->lock);
++
++	return count;
++}
++
++static ssize_t set_dev_class(struct device *dev,
++			struct device_attribute *attr,
++			const char *buf, size_t count)
++{
++	struct optoe_data *optoe = dev_get_drvdata(dev);
++	int dev_class;
++
++	/*
++	 * This native-I3C driver supports only CMIS single-address optics, so
++	 * "3" (CMIS) is the only accepted dev_class.
++	 */
++	if (kstrtoint(buf, 0, &dev_class) != 0 || dev_class != CMIS_ADDR)
++		return -EINVAL;
++
++	mutex_lock(&optoe->lock);
++	optoe->bin.size = one_addr_eeprom_size_with_bank(optoe->max_bank_size);
++	optoe->dev_class = dev_class;
++	mutex_unlock(&optoe->lock);
++
++	return count;
++}
++
++static ssize_t show_port_name(struct device *dev,
++			struct device_attribute *dattr, char *buf)
++{
++	struct optoe_data *optoe = dev_get_drvdata(dev);
++	ssize_t count;
++
++	mutex_lock(&optoe->lock);
++	count = sprintf(buf, "%s\n", optoe->port_name);
++	mutex_unlock(&optoe->lock);
++
++	return count;
++}
++
++static ssize_t set_port_name(struct device *dev,
++			struct device_attribute *attr,
++			const char *buf, size_t count)
++{
++	struct optoe_data *optoe = dev_get_drvdata(dev);
++	char port_name[MAX_PORT_NAME_LEN];
++
++	/* no checking, this value is not used except by show_port_name */
++	if (sscanf(buf, "%19s", port_name) != 1)
++		return -EINVAL;
++
++	mutex_lock(&optoe->lock);
++	strscpy(optoe->port_name, port_name, MAX_PORT_NAME_LEN);
++	mutex_unlock(&optoe->lock);
++
++	return count;
++}
++
++static ssize_t show_max_bank_size(struct device *dev,
++			struct device_attribute *dattr, char *buf)
++{
++	struct optoe_data *optoe = dev_get_drvdata(dev);
++	ssize_t count;
++
++	mutex_lock(&optoe->lock);
++	count = sprintf(buf, "%u\n", optoe->max_bank_size);
++	mutex_unlock(&optoe->lock);
++
++	return count;
++}
++
++static ssize_t set_max_bank_size(struct device *dev,
++			struct device_attribute *attr,
++			const char *buf, size_t count)
++{
++	struct optoe_data *optoe = dev_get_drvdata(dev);
++	unsigned int max_bank_size;
++
++	/* setting max bank size is only supported for the CMIS device */
++	if (optoe->dev_class != CMIS_ADDR)
++		return -EINVAL;
++
++	if (kstrtouint(buf, 0, &max_bank_size) != 0)
++		return -EINVAL;
++
++	/*
++	 * Re-register the sysfs eeprom bin file with the updated size so that
++	 * the kernel inode size (used by sysfs_kf_bin_read) reflects the new
++	 * accessible address space.
++	 */
++	sysfs_remove_bin_file(&dev->kobj, &optoe->bin);
++	mutex_lock(&optoe->lock);
++	optoe->max_bank_size = max_bank_size;
++	optoe->bin.size = one_addr_eeprom_size_with_bank(max_bank_size);
++	mutex_unlock(&optoe->lock);
++	sysfs_create_bin_file(&dev->kobj, &optoe->bin);
++
++	return count;
++}
++
++static DEVICE_ATTR(port_name, 0644, show_port_name, set_port_name);
++static DEVICE_ATTR(write_timeout, 0644, show_dev_write_timeout_size,
++					set_dev_write_timeout_size);
++static DEVICE_ATTR(write_max, 0644, show_dev_write_max_size,
++					set_dev_write_max_size);
++static DEVICE_ATTR(dev_class, 0644, show_dev_class, set_dev_class);
++static DEVICE_ATTR(max_bank_size, 0644, show_max_bank_size, set_max_bank_size);
++
++static struct attribute *optoe_attrs[] = {
++	&dev_attr_port_name.attr,
++	&dev_attr_write_timeout.attr,
++	&dev_attr_write_max.attr,
++	&dev_attr_dev_class.attr,
++	&dev_attr_max_bank_size.attr,
++	NULL,
++};
++
++static struct attribute_group optoe_attr_group = {
++	.attrs = optoe_attrs,
++};
++
++static int optoe_i3c_probe(struct i3c_device *i3cdev)
++{
++	struct optoe_data *optoe;
++	int err;
++
++	optoe = kzalloc(sizeof(*optoe), GFP_KERNEL);
++	if (!optoe)
++		return -ENOMEM;
++
++	mutex_init(&optoe->lock);
++	optoe->i3cdev = i3cdev;
++	/* Native-I3C optics on this platform are CMIS. */
++	optoe->dev_class = CMIS_ADDR;
++	optoe->write_timeout = OPTOE_DEFAULT_WRITE_TIMEOUT;
++	optoe->max_bank_size = OPTOE_DEFAULT_BANK_SIZE;
++	strscpy(optoe->port_name, "uninitialized", MAX_PORT_NAME_LEN);
++
++	/*
++	 * NOTE: AN-2079 - Finisar recommends 1-byte writes only since these
++	 * modules only support 32-byte page boundaries.
++	 */
++	optoe->write_max = 1;
++	if (optoe->write_max > io_limit)
++		optoe->write_max = io_limit;
++
++	/* Transfer scratch: writebuf = [offset][payload], readbuf = bounce */
++	optoe->writebuf = kmalloc(OPTOE_PAGE_SIZE + 1, GFP_KERNEL);
++	optoe->readbuf = kmalloc(OPTOE_PAGE_SIZE, GFP_KERNEL);
++	if (!optoe->writebuf || !optoe->readbuf) {
++		err = -ENOMEM;
++		goto err_free;
++	}
++
++	/*
++	 * Export the EEPROM bytes through sysfs, since that's convenient.
++	 * By default, only root should see the data (maybe passwords etc).
++	 */
++	sysfs_bin_attr_init(&optoe->bin);
++	optoe->bin.attr.name = "eeprom";
++	optoe->bin.attr.mode = 0644;
++	optoe->bin.read = optoe_bin_read;
++	optoe->bin.write = optoe_bin_write;
++	optoe->bin.size = one_addr_eeprom_size_with_bank(OPTOE_DEFAULT_BANK_SIZE);
++
++	dev_set_drvdata(&i3cdev->dev, optoe);
++
++	err = sysfs_create_bin_file(&i3cdev->dev.kobj, &optoe->bin);
++	if (err)
++		goto err_free;
++
++	optoe->attr_group = optoe_attr_group;
++	err = sysfs_create_group(&i3cdev->dev.kobj, &optoe->attr_group);
++	if (err) {
++		dev_err(&i3cdev->dev, "failed to create sysfs attribute group.\n");
++		goto err_bin;
++	}
++
++	dev_info(&i3cdev->dev, "%lld byte CMIS EEPROM (I3C), read/write\n",
++		(long long)optoe->bin.size);
++
++	return 0;
++
++err_bin:
++	sysfs_remove_bin_file(&i3cdev->dev.kobj, &optoe->bin);
++err_free:
++	kfree(optoe->readbuf);
++	kfree(optoe->writebuf);
++	kfree(optoe);
++	return err;
++}
++
++static void optoe_i3c_remove(struct i3c_device *i3cdev)
++{
++	struct optoe_data *optoe = dev_get_drvdata(&i3cdev->dev);
++
++	sysfs_remove_group(&i3cdev->dev.kobj, &optoe->attr_group);
++	sysfs_remove_bin_file(&i3cdev->dev.kobj, &optoe->bin);
++
++	kfree(optoe->readbuf);
++	kfree(optoe->writebuf);
++	kfree(optoe);
++}
++
++static struct i3c_driver optoe_i3c_driver = {
++	.driver = {
++		.name = "optoe_i3c",
++	},
++	.probe = optoe_i3c_probe,
++	.remove = optoe_i3c_remove,
++	.id_table = optoe_i3c_ids,
++};
++
++static int __init optoe_i3c_driver_init(void)
++{
++	int ret;
++
++	ret = i3c_driver_register(&optoe_i3c_driver);
++	if (ret)
++		return ret;
++
++	ret = driver_create_file(&optoe_i3c_driver.driver, &driver_attr_new_id);
++	if (ret)
++		i3c_driver_unregister(&optoe_i3c_driver);
++	return ret;
++}
++
++static void __exit optoe_i3c_driver_exit(void)
++{
++	driver_remove_file(&optoe_i3c_driver.driver, &driver_attr_new_id);
++	i3c_driver_unregister(&optoe_i3c_driver);
++}
++
++module_init(optoe_i3c_driver_init);
++module_exit(optoe_i3c_driver_exit);
++
++MODULE_DESCRIPTION("Driver for native-I3C optical transceiver (CMIS) EEPROMs");
++MODULE_AUTHOR("DON BOLLINGER <don@thebollingers.org>");
++MODULE_AUTHOR("Pavan Naregundi <pnaregundi@marvell.com>");
++MODULE_LICENSE("GPL");

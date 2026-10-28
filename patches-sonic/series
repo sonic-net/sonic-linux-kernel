@@ -41,6 +41,7 @@ driver-support-optoe-update-to-linux-6.1.patch
 driver-support-optoe-dynamic-write-timeout.patch
 driver-support-optoe-update-to-linux-6.10.patch
 driver-support-optoe-bank-support.patch
+0001-misc-eeprom-add-optoe_i3c-native-I3C-CMIS-EEPROM-driver.patch
 driver-net-tg3-add-param-short-preamble-and-reset.patch
 driver-net-tg3-change-dma-mask-for-57766.patch
 0004-dt-bindings-hwmon-Add-missing-documentation-for-lm75.patch
