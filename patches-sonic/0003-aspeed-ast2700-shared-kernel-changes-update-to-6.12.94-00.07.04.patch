@@ -1,0 +1,1102 @@
+From: Chandrasekaran Swaminathan <chander@nexthop.ai>
+Date: Wed, 09 Sep 2026 15:51:49 +0000
+Subject: [PATCH] Aspeed AST2700 support: modifications to shared/common kernel files
+
+Modifications to existing vendor-independent (shared/common) kernel
+files - the common-code review surface (Kconfig/Makefile merges,
+ftgmac100, pwm/core, clk-provider, pwm.h, videodev2.h), from a
+fresh Aspeed merge at v00.07.04 on the 6.12.94 SONiC kernel.
+
+Signed-off-by: Chandrasekaran Swaminathan <chander@nexthop.ai>
+---
+diff --git a/arch/arm64/Kconfig.platforms b/arch/arm64/Kconfig.platforms
+--- a/arch/arm64/Kconfig.platforms	2026-06-19 11:42:39.000000000 +0000
++++ b/arch/arm64/Kconfig.platforms	2026-09-09 15:51:44.951234551 +0000
+@@ -40,6 +40,13 @@
+ 	  This enables support for Apple's in-house ARM SoC family, starting
+ 	  with the Apple M1.
+ 
++config ARCH_ASPEED
++	bool "Aspeed SoC family"
++	select AST2700_IRQ
++	help
++	  Say yes if you intend to run on an Aspeed ast2700 or similar
++	  seventh generation Aspeed BMCs.
++
+ menuconfig ARCH_BCM
+ 	bool "Broadcom SoC Support"
+ 
+diff --git a/arch/arm64/boot/dts/Makefile b/arch/arm64/boot/dts/Makefile
+--- a/arch/arm64/boot/dts/Makefile	2026-09-09 15:51:11.436740996 +0000
++++ b/arch/arm64/boot/dts/Makefile	2026-09-09 15:51:44.986234022 +0000
+@@ -9,6 +9,7 @@
+ subdir-y += apm
+ subdir-y += apple
+ subdir-y += arm
++subdir-y += aspeed
+ subdir-y += bitmain
+ subdir-y += broadcom
+ subdir-y += cavium
+diff --git a/crypto/Makefile b/crypto/Makefile
+--- a/crypto/Makefile	2026-06-19 11:42:39.000000000 +0000
++++ b/crypto/Makefile	2026-09-09 15:51:31.778433603 +0000
+@@ -181,6 +181,7 @@
+ obj-$(CONFIG_CRYPTO_ECC) += ecc.o
+ obj-$(CONFIG_CRYPTO_ESSIV) += essiv.o
+ obj-$(CONFIG_CRYPTO_CURVE25519) += curve25519-generic.o
++obj-$(CONFIG_CRYPTO_DEV_ASPEED) += aspeed_crypt.o
+ 
+ ecdh_generic-y += ecdh.o
+ ecdh_generic-y += ecdh_helper.o
+diff --git a/drivers/Makefile b/drivers/Makefile
+--- a/drivers/Makefile	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/Makefile	2026-09-09 15:51:35.330379930 +0000
+@@ -195,3 +195,4 @@
+ obj-$(CONFIG_DPLL)		+= dpll/
+ 
+ obj-$(CONFIG_S390)		+= s390/
++obj-$(CONFIG_JTAG_ASPEED)	+= jtag/
+diff --git a/drivers/bus/Kconfig b/drivers/bus/Kconfig
+--- a/drivers/bus/Kconfig	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/bus/Kconfig	2026-09-09 15:51:29.763464053 +0000
+@@ -261,6 +261,12 @@
+ 	  configuration. Allows to adjust the priorities of all master
+ 	  peripherals.
+ 
++config ASPEED_LTPI
++	bool "Aspeed LTPI bus controller driver"
++	depends on ARCH_ASPEED
++	help
++	  LVDS Tunneling Protocol and Interface (LTPI) bus controller
++
+ source "drivers/bus/fsl-mc/Kconfig"
+ source "drivers/bus/mhi/Kconfig"
+ 
+diff --git a/drivers/bus/Makefile b/drivers/bus/Makefile
+--- a/drivers/bus/Makefile	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/bus/Makefile	2026-09-09 15:51:34.715389223 +0000
+@@ -39,6 +39,7 @@
+ obj-$(CONFIG_VEXPRESS_CONFIG)	+= vexpress-config.o
+ 
+ obj-$(CONFIG_DA8XX_MSTPRI)	+= da8xx-mstpri.o
++obj-$(CONFIG_ASPEED_LTPI)	+= aspeed-ltpi.o
+ 
+ # MHI
+ obj-y				+= mhi/
+diff --git a/drivers/char/hw_random/Kconfig b/drivers/char/hw_random/Kconfig
+--- a/drivers/char/hw_random/Kconfig	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/char/hw_random/Kconfig	2026-09-09 15:51:30.808448261 +0000
+@@ -588,6 +588,21 @@
+ 
+ 	  If unsure, say Y.
+ 
++config HW_RANDOM_ASPEED
++	tristate "Aspeed Random Number Generator support"
++	depends on ARCH_ASPEED
++	default HW_RANDOM
++	help
++	  This driver provides kernel-side support for the Random Number
++	  Generator hardware found on Aspeed ast2600/ast2700 devices.
++
++	  To compile this driver as a module, choose M here: the
++	  module will be called aspeed-rng.
++
++	  If unsure, say Y.
++
++source "drivers/char/hw_random/dwc/Kconfig"
++
+ endif # HW_RANDOM
+ 
+ config UML_RANDOM
+diff --git a/drivers/char/hw_random/Makefile b/drivers/char/hw_random/Makefile
+--- a/drivers/char/hw_random/Makefile	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/char/hw_random/Makefile	2026-09-09 15:51:36.020369504 +0000
+@@ -50,3 +50,5 @@
+ obj-$(CONFIG_HW_RANDOM_POLARFIRE_SOC) += mpfs-rng.o
+ obj-$(CONFIG_HW_RANDOM_ROCKCHIP) += rockchip-rng.o
+ obj-$(CONFIG_HW_RANDOM_JH7110) += jh7110-trng.o
++obj-$(CONFIG_HW_RANDOM_ASPEED) += aspeed-rng.o
++obj-$(CONFIG_HW_RANDOM_DWC) += dwc/
+diff --git a/drivers/clk/Kconfig b/drivers/clk/Kconfig
+--- a/drivers/clk/Kconfig	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/clk/Kconfig	2026-09-09 15:51:28.136488639 +0000
+@@ -277,6 +277,20 @@
+ 	  The G4 and G5 series, including the ast2400 and ast2500, are supported
+ 	  by this driver.
+ 
++config COMMON_CLK_AST2700
++	bool "Clock driver for AST2700 SoC"
++	depends on ARCH_ASPEED || COMPILE_TEST
++	help
++	  This driver provides support for clock on AST2700 SoC.
++	  The driver is responsible for managing the various clocks required
++	  by the peripherals and cores within the AST2700.
++
++config COMMON_CLK_AST1700
++	bool "Clock driver for AST1700"
++	depends on ARCH_ASPEED || COMPILE_TEST
++	help
++	  This driver supports the AST1700 clocks on the Aspeed BMC platforms.
++
+ config COMMON_CLK_S2MPS11
+ 	tristate "Clock driver for S2MPS1X/S5M8767 MFD"
+ 	depends on MFD_SEC_CORE || COMPILE_TEST
+diff --git a/drivers/clk/Makefile b/drivers/clk/Makefile
+--- a/drivers/clk/Makefile	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/clk/Makefile	2026-09-09 15:51:32.830417706 +0000
+@@ -48,6 +48,8 @@
+ obj-$(CONFIG_COMMON_CLK_GEMINI)		+= clk-gemini.o
+ obj-$(CONFIG_COMMON_CLK_ASPEED)		+= clk-aspeed.o
+ obj-$(CONFIG_MACH_ASPEED_G6)		+= clk-ast2600.o
++obj-$(CONFIG_COMMON_CLK_AST2700)	+= clk-ast2700.o
++obj-$(CONFIG_COMMON_CLK_AST1700)	+= clk-ast1700.o
+ obj-$(CONFIG_ARCH_HIGHBANK)		+= clk-highbank.o
+ obj-$(CONFIG_CLK_HSDK)			+= clk-hsdk-pll.o
+ obj-$(CONFIG_COMMON_CLK_K210)		+= clk-k210.o
+diff --git a/drivers/edac/Kconfig b/drivers/edac/Kconfig
+--- a/drivers/edac/Kconfig	2026-09-09 15:51:11.454740724 +0000
++++ b/drivers/edac/Kconfig	2026-09-09 15:51:28.786478817 +0000
+@@ -520,6 +520,15 @@
+ 	  First, ECC must be configured in the bootloader. Then, this driver
+ 	  will expose error counters via the EDAC kernel framework.
+ 
++config EDAC_AST2700
++	tristate "Aspeed AST2700 BMC SoC"
++	depends on ARCH_ASPEED
++	help
++	  Support for error detection and correction on the Aspeed AST2700
++
++	  First, ECC must be configured in the bootloader. Then, this driver
++	  will expose error counters via the EDAC kernel framework.
++
+ config EDAC_BLUEFIELD
+ 	tristate "Mellanox BlueField Memory ECC"
+ 	depends on ARM64 && ((MELLANOX_PLATFORM && ACPI) || COMPILE_TEST)
+diff --git a/drivers/edac/Makefile b/drivers/edac/Makefile
+--- a/drivers/edac/Makefile	2026-09-09 15:51:11.454740724 +0000
++++ b/drivers/edac/Makefile	2026-09-09 15:51:33.542406948 +0000
+@@ -83,6 +83,7 @@
+ obj-$(CONFIG_EDAC_TI)			+= ti_edac.o
+ obj-$(CONFIG_EDAC_QCOM)			+= qcom_edac.o
+ obj-$(CONFIG_EDAC_ASPEED)		+= aspeed_edac.o
++obj-$(CONFIG_EDAC_AST2700)		+= edac_ast2700.o
+ obj-$(CONFIG_EDAC_BLUEFIELD)		+= bluefield_edac.o
+ obj-$(CONFIG_EDAC_DMC520)		+= dmc520_edac.o
+ obj-$(CONFIG_EDAC_ELBA)			+= elba_edac.o
+diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
+--- a/drivers/gpio/Kconfig	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/gpio/Kconfig	2026-09-09 15:51:30.550452160 +0000
+@@ -180,6 +180,14 @@
+ 	help
+ 	  Say Y here to support Aspeed AST2500 SGPIO functionality.
+ 
++config GPIO_ASPEED_LTPI
++	bool "Aspeed LTPI GPIO support"
++	depends on (ARCH_ASPEED || COMPILE_TEST) && OF_GPIO
++	select GPIO_GENERIC
++	select GPIOLIB_IRQCHIP
++	help
++	  Say Y here to support Aspeed AST2700 LTPI GPIO functionality.
++
+ config GPIO_ATH79
+ 	tristate "Atheros AR71XX/AR724X/AR913X GPIO support"
+ 	default y if ATH79
+diff --git a/drivers/gpio/Makefile b/drivers/gpio/Makefile
+--- a/drivers/gpio/Makefile	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/gpio/Makefile	2026-09-09 15:51:35.743373689 +0000
+@@ -37,6 +37,7 @@
+ obj-$(CONFIG_GPIO_ARIZONA)		+= gpio-arizona.o
+ obj-$(CONFIG_GPIO_ASPEED)		+= gpio-aspeed.o
+ obj-$(CONFIG_GPIO_ASPEED_SGPIO)		+= gpio-aspeed-sgpio.o
++obj-$(CONFIG_GPIO_ASPEED_LTPI)		+= gpio-aspeed-ltpi.o
+ obj-$(CONFIG_GPIO_ATH79)		+= gpio-ath79.o
+ obj-$(CONFIG_GPIO_BCM_KONA)		+= gpio-bcm-kona.o
+ obj-$(CONFIG_GPIO_BCM_XGS_IPROC)	+= gpio-xgs-iproc.o
+diff --git a/drivers/hwmon/Kconfig b/drivers/hwmon/Kconfig
+--- a/drivers/hwmon/Kconfig	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/hwmon/Kconfig	2026-09-09 15:51:28.650480872 +0000
+@@ -423,6 +423,16 @@
+ 	  This driver can also be built as a module. If so, the module
+ 	  will be called aspeed_g6_pwm_tach.
+ 
++config SENSORS_ASPEED_CHASSIS
++	tristate "ASPEED CHASSIS Driver"
++	depends on ARCH_ASPEED || COMPILE_TEST
++	help
++	  This driver provides support for Aspeed ast2600 chassis intruded
++	  detect support.
++
++	  To compile this driver as a module, choose M here: the module
++	  will be called aspeed-chassis.
++
+ config SENSORS_ATXP1
+ 	tristate "Attansic ATXP1 VID controller"
+ 	depends on I2C
+diff --git a/drivers/hwmon/Makefile b/drivers/hwmon/Makefile
+--- a/drivers/hwmon/Makefile	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/hwmon/Makefile	2026-09-09 15:51:33.388409275 +0000
+@@ -55,6 +55,7 @@
+ obj-$(CONFIG_SENSORS_ASC7621)	+= asc7621.o
+ obj-$(CONFIG_SENSORS_ASPEED)	+= aspeed-pwm-tacho.o
+ obj-$(CONFIG_SENSORS_ASPEED_G6) += aspeed-g6-pwm-tach.o
++obj-$(CONFIG_SENSORS_ASPEED_CHASSIS) += aspeed-chassis.o
+ obj-$(CONFIG_SENSORS_ASUS_ROG_RYUJIN)	+= asus_rog_ryujin.o
+ obj-$(CONFIG_SENSORS_ATXP1)	+= atxp1.o
+ obj-$(CONFIG_SENSORS_AXI_FAN_CONTROL) += axi-fan-control.o
+diff --git a/drivers/i2c/busses/Kconfig b/drivers/i2c/busses/Kconfig
+--- a/drivers/i2c/busses/Kconfig	2026-09-09 15:51:11.425741162 +0000
++++ b/drivers/i2c/busses/Kconfig	2026-09-09 15:51:28.068489667 +0000
+@@ -421,6 +421,17 @@
+ 	  This driver can also be built as a module.  If so, the module
+ 	  will be called i2c-altera.
+ 
++config I2C_AST2600
++	tristate "Aspeed I2C v2 Controller"
++	depends on ARCH_ASPEED || COMPILE_TEST
++	select I2C_SMBUS
++	help
++	  If you say yes to this option, support will be included for the
++	  Aspeed I2C controller with new register set.
++
++	  This driver can also be built as a module.  If so, the module
++	  will be called i2c-ast2600.
++
+ config I2C_ASPEED
+ 	tristate "Aspeed I2C Controller"
+ 	depends on ARCH_ASPEED || COMPILE_TEST
+diff --git a/drivers/i2c/busses/Makefile b/drivers/i2c/busses/Makefile
+--- a/drivers/i2c/busses/Makefile	2026-09-09 15:51:11.426741147 +0000
++++ b/drivers/i2c/busses/Makefile	2026-09-09 15:51:32.739419081 +0000
+@@ -39,6 +39,7 @@
+ obj-$(CONFIG_I2C_ALTERA)	+= i2c-altera.o
+ obj-$(CONFIG_I2C_AMD_MP2)	+= i2c-amd-mp2-pci.o i2c-amd-mp2-plat.o
+ obj-$(CONFIG_I2C_ASPEED)	+= i2c-aspeed.o
++obj-$(CONFIG_I2C_AST2600)	+= i2c-ast2600.o
+ obj-$(CONFIG_I2C_AT91)		+= i2c-at91.o
+ i2c-at91-objs			:= i2c-at91-core.o i2c-at91-master.o
+ ifeq ($(CONFIG_I2C_AT91_SLAVE_EXPERIMENTAL),y)
+diff --git a/drivers/irqchip/Kconfig b/drivers/irqchip/Kconfig
+--- a/drivers/irqchip/Kconfig	2026-09-09 15:51:11.465740558 +0000
++++ b/drivers/irqchip/Kconfig	2026-09-09 15:51:30.232456966 +0000
+@@ -735,6 +735,9 @@
+ 	  Support for the Apple Interrupt Controller found on Apple Silicon SoCs,
+ 	  such as the M1.
+ 
++config AST2700_IRQ
++	bool
++
+ config MCHP_EIC
+ 	bool "Microchip External Interrupt Controller"
+ 	depends on ARCH_AT91 || COMPILE_TEST
+diff --git a/drivers/irqchip/Makefile b/drivers/irqchip/Makefile
+--- a/drivers/irqchip/Makefile	2026-09-09 15:51:11.465740558 +0000
++++ b/drivers/irqchip/Makefile	2026-09-09 15:51:35.390379023 +0000
+@@ -85,6 +85,8 @@
+ obj-$(CONFIG_LS_SCFG_MSI)		+= irq-ls-scfg-msi.o
+ obj-$(CONFIG_ARCH_ASPEED)		+= irq-aspeed-vic.o irq-aspeed-i2c-ic.o irq-aspeed-scu-ic.o
+ obj-$(CONFIG_STM32MP_EXTI)		+= irq-stm32mp-exti.o
++obj-$(CONFIG_ARCH_ASPEED)		+= irq-aspeed-vic.o irq-aspeed-i2c-ic.o irq-aspeed-scu-ic.o irq-aspeed-intc.o irq-aspeed-e2m-ic.o
++obj-$(CONFIG_AST2700_IRQ)		+= irq-ast2700-intc0.o irq-ast2700-intc1.o
+ obj-$(CONFIG_STM32_EXTI) 		+= irq-stm32-exti.o
+ obj-$(CONFIG_QCOM_IRQ_COMBINER)		+= qcom-irq-combiner.o
+ obj-$(CONFIG_IRQ_UNIPHIER_AIDET)	+= irq-uniphier-aidet.o
+diff --git a/drivers/mailbox/Kconfig b/drivers/mailbox/Kconfig
+--- a/drivers/mailbox/Kconfig	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/mailbox/Kconfig	2026-09-09 15:51:30.484453157 +0000
+@@ -295,4 +295,12 @@
+ 	  acts as an interrupt controller for receiving interrupts from clients.
+ 	  Say Y here if you want to build this driver.
+ 
++config AST2700_MBOX
++	tristate "ASPEED AST2700 IPC driver"
++	depends on ARCH_ASPEED
++	help
++	  Say y here to enable support for the AST2700 IPC mailbox driver,
++	  providing an interface for invoking the inter-process communication
++	  signals from the application processor to other masters.
++
+ endif
+diff --git a/drivers/mailbox/Makefile b/drivers/mailbox/Makefile
+--- a/drivers/mailbox/Makefile	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/mailbox/Makefile	2026-09-09 15:51:35.677374687 +0000
+@@ -64,3 +64,5 @@
+ obj-$(CONFIG_QCOM_CPUCP_MBOX)	+= qcom-cpucp-mbox.o
+ 
+ obj-$(CONFIG_QCOM_IPCC)		+= qcom-ipcc.o
++
++obj-$(CONFIG_AST2700_MBOX)	+= ast2700-mailbox.o
+diff --git a/drivers/net/can/Kconfig b/drivers/net/can/Kconfig
+--- a/drivers/net/can/Kconfig	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/net/can/Kconfig	2026-09-09 15:51:29.478468360 +0000
+@@ -66,6 +66,12 @@
+ 
+ if CAN_NETLINK
+ 
++config CAN_ASPEED
++	tristate "ASPEED CAN"
++	depends on ARM64 || COMPILE_TEST
++	help
++	  ASPEED CAN driver.
++
+ config CAN_CALC_BITTIMING
+ 	bool "CAN bit-timing calculation"
+ 	default y
+diff --git a/drivers/net/can/Makefile b/drivers/net/can/Makefile
+--- a/drivers/net/can/Makefile	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/net/can/Makefile	2026-09-09 15:51:34.404393922 +0000
+@@ -15,6 +15,7 @@
+ obj-y				+= usb/
+ obj-y				+= softing/
+ 
++obj-$(CONFIG_CAN_ASPEED)	+= aspeed_can.o
+ obj-$(CONFIG_CAN_AT91)		+= at91_can.o
+ obj-$(CONFIG_CAN_BXCAN)		+= bxcan.o
+ obj-$(CONFIG_CAN_CAN327)	+= can327.o
+diff --git a/drivers/net/ethernet/faraday/Kconfig b/drivers/net/ethernet/faraday/Kconfig
+--- a/drivers/net/ethernet/faraday/Kconfig	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/net/ethernet/faraday/Kconfig	2026-09-09 15:51:44.742237709 +0000
+@@ -6,7 +6,7 @@
+ config NET_VENDOR_FARADAY
+ 	bool "Faraday devices"
+ 	default y
+-	depends on ARM || COMPILE_TEST
++	depends on ARM || ARM64 || COMPILE_TEST
+ 	help
+ 	  If you have a network (Ethernet) card belonging to this class, say Y.
+ 
+@@ -28,11 +28,10 @@
+ 
+ config FTGMAC100
+ 	tristate "Faraday FTGMAC100 Gigabit Ethernet support"
+-	depends on ARM || COMPILE_TEST
+-	depends on !64BIT || BROKEN
++	depends on ARM || ARM64 || COMPILE_TEST
+ 	select PHYLIB
+ 	select FIXED_PHY
+-	select MDIO_ASPEED if MACH_ASPEED_G6
++	select MDIO_ASPEED if ARCH_ASPEED
+ 	select CRC32
+ 	help
+ 	  This driver supports the FTGMAC100 Gigabit Ethernet controller
+diff --git a/drivers/net/ethernet/faraday/ftgmac100.c b/drivers/net/ethernet/faraday/ftgmac100.c
+--- a/drivers/net/ethernet/faraday/ftgmac100.c	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/net/ethernet/faraday/ftgmac100.c	2026-09-09 15:51:44.742237709 +0000
+@@ -9,6 +9,7 @@
+ #define pr_fmt(fmt)	KBUILD_MODNAME ": " fmt
+ 
+ #include <linux/clk.h>
++#include <linux/reset.h>
+ #include <linux/dma-mapping.h>
+ #include <linux/etherdevice.h>
+ #include <linux/ethtool.h>
+@@ -19,12 +20,16 @@
+ #include <linux/of.h>
+ #include <linux/of_mdio.h>
+ #include <linux/phy.h>
++#include <linux/phy/phy.h>
+ #include <linux/platform_device.h>
+ #include <linux/property.h>
+ #include <linux/crc32.h>
+ #include <linux/if_vlan.h>
+ #include <linux/of_net.h>
+ #include <linux/phy_fixed.h>
++#include <linux/mfd/syscon.h>
++#include <linux/regmap.h>
++#include <linux/bitfield.h>
+ #include <net/ip.h>
+ #include <net/ncsi.h>
+ 
+@@ -98,6 +103,7 @@
+ 	struct work_struct reset_task;
+ 	struct mii_bus *mii_bus;
+ 	struct clk *clk;
++	struct reset_control *rst;
+ 
+ 	/* AST2500/AST2600 RMII ref clock gate */
+ 	struct clk *rclk;
+@@ -119,6 +125,9 @@
+ 	/* Misc */
+ 	bool need_mac_restart;
+ 	bool is_aspeed;
++
++	/* AST2700 SGMII */
++	struct phy *sgmii;
+ };
+ 
+ static int ftgmac100_reset_mac(struct ftgmac100 *priv, u32 maccr)
+@@ -148,6 +157,29 @@
+ {
+ 	u32 maccr = 0;
+ 
++	/* Aspeed SoC needs SCU reset */
++	if (priv->is_aspeed) {
++		int err;
++
++		err = phy_reset(priv->sgmii);
++		if (err) {
++			dev_err(priv->dev, "Failed to reset sgmii\n");
++			return err;
++		}
++
++		err = reset_control_assert(priv->rst);
++		if (err) {
++			dev_err(priv->dev, "Failed to reset mac (%d)\n", err);
++			return err;
++		}
++		usleep_range(10000, 20000);
++		err = reset_control_deassert(priv->rst);
++		if (err) {
++			dev_err(priv->dev, "Failed to deassert mac reset (%d)\n", err);
++			return err;
++		}
++	}
++
+ 	switch (priv->cur_speed) {
+ 	case SPEED_10:
+ 	case 0: /* no link */
+@@ -265,10 +297,12 @@
+ 	iowrite32(reg, priv->base + FTGMAC100_OFFSET_ISR);
+ 
+ 	/* Setup RX ring buffer base */
+-	iowrite32(priv->rxdes_dma, priv->base + FTGMAC100_OFFSET_RXR_BADR);
++	iowrite32(lower_32_bits(priv->rxdes_dma), priv->base + FTGMAC100_OFFSET_RXR_BADR);
++	iowrite32(upper_32_bits(priv->rxdes_dma), priv->base + FTGMAC100_OFFSET_RXR_BADDR_HIGH);
+ 
+ 	/* Setup TX ring buffer base */
+-	iowrite32(priv->txdes_dma, priv->base + FTGMAC100_OFFSET_NPTXR_BADR);
++	iowrite32(lower_32_bits(priv->txdes_dma), priv->base + FTGMAC100_OFFSET_NPTXR_BADR);
++	iowrite32(upper_32_bits(priv->txdes_dma), priv->base + FTGMAC100_OFFSET_TXR_BADDR_HIGH);
+ 
+ 	/* Configure RX buffer size */
+ 	iowrite32(FTGMAC100_RBSR_SIZE(RX_BUF_SIZE),
+@@ -321,6 +355,7 @@
+ static void ftgmac100_start_hw(struct ftgmac100 *priv)
+ {
+ 	u32 maccr = ioread32(priv->base + FTGMAC100_OFFSET_MACCR);
++	struct phy_device *phydev = priv->netdev->phydev;
+ 
+ 	/* Keep the original GMAC and FAST bits */
+ 	maccr &= (FTGMAC100_MACCR_FAST_MODE | FTGMAC100_MACCR_GIGA_MODE);
+@@ -349,12 +384,18 @@
+ 	if (priv->netdev->features & NETIF_F_HW_VLAN_CTAG_RX)
+ 		maccr |= FTGMAC100_MACCR_RM_VLAN;
+ 
++	if (of_device_is_compatible(priv->dev->of_node, "aspeed,ast2700-mac") &&
++	    phydev && phydev->interface == PHY_INTERFACE_MODE_RMII)
++		maccr |= FTGMAC100_MACCR_RMII_ENABLE;
++
+ 	/* Hit the HW */
+ 	iowrite32(maccr, priv->base + FTGMAC100_OFFSET_MACCR);
+ }
+ 
+ static void ftgmac100_stop_hw(struct ftgmac100 *priv)
+ {
++	phy_exit(priv->sgmii);
++
+ 	iowrite32(0, priv->base + FTGMAC100_OFFSET_MACCR);
+ }
+ 
+@@ -425,7 +466,9 @@
+ 	priv->rx_skbs[entry] = skb;
+ 
+ 	/* Store DMA address into RX desc */
+-	rxdes->rxdes3 = cpu_to_le32(map);
++	rxdes->rxdes2 = cpu_to_le32(FIELD_PREP(FTGMAC100_RXDES2_RXBUF_BADR_HI,
++					       upper_32_bits(map)));
++	rxdes->rxdes3 = cpu_to_le32(lower_32_bits(map));
+ 
+ 	/* Ensure the above is ordered vs clearing the OWN bit */
+ 	dma_wmb();
+@@ -551,7 +594,8 @@
+ 				       csum_vlan & 0xffff);
+ 
+ 	/* Tear down DMA mapping, do necessary cache management */
+-	map = le32_to_cpu(rxdes->rxdes3);
++	map = le32_to_cpu(rxdes->rxdes3) |
++	      ((le32_to_cpu(rxdes->rxdes2) & FTGMAC100_RXDES2_RXBUF_BADR_HI) << 16);
+ 
+ #if defined(CONFIG_ARM) && !defined(CONFIG_ARM_DMA_USE_IOMMU)
+ 	/* When we don't have an iommu, we can save cycles by not
+@@ -628,9 +672,12 @@
+ 				     struct ftgmac100_txdes *txdes,
+ 				     u32 ctl_stat)
+ {
+-	dma_addr_t map = le32_to_cpu(txdes->txdes3);
++	dma_addr_t map;
+ 	size_t len;
+ 
++	map = le32_to_cpu(txdes->txdes3) |
++	      ((le32_to_cpu(txdes->txdes2) & FTGMAC100_TXDES2_TXBUF_BADR_HI) << 16);
++
+ 	if (ctl_stat & FTGMAC100_TXDES0_FTS) {
+ 		len = skb_headlen(skb);
+ 		dma_unmap_single(priv->dev, map, len, DMA_TO_DEVICE);
+@@ -784,7 +831,9 @@
+ 	f_ctl_stat |= FTGMAC100_TXDES0_FTS;
+ 	if (nfrags == 0)
+ 		f_ctl_stat |= FTGMAC100_TXDES0_LTS;
+-	txdes->txdes3 = cpu_to_le32(map);
++	txdes->txdes2 = cpu_to_le32(FIELD_PREP(FTGMAC100_TXDES2_TXBUF_BADR_HI,
++					       upper_32_bits((ulong)map)));
++	txdes->txdes3 = cpu_to_le32(lower_32_bits(map));
+ 	txdes->txdes1 = cpu_to_le32(csum_vlan);
+ 
+ 	/* Next descriptor */
+@@ -812,7 +861,9 @@
+ 			ctl_stat |= FTGMAC100_TXDES0_LTS;
+ 		txdes->txdes0 = cpu_to_le32(ctl_stat);
+ 		txdes->txdes1 = 0;
+-		txdes->txdes3 = cpu_to_le32(map);
++		txdes->txdes2 = cpu_to_le32(FIELD_PREP(FTGMAC100_TXDES2_TXBUF_BADR_HI,
++						       upper_32_bits((ulong)map)));
++		txdes->txdes3 = cpu_to_le32(lower_32_bits(map));
+ 
+ 		/* Next one */
+ 		pointer = ftgmac100_next_tx_pointer(priv, pointer);
+@@ -887,7 +938,10 @@
+ 	for (i = 0; i < priv->rx_q_entries; i++) {
+ 		struct ftgmac100_rxdes *rxdes = &priv->rxdes[i];
+ 		struct sk_buff *skb = priv->rx_skbs[i];
+-		dma_addr_t map = le32_to_cpu(rxdes->rxdes3);
++		dma_addr_t map;
++
++		map = le32_to_cpu(rxdes->rxdes3) |
++		      ((le32_to_cpu(rxdes->rxdes2) & FTGMAC100_RXDES2_RXBUF_BADR_HI) << 16);
+ 
+ 		if (!skb)
+ 			continue;
+@@ -944,19 +998,19 @@
+ 	priv->tx_skbs = kcalloc(MAX_TX_QUEUE_ENTRIES, sizeof(void *),
+ 				GFP_KERNEL);
+ 	if (!priv->tx_skbs)
+-		goto err_free_rx_skbs;
++		return -ENOMEM;
+ 
+ 	/* Allocate descriptors */
+ 	priv->rxdes = dma_alloc_coherent(priv->dev,
+ 					 MAX_RX_QUEUE_ENTRIES * sizeof(struct ftgmac100_rxdes),
+ 					 &priv->rxdes_dma, GFP_KERNEL);
+ 	if (!priv->rxdes)
+-		goto err_free_tx_skbs;
++		return -ENOMEM;
+ 	priv->txdes = dma_alloc_coherent(priv->dev,
+ 					 MAX_TX_QUEUE_ENTRIES * sizeof(struct ftgmac100_txdes),
+ 					 &priv->txdes_dma, GFP_KERNEL);
+ 	if (!priv->txdes)
+-		goto err_free_rxdes;
++		return -ENOMEM;
+ 
+ 	/* Allocate scratch packet buffer */
+ 	priv->rx_scratch = dma_alloc_coherent(priv->dev,
+@@ -964,29 +1018,9 @@
+ 					      &priv->rx_scratch_dma,
+ 					      GFP_KERNEL);
+ 	if (!priv->rx_scratch)
+-		goto err_free_txdes;
++		return -ENOMEM;
+ 
+ 	return 0;
+-
+-err_free_txdes:
+-	dma_free_coherent(priv->dev,
+-			  MAX_TX_QUEUE_ENTRIES *
+-			  sizeof(struct ftgmac100_txdes),
+-			  priv->txdes, priv->txdes_dma);
+-	priv->txdes = NULL;
+-err_free_rxdes:
+-	dma_free_coherent(priv->dev,
+-			  MAX_RX_QUEUE_ENTRIES *
+-			  sizeof(struct ftgmac100_rxdes),
+-			  priv->rxdes, priv->rxdes_dma);
+-	priv->rxdes = NULL;
+-err_free_tx_skbs:
+-	kfree(priv->tx_skbs);
+-	priv->tx_skbs = NULL;
+-err_free_rx_skbs:
+-	kfree(priv->rx_skbs);
+-	priv->rx_skbs = NULL;
+-	return -ENOMEM;
+ }
+ 
+ static void ftgmac100_init_rings(struct ftgmac100 *priv)
+@@ -1006,7 +1040,9 @@
+ 	for (i = 0; i < priv->rx_q_entries; i++) {
+ 		rxdes = &priv->rxdes[i];
+ 		rxdes->rxdes0 = 0;
+-		rxdes->rxdes3 = cpu_to_le32(priv->rx_scratch_dma);
++		rxdes->rxdes2 =	cpu_to_le32(FIELD_PREP(FTGMAC100_RXDES2_RXBUF_BADR_HI,
++						       upper_32_bits(priv->rx_scratch_dma)));
++		rxdes->rxdes3 =	cpu_to_le32(lower_32_bits(priv->rx_scratch_dma));
+ 	}
+ 	/* Mark the end of the ring */
+ 	rxdes->rxdes0 |= cpu_to_le32(priv->rxdes0_edorr_mask);
+@@ -1318,6 +1354,44 @@
+ 	return work_done;
+ }
+ 
++static int ftgmac100_init_sgmii(struct ftgmac100 *priv)
++{
++	struct device_node *fixed_link_node = NULL;
++	int err;
++
++	err = phy_init(priv->sgmii);
++	if (err) {
++		dev_err(priv->dev, "Failed to initialize sgmii\n");
++		return err;
++	}
++
++	/* If using fixed link in dts, sgmii need to be forced */
++	fixed_link_node = of_get_child_by_name(priv->dev->of_node, "fixed-link");
++	if (fixed_link_node) {
++		int speed;
++
++		if (of_property_read_u32(fixed_link_node, "speed", &speed)) {
++			dev_err(priv->dev, "Failed to read speed from fixed-link node\n");
++			err = -EINVAL;
++			goto err_out;
++		}
++
++		err = phy_set_speed(priv->sgmii, speed);
++		if (err)
++			dev_err(priv->dev, "Failed to force sgmii speed\n");
++	} else {
++		err = phy_set_speed(priv->sgmii, 0);
++		if (err)
++			dev_err(priv->dev, "Failed to enable sgmii Nway\n");
++	}
++
++err_out:
++	if (fixed_link_node)
++		of_node_put(fixed_link_node);
++
++	return err;
++}
++
+ static int ftgmac100_init_all(struct ftgmac100 *priv, bool ignore_alloc_err)
+ {
+ 	int err = 0;
+@@ -1342,6 +1416,9 @@
+ 	/* Enable all interrupts */
+ 	iowrite32(FTGMAC100_INT_ALL, priv->base + FTGMAC100_OFFSET_IER);
+ 
++	/* Configure SGMII controller */
++	ftgmac100_init_sgmii(priv);
++
+ 	return err;
+ }
+ 
+@@ -1752,15 +1829,16 @@
+ 	struct ftgmac100 *priv = netdev_priv(netdev);
+ 	struct phy_device *phydev = netdev->phydev;
+ 
+-	if (!phydev)
+-		return;
++	devm_phy_put(priv->dev, priv->sgmii);
+ 
+-	phy_disconnect(phydev);
+-	if (of_phy_is_fixed_link(priv->dev->of_node))
+-		of_phy_deregister_fixed_link(priv->dev->of_node);
++	if (phydev) {
++		phy_disconnect(phydev);
++		if (of_phy_is_fixed_link(priv->dev->of_node))
++			of_phy_deregister_fixed_link(priv->dev->of_node);
+ 
+-	if (priv->use_ncsi)
+-		fixed_phy_unregister(phydev);
++		if (priv->use_ncsi)
++			fixed_phy_unregister(phydev);
++	}
+ }
+ 
+ static void ftgmac100_destroy_mdio(struct net_device *netdev)
+@@ -1903,7 +1981,8 @@
+ 	np = pdev->dev.of_node;
+ 	if (np && (of_device_is_compatible(np, "aspeed,ast2400-mac") ||
+ 		   of_device_is_compatible(np, "aspeed,ast2500-mac") ||
+-		   of_device_is_compatible(np, "aspeed,ast2600-mac"))) {
++		   of_device_is_compatible(np, "aspeed,ast2600-mac") ||
++		   of_device_is_compatible(np, "aspeed,ast2700-mac"))) {
+ 		priv->rxdes0_edorr_mask = BIT(30);
+ 		priv->txdes0_edotr_mask = BIT(30);
+ 		priv->is_aspeed = true;
+@@ -1934,40 +2013,22 @@
+ 			goto err_phy_connect;
+ 		}
+ 		err = phy_connect_direct(netdev, phydev, ftgmac100_adjust_link,
+-					 PHY_INTERFACE_MODE_MII);
++					 PHY_INTERFACE_MODE_RMII);
+ 		if (err) {
+ 			dev_err(&pdev->dev, "Connecting PHY failed\n");
+ 			goto err_phy_connect;
+ 		}
+-	} else if (np && of_phy_is_fixed_link(np)) {
+-		struct phy_device *phy;
+-
+-		err = of_phy_register_fixed_link(np);
+-		if (err) {
+-			dev_err(&pdev->dev, "Failed to register fixed PHY\n");
+-			goto err_phy_connect;
+-		}
+-
+-		phy = of_phy_get_and_connect(priv->netdev, np,
+-					     &ftgmac100_adjust_link);
+-		if (!phy) {
+-			dev_err(&pdev->dev, "Failed to connect to fixed PHY\n");
+-			of_phy_deregister_fixed_link(np);
+-			err = -EINVAL;
+-			goto err_phy_connect;
+-		}
+-
+-		/* Display what we found */
+-		phy_attached_info(phy);
+-	} else if (np && of_get_property(np, "phy-handle", NULL)) {
++	} else if (np && (of_phy_is_fixed_link(np) ||
++			  of_get_property(np, "phy-handle", NULL))) {
+ 		struct phy_device *phy;
+ 
+ 		/* Support "mdio"/"phy" child nodes for ast2400/2500 with
+ 		 * an embedded MDIO controller. Automatically scan the DTS for
+ 		 * available PHYs and register them.
+ 		 */
+-		if (of_device_is_compatible(np, "aspeed,ast2400-mac") ||
+-		    of_device_is_compatible(np, "aspeed,ast2500-mac")) {
++		if (of_get_property(np, "phy-handle", NULL) &&
++		    (of_device_is_compatible(np, "aspeed,ast2400-mac") ||
++		     of_device_is_compatible(np, "aspeed,ast2500-mac"))) {
+ 			err = ftgmac100_setup_mdio(netdev);
+ 			if (err)
+ 				goto err_setup_mdio;
+@@ -2016,6 +2077,24 @@
+ 		if (of_device_is_compatible(np, "aspeed,ast2600-mac"))
+ 			iowrite32(FTGMAC100_TM_DEFAULT,
+ 				  priv->base + FTGMAC100_OFFSET_TM);
++
++		if (of_device_is_compatible(np, "aspeed,ast2700-mac")) {
++			if (netdev->phydev->interface == PHY_INTERFACE_MODE_SGMII) {
++				priv->sgmii = devm_phy_optional_get(&pdev->dev, "sgmii");
++				if (IS_ERR(priv->sgmii)) {
++					dev_err(priv->dev, "Failed to get sgmii phy (%ld)\n",
++						PTR_ERR(priv->sgmii));
++					err = PTR_ERR(priv->sgmii);
++					goto err_register_netdev;
++				}
++			}
++		}
++	}
++
++	priv->rst = devm_reset_control_get_optional_exclusive(priv->dev, NULL);
++	if (IS_ERR(priv->rst)) {
++		err = PTR_ERR(priv->rst);
++		goto err_register_netdev;
+ 	}
+ 
+ 	/* Default ring sizes */
+@@ -2042,6 +2121,12 @@
+ 		netdev->hw_features &= ~(NETIF_F_HW_CSUM | NETIF_F_RXCSUM);
+ 	netdev->features |= netdev->hw_features;
+ 
++	err = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
++	if (err) {
++		dev_err(&pdev->dev, "64-bit DMA enable failed\n");
++		goto err_register_netdev;
++	}
++
+ 	/* register network device */
+ 	err = register_netdev(netdev);
+ 	if (err) {
+diff --git a/drivers/net/ethernet/faraday/ftgmac100.h b/drivers/net/ethernet/faraday/ftgmac100.h
+--- a/drivers/net/ethernet/faraday/ftgmac100.h	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/net/ethernet/faraday/ftgmac100.h	2026-09-09 15:51:44.742237709 +0000
+@@ -57,6 +57,13 @@
+ #define FTGMAC100_OFFSET_RX_RUNT	0xc0
+ #define FTGMAC100_OFFSET_RX_CRCER_FTL	0xc4
+ #define FTGMAC100_OFFSET_RX_COL_LOST	0xc8
++/* reserved 0xcc - 0x174 */
++#define FTGMAC100_OFFSET_TXR_BADDR_LOW		0x178	/* ast2700 */
++#define FTGMAC100_OFFSET_TXR_BADDR_HIGH		0x17c	/* ast2700 */
++#define FTGMAC100_OFFSET_HPTXR_BADDR_LOW	0x180	/* ast2700 */
++#define FTGMAC100_OFFSET_HPTXR_BADDR_HIGH	0x184	/* ast2700 */
++#define FTGMAC100_OFFSET_RXR_BADDR_LOW		0x188	/* ast2700 */
++#define FTGMAC100_OFFSET_RXR_BADDR_HIGH		0x18C	/* ast2700 */
+ 
+ /*
+  * Interrupt status register & interrupt enable register
+@@ -166,6 +173,7 @@
+ #define FTGMAC100_MACCR_RX_MULTIPKT	(1 << 16)
+ #define FTGMAC100_MACCR_RX_BROADPKT	(1 << 17)
+ #define FTGMAC100_MACCR_DISCARD_CRCERR	(1 << 18)
++#define FTGMAC100_MACCR_RMII_ENABLE	BIT(20)	/* defined in ast2700 */
+ #define FTGMAC100_MACCR_FAST_MODE	(1 << 19)
+ #define FTGMAC100_MACCR_SW_RST		(1 << 31)
+ 
+@@ -225,6 +233,7 @@
+ #define FTGMAC100_TXDES1_TX2FIC		(1 << 30)
+ #define FTGMAC100_TXDES1_TXIC		(1 << 31)
+ 
++#define FTGMAC100_TXDES2_TXBUF_BADR_HI	GENMASK(18, 16)
+ /*
+  * Receive descriptor, aligned to 16 bytes
+  */
+@@ -271,4 +280,6 @@
+ #define FTGMAC100_RXDES1_UDP_CHKSUM_ERR	(1 << 26)
+ #define FTGMAC100_RXDES1_IP_CHKSUM_ERR	(1 << 27)
+ 
++#define FTGMAC100_RXDES2_RXBUF_BADR_HI	GENMASK(18, 16)
++
+ #endif /* __FTGMAC100_H */
+diff --git a/drivers/pci/controller/Kconfig b/drivers/pci/controller/Kconfig
+--- a/drivers/pci/controller/Kconfig	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/pci/controller/Kconfig	2026-09-09 15:51:30.876447234 +0000
+@@ -47,6 +47,31 @@
+ 
+ 	  If unsure, say Y if you have an Apple Silicon system.
+ 
++config PHY_ASPEED_COMBINE_PERST
++	bool "ASPEED PCIe RC combine PERST with internal reset"
++	depends on ARCH_ASPEED
++	help
++	  Configure PERST to connect with the internal PHY reset. When
++	  this option is disabled, the driver selects the separate internal
++	  PHY reset path by default. Enable it only on boards that require
++	  PERST and the internal PHY reset to toggle at the same time.
++
++config PCIE_ASPEED
++	bool "ASPEED PCIe controller"
++	depends on ARCH_ASPEED || COMPILE_TEST
++	depends on OF
++	depends on PCI_MSI
++	select IRQ_MSI_LIB
++	help
++	  Enable this option to support the PCIe controller found on ASPEED
++	  SoCs.
++
++	  This driver provides initialization and management for PCIe
++	  Root Complex functionality, including INTx and MSI support.
++
++	  Select Y if your platform uses an ASPEED SoC and requires PCIe
++	  connectivity.
++
+ config PCI_VERSATILE
+ 	bool "ARM Versatile PB PCI controller"
+ 	depends on ARCH_VERSATILE || COMPILE_TEST
+diff --git a/drivers/pci/controller/Makefile b/drivers/pci/controller/Makefile
+--- a/drivers/pci/controller/Makefile	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/pci/controller/Makefile	2026-09-09 15:51:36.101368280 +0000
+@@ -39,6 +39,7 @@
+ obj-$(CONFIG_PCIE_HISI_ERR) += pcie-hisi-error.o
+ obj-$(CONFIG_PCIE_APPLE) += pcie-apple.o
+ obj-$(CONFIG_PCIE_MT7621) += pcie-mt7621.o
++obj-$(CONFIG_PCIE_ASPEED) += pcie-aspeed.o
+ 
+ # pcie-hisi.o quirks are needed even without CONFIG_PCIE_DW
+ obj-y				+= dwc/
+diff --git a/drivers/phy/Kconfig b/drivers/phy/Kconfig
+--- a/drivers/phy/Kconfig	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/phy/Kconfig	2026-09-09 15:51:30.408454306 +0000
+@@ -84,6 +84,7 @@
+ 
+ source "drivers/phy/allwinner/Kconfig"
+ source "drivers/phy/amlogic/Kconfig"
++source "drivers/phy/aspeed/Kconfig"
+ source "drivers/phy/broadcom/Kconfig"
+ source "drivers/phy/cadence/Kconfig"
+ source "drivers/phy/freescale/Kconfig"
+diff --git a/drivers/phy/Makefile b/drivers/phy/Makefile
+--- a/drivers/phy/Makefile	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/phy/Makefile	2026-09-09 15:51:35.609375714 +0000
+@@ -13,6 +13,7 @@
+ obj-$(CONFIG_PHY_AIROHA_PCIE)		+= phy-airoha-pcie.o
+ obj-y					+= allwinner/	\
+ 					   amlogic/	\
++					   aspeed/	\
+ 					   broadcom/	\
+ 					   cadence/	\
+ 					   freescale/	\
+diff --git a/drivers/pwm/core.c b/drivers/pwm/core.c
+--- a/drivers/pwm/core.c	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/pwm/core.c	2026-09-09 15:51:45.777222069 +0000
+@@ -426,9 +426,8 @@
+  * chip. A negative error code is returned if the index is not valid for the
+  * specified PWM chip or if the PWM device cannot be requested.
+  */
+-static struct pwm_device *pwm_request_from_chip(struct pwm_chip *chip,
+-						unsigned int index,
+-						const char *label)
++struct pwm_device *pwm_request_from_chip(struct pwm_chip *chip,
++					 unsigned int index, const char *label)
+ {
+ 	struct pwm_device *pwm;
+ 	int err;
+@@ -446,6 +445,7 @@
+ 
+ 	return pwm;
+ }
++EXPORT_SYMBOL_GPL(pwm_request_from_chip);
+ 
+ struct pwm_device *
+ of_pwm_xlate_with_flags(struct pwm_chip *chip, const struct of_phandle_args *args)
+diff --git a/drivers/reset/Kconfig b/drivers/reset/Kconfig
+--- a/drivers/reset/Kconfig	2026-09-09 15:51:11.443740890 +0000
++++ b/drivers/reset/Kconfig	2026-09-09 15:51:30.998445390 +0000
+@@ -22,6 +22,13 @@
+ 	  This option enables support for the external reset functions for
+ 	  peripheral PHYs on the Altera Arria10 System Resource Chip.
+ 
++config RESET_ASPEED
++	tristate "ASPEED Reset Driver"
++	depends on ARCH_ASPEED || COMPILE_TEST
++	select AUXILIARY_BUS
++	help
++	  This enables the reset controller driver for AST2700.
++
+ config RESET_ATH79
+ 	bool "AR71xx Reset Driver" if COMPILE_TEST
+ 	default ATH79
+diff --git a/drivers/reset/Makefile b/drivers/reset/Makefile
+--- a/drivers/reset/Makefile	2026-09-09 15:51:11.443740890 +0000
++++ b/drivers/reset/Makefile	2026-09-09 15:51:36.220366481 +0000
+@@ -5,6 +5,7 @@
+ obj-y += sti/
+ obj-y += tegra/
+ obj-$(CONFIG_RESET_A10SR) += reset-a10sr.o
++obj-$(CONFIG_RESET_ASPEED) += reset-aspeed.o
+ obj-$(CONFIG_RESET_ATH79) += reset-ath79.o
+ obj-$(CONFIG_RESET_AXS10X) += reset-axs10x.o
+ obj-$(CONFIG_RESET_BCM6345) += reset-bcm6345.o
+diff --git a/drivers/spi/Kconfig b/drivers/spi/Kconfig
+--- a/drivers/spi/Kconfig	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/spi/Kconfig	2026-09-09 15:51:30.595451480 +0000
+@@ -129,6 +129,16 @@
+ 	  controller (SPI) for the host firmware. The implementation
+ 	  only supports SPI NOR.
+ 
++config SPI_ASPEED_TXRX
++	tristate "Aspeed SPI controllers"
++	depends on ARCH_ASPEED || COMPILE_TEST
++	depends on OF
++	help
++	  This enables support for SPI controller driver in the Aspeed
++	  AST2600, AST2500 and AST2400 SoCs when attached
++	  to SPI device chips with half-duplex mode. On AST2700,
++	  full-duplex mode can be enabled.
++
+ config SPI_ATMEL
+ 	tristate "Atmel SPI Controller"
+ 	depends on ARCH_AT91 || COMPILE_TEST
+diff --git a/drivers/spi/Makefile b/drivers/spi/Makefile
+--- a/drivers/spi/Makefile	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/spi/Makefile	2026-09-09 15:51:35.786373039 +0000
+@@ -22,6 +22,7 @@
+ obj-$(CONFIG_SPI_AR934X)		+= spi-ar934x.o
+ obj-$(CONFIG_SPI_ARMADA_3700)		+= spi-armada-3700.o
+ obj-$(CONFIG_SPI_ASPEED_SMC)		+= spi-aspeed-smc.o
++obj-$(CONFIG_SPI_ASPEED_TXRX)		+= spi-aspeed-txrx.o
+ obj-$(CONFIG_SPI_ATMEL)			+= spi-atmel.o
+ obj-$(CONFIG_SPI_ATMEL_QUADSPI)		+= atmel-quadspi.o
+ obj-$(CONFIG_SPI_AT91_USART)		+= spi-at91-usart.o
+diff --git a/drivers/tty/serial/8250/Kconfig b/drivers/tty/serial/8250/Kconfig
+--- a/drivers/tty/serial/8250/Kconfig	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/tty/serial/8250/Kconfig	2026-09-09 15:51:29.653465715 +0000
+@@ -256,6 +256,15 @@
+ 	  To compile this driver as a module, choose M here: the module
+ 	  will be called 8250_accent.
+ 
++config SERIAL_8250_ASPEED
++	tristate "Aspeed UART"
++	depends on SERIAL_8250 && ARCH_ASPEED
++	select ASPEED_UDMA
++	help
++	  If you have a system using an Aspeed AST26xx SoCs and wish to
++	  make use of its 16550A-compatible UART devices with DMA support,
++	  say Y to this option. If unsure, say N.
++
+ config SERIAL_8250_ASPEED_VUART
+ 	tristate "Aspeed Virtual UART"
+ 	depends on SERIAL_8250
+diff --git a/drivers/tty/serial/8250/Makefile b/drivers/tty/serial/8250/Makefile
+--- a/drivers/tty/serial/8250/Makefile	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/tty/serial/8250/Makefile	2026-09-09 15:51:34.583391218 +0000
+@@ -21,6 +21,7 @@
+ obj-$(CONFIG_SERIAL_8250_ACCENT)	+= 8250_accent.o
+ obj-$(CONFIG_SERIAL_8250_ACORN)		+= 8250_acorn.o
+ obj-$(CONFIG_SERIAL_8250_ASPEED_VUART)	+= 8250_aspeed_vuart.o
++obj-$(CONFIG_SERIAL_8250_ASPEED)	+= 8250_aspeed.o
+ obj-$(CONFIG_SERIAL_8250_BCM2835AUX)	+= 8250_bcm2835aux.o
+ obj-$(CONFIG_SERIAL_8250_BCM7271)	+= 8250_bcm7271.o
+ obj-$(CONFIG_SERIAL_8250_BOCA)		+= 8250_boca.o
+diff --git a/drivers/ufs/host/Kconfig b/drivers/ufs/host/Kconfig
+--- a/drivers/ufs/host/Kconfig	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/ufs/host/Kconfig	2026-09-09 15:51:30.276456301 +0000
+@@ -143,3 +143,12 @@
+ 
+ 	  Select this if you have UFS controller on Unisoc chipset.
+ 	  If unsure, say N.
++
++config SCSI_UFS_ASPEED
++	tristate "Aspeed specific hooks to UFS controller platform driver"
++	depends on SCSI_UFSHCD_PLATFORM
++	help
++	  This selects the Aspeed specific additions to UFSHCD platform driver.
++
++	  Selects this if you have Aspeed platform with UFS controller.
++	  If unsure, say N.
+diff --git a/drivers/ufs/host/Makefile b/drivers/ufs/host/Makefile
+--- a/drivers/ufs/host/Makefile	2026-06-19 11:42:39.000000000 +0000
++++ b/drivers/ufs/host/Makefile	2026-09-09 15:51:35.436378328 +0000
+@@ -12,3 +12,4 @@
+ obj-$(CONFIG_SCSI_UFS_RENESAS) += ufs-renesas.o
+ obj-$(CONFIG_SCSI_UFS_SPRD) += ufs-sprd.o
+ obj-$(CONFIG_SCSI_UFS_TI_J721E) += ti-j721e-ufs.o
++obj-$(CONFIG_SCSI_UFS_ASPEED) += ufs-aspeed.o
+diff --git a/include/linux/clk-provider.h b/include/linux/clk-provider.h
+--- a/include/linux/clk-provider.h	2026-06-19 11:42:39.000000000 +0000
++++ b/include/linux/clk-provider.h	2026-09-09 15:51:45.755222402 +0000
+@@ -623,6 +623,24 @@
+ 			       NULL, (flags), (reg), (bit_idx),		      \
+ 			       (clk_gate_flags), (lock))
+ /**
++ * devm_clk_hw_register_gate_parent_hw - register a gate clock with the clock
++ * framework
++ * @dev: device that is registering this clock
++ * @name: name of this clock
++ * @parent_hw: pointer to parent clk
++ * @flags: framework-specific flags for this clock
++ * @reg: register address to control gating of this clock
++ * @bit_idx: which bit in the register controls gating of this clock
++ * @clk_gate_flags: gate-specific flags for this clock
++ * @lock: shared register lock for this clock
++ */
++#define devm_clk_hw_register_gate_parent_hw(dev, name, parent_hw, flags,      \
++					    reg, bit_idx, clk_gate_flags,     \
++					    lock)			      \
++	__devm_clk_hw_register_gate((dev), NULL, (name), NULL, (parent_hw),   \
++				    NULL, (flags), (reg), (bit_idx),	      \
++				    (clk_gate_flags), (lock))
++/**
+  * devm_clk_hw_register_gate_parent_data - register a gate clock with the
+  * clock framework
+  * @dev: device that is registering this clock
+diff --git a/include/linux/pwm.h b/include/linux/pwm.h
+--- a/include/linux/pwm.h	2026-06-19 11:42:39.000000000 +0000
++++ b/include/linux/pwm.h	2026-09-09 15:51:45.787221918 +0000
+@@ -405,6 +405,9 @@
+ int __devm_pwmchip_add(struct device *dev, struct pwm_chip *chip, struct module *owner);
+ #define devm_pwmchip_add(dev, chip) __devm_pwmchip_add(dev, chip, THIS_MODULE)
+ 
++struct pwm_device *pwm_request_from_chip(struct pwm_chip *chip,
++					 unsigned int index, const char *label);
++
+ struct pwm_device *of_pwm_xlate_with_flags(struct pwm_chip *chip,
+ 		const struct of_phandle_args *args);
+ struct pwm_device *of_pwm_single_xlate(struct pwm_chip *chip,
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+--- a/include/uapi/linux/videodev2.h	2026-06-19 11:42:39.000000000 +0000
++++ b/include/uapi/linux/videodev2.h	2026-09-09 15:51:45.765222251 +0000
+@@ -880,6 +880,7 @@
+ /* Flags */
+ #define V4L2_PIX_FMT_FLAG_PREMUL_ALPHA	0x00000001
+ #define V4L2_PIX_FMT_FLAG_SET_CSC	0x00000002
++#define V4L2_PIX_FMT_FLAG_PARTIAL_JPG	0x00000004
+ 
+ /*
+  *	F O R M A T   E N U M E R A T I O N
