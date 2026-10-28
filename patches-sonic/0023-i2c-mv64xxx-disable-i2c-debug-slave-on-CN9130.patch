@@ -1,0 +1,56 @@
+From 5d8a4163c4a5167e444120e14121a05b7f7f5a77 Mon Sep 17 00:00:00 2001
+From: hshah <hshah@marvell.com>
+Date: Tue, 22 Sep 2026 13:58:46 -0700
+Subject: [PATCH] i2c: mv64xxx: disable i2c debug slave on CN9130
+
+The CN9130/mv78230 I2C controller has an internal debug slave
+enabled by default via the config_debug register (offset 0x8c,
+bit 18). This debug slave interferes with normal I2C bus
+operation and can contribute to bus lockups on CN9130 platforms.
+
+Disable the I2C debug slave during controller initialization by
+clearing bit 18 of the config_debug register.
+
+Signed-off-by: Narendra Hadke <nhadke@marvell.com>
+Signed-off-by: hshah <hshah@marvell.com>
+---
+ drivers/i2c/busses/i2c-mv64xxx.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/drivers/i2c/busses/i2c-mv64xxx.c b/drivers/i2c/busses/i2c-mv64xxx.c
+index 36fdd9b192a9..1fb31f69a1fe 100644
+--- a/drivers/i2c/busses/i2c-mv64xxx.c
++++ b/drivers/i2c/busses/i2c-mv64xxx.c
+@@ -118,6 +118,7 @@ struct mv64xxx_i2c_regs {
+ 	u8	status;
+ 	u8	clock;
+ 	u8	soft_reset;
++	u8	config_debug;
+ };
+ 
+ struct mv64xxx_i2c_data {
+@@ -169,6 +170,7 @@ static struct mv64xxx_i2c_regs mv64xxx_i2c_regs_mv64xxx = {
+ 	.status		= 0x0c,
+ 	.clock		= 0x0c,
+ 	.soft_reset	= 0x1c,
++	.config_debug	= 0x8c,
+ };
+ 
+ static struct mv64xxx_i2c_regs mv64xxx_i2c_regs_sun4i = {
+@@ -217,6 +219,13 @@ mv64xxx_i2c_prepare_for_io(struct mv64xxx_i2c_data *drv_data,
+ static void
+ mv64xxx_i2c_hw_init(struct mv64xxx_i2c_data *drv_data)
+ {
++	u32 data;
++
++	/* Disable I2C slave */
++	data = readl(drv_data->reg_base + drv_data->reg_offsets.config_debug);
++	data &= ~BIT(18);
++	writel(data, drv_data->reg_base + drv_data->reg_offsets.config_debug);
++
+ 	if (drv_data->offload_enabled) {
+ 		writel(0, drv_data->reg_base + MV64XXX_I2C_REG_BRIDGE_CONTROL);
+ 		writel(0, drv_data->reg_base + MV64XXX_I2C_REG_BRIDGE_TIMING);
+-- 
+2.25.1
+
