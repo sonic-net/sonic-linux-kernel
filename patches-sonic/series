@@ -322,7 +322,7 @@ micas-m2-w6950-128oc-dts.patch
 #0007-JTAG-Aspeed-Fix-kernel-configuration.patch
 #0008-arm64-dts-aspeed-spc6-bmc-ext-phram-env-tpm-i3c-pull.patch
 #0009-arm64-dts-aspeed-split-SPC6-BMC-DTS-for-SONiC-and-Op.patch
-#0010-net-ftgmac100-hard-reset-mac-for-sgmii.patch
+#0010-net-ftgmac100-hard-reset-mac-for-marvell-88E151x.patch
 #0011-arm64-dts-aspeed-spc6-bmc-fix-sgmii-phy-names.patch
 #0012-usb-ehci-Add-Aspeed-AST2700-support.patch
 #0013-watchdog-aspeed-Set-WDT_RESET_MASK1-bit-1-on-AST2700.patch
