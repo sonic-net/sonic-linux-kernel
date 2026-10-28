@@ -1,0 +1,48 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Subhasri-Ramasamy <subharam@cisco.com>
+Date: Thu, 6 Aug 2026 12:00:00 +0000
+Subject: [PATCH] libbpf: Fix Y2038 netlink sequence number in libbpf_netlink_send_recv
+
+Coverity CID 3439741 (Y2K38_SAFETY): libbpf_netlink_send_recv() used
+time(NULL) to seed nlmsg_seq, implicitly truncating 64-bit time_t into
+the 32-bit nlmsg_seq field.
+
+Netlink sequence numbers only need to match responses to requests and
+should be monotonically increasing; a timestamp is unnecessary. Use a
+static counter instead and drop the unused time.h include.
+
+Signed-off-by: Subhasri-Ramasamy <subharam@cisco.com>
+---
+ tools/lib/bpf/netlink.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/tools/lib/bpf/netlink.c b/tools/lib/bpf/netlink.c
+--- a/tools/lib/bpf/netlink.c
++++ b/tools/lib/bpf/netlink.c
+@@ -12,8 +12,6 @@
+ #include <linux/rtnetlink.h>
+ #include <linux/tc_act/tca_bpf.h>
+ #include <errno.h>
+-#include <time.h>
+-
+ #include "bpf.h"
+ #include "libbpf.h"
+ #include "libbpf_internal.h"
+@@ -219,6 +217,8 @@ done:
+ 	return ret;
+ }
+ 
++static __u32 libbpf_nlmsg_seq;
++
+ static int libbpf_netlink_send_recv(struct libbpf_nla_req *req,
+ 				    int proto, __dump_nlmsg_t parse_msg,
+ 				    libbpf_dump_nlmsg_t parse_attr,
+@@ -232,7 +232,7 @@ static int libbpf_netlink_send_recv(struct libbpf_nla_req *req,
+ 		return sock;
+ 
+ 	req->nh.nlmsg_pid = 0;
+-	req->nh.nlmsg_seq = time(NULL);
++	req->nh.nlmsg_seq = ++libbpf_nlmsg_seq;
+ 
+ 	if (send(sock, req, req->nh.nlmsg_len, 0) < 0) {
+ 		ret = -errno;
