@@ -371,6 +371,7 @@ security/CVE-2026-23268-apparmor-fix-unprivileged-local-user-can-do-privileg.pat
 security/CVE-2026-23409-apparmor-fix-differential-encoding-verification.patch
 security/CVE-2026-23410-apparmor-fix-race-on-rawdata-dereference.patch
 security/CVE-2026-23411-apparmor-fix-race-between-freeing-data-and-fs-access.patch
+security/CVE-2026-98432-ipv4-free-inet_opt-and-ireq_opt-after-an-RCU-.patch
 ###-> security-end
 
 #
