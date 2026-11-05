@@ -285,6 +285,10 @@ qsa-2026-apparmor/0008-apparmor-fix-unprivileged-local-user-can-do-privileg.patc
 qsa-2026-apparmor/0009-apparmor-fix-differential-encoding-verification.patch
 qsa-2026-apparmor/0010-apparmor-fix-race-on-rawdata-dereference.patch
 qsa-2026-apparmor/0011-apparmor-fix-race-between-freeing-data-and-fs-access.patch
+
+# Fix for CVE-2026-98432 (ipv4 inet_opt and ireq_opt use-after-free)
+security/CVE-2026-98432-ipv4-free-inet_opt-and-ireq_opt-after-an-RCU-.patch
+
 # Patches for EVPN MH
 0001-vxlan-bridge-Add-NDA_FLAGS_EXT-support-with-NTF_EXT_.patch
 0002-net-bridge-vxlan-Protocol-field-in-bridge-fdb.patch
