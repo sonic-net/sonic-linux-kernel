@@ -51,7 +51,8 @@ Safety:
     path will not double-FLR.
   - nvme_dev_disable() returns void, so a failed FLR is only logged.
 
-Upstream-Status: Downstream accepted
+Upstream-Status: Pending
+
 Signed-off-by: Michael Shych <michaelsh@nvidia.com>
 ---
  drivers/nvme/host/pci.c | 24 +++++++++++++++++++++++-

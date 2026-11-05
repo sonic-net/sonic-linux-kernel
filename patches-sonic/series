@@ -107,7 +107,6 @@ driver-i2c-smbus-add-disable_spd-module-parameter.patch
 0027-platform-mellanox-mlx-platform-Change-register-name.patch
 0028-platform-mellanox-mlxreg-dpu-Add-initial-support-for.patch
 0029-platform-mellanox-Introduce-support-of-Nvidia-smart-.patch
-#0030-hwmon-mlxreg-fan-Separate-methods-of-fan-setting-com.patch
 0031-platform-mellanox-indicate-deferred-I2C-bus-creation.patch
 0032-platform_data-mlxreg-Add-capability-bit-and-mask-fie.patch
 0033-platform-mellanox-mlxreg-hotplug-Add-support-for-new.patch
@@ -124,7 +123,6 @@ driver-i2c-smbus-add-disable_spd-module-parameter.patch
 0044-platform_data-mlxreg-Add-non-sticky-bit-indication-f.patch
 0045-platform-mellanox-mlxreg-hotplug-Add-handling-of-non.patch
 0046-platform-mellanox-nvsw-bmc-Add-system-control-and-mo.patch
-#0047-hwmon-mlxreg-fan-Prevent-fans-from-getting-stuck-at-.patch
 0052-platform-mellanox-Introduce-support-for-switches-equ.patch
 0053-platform-mellanox-mlx-platform-Add-support-for-new-X.patch
 0054-i2c-asf-Introduce-MCTP-support-over-ASF-controller.patch
@@ -141,10 +139,9 @@ driver-i2c-smbus-add-disable_spd-module-parameter.patch
 0062-Add-support-for-NXP-s-PCF85053A-RTC-chip.patch
 0063-reset-phy-using-polling-function-not-register-write.patch
 0064-hwmon-pmbus-isl68137-Add-support-for-Renesas-RAA2289.patch
-0068-iio-adc-max1363-Add-ability-to-set-scale-of-the-ADC.patch
-#0069-nvme-pci-try-function-level-reset-on-init-failure.patch
 0070-nvme-pci-try-flr-on-controller-disable-failure.patch
-0072-i2c-dev-Fix-duplicate-chardev-registration-during-mo.patch
+0072-iio-adc-max1363-Add-ability-to-set-scale-of-the-ADC.patch
+0073-i2c-dev-Fix-duplicate-chardev-registration-during-mo.patch
 8000-mlxsw-Use-weak-reverse-dependencies-for-firmware-fla.patch
 8002-mlxsw-i2c-SONIC-ISSU-Prevent-transaction-execution-f.patch
 8003-mlxsw-minimal-Downstream-Ignore-error-reading-SPAD-r.patch
@@ -158,6 +155,7 @@ driver-i2c-smbus-add-disable_spd-module-parameter.patch
 8011-hwmon-pmbus-Downstream-Workaround-for-psu-attributes.patch
 8013-hwmon-pmbus-mp2975-Clear-interrupts-at-probe.patch
 8014-mlxsw-i2c-Downstream-Increase-I2C-timeout-for-HW-sem.patch
+8015-hwmon-pmbus-mp2975-Get-vout-fault-limits-dynamically.patch
 ###-> mellanox_hw_mgmt-end
 
 # Cisco patches for 5.10 kernel
@@ -313,35 +311,20 @@ micas-m2-w6950-128oc-dts.patch
 ###-> aspeed-end
 
 ###-> nvidia_aspeed_bmc-start
-#0001-mctp-driver-net-Extend-MCTP-support.patch
-#0002-mctp-aspeed-IRoT-Add-initial-support.patch
-#0003-mctp-driver-net-Add-global-APIs-for-MCTP.patch
-#0004-mctp-driver-net-Fix-MCTP-over-VDM-PCIe.patch
-#0005-mctp-driver-net-Fix-MCTP-over-USB.patch
-#0006-jtag-Add-JTAG-core-headers-GPIO-mux-and-locking-support.patch
-#0007-JTAG-Aspeed-Fix-kernel-configuration.patch
-#0008-arm64-dts-aspeed-spc6-bmc-ext-phram-env-tpm-i3c-pull.patch
-#0009-arm64-dts-aspeed-split-SPC6-BMC-DTS-for-SONiC-and-Op.patch
-#0010-net-ftgmac100-hard-reset-mac-for-marvell-88E151x.patch
-#0011-arm64-dts-aspeed-spc6-bmc-fix-sgmii-phy-names.patch
-#0012-usb-ehci-Add-Aspeed-AST2700-support.patch
-#0013-watchdog-aspeed-Set-WDT_RESET_MASK1-bit-1-on-AST2700.patch
-#0014-i2c-ast2600-change-the-remove-driver-call-back-func.patch
-#0015-i2c-ast2600-update-sync-with-upstream.patch
-#0016-i2c-ast2600-update-align-with-upstream.patch
-#0017-i2c-ast2600-use-function-point.patch
-#0018-i2c-ast2600-fix-update.patch
-#0019-i2c-ast2600-refine-bus-mode-logic.patch
-#0020-i2c-ast2600-refine-the-code-style-and-arrange.patch
-#0021-i2c-ast2600-introduce-buffer-transferring-support-t.patch
-#0022-i2c-ast2600-arrange-the-transfer-judgement-rule.patch
-#0023-drivers-i2c-update-the-ast2700-debounce-maximum-val.patch
-#0024-i2c-i2c-ast2600-avoid-I2C-target-reads-with-zero-le.patch
-#0025-i2c-ast2600-update-the-i2c-transfer-mode-as-buffer-.patch
-#0026-i2c-ast2600-add-set-DMA-enable-flag-for-AST2700.patch
-#0027-i2c-i2c-ast2600-add-zero-length-read-quirk.patch
-#0028-i2c-ast2600-revert-back-AST2700-obtains-data-buffer.patch
-#0029-i2c-ast2600-fix-NULL-deref-in-the-AST2700-buffer-mo.patch
+0001-mctp-driver-net-Extend-MCTP-support.patch
+0002-mctp-aspeed-IRoT-Add-initial-support.patch
+0003-mctp-driver-net-Add-global-APIs-for-MCTP.patch
+0004-mctp-driver-net-Fix-MCTP-over-VDM-PCIe.patch
+0005-mctp-driver-net-Fix-MCTP-over-USB.patch
+0006-jtag-Add-JTAG-core-headers-GPIO-mux-and-locking-support.patch
+0007-JTAG-Aspeed-Fix-kernel-configuration.patch
+0008-arm64-dts-aspeed-spc6-bmc-ext-phram-env-tpm-i3c-pull.patch
+0009-arm64-dts-aspeed-split-SPC6-BMC-DTS-for-SONiC-and-Op.patch
+0010-net-ftgmac100-hard-reset-mac-for-sgmii.patch
+0011-arm64-dts-aspeed-spc6-bmc-fix-sgmii-phy-names.patch
+0012-usb-ehci-Add-Aspeed-AST2700-support.patch
+0013-watchdog-aspeed-Set-WDT_RESET_MASK1-bit-1-on-AST2700.patch
+0014-i2c-ast2600-fix-NULL-deref-in-the-AST2700-buffer-mo.patch
 ###-> nvidia_aspeed_bmc-end
 
 # Fixes for CVEs, each named for the CVE it resolves so the SBOM

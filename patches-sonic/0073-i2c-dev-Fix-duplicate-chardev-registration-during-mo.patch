@@ -59,6 +59,8 @@ already ignores get_free_i2c_dev() failures, so it just backs off.
 Fixes: 9ea3e941d161 ("i2c-dev: Use standard bus notification mechanism")
 Cc: stable@vger.kernel.org
 Signed-off-by: Felix Radensky <fradensky@nvidia.com>
+
+Upstream-Status: Pending
 ---
  drivers/i2c/i2c-dev.c | 9 ++++++++-
  1 file changed, 8 insertions(+), 1 deletion(-)
