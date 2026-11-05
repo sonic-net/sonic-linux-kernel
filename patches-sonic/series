@@ -353,6 +353,8 @@ micas-m2-w6950-128oc-dts.patch
 0029-i2c-ast2600-fix-NULL-deref-in-the-AST2700-buffer-mo.patch
 ###-> nvidia_aspeed_bmc-end
 
+hwmon-pmbus-fs1412-Add-TDK-FS1412-driver.patch
+
 # Fixes for CVEs, each named for the CVE it resolves so the SBOM
 # records it (sonic-buildimage's scripts/sbom_cve_refs.py). Kept last
 # among the public patches so a fix never reorders what it is applied
