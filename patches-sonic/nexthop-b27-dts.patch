@@ -37,7 +37,7 @@ new file mode 100644
 index 0000000..a55bf3f
 --- /dev/null
 +++ b/arch/arm64/boot/dts/aspeed/nexthop-b27-r0.dts
-@@ -0,0 +1,550 @@
+@@ -0,0 +1,538 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +//
 +// NextHop AST2700 based B27 R0 Device Tree
@@ -218,14 +218,14 @@ index 0000000..a55bf3f
 +	/*A0-A7*/	"","","","","","","","",
 +	/*B0-B7*/	"","","","","","","","",
 +	/*C0-C7*/	"","","","","","","","",
-+	/*D0-D7*/	"","","","","","","","",
++	/*D0-D7*/	"","","","","leak_fault_1","","","",
 +	/*E0-E7*/	"","bmc_mode","cpe_ctrl","fpga_prog",
 +				"eeprom_wp","","","",
 +	/*F0-F7*/	"pwr_cyc_req","cpu_alert_l","cpu_rst_l","",
 +				"","","","",
 +	/*G0-G7*/	"","","","",
 +				"tpm_rst_l","tpm_pirq","tpm_gpio_0","tpm_gpio_1",
-+	/*H0-H7*/	"tpm_gpio_2","","","","","","","",
++	/*H0-H7*/	"tpm_gpio_2","","","leak_fault_0","","","","",
 +	/*I0-I7*/	"","","","","","","","",
 +	/*J0-J7*/	"","","","","","","","",
 +	/*K0-K7*/	"","","","","","","","",
@@ -254,18 +254,6 @@ index 0000000..a55bf3f
 +		gpio-hog;
 +		gpios = <ASPEED_GPIO(H, 2) (GPIO_ACTIVE_HIGH | GPIO_TRANSITORY)>;
 +		output-low;
-+	};
-+
-+	bmc-gpio3-hog {
-+		gpio-hog;
-+		gpios = <ASPEED_GPIO(D, 4) GPIO_ACTIVE_HIGH>;
-+		input;
-+	};
-+
-+	bmc-gpio6-hog {
-+		gpio-hog;
-+		gpios = <ASPEED_GPIO(H, 3) GPIO_ACTIVE_HIGH>;
-+		input;
 +	};
 +};
 +
