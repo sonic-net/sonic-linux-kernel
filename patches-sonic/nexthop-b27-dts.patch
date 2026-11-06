@@ -314,7 +314,7 @@ index 0000000..a55bf3f
 +};
 +
 +&spi0 {
-+	compatible = "aspeed,ast2700-spi-txrx", "aspeed,ast2700-spi";
++	compatible = "aspeed,ast2700-spi-txrx";
 +	status = "okay";
 +	pinctrl-0 = <&pinctrl_spi0_default &pinctrl_spi0_quad_default &pinctrl_spi0_cs1_default>;
 +	pinctrl-names = "default";
