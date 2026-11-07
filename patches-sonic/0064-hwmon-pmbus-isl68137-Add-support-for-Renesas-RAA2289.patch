@@ -6,22 +6,30 @@ Subject: [PATCH] hwmon: pmbus/isl68137: Add support for Renesas RAA228942 and
 
 Add I2C device IDs for Renesas RAA228942 and RAA228943.
 
-At the Linux PMBus hwmon interface level currently supported by this
-driver, these devices are compatible with the existing 2-rail non-TC
-controllers, so devicetree will use fallback compatibles and no
-dedicated OF match entries are needed.
+Both devices use the existing 2-rail non-TC behavior. RAA228943 also
+stores its VOUT OV/UV fault tolerances in vendor DMA registers instead
+of the standard PMBus limit registers. Add a dedicated variant that
+reads the per-page DMA tolerance and returns the absolute fault limit
+as VOUT_COMMAND (VID) plus or minus that tolerance.
+
+The dedicated variant keeps the DMA behavior isolated to RAA228943.
+RAA228942 and all existing devices retain their current behavior.
 
 Signed-off-by: Dawei Liu <dawei.liu.jy@renesas.com>
+Signed-off-by: Vasily Vityukov <vvityukov@nvidia.com>
+
+Upstream-Status: Pending
+
 ---
- Documentation/hwmon/isl68137.rst | 20 ++++++++++++++++++++
- drivers/hwmon/pmbus/isl68137.c   |  2 ++
- 2 files changed, 22 insertions(+)
+ Documentation/hwmon/isl68137.rst | 23 +++++++++++++++++++++++
+ drivers/hwmon/pmbus/isl68137.c   | 116 +++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 138 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/hwmon/isl68137.rst b/Documentation/hwmon/isl68137.rst
 index 0e71b22047f8..1a1424dd640f 100644
 --- a/Documentation/hwmon/isl68137.rst
 +++ b/Documentation/hwmon/isl68137.rst
-@@ -374,6 +374,26 @@ Supported chips:
+@@ -374,6 +374,29 @@
  
        Publicly available (after August 2020 launch) at the Renesas website
  
@@ -45,22 +53,168 @@ index 0e71b22047f8..1a1424dd640f 100644
 +
 +      Provided by Renesas upon request and NDA
 +
++    VOUT over/under-voltage fault limits are derived from the configured VID
++    and per-page tolerances read through the vendor DMA interface.
++
    * Renesas RAA229001
  
      Prefix: 'raa229001'
 diff --git a/drivers/hwmon/pmbus/isl68137.c b/drivers/hwmon/pmbus/isl68137.c
-index 7e53fb1d5ea3..f3baaee6227a 100644
+index 7e53fb1..a835786 100644
 --- a/drivers/hwmon/pmbus/isl68137.c
 +++ b/drivers/hwmon/pmbus/isl68137.c
-@@ -311,6 +311,8 @@ static const struct i2c_device_id raa_dmpvr_id[] = {
+@@ -21,6 +21,9 @@
+ #define ISL68137_VOUT_AVS	0x30
+ #define RAA_DMPVR2_READ_VMON	0xc8
+ 
++#define RAA228943_DMA_ADDR_REG  0xc7
++#define RAA228943_DMA_DATA_REG  0xc5
++
+ enum chips {
+ 	isl68137,
+ 	isl68220,
+@@ -68,6 +71,7 @@ enum variants {
+ 	raa_dmpvr2_1rail,
+ 	raa_dmpvr2_2rail,
+ 	raa_dmpvr2_2rail_nontc,
++	raa_dmpvr2_2rail_nontc_vidrel,
+ 	raa_dmpvr2_3rail,
+ 	raa_dmpvr2_hv,
+ };
+@@ -178,6 +182,104 @@ static int raa_dmpvr2_read_word_data(struct i2c_client *client, int page,
+ 	return ret;
+ }
+ 
++static int raa_dmpvr2_nontc_read_word_data(struct i2c_client *client, int page,
++					   int phase, int reg)
++{
++	switch (reg) {
++	case PMBUS_UT_FAULT_LIMIT:
++	case PMBUS_UT_WARN_LIMIT:
++	case PMBUS_POUT_MAX:
++		return -EIO;
++	default:
++		return raa_dmpvr2_read_word_data(client, page, phase, reg);
++	}
++}
++
++/*
++ * Read a 32-bit vendor-specific DMA register on RAA228943 (Renesas
++ * Gen3.5 indirect access path): write the 16-bit internal address to
++ * RAA228943_DMA_ADDR_REG (LSB first), then read 4 bytes back from
++ * RAA228943_DMA_DATA_REG. Stores the raw 32-bit value (host order,
++ * device returns LSB-first) in *val. Returns 0 on success or a
++ * negative errno on failure.
++ */
++static int read_dma_word(struct i2c_client *client, u16 addr, u32 *val)
++{
++	u8 addr_buf[2] = { addr & 0xff, (addr >> 8) & 0xff };
++	u8 data_buf[4];
++	int ret;
++
++	ret = i2c_smbus_write_i2c_block_data(client, RAA228943_DMA_ADDR_REG,
++					     sizeof(addr_buf), addr_buf);
++	if (ret < 0)
++		return ret;
++
++	ret = i2c_smbus_read_i2c_block_data(client, RAA228943_DMA_DATA_REG,
++					    sizeof(data_buf), data_buf);
++	if (ret < 0)
++		return ret;
++	if (ret != sizeof(data_buf))
++		return -EIO;
++
++	*val = data_buf[0] | ((u32)data_buf[1] << 8) |
++	       ((u32)data_buf[2] << 16) | ((u32)data_buf[3] << 24);
++	return 0;
++}
++
++/*
++ * RAA228943 only: compute VOUT_OV_FAULT_LIMIT / VOUT_UV_FAULT_LIMIT as
++ * VID +/- tolerance, where VID is PMBUS_VOUT_COMMAND and tolerance is
++ * the 12-bit unsigned value at dma_addr. Both are already expressed in
++ * the same integer 'direct format' units used by this chip for VOUT
++ * (m=1, b=0, R=3, i.e. raw millivolts), so plain integer add/sub gives
++ * a result directly usable as the PMBus word for the caller's reg.
++ */
++static int raa228943_ov_uv_fault_limit(struct i2c_client *client, int page,
++				       u16 dma_addr, bool is_ov_limit)
++{
++	u32 dma_val;
++	int ret, tol_raw, vid_raw;
++
++	ret = read_dma_word(client, dma_addr, &dma_val);
++	if (ret < 0)
++		return ret;
++	tol_raw = dma_val & 0xfff;
++
++	vid_raw = pmbus_read_word_data(client, page, 0xff,
++				       PMBUS_VOUT_COMMAND);
++	if (vid_raw < 0)
++		return vid_raw;
++
++	return is_ov_limit ? (vid_raw + tol_raw) : (vid_raw - tol_raw);
++}
++
++static int raa228943_read_word_data(struct i2c_client *client, int page,
++				    int phase, int reg)
++{
++	u16 addr;
++
++	switch (reg) {
++	case PMBUS_VOUT_OV_FAULT_LIMIT:
++		if (page == 0)
++			addr = 0xea3e;
++		else if (page == 1)
++			addr = 0xeabe;
++		else
++			return -ENODATA;
++		return raa228943_ov_uv_fault_limit(client, page, addr, true);
++	case PMBUS_VOUT_UV_FAULT_LIMIT:
++		if (page == 0)
++			addr = 0xea3d;
++		else if (page == 1)
++			addr = 0xeabd;
++		else
++			return -ENODATA;
++		return raa228943_ov_uv_fault_limit(client, page, addr, false);
++	default:
++		return raa_dmpvr2_nontc_read_word_data(client, page, phase, reg);
++	}
++}
++
+ static struct pmbus_driver_info raa_dmpvr_info = {
+ 	.pages = 3,
+ 	.format[PSC_VOLTAGE_IN] = direct,
+@@ -244,9 +346,19 @@ static int isl68137_probe(struct i2c_client *client)
+ 		info->read_word_data = raa_dmpvr2_read_word_data;
+ 		break;
+ 	case raa_dmpvr2_2rail_nontc:
++		info->func[0] &= ~PMBUS_HAVE_VMON;
++		info->func[0] &= ~PMBUS_HAVE_TEMP3;
++		info->func[1] &= ~PMBUS_HAVE_TEMP3;
++		info->pages = 2;
++		info->read_word_data = raa_dmpvr2_nontc_read_word_data;
++		break;
++	case raa_dmpvr2_2rail_nontc_vidrel:
++		info->func[0] &= ~PMBUS_HAVE_VMON;
+ 		info->func[0] &= ~PMBUS_HAVE_TEMP3;
+ 		info->func[1] &= ~PMBUS_HAVE_TEMP3;
+-		fallthrough;
++		info->pages = 2;
++		info->read_word_data = raa228943_read_word_data;
++		break;
+ 	case raa_dmpvr2_2rail:
+ 		info->pages = 2;
+ 		info->read_word_data = raa_dmpvr2_read_word_data;
+@@ -311,6 +423,8 @@ static const struct i2c_device_id raa_dmpvr_id[] = {
  	{"raa228004", raa_dmpvr2_hv},
  	{"raa228006", raa_dmpvr2_hv},
  	{"raa228228", raa_dmpvr2_2rail_nontc},
 +	{"raa228942", raa_dmpvr2_2rail_nontc},
-+	{"raa228943", raa_dmpvr2_2rail_nontc},
++	{"raa228943", raa_dmpvr2_2rail_nontc_vidrel},
  	{"raa229001", raa_dmpvr2_2rail},
  	{"raa229004", raa_dmpvr2_2rail},
  	{}
 -- 
 2.34.1
-

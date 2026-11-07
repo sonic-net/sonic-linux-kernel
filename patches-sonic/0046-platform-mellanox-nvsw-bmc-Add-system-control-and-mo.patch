@@ -1,4 +1,4 @@
-From 79d11ae9b4611ac726289d9a27f4ac065c6a0efc Mon Sep 17 00:00:00 2001
+From decdf9d67a18a2e4fd4f115c31773f09c6dd331d Mon Sep 17 00:00:00 2001
 From: Vadim Pasternak <vadimp@nvidia.com>
 Date: Thu, 4 Jul 2024 23:50:27 +0300
 Subject: [PATCH] platform/mellanox: nvsw-bmc: Add system control and
@@ -15,6 +15,10 @@ This control includes:
 - General purpose registers attributes.
 - LED control.
 - FAN control.
+
+The driver is probed from the device tree and runs on the BMC SoC, so it
+depends on OF and is excluded from the x86 host builds, which enable OF
+for other devices.
 
 mlxreg-io treats .bit as the 1-based LSB of a field, not the MSB of
 GENMASK(hi, lo). The bios_status, bios_status_ro, cpu_spi_ctrl, psu_qty,
@@ -33,9 +37,9 @@ Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
  drivers/platform/mellanox/nvsw-core.c         |  717 ++
  drivers/platform/mellanox/nvsw-host-l1.c      |  735 ++
  drivers/platform/mellanox/nvsw-host-spc5.c    |  943 +++
- drivers/platform/mellanox/nvsw-host-spc6.c    |  852 ++
- drivers/platform/mellanox/nvsw.h              |  318 +
- 9 files changed, 10916 insertions(+)
+ drivers/platform/mellanox/nvsw-host-spc6.c    |  912 ++
+ drivers/platform/mellanox/nvsw.h              |  319 +
+ 9 files changed, 10977 insertions(+)
  create mode 100644 drivers/platform/mellanox/nvsw-bmc-hid162.c
  create mode 100644 drivers/platform/mellanox/nvsw-core.c
  create mode 100644 drivers/platform/mellanox/nvsw-host-l1.c
@@ -60,10 +64,10 @@ index 9bf0fb17a..b6c6576f7 100644
            - nuvoton,w83773g
              # OKI ML86V7667 video decoder
 diff --git a/drivers/platform/mellanox/Kconfig b/drivers/platform/mellanox/Kconfig
-index f7dfa0e78..53e5a04aa 100644
+index e3afbe62c..6cbda147a 100644
 --- a/drivers/platform/mellanox/Kconfig
 +++ b/drivers/platform/mellanox/Kconfig
-@@ -79,6 +79,44 @@ config MLXBF_PMC
+@@ -105,6 +105,44 @@ config MLXBF_PMC
  	  to performance monitoring counters within various blocks in the
  	  Mellanox BlueField SoC via a sysfs interface.
  
@@ -109,10 +113,10 @@ index f7dfa0e78..53e5a04aa 100644
  	tristate "Nvidia SN2201 platform driver support"
  	depends on HWMON && I2C
 diff --git a/drivers/platform/mellanox/Makefile b/drivers/platform/mellanox/Makefile
-index 04703c041..5ad42435e 100644
+index e86723b44..123edaa99 100644
 --- a/drivers/platform/mellanox/Makefile
 +++ b/drivers/platform/mellanox/Makefile
-@@ -9,4 +9,8 @@ obj-$(CONFIG_MLXBF_TMFIFO)	+= mlxbf-tmfifo.o
+@@ -11,4 +11,8 @@ obj-$(CONFIG_MLXREG_DPU)	+= mlxreg-dpu.o
  obj-$(CONFIG_MLXREG_HOTPLUG)	+= mlxreg-hotplug.o
  obj-$(CONFIG_MLXREG_IO) += mlxreg-io.o
  obj-$(CONFIG_MLXREG_LC) += mlxreg-lc.o
@@ -5605,7 +5609,7 @@ index 000000000..9f4c94f5d
 +	},
 +	{
 +		.label = "cpld9_pn",
-+		.reg = NVSW_REG_CPLD9B_PN_OFFSET,
++		.reg = NVSW_REG_CPLD9_PN_OFFSET,
 +		.bit = GENMASK(15, 0),
 +		.mode = 0444,
 +		.regnum = 2,
@@ -9846,10 +9850,10 @@ index 000000000..e54bd4109
 +
 diff --git a/drivers/platform/mellanox/nvsw-host-spc6.c b/drivers/platform/mellanox/nvsw-host-spc6.c
 new file mode 100644
-index 000000000..449ba5ffd
+index 000000000..f995cab6c
 --- /dev/null
 +++ b/drivers/platform/mellanox/nvsw-host-spc6.c
-@@ -0,0 +1,852 @@
+@@ -0,0 +1,912 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Nvidia SPC6 host platform driver
@@ -10222,6 +10226,30 @@ index 000000000..449ba5ffd
 +		.mode = 0644,
 +	},
 +	{
++		.label = "asic1_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(1),
++		.mode = 0644,
++	},
++	{
++		.label = "asic2_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0644,
++	},
++	{
++		.label = "asic3_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(4),
++		.mode = 0644,
++	},
++	{
++		.label = "asic4_reset",
++		.reg = NVSW_REG_RESET_GP2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(5),
++		.mode = 0644,
++	},
++	{
 +		.label = "reset_long_pb",
 +		.reg = NVSW_REG_RESET_CAUSE_OFFSET,
 +		.mask = GENMASK(7, 0) & ~BIT(0),
@@ -10327,9 +10355,24 @@ index 000000000..449ba5ffd
 +		.mode = 0444,
 +	},
 +	{
-+		.label = "asic_pg_fail",
-+		.reg = NVSW_REG_GP4_RO_OFFSET,
-+		.mask = GENMASK(7, 0) & ~BIT(7),
++		.label = "asic2_health",
++		.reg = NVSW_REG_ASIC1_HEALTH_OFFSET,
++		.mask = NVSW_ASIC2_MASK,
++		.bit = 1,
++		.mode = 0444,
++	},
++	{
++		.label = "asic3_health",
++		.reg = NVSW_REG_ASIC1_HEALTH_OFFSET,
++		.mask = NVSW_ASIC3_MASK,
++		.bit = 1,
++		.mode = 0444,
++	},
++	{
++		.label = "asic4_health",
++		.reg = NVSW_REG_ASIC1_HEALTH_OFFSET,
++		.mask = NVSW_ASIC4_MASK,
++		.bit = 1,
 +		.mode = 0444,
 +	},
 +	{
@@ -10576,6 +10619,27 @@ index 000000000..449ba5ffd
 +			DMI_EXACT_MATCH(DMI_PRODUCT_SKU, "HI193"),
 +		},
 +	},
++	{
++		.callback = nvsw_host_dmi_spc6_switch_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0027"),
++			DMI_EXACT_MATCH(DMI_PRODUCT_SKU, "HI183"),
++		},
++	},
++	{
++		.callback = nvsw_host_dmi_spc6_switch_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0027"),
++			DMI_EXACT_MATCH(DMI_PRODUCT_SKU, "HI187"),
++		},
++	},
++	{
++		.callback = nvsw_host_dmi_spc6_switch_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0027"),
++			DMI_EXACT_MATCH(DMI_PRODUCT_SKU, "HI188"),
++		},
++	},
 +	{ }
 +};
 +
@@ -10704,10 +10768,10 @@ index 000000000..449ba5ffd
 +
 diff --git a/drivers/platform/mellanox/nvsw.h b/drivers/platform/mellanox/nvsw.h
 new file mode 100644
-index 000000000..4fa0d9d31
+index 000000000..b45b5df54
 --- /dev/null
 +++ b/drivers/platform/mellanox/nvsw.h
-@@ -0,0 +1,318 @@
+@@ -0,0 +1,319 @@
 +/* SPDX-License-Identifier: GPL-2.0+
 + *
 + * Nvidia BMC platform driver
@@ -10804,17 +10868,15 @@ index 000000000..4fa0d9d31
 +#define NVSW_REG_PS_DC_OK_MASK_OFFSET	0x2569
 +#define NVSW_REG_CPLD8_PN_OFFSET	0x2573
 +#define NVSW_REG_CPLD8_PN1_OFFSET	0x2574
-+#define NVSW_REG_CPLD6_VER_OFFSET	0x2575
 +#define NVSW_REG_PG3_OFFSET		0x2576
 +#define NVSW_REG_PG3_EVENT_OFFSET	0x2577
 +#define NVSW_REG_PG3_MASK_OFFSET	0x2578
 +#define NVSW_REG_PG4_OFFSET		0x2579
 +#define NVSW_REG_PG4_EVENT_OFFSET	0x257a
 +#define NVSW_REG_PG4_MASK_OFFSET	0x257b
-+#define NVSW_REG_CPLD6_PN_OFFSET	0x257c
-+#define NVSW_REG_CPLD6_PN1_OFFSET	0x257d
-+#define NVSW_REG_CPLD9_PN_OFFSET	0x257e
-+#define NVSW_REG_CPLD9_PN1_OFFSET	0x257f
++#define NVSW_REG_CPLD6_VER_OFFSET	0x257c
++#define NVSW_REG_CPLD6_PN_OFFSET	0x257d
++#define NVSW_REG_CPLD6_PN1_OFFSET	0x257e
 +#define NVSW_REG_CPLD10_PN_OFFSET	0x2580
 +#define NVSW_REG_CPLD10_PN1_OFFSET	0x2581
 +#define NVSW_REG_ASIC3_HEALTH_OFFSET	0x2582
@@ -10852,8 +10914,8 @@ index 000000000..4fa0d9d31
 +#define NVSW_REG_CPLD8_VER_OFFSET	0x25c8
 +#define NVSW_REG_CPLD9_VER_OFFSET	0x25c9
 +#define NVSW_REG_CPLD10_VER_OFFSET	0x25ca
-+#define NVSW_REG_CPLD9B_PN_OFFSET	0x25cb
-+#define NVSW_REG_CPLD9B_PN1_OFFSET	0x25cc
++#define NVSW_REG_CPLD9_PN_OFFSET	0x25cb
++#define NVSW_REG_CPLD9_PN1_OFFSET	0x25cc
 +#define NVSW_REG_WD2_TMR_OFFSET		0x25cd
 +#define NVSW_REG_WD2_TLEFT_OFFSET	0x25ce
 +#define NVSW_REG_WD2_ACT_OFFSET		0x25cf
@@ -10959,7 +11021,10 @@ index 000000000..4fa0d9d31
 +	HID180,
 +	HID181,
 +	HID182,
++	HID183,
 +	HID185,
++	HID187,
++	HID188,
 +	HID189,
 +	HID191,
 +	HID193,

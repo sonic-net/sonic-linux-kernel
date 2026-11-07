@@ -24,9 +24,9 @@ index 5caf80a7f..496ae839d 100644
  	nexthop-b27-r0.dtb \
  	nokia-ast2700-h6-128-r0.dtb \
 +	arista_goldfinch-r0.dtb \
+ 	ast2700-evb_ast1700-evb.dtb \
+ 	ast2700-evb_ast1700-evb-dual.dtb \
  	ast2700-raw.dtb \
- 	ast2700-evb-s0.dtb \
- 	ast2700-evb-s1.dtb \
 diff --git a/arch/arm64/boot/dts/aspeed/arista_goldfinch-r0.dts b/arch/arm64/boot/dts/aspeed/arista_goldfinch-r0.dts
 new file mode 100644
 index 000000000..52536fc16
