@@ -236,6 +236,10 @@ qsa-2026-apparmor/0009-apparmor-fix-differential-encoding-verification.patch
 qsa-2026-apparmor/0010-apparmor-fix-race-on-rawdata-dereference.patch
 qsa-2026-apparmor/0011-apparmor-fix-race-between-freeing-data-and-fs-access.patch
 
+# TCP handshake: SYN_RECV child socket races (IPv4 and IPv6)
+security/CVE-2026-98432-ipv4-free-inet_opt-and-ireq_opt-after-an-RCU-.patch
+security/CVE-2026-43198-tcp-fix-potential-race-in-tcp_v6_syn_recv_sock.patch
+
 #
 #
 ############################################################
