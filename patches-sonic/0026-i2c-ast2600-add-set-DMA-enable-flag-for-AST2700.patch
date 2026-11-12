@@ -1,0 +1,53 @@
+From: Tommy Huang <tommy_huang@aspeedtech.com>
+Date: Tue, 5 May 2026 10:30:14 +0800
+Subject: [PATCH 6.12 1/1] i2c: ast2600: add set DMA enable flag for AST2700
+
+Upstream-Status: Backport [AspeedTech-BMC/linux aspeed-master-v6.12 a5ec46517a6548aa8ac0e064c11790f1cbef51a1, SDK v00.07.04]
+
+DMA enable / disable is controlled by a flag on AST2700.
+Modify the flag control flow to ensure the setting
+is applied correctly.
+
+Signed-off-by: Tommy Huang <tommy_huang@aspeedtech.com>
+Change-Id: Id2f000f50907f5158bc82bf6213e3365e6fd82c6
+(cherry picked from commit f14ceee115632afb859d2ed7a7b04abe9cfba1f7)
+---
+ drivers/i2c/busses/i2c-ast2600.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-ast2600.c b/drivers/i2c/busses/i2c-ast2600.c
+index 0d1508902..92b426806 100644
+--- a/drivers/i2c/busses/i2c-ast2600.c
++++ b/drivers/i2c/busses/i2c-ast2600.c
+@@ -2949,11 +2949,17 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
+ 	i2c_bus->multi_master = device_property_read_bool(dev, "multi-master");
+ 
+ 	if (i2c_bus->version == AST2700) {
++		/* select the transfer method*/
++		u32 xfer_type = readl(i2c_bus->reg_base + I2CC_VERSION_CTRL);
++
+ 		/* AST2700 would not allow byte mode */
+ 		if (i2c_bus->mode == BYTE_MODE)
+ 			i2c_bus->mode = DMA_MODE;
+ 
+-		if (i2c_bus->mode == BUFF_MODE) {
++		if (i2c_bus->mode == DMA_MODE) {
++			/* ast2700 cfg enable dma */
++			xfer_type |= FUNC_CFG_DMA_EN;
++		} else if (i2c_bus->mode == BUFF_MODE) {
+ 			i2c_bus->buf_base = devm_platform_get_and_ioremap_resource(pdev, 1, &res);
+ 			if (IS_ERR(i2c_bus->buf_base)) {
+ 				i2c_bus->mode = DMA_MODE;
+@@ -2961,10 +2967,10 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
+ 				i2c_bus->buf_size = resource_size(res) / 4;
+ 
+ 				/* ast2700 cfg disable dma */
+-				writel(readl(i2c_bus->reg_base + I2CC_VERSION_CTRL) & ~FUNC_CFG_DMA_EN,
+-					   i2c_bus->reg_base + I2CC_VERSION_CTRL);
++				xfer_type &= ~FUNC_CFG_DMA_EN;
+ 			}
+ 		}
++		writel(xfer_type, i2c_bus->reg_base + I2CC_VERSION_CTRL);
+ 	} else {
+ 		if (i2c_bus->mode == BUFF_MODE) {
+ 			i2c_bus->buf_base = devm_platform_get_and_ioremap_resource(pdev, 1, &res);

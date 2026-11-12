@@ -124,6 +124,10 @@ driver-i2c-smbus-add-disable_spd-module-parameter.patch
 0062-Add-support-for-NXP-s-PCF85053A-RTC-chip.patch
 0063-reset-phy-using-polling-function-not-register-write.patch
 0064-hwmon-pmbus-isl68137-Add-support-for-Renesas-RAA2289.patch
+0068-iio-adc-max1363-Add-ability-to-set-scale-of-the-ADC.patch
+0069-nvme-pci-try-function-level-reset-on-init-failure.patch
+0070-nvme-pci-try-flr-on-controller-disable-failure.patch
+0072-i2c-dev-Fix-duplicate-chardev-registration-during-mo.patch
 8000-mlxsw-Use-weak-reverse-dependencies-for-firmware-fla.patch
 8002-mlxsw-i2c-SONIC-ISSU-Prevent-transaction-execution-f.patch
 8003-mlxsw-minimal-Downstream-Ignore-error-reading-SPAD-r.patch
@@ -271,6 +275,23 @@ arista_goldfinch-dts.patch
 0010-net-ftgmac100-hard-reset-mac-for-sgmii.patch
 0011-arm64-dts-aspeed-spc6-bmc-fix-sgmii-phy-names.patch
 0012-usb-ehci-Add-Aspeed-AST2700-support.patch
+0013-watchdog-aspeed-Set-WDT_RESET_MASK1-bit-1-on-AST2700.patch
+0014-i2c-ast2600-change-the-remove-driver-call-back-func.patch
+0015-i2c-ast2600-update-sync-with-upstream.patch
+0016-i2c-ast2600-update-align-with-upstream.patch
+0017-i2c-ast2600-use-function-point.patch
+0018-i2c-ast2600-fix-update.patch
+0019-i2c-ast2600-refine-bus-mode-logic.patch
+0020-i2c-ast2600-refine-the-code-style-and-arrange.patch
+0021-i2c-ast2600-introduce-buffer-transferring-support-t.patch
+0022-i2c-ast2600-arrange-the-transfer-judgement-rule.patch
+0023-drivers-i2c-update-the-ast2700-debounce-maximum-val.patch
+0024-i2c-i2c-ast2600-avoid-I2C-target-reads-with-zero-le.patch
+0025-i2c-ast2600-update-the-i2c-transfer-mode-as-buffer-.patch
+0026-i2c-ast2600-add-set-DMA-enable-flag-for-AST2700.patch
+0027-i2c-i2c-ast2600-add-zero-length-read-quirk.patch
+0028-i2c-ast2600-revert-back-AST2700-obtains-data-buffer.patch
+0029-i2c-ast2600-fix-NULL-deref-in-the-AST2700-buffer-mo.patch
 ###-> nvidia_aspeed_bmc-end
 
 # QID-45097: Crackarmor fixes
