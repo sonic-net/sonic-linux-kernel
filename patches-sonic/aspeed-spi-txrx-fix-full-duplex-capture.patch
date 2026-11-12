@@ -43,5 +43,5 @@ diff --git a/drivers/spi/spi-aspeed-txrx.c b/drivers/spi/spi-aspeed-txrx.c
 -		if (rx_buf && rx_buf != tx_buf) {
 +		if (rx_buf && !tx_buf) {
  			ctrl_val &= ~SPI_IO_MASK;
- 			if (spi->mode & SPI_RX_DUAL)
+ 			if (xfer->rx_nbits == SPI_NBITS_DUAL)
  				ctrl_val |= SPI_DUAL_IO_MODE;

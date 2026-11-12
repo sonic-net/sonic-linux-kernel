@@ -15,43 +15,52 @@ Fix two issues in the MCTP over VDM/PCIe transport
   IS_ENABLED() so the declarations are visible in both built-in and
   module configurations.
 
+Rebased onto Linux 6.12.94: the mctp-pcie-vdm sources are now created by
+0002-aspeed-ast2700-non-aspeed-deps-update, whose copy of
+include/linux/mctp-pcie-vdm.h already uses
+"#if IS_ENABLED(CONFIG_MCTP_TRANSPORT_PCIE_VDM)" and additionally
+declares mctp_pcie_vdm_set_carrier() and includes <linux/if.h>.  The
+#ifdef -> #if IS_ENABLED() conversion is therefore dropped as already
+present; only the explicit <linux/kconfig.h> include and the matching
+#endif comments remain.  The MODULE_LICENSE()/MODULE_DESCRIPTION()
+addition moved to the new end of mctp-pcie-vdm.c, after
+EXPORT_SYMBOL_GPL(mctp_pcie_vdm_set_carrier).
+
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+
+Upstream-Status: Pending
+
 ---
  drivers/net/mctp/mctp-pcie-vdm.c | 3 +++
- include/linux/mctp-pcie-vdm.h    | 7 ++++---
- 2 files changed, 7 insertions(+), 3 deletions(-)
+ include/linux/mctp-pcie-vdm.h    | 5 +++--
+ 2 files changed, 6 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/net/mctp/mctp-pcie-vdm.c b/drivers/net/mctp/mctp-pcie-vdm.c
-index f715fc085..43f35c46e 100644
+index cba101860..20eee0ac3 100644
 --- a/drivers/net/mctp/mctp-pcie-vdm.c
 +++ b/drivers/net/mctp/mctp-pcie-vdm.c
-@@ -359,3 +359,6 @@ void mctp_pcie_vdm_remove_dev(struct net_device *vdm_dev)
- 	}
+@@ -371,3 +371,6 @@ void mctp_pcie_vdm_set_carrier(struct net_device *ndev, bool up)
+ 		netif_carrier_off(ndev);
  }
- EXPORT_SYMBOL_GPL(mctp_pcie_vdm_remove_dev);
+ EXPORT_SYMBOL_GPL(mctp_pcie_vdm_set_carrier);
 +
 +MODULE_LICENSE("GPL");
 +MODULE_DESCRIPTION("MCTP PCIe VDM transport (DSP0238) helpers");
 diff --git a/include/linux/mctp-pcie-vdm.h b/include/linux/mctp-pcie-vdm.h
-index 25fac3499..1aee02126 100644
+index 54d0ad7f9..a672e3fab 100644
 --- a/include/linux/mctp-pcie-vdm.h
 +++ b/include/linux/mctp-pcie-vdm.h
-@@ -8,10 +8,11 @@
+@@ -8,6 +8,7 @@
  #ifndef __LINUX_MCTP_PCIE_VDM_H
  #define __LINUX_MCTP_PCIE_VDM_H
  
 +#include <linux/kconfig.h>
  #include <linux/device.h>
+ #include <linux/if.h>
  #include <linux/notifier.h>
- 
--#ifdef CONFIG_MCTP_TRANSPORT_PCIE_VDM
-+#if IS_ENABLED(CONFIG_MCTP_TRANSPORT_PCIE_VDM)
- 
- /**
-  * @send_packet: referenced to send packets with PCIe VDM header packed.
-@@ -32,5 +33,5 @@ struct net_device *mctp_pcie_vdm_add_dev(struct device *dev,
- void mctp_pcie_vdm_receive_packet(struct net_device *ndev);
+@@ -35,5 +36,5 @@ struct net_device *mctp_pcie_vdm_add_dev(struct device *dev,
  void mctp_pcie_vdm_remove_dev(struct net_device *ndev);
+ void mctp_pcie_vdm_set_carrier(struct net_device *ndev, bool up);
  
 -#endif	/* CONFIG_MCTP_TRANSPORT_PCIE_VDM */
 -#endif	/* __LINUX_MCTP_PCIE_VDM_H */
@@ -59,4 +68,3 @@ index 25fac3499..1aee02126 100644
 +#endif /* __LINUX_MCTP_PCIE_VDM_H */
 -- 
 2.34.1
-

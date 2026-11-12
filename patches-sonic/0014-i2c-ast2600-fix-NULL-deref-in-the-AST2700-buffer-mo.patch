@@ -27,7 +27,7 @@ WAIT_TX_DMA | SLAVE_MATCH | RX_DONE case, i.e. a repeated-start write-then-read
 against a registered slave. The neighbouring case with STOP set was converted
 correctly, so a plain write completes fine and only the turnaround crashes.
 
-Reproduced on vr-nvl-hmc-ast2700 running an i2c-slave-eeprom at 0x4f: with the
+Reproduced on an AST2700 platform running an i2c-slave-eeprom at 0x4f: with the
 peer BMC polling it the board panics within ~75s, and with the poll stopped it
 runs indefinitely with the same target registered.
 
