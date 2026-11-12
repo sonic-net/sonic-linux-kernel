@@ -1,0 +1,41 @@
+From: Ryan Chen <ryan_chen@aspeedtech.com>
+Date: Mon, 9 Feb 2026 16:43:39 +0800
+Subject: [PATCH 6.12 1/1] i2c: ast2600: refine bus mode logic
+
+Upstream-Status: Backport [AspeedTech-BMC/linux aspeed-master-v6.12 d2bd99917dba6a87acd5fdcf57b91b88204dc510, SDK v00.07.03]
+
+refine transfer mode logic selection.
+
+Signed-off-by: Ryan Chen <ryan_chen@aspeedtech.com>
+Change-Id: I1fcc5ed7bfd828e5144147702d420d9632b17150
+(cherry picked from commit b5b7dfdae2f78c4f725e8e13fa8cc66937bc4d16)
+---
+ drivers/i2c/busses/i2c-ast2600.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-ast2600.c b/drivers/i2c/busses/i2c-ast2600.c
+index 9b9a4eced..9e4c11358 100644
+--- a/drivers/i2c/busses/i2c-ast2600.c
++++ b/drivers/i2c/busses/i2c-ast2600.c
+@@ -2307,7 +2307,11 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
+ #endif
+ 	i2c_bus->dev = dev;
+ 	i2c_bus->multi_master = device_property_read_bool(dev, "multi-master");
+-	if (i2c_bus->version == AST2600) {
++	if (i2c_bus->version == AST2700) {
++		/* AST2700: DMA only */
++		i2c_bus->mode = DMA_MODE;
++	} else {
++		/* AST2600: default BUFF, allow override */
+ 		i2c_bus->mode = BUFF_MODE;
+ 
+ 		if (!device_property_read_string(dev, "aspeed,transfer-mode", &xfer_mode)) {
+@@ -2326,8 +2330,6 @@ static int ast2600_i2c_probe(struct platform_device *pdev)
+ 			else
+ 				i2c_bus->buf_size = resource_size(res) / 2;
+ 		}
+-	} else {
+-		i2c_bus->mode = DMA_MODE;
+ 	}
+ 
+ 	switch (i2c_bus->mode) {
