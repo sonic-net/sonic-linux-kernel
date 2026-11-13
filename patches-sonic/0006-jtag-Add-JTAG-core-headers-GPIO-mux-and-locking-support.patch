@@ -15,7 +15,14 @@ Add the jtag-aspeed-internal driver for Aspeed SoC internal JTAG
 controller support.
 
 Signed-off-by: SONiC JTAG patch <sonic@nvidia.com>
+
+Upstream-Status: Pending
+
 ---
+Rebased to Linux 6.12.94: the jtag-aspeed.c include-block hunk was
+re-contextualised because the 6.12.94 Aspeed base now adds
+<linux/iopoll.h> between <linux/interrupt.h> and <linux/jtag.h>.
+No functional change.
 diff --git a/include/linux/jtag.h b/include/linux/jtag.h
 new file mode 100644
 --- /dev/null
@@ -510,8 +517,8 @@ diff --git a/drivers/jtag/jtag-aspeed.c b/drivers/jtag/jtag-aspeed.c
  #include <linux/device.h>
 +#include <linux/gpio/consumer.h>
  #include <linux/interrupt.h>
+ #include <linux/iopoll.h>
  #include <linux/jtag.h>
- #include <linux/kernel.h>
 @@ -199,6 +200,7 @@
  	const struct jtag_low_level_functions *llops;
  	u32 pad_data_one[ASPEED_JTAG_MAX_PAD_SIZE / 32];

@@ -1,0 +1,318 @@
+From 0af0272877e40629edab4ee6a907c8b22b83d27d Mon Sep 17 00:00:00 2001
+From: Felix Radensky <fradensky@nvidia.com>
+Date: Thu, 22 Oct 2026 15:33:31 +0300
+Subject: hwmon: pmbus: mp2975: Get vout fault limits dynamically
+
+The over- and under-voltage fault limits of the tracking mode are
+relative to the voltage reference, which follows the VID/AVS requests
+issued to the device and therefore changes at runtime.
+
+The driver obtains the voltage reference once during probe and derives
+the limits from this snapshot, while the PMBus core caches the limits in
+addition to that. As a result the exposed thresholds reflect the
+operating point the device happened to be at during probe, instead of
+the thresholds the device actually enforces. On SN5600 systems the COMEX
+VCORE rail reported in2_crit between 1.15V and 1.70V across identical
+systems, running identical firmware and PMIC configuration, causing
+false over-voltage reports as soon as the CPU voltage exceeded the value
+latched at probe.
+
+Obtain the voltage reference and the tracking offset whenever a limit is
+requested, and mark both limits with pmbus_set_update(), so they are not
+cached by the PMBus core. Drop the probe time cache, which is not needed
+anymore.
+
+The voltage reference is accessible on page 3 only. Perform the page
+switch after the limit selector has been read through the PMBus core, so
+that the page cached by the core matches the page restored by the driver.
+If restoring the page fails, report page 3 to the core, so that it would
+set the page on the next access, instead of relying on a cached page the
+device is not set to.
+
+Clamp the under-voltage limit to zero, since a low voltage reference can
+be exceeded by the offset, while a negative value would be interpreted
+by the PMBus core as a read error.
+
+Signed-off-by: Felix Radensky <fradensky@nvidia.com>
+
+Upstream-Status: Pending
+---
+ drivers/hwmon/pmbus/mp2975.c | 200 +++++++++++++++++++----------------
+ 1 file changed, 109 insertions(+), 91 deletions(-)
+
+diff --git a/drivers/hwmon/pmbus/mp2975.c b/drivers/hwmon/pmbus/mp2975.c
+index fbaee50c7129..5e7a52a71144 100644
+--- a/drivers/hwmon/pmbus/mp2975.c
++++ b/drivers/hwmon/pmbus/mp2975.c
+@@ -111,10 +111,7 @@ struct mp2975_data {
+ 	int vout_scale;
+ 	int max_phases[MP2975_PAGE_NUM];
+ 	int vid_step[MP2975_PAGE_NUM];
+-	int vref[MP2975_PAGE_NUM];
+-	int vref_off[MP2975_PAGE_NUM];
+ 	int vout_max[MP2975_PAGE_NUM];
+-	int vout_ov_fixed[MP2975_PAGE_NUM];
+ 	int curr_sense_gain[MP2975_PAGE_NUM];
+ };
+ 
+@@ -465,12 +462,81 @@ static int mp2973_write_word_data(struct i2c_client *client, int page,
+ 	return pmbus_write_word_data(client, 0, PMBUS_SMBALERT_MASK, ret);
+ }
+ 
++/*
++ * Voltage reference is available on page 3 only. The PMBus core caches the
++ * page the device is set to, thus the caller is required to perform a core
++ * mediated access to 'page' prior to this call, and the page is restored
++ * before return, in order to keep the cache and the device in sync. If
++ * restoring the page fails, report page 3 to the core, so that it would set
++ * the page on the next access, instead of reading page 3 registers in place
++ * of the sensor values.
++ */
++static int
++mp2975_vref_get(struct i2c_client *client, struct mp2975_data *data, int page)
++{
++	int ret, vref;
++
++	ret = i2c_smbus_write_byte_data(client, PMBUS_PAGE, 3);
++	if (ret < 0)
++		return ret;
++
++	vref = i2c_smbus_read_word_data(client, page ? MP2975_MFR_READ_VREF_R2 :
++						       MP2975_MFR_READ_VREF_R1);
++
++	ret = i2c_smbus_write_byte_data(client, PMBUS_PAGE, page);
++	if (ret < 0) {
++		pmbus_set_page(client, 3, 0xff);
++		return ret;
++	}
++
++	return (vref < 0) ? vref : vref * data->vid_step[page];
++}
++
++static int
++mp2975_ovp2_offset_get(struct i2c_client *client, int page, int phase)
++{
++	int ret;
++
++	ret = mp2975_read_word_helper(client, page, phase,
++				      MP2975_MFR_OVP_TH_SET, GENMASK(5, 3));
++	if (ret < 0)
++		return ret;
++
++	switch (ret >> 3) {
++	case 1:
++		return 140;
++	case 2:
++		return 220;
++	case 4:
++		return 400;
++	default:
++		return -EINVAL;
++	}
++}
++
++static int
++mp2975_vout_ovp2_get(struct i2c_client *client, struct mp2975_data *data,
++		     int page, int phase)
++{
++	int vref, vref_off;
++
++	vref_off = mp2975_ovp2_offset_get(client, page, phase);
++	if (vref_off < 0)
++		return vref_off;
++
++	vref = mp2975_vref_get(client, data, page);
++	if (vref < 0)
++		return vref;
++
++	return vref + DIV_ROUND_CLOSEST(vref_off * data->vout_scale, 10);
++}
++
+ static int mp2975_read_word_data(struct i2c_client *client, int page,
+ 				 int phase, int reg)
+ {
+ 	const struct pmbus_driver_info *info = pmbus_get_driver_info(client);
+ 	struct mp2975_data *data = to_mp2975_data(info);
+-	int ret;
++	int ret, ovp1, uv_off;
+ 
+ 	switch (reg) {
+ 	case PMBUS_OT_FAULT_LIMIT:
+@@ -487,10 +553,12 @@ static int mp2975_read_word_data(struct i2c_client *client, int page,
+ 		break;
+ 	case PMBUS_VOUT_OV_FAULT_LIMIT:
+ 		/*
+-		 * Register provides two values for over-voltage protection
+-		 * threshold for fixed (ovp2) and tracking (ovp1) modes. The
+-		 * minimum of these two values is provided as over-voltage
+-		 * fault alarm.
++		 * Device provides dual over-voltage protection. OVP1 is
++		 * referred to the maximum reference voltage, while OVP2 is
++		 * referred to the current voltage reference, which is changed
++		 * at runtime. Protection is tripped by any of them, thus the
++		 * minimum of the two is exposed as over-voltage fault alarm,
++		 * and OVP2 is obtained on each read.
+ 		 */
+ 		ret = mp2975_read_word_helper(client, page, phase,
+ 					      MP2975_MFR_OVP_TH_SET,
+@@ -498,8 +566,13 @@ static int mp2975_read_word_data(struct i2c_client *client, int page,
+ 		if (ret < 0)
+ 			return ret;
+ 
+-		ret = min_t(int, data->vout_max[page] + 50 * (ret + 1),
+-			    data->vout_ov_fixed[page]);
++		ovp1 = data->vout_max[page] + 50 * (ret + 1);
++
++		ret = mp2975_vout_ovp2_get(client, data, page, phase);
++		if (ret < 0)
++			return ret;
++
++		ret = min_t(int, ovp1, ret);
+ 		break;
+ 	case PMBUS_VOUT_UV_FAULT_LIMIT:
+ 		ret = mp2975_read_word_helper(client, page, phase,
+@@ -508,8 +581,17 @@ static int mp2975_read_word_data(struct i2c_client *client, int page,
+ 		if (ret < 0)
+ 			return ret;
+ 
+-		ret = DIV_ROUND_CLOSEST(data->vref[page] * 10 - 50 *
+-					(ret + 1) * data->vout_scale, 10);
++		uv_off = 50 * (ret + 1) * data->vout_scale;
++
++		ret = mp2975_vref_get(client, data, page);
++		if (ret < 0)
++			return ret;
++
++		/*
++		 * Offset can exceed the voltage reference, while a negative
++		 * value would be reported as a read error.
++		 */
++		ret = max_t(int, DIV_ROUND_CLOSEST(ret * 10 - uv_off, 10), 0);
+ 		break;
+ 	case PMBUS_VIRT_READ_POUT_MAX:
+ 		ret = mp2975_read_word_helper(client, page, phase,
+@@ -758,60 +840,6 @@ mp2975_current_sense_gain_get(struct i2c_client *client,
+ 	return 0;
+ }
+ 
+-static int
+-mp2975_vref_get(struct i2c_client *client, struct mp2975_data *data,
+-		struct pmbus_driver_info *info)
+-{
+-	int ret;
+-
+-	ret = i2c_smbus_write_byte_data(client, PMBUS_PAGE, 3);
+-	if (ret < 0)
+-		return ret;
+-
+-	/* Get voltage reference value for rail 1. */
+-	ret = i2c_smbus_read_word_data(client, MP2975_MFR_READ_VREF_R1);
+-	if (ret < 0)
+-		return ret;
+-
+-	data->vref[0] = ret * data->vid_step[0];
+-
+-	/* Get voltage reference value for rail 2, if connected. */
+-	if (data->info.pages == MP2975_PAGE_NUM) {
+-		ret = i2c_smbus_read_word_data(client, MP2975_MFR_READ_VREF_R2);
+-		if (ret < 0)
+-			return ret;
+-
+-		data->vref[1] = ret * data->vid_step[1];
+-	}
+-	return 0;
+-}
+-
+-static int
+-mp2975_vref_offset_get(struct i2c_client *client, struct mp2975_data *data,
+-		       int page)
+-{
+-	int ret;
+-
+-	ret = i2c_smbus_read_word_data(client, MP2975_MFR_OVP_TH_SET);
+-	if (ret < 0)
+-		return ret;
+-
+-	switch ((ret & GENMASK(5, 3)) >> 3) {
+-	case 1:
+-		data->vref_off[page] = 140;
+-		break;
+-	case 2:
+-		data->vref_off[page] = 220;
+-		break;
+-	case 4:
+-		data->vref_off[page] = 400;
+-		break;
+-	default:
+-		return -EINVAL;
+-	}
+-	return 0;
+-}
+-
+ static int
+ mp2975_vout_max_get(struct i2c_client *client, struct mp2975_data *data,
+ 		    struct pmbus_driver_info *info, int page)
+@@ -916,25 +944,6 @@ mp2975_vout_per_rail_config_get(struct i2c_client *client,
+ 		ret = mp2975_vout_max_get(client, data, info, i);
+ 		if (ret < 0)
+ 			return ret;
+-
+-		/* Skip if reading Vref is unsupported */
+-		if (data->chip_id != mp2975)
+-			continue;
+-
+-		/* Obtain voltage reference offsets. */
+-		ret = mp2975_vref_offset_get(client, data, i);
+-		if (ret < 0)
+-			return ret;
+-
+-		/*
+-		 * Set over-voltage fixed value. Thresholds are provided as
+-		 * fixed value, and tracking value. The minimum of them are
+-		 * exposed as over-voltage critical threshold.
+-		 */
+-		data->vout_ov_fixed[i] = data->vref[i] +
+-					 DIV_ROUND_CLOSEST(data->vref_off[i] *
+-							   data->vout_scale,
+-							   10);
+ 	}
+ 
+ 	return 0;
+@@ -1070,11 +1079,6 @@ static int mp2975_probe(struct i2c_client *client)
+ 		if (ret)
+ 			return ret;
+ 
+-		/* Obtain voltage reference values. */
+-		ret = mp2975_vref_get(client, data, info);
+-		if (ret)
+-			return ret;
+-
+ 		/* Obtain vout over-voltage scales. */
+ 		ret = mp2975_vout_ov_scale_get(client, data, info);
+ 		if (ret < 0)
+@@ -1096,7 +1100,21 @@ static int mp2975_probe(struct i2c_client *client)
+ 	if (ret)
+ 		return ret;
+ 
+-	return pmbus_do_probe(client, info);
++	ret = pmbus_do_probe(client, info);
++	if (ret)
++		return ret;
++
++	/*
++	 * Vout over- and under-voltage fault limits are relative to the
++	 * voltage reference, which is changed at runtime. Do not allow the
++	 * PMBus core to cache them.
++	 */
++	if (data->chip_id == mp2975) {
++		pmbus_set_update(client, PMBUS_VOUT_OV_FAULT_LIMIT, true);
++		pmbus_set_update(client, PMBUS_VOUT_UV_FAULT_LIMIT, true);
++	}
++
++	return 0;
+ }
+ 
+ static const struct of_device_id mp2975_of_match[] = {
+-- 
+2.34.1
+

@@ -21,28 +21,42 @@ block and clears the RX path, matching the modprobe-reload behaviour. With
 this, repeated down/up cycles and partner link flaps recover reliably.
 
 Signed-off-by: Sergejs Hatinecs <shatinecs@nvidia.com>
+
+[6.12.94 rebase note]
+The functional part of this patch is already provided by the updated Aspeed
+vendor base (0003-aspeed-ast2700-shared-kernel-changes-update-to-6.12.94-
+00.07.04.patch): ftgmac100_reset_and_config_mac() there no longer gates the
+reset_control assert/deassert on PHY_INTERFACE_MODE_RMII, it runs it for
+every Aspeed SoC ("if (priv->is_aspeed)") and additionally does
+phy_reset(priv->sgmii) for the AST2700 SGMII serdes. So the AST2700/SGMII
+path already gets the hard MAC reset this patch asked for (and more).
+
+Only the rationale is kept here, as a comment, so that the unconditional
+hard reset is not narrowed back to a subset of PHY interface modes in a
+future rebase. There is no functional change in 6.12.94.
 ---
- drivers/net/ethernet/faraday/ftgmac100.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+ drivers/net/ethernet/faraday/ftgmac100.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/net/ethernet/faraday/ftgmac100.c b/drivers/net/ethernet/faraday/ftgmac100.c
-index 8ef2b736f23e..a3534b467aa6 100644
 --- a/drivers/net/ethernet/faraday/ftgmac100.c
 +++ b/drivers/net/ethernet/faraday/ftgmac100.c
-@@ -157,8 +157,14 @@ static int ftgmac100_reset_and_config_mac(struct ftgmac100 *priv)
+@@ -157,7 +157,17 @@ static int ftgmac100_reset_and_config_ma
  {
  	u32 maccr = 0;
  
--	/* RMII needs SCU reset to clear status */
--	if (priv->netdev->phydev->interface == PHY_INTERFACE_MODE_RMII) {
-+	/* RMII needs SCU reset to clear status. SGMII (AST2700 + 88E151x) needs
-+	 * it too: after ifconfig down/up the soft MACCR reset alone leaves the
-+	 * MAC RX path wedged (link reads resolved but RX stays frozen). Only a
-+	 * full reset_control cycle clears it - this is why "modprobe -r/modprobe"
-+	 * (which hard-resets at probe) always recovers while down/up does not.
+-	/* Aspeed SoC needs SCU reset */
++	/* Aspeed SoC needs SCU reset.
++	 *
++	 * SGMII (AST2700 + Marvell 88E151x) depends on this full
++	 * reset_control cycle too: after an "ifconfig down/up" the soft
++	 * MACCR reset alone leaves the MAC RX path wedged (the link reads
++	 * resolved and TX works, but RX stays frozen). Only the hard reset
++	 * below clears it - this is why "modprobe -r/modprobe" (which
++	 * hard-resets the IP block at probe) always recovers while down/up
++	 * does not. So keep the reset unconditional for Aspeed SoCs, do not
++	 * restrict it to a subset of PHY interface modes.
 +	 */
-+	if (priv->netdev->phydev->interface == PHY_INTERFACE_MODE_RMII ||
-+	    priv->netdev->phydev->interface == PHY_INTERFACE_MODE_SGMII) {
+ 	if (priv->is_aspeed) {
  		int err;
  
- 		err = reset_control_assert(priv->rst);

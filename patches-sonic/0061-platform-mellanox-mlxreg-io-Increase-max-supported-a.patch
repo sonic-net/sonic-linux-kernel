@@ -1,5 +1,3 @@
-Upstream-Status: Pending
-
 From 9f11c71d770ea5a66ef3a4e6bea134aaaf62adaa Mon Sep 17 00:00:00 2001
 From: Aaron Komisar <akomisar@nvidia.com>
 Date: Thu, 28 Aug 2025 20:57:42 +0300
@@ -11,6 +9,8 @@ attributes than the current limit of 128 allows, so attributes beyond
 that count cannot be registered on those platforms.
 
 Raise MLXREG_IO_ATT_NUM from 128 to 250 to accommodate them.
+
+Upstream-Status: Pending
 
 Signed-off-by: Aaron Komisar <akomisar@nvidia.com>
 ---
