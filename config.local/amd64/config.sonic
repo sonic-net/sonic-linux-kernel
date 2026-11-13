@@ -186,3 +186,6 @@ CONFIG_AMD_MEM_ENCRYPT=n
 # Unset X86_PAT according to Broadcom's requirement
 CONFIG_X86_PAT=n
 CONFIG_MLXSW_PCI=n
+
+# Set THP default to madvise instead of always
+CONFIG_TRANSPARENT_HUGEPAGE_MADVISE=y
