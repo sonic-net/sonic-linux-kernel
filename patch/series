@@ -221,6 +221,10 @@ cisco-npu-disable-other-bars.patch
 # Micas patches
 0001-fix-os-crash-caused-by-optoe-when-class-switch.patch
 
+# TCP handshake: SYN_RECV child socket races (IPv4 and IPv6)
+CVE-2026-98432-ipv4-free-inet_opt-and-ireq_opt-after-an-RCU-.patch
+CVE-2026-43198-tcp-fix-potential-race-in-tcp_v6_syn_recv_sock.patch
+
 #
 #
 ############################################################
