@@ -1,0 +1,48 @@
+From: Paul Srisoontorn <psrisoontorn@nvidia.com>
+Date: Mon, 28 Feb 2026 00:00:00 +0000
+Subject: [PATCH 6.12 1/1] watchdog: aspeed: Set WDT_RESET_MASK1 bit 1 on AST2700 WDT restart
+
+Workaround for AST2700 A1 errata item 9 (MBus hang when WDT SoC reset occurs
+while DRAM is busy): set bit 1 of WDT_RESET_MASK1 (0x1C) in aspeed_wdt_restart.
+The same workaround is required on A2 as well, so apply it for all
+aspeed,ast2700-wdt instances (optional SCU1 revision log only).
+
+Upstream-Status: Pending
+
+Signed-off-by: Paul Srisoontorn <psrisoontorn@nvidia.com>
+---
+ drivers/watchdog/aspeed_wdt.c | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/drivers/watchdog/aspeed_wdt.c b/drivers/watchdog/aspeed_wdt.c
+index dd379372b8d6..42b913fb4b99 100644
+--- a/drivers/watchdog/aspeed_wdt.c
++++ b/drivers/watchdog/aspeed_wdt.c
+@@ -270,6 +270,27 @@ static int aspeed_wdt_restart(struct watchdog_device *wdd,
+ 	struct aspeed_wdt *wdt = to_aspeed_wdt(wdd);
+ 
+ 	wdt->ctrl &= ~WDT_CTRL_BOOT_SECONDARY;
++	/* AST2700: set DRAM controller reset in WDT_RESET_MASK1 before SoC reset
++	 * (A1 errata item 9 - MBus hang when WDT fires while DRAM is busy). Required
++	 * on A2 as well for correct reset behavior.
++	 */
++	if (of_device_is_compatible(wdd->parent->of_node, "aspeed,ast2700-wdt")) {
++		struct regmap *scu1;
++		u32 rev_id;
++		u32 val;
++
++		scu1 = syscon_regmap_lookup_by_compatible("aspeed,ast2700-scu1");
++		if (!IS_ERR(scu1) && !regmap_read(scu1, 0x0, &rev_id))
++			pr_info("aspeed_wdt: SCU1_REVISION_ID=0x%08x\n", rev_id);
++
++		pr_info("aspeed_wdt: AST2700 WDT restart: setting WDT_RESET_MASK1 bit 1\n");
++
++		val = readl(wdt->base + WDT_RESET_MASK1);
++		val |= BIT(1);
++		wdt->cfg->wdt_writel(val, wdt->base + WDT_RESET_MASK1);
++		mdelay(1);
++	}
++
+ 	aspeed_wdt_enable(wdt, 128 * WDT_RATE_1MHZ / 1000);
+ 
+ 	mdelay(1000);
