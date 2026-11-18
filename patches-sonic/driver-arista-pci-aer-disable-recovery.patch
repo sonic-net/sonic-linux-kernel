@@ -13,26 +13,31 @@ disable AER recovery on some chassis.
 Add pci=noaer_recovery kernel boot option to disable AER error
 recovery when an uncorrectable error is reported.
 
+These changes were submitted to the Linux PCI mailing list for upstream
+review.
+
+Link: https://lore.kernel.org/linux-pci/20261022165842.1463451-1-yurypm@arista.com/
 Signed-off-by: Yury Murashka <yurypm@arista.com>
 ---
- Documentation/admin-guide/kernel-parameters.txt |  4 ++++
+ Documentation/admin-guide/kernel-parameters.txt |  5 ++++
  drivers/pci/pci.c                               |  2 ++
  drivers/pci/pci.h                               |  2 ++
- drivers/pci/pcie/err.c                          | 15 +++++++++++++++
- 4 files changed, 23 insertions(+)
+ drivers/pci/pcie/aer.c                          | 26 +++++++++++++------
+ 4 files changed, 27 insertions(+), 8 deletions(-)
 
 diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
-index f402bba..2bbd7ab 100644
+index 2363fdc..671eabc 100644
 --- a/Documentation/admin-guide/kernel-parameters.txt
 +++ b/Documentation/admin-guide/kernel-parameters.txt
-@@ -4483,6 +4483,10 @@
+@@ -4485,6 +4485,11 @@
  		noaer		[PCIE] If the PCIEAER kernel config parameter is
  				enabled, this kernel boot option can be used to
  				disable the use of PCIE advanced error reporting.
-+		noaer_recovery	[PCIE] If the PCIEAER kernel config parameter is
-+				enabled, this kernel boot option can be used to
-+				disable AER error recovery when an uncorrectable
-+				error is reported.
++		noaer_recovery	[PCIE] Disable Linux AER recovery for
++				uncorrectable errors, including CXL RCH errors,
++				while retaining AER logging. Correctable errors
++				are handled normally. Requires CONFIG_PCIEAER.
++				Does not disable DPC or firmware error recovery.
  		nodomains	[PCI] Disable support for multiple PCI
  				root domains (aka PCI segments, in ACPI-speak).
  		nommconf	[X86] Disable use of MMCONFIG for PCI
@@ -69,36 +74,61 @@ index 65df6d2..551b6e8 100644
  static inline void pci_aer_init(struct pci_dev *d) { }
  static inline void pci_aer_exit(struct pci_dev *d) { }
  static inline void pci_aer_clear_fatal_status(struct pci_dev *dev) { }
-diff --git a/drivers/pci/pcie/err.c b/drivers/pci/pcie/err.c
-index 3109077..bb5ec0c 100644
---- a/drivers/pci/pcie/err.c
-+++ b/drivers/pci/pcie/err.c
-@@ -21,6 +21,13 @@
- #include "portdrv.h"
- #include "../pci.h"
-
-+static int pcie_aer_recovery_disable = 0;
-+
+diff --git a/drivers/pci/pcie/aer.c b/drivers/pci/pcie/aer.c
+index 13b8586..bb02049 100644
+--- a/drivers/pci/pcie/aer.c
++++ b/drivers/pci/pcie/aer.c
+@@ -108,6 +108,7 @@ struct aer_stats {
+ 					PCI_ERR_ROOT_MULTI_UNCOR_RCV)
+ 
+ static int pcie_aer_disable;
++static bool pcie_aer_recovery_disable;
+ static pci_ers_result_t aer_root_reset(struct pci_dev *dev);
+ 
+ void pci_no_aer(void)
+@@ -115,6 +116,11 @@ void pci_no_aer(void)
+ 	pcie_aer_disable = 1;
+ }
+ 
 +void pci_no_aer_recovery(void)
 +{
-+	pcie_aer_recovery_disable = 1;
++	pcie_aer_recovery_disable = true;
 +}
 +
- static pci_ers_result_t merge_result(enum pci_ers_result orig,
- 				  enum pci_ers_result new)
+ bool pci_aer_available(void)
  {
-@@ -197,6 +204,14 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
- 	pci_ers_result_t status = PCI_ERS_RESULT_CAN_RECOVER;
- 	struct pci_host_bridge *host = pci_find_host_bridge(dev->bus);
-
-+	if (pcie_aer_recovery_disable) {
-+		if (host->native_aer || pcie_ports_native) {
-+			pcie_clear_device_status(dev);
-+			pci_aer_clear_nonfatal_status(dev);
-+		}
-+		return status;
+ 	return !pcie_aer_disable && pci_msi_enabled();
+@@ -1113,8 +1119,10 @@ static void pci_aer_handle_error(struct pci_dev *dev, struct aer_err_info *info)
+ 
+ static void handle_error_source(struct pci_dev *dev, struct aer_err_info *info)
+ {
+-	cxl_rch_handle_error(dev, info);
+-	pci_aer_handle_error(dev, info);
++	if (!pcie_aer_recovery_disable || info->severity == AER_CORRECTABLE) {
++		cxl_rch_handle_error(dev, info);
++		pci_aer_handle_error(dev, info);
 +	}
-+
- 	/*
- 	 * If the error was detected by a Root Port, Downstream Port, RCEC,
- 	 * or RCiEP, recovery runs on the device itself.  For Ports, that
+ 	pci_dev_put(dev);
+ }
+ 
+@@ -1157,12 +1165,14 @@ static void aer_recover_work_func(struct work_struct *work)
+ 		ghes_estatus_pool_region_free((unsigned long)entry.regs,
+ 					      sizeof(struct aer_capability_regs));
+ 
+-		if (entry.severity == AER_NONFATAL)
+-			pcie_do_recovery(pdev, pci_channel_io_normal,
+-					 aer_root_reset);
+-		else if (entry.severity == AER_FATAL)
+-			pcie_do_recovery(pdev, pci_channel_io_frozen,
+-					 aer_root_reset);
++		if (!pcie_aer_recovery_disable) {
++			if (entry.severity == AER_NONFATAL)
++				pcie_do_recovery(pdev, pci_channel_io_normal,
++						 aer_root_reset);
++			else if (entry.severity == AER_FATAL)
++				pcie_do_recovery(pdev, pci_channel_io_frozen,
++						 aer_root_reset);
++		}
+ 		pci_dev_put(pdev);
+ 	}
+ }

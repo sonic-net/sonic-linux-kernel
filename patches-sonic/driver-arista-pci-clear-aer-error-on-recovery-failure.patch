@@ -58,13 +58,13 @@ Signed-off-by: Yury Murashka <yurypm@arista.com>
  4 files changed, 21 insertions(+)
 
 diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
-index 068891e..58ee606 100644
+index 2cea34b..53ac67c 100644
 --- a/Documentation/admin-guide/kernel-parameters.txt
 +++ b/Documentation/admin-guide/kernel-parameters.txt
-@@ -4490,6 +4490,10 @@
- 				enabled, this kernel boot option can be used to
- 				disable AER error recovery when an uncorrectable
- 				error is reported.
+@@ -4493,6 +4493,10 @@
+ 				while retaining AER logging. Correctable errors
+ 				are handled normally. Requires CONFIG_PCIEAER.
+ 				Does not disable DPC or firmware error recovery.
 +		aer_clear_on_recovery_failure	[PCIE] If the PCIEAER kernel config parameter is
 +				enabled, this kernel boot option can be used to
 +				enable AER errors cleanup even if error recovery
@@ -106,12 +106,12 @@ index bece8b9..a6e5d1c 100644
 
  #ifdef CONFIG_ACPI
 diff --git a/drivers/pci/pcie/err.c b/drivers/pci/pcie/err.c
-index bb5ec0c..898d4d4 100644
+index 3109077..8e4fc4a 100644
 --- a/drivers/pci/pcie/err.c
 +++ b/drivers/pci/pcie/err.c
-@@ -28,6 +28,13 @@ void pci_no_aer_recovery(void)
- 	pcie_aer_recovery_disable = 1;
- }
+@@ -21,6 +21,13 @@
+ #include "portdrv.h"
+ #include "../pci.h"
 
 +static int enable_aer_clear_on_recovery_failure;
 +
@@ -123,7 +123,7 @@ index bb5ec0c..898d4d4 100644
  static pci_ers_result_t merge_result(enum pci_ers_result orig,
  				  enum pci_ers_result new)
  {
-@@ -282,6 +289,12 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
+@@ -267,6 +274,12 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
  	return status;
 
  failed:
