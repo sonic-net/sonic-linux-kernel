@@ -98,7 +98,7 @@ keys are rejected rather than silently ignored.
 ## Shared build tools
 
 The root build and fresh cache consumer select
-`sonic-build-infra@0.0.37-316e298e77ab5cfa69af9b0c05ec24d5d94bbe1e`
+`sonic-build-infra@0.0.38-0baa4acc9eac9ccc793b81104b1580d530271cbe`
 from the maintained SONiC registry `main`. CI records the current
 `main` revision for both independent cache consumers. The runtime provides
 native AMD64 tools and both ARM cross compilers.
