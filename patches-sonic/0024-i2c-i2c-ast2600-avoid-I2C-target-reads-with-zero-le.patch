@@ -1,0 +1,74 @@
+From: Tommy Huang <tommy_huang@aspeedtech.com>
+Date: Tue, 28 Apr 2026 10:10:40 +0800
+Subject: [PATCH 6.12 1/1] i2c: i2c-ast2600: avoid I2C target reads with zero length
+
+Upstream-Status: Backport [AspeedTech-BMC/linux aspeed-master-v6.12 f6ed00ca331f6cb2c2603119bb4ac88174e57092, SDK v00.07.04]
+
+According to the I2C specification, most I2C target devices
+hold the data line after acknowledging an I2C controller read
+request. In this case, the I2C controller cannot handle the SDA
+bus correctly.
+
+Report an invalid parameter error if the driver receives a read
+request with zero byte.
+
+Signed-off-by: Tommy Huang <tommy_huang@aspeedtech.com>
+Change-Id: I0964d2f7467a70c25ba1ab0353d086c8c938c026
+(cherry picked from commit 309e24ad433d33287a0a5e8200d584b9dc6c3fae)
+---
+ drivers/i2c/busses/i2c-ast2600.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/drivers/i2c/busses/i2c-ast2600.c b/drivers/i2c/busses/i2c-ast2600.c
+index 2bb3627a8..69dfadc59 100644
+--- a/drivers/i2c/busses/i2c-ast2600.c
++++ b/drivers/i2c/busses/i2c-ast2600.c
+@@ -2175,6 +2175,9 @@ static int ast2600_i2c_setup_dma_rx(u32 cmd, struct ast2600_i2c_bus *i2c_bus)
+ 		cmd |= CONTROLLER_TRIGGER_LAST_STOP;
+ 	}
+ 
++	if (!xfer_len)
++		return -EINVAL;
++
+ 	writel(AST2600_I2CM_SET_RX_DMA_LEN(xfer_len - 1), i2c_bus->reg_base + AST2600_I2CM_DMA_LEN);
+ 
+ 	if (cmd & AST2600_I2CM_START_CMD)
+@@ -2204,6 +2207,9 @@ static int ast2700_i2c_setup_buff_rx(u32 cmd, struct ast2600_i2c_bus *i2c_bus)
+ 		cmd |= CONTROLLER_TRIGGER_LAST_STOP;
+ 	}
+ 
++	if (!xfer_len)
++		return -EINVAL;
++
+ 	writel(AST2600_I2CM_SET_RX_DMA_LEN(xfer_len - 1),
+ 	       i2c_bus->reg_base + AST2600_I2CM_DMA_LEN);
+ 	writel(cmd, i2c_bus->reg_base + AST2600_I2CM_CMD_STS);
+@@ -2229,6 +2235,10 @@ static int ast2600_i2c_setup_buff_rx(u32 cmd, struct ast2600_i2c_bus *i2c_bus)
+ 	} else if (i2c_bus->msgs_index + 1 == i2c_bus->msgs_count) {
+ 		cmd |= CONTROLLER_TRIGGER_LAST_STOP;
+ 	}
++
++	if (!xfer_len)
++		return -EINVAL;
++
+ 	writel(AST2600_I2CC_SET_RX_BUF_LEN(xfer_len), i2c_bus->reg_base + AST2600_I2CC_BUFF_CTRL);
+ 
+ 	writel(cmd, i2c_bus->reg_base + AST2600_I2CM_CMD_STS);
+@@ -2239,6 +2249,7 @@ static int ast2600_i2c_setup_buff_rx(u32 cmd, struct ast2600_i2c_bus *i2c_bus)
+ static int ast2600_i2c_setup_byte_rx(u32 cmd, struct ast2600_i2c_bus *i2c_bus)
+ {
+ 	struct i2c_msg *msg = &i2c_bus->msgs[i2c_bus->msgs_index];
++	int xfer_len = msg->len;
+ 
+ 	cmd |= AST2600_I2CM_PKT_EN | AST2600_I2CM_RX_CMD;
+ 
+@@ -2252,6 +2263,9 @@ static int ast2600_i2c_setup_byte_rx(u32 cmd, struct ast2600_i2c_bus *i2c_bus)
+ 		cmd |= CONTROLLER_TRIGGER_LAST_STOP;
+ 	}
+ 
++	if (!xfer_len)
++		return -EINVAL;
++
+ 	writel(cmd, i2c_bus->reg_base + AST2600_I2CM_CMD_STS);
+ 
+ 	return 0;
