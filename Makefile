@@ -41,11 +41,17 @@ DSC_FILE = linux_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION).dsc
 DEBIAN_FILE = linux_$(KERNEL_VERSION)-$(KERNEL_SUBVERSION).debian.tar.xz
 ORIG_FILE = linux_$(KERNEL_VERSION).orig.tar.xz
 BUILD_DIR=linux-$(KERNEL_VERSION)
-LINUX_SOURCE_BASE_URL=https://packages.trafficmanager.net/public/debian-security/pool/updates/main/l/linux
+LINUX_SOURCE_URLS = https://packages.trafficmanager.net/public/debian-security/pool/updates/main/l/linux \
+		    https://deb.debian.org/debian-security/pool/updates/main/l/linux
+SNAPSHOT_URL = https://snapshot.debian.org
 
-DSC_FILE_URL = "$(LINUX_SOURCE_BASE_URL)/$(DSC_FILE)"
-DEBIAN_FILE_URL = "$(LINUX_SOURCE_BASE_URL)/$(DEBIAN_FILE)"
-ORIG_FILE_URL = "$(LINUX_SOURCE_BASE_URL)/$(ORIG_FILE)"
+# Fetch a Debian source file from the mirrors, else from snapshot.debian.org.
+define fetch
+	( for u in $(LINUX_SOURCE_URLS); do wget -O $(1) $$u/$(1) && exit 0; done
+	  h=$$(wget -qO- "$(SNAPSHOT_URL)/mr/package/linux/$(KERNEL_VERSION)-$(KERNEL_SUBVERSION)/srcfiles?fileinfo=1" |
+	       python3 -c 'import json, sys; print(next(h for h, i in json.load(sys.stdin)["fileinfo"].items() if any(x["name"] == "$(1)" for x in i)))')
+	  wget -O $(1) $(SNAPSHOT_URL)/file/$$h )
+endef
 NON_UP_DIR = /tmp/non_upstream_patches
 
 $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
@@ -77,9 +83,9 @@ $(addprefix $(DEST)/, $(MAIN_TARGET)): $(DEST)/% :
 
 	# Obtaining the Debian kernel source
 	rm -rf $(BUILD_DIR)
-	wget -O $(DSC_FILE) $(DSC_FILE_URL)
-	wget -O $(ORIG_FILE) $(ORIG_FILE_URL)
-	wget -O $(DEBIAN_FILE) $(DEBIAN_FILE_URL)
+	$(call fetch,$(DSC_FILE))
+	$(call fetch,$(ORIG_FILE))
+	$(call fetch,$(DEBIAN_FILE))
 
 	dpkg-source -x $(DSC_FILE)
 
