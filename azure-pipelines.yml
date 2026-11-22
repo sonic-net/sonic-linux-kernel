@@ -7,6 +7,20 @@ trigger:
   branches:
     include:
       - "*"
+
+resources:
+  repositories:
+  - repository: buildimage
+    type: github
+    name: sonic-net/sonic-buildimage
+    endpoint: sonic-net
+    ref: master
+  - repository: sonic-mgmt
+    type: github
+    name: sonic-net/sonic-mgmt
+    endpoint: sonic-net
+    ref: master
+
 variables:
   - name: BUILD_BRANCH
     ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
@@ -75,3 +89,55 @@ stages:
       old_linux_deb_pattern: linux-image-*-unsigned_*deb
       linux_deb_pattern: linux-image-*-unsigned_*deb
 
+- stage: BuildVS
+  dependsOn: []
+  condition: and(eq(variables['Build.Reason'], 'PullRequest'), eq(variables['System.PullRequest.TargetBranch'], 'master'))
+  pool: sonicso1ES-amd64
+  variables:
+  - template: .azure-pipelines/azure-pipelines-repd-build-variables.yml@buildimage
+  - template: .azure-pipelines/template-variables.yml@buildimage
+  - name: CACHE_MODE
+    value: rcache
+  - name: ENABLE_FIPS
+    value: y
+  jobs:
+  - template: .azure-pipelines/azure-pipelines-build.yml@buildimage
+    parameters:
+      buildOptions: 'USERNAME=admin SONIC_BUILD_JOBS=$(nproc) BUILD_MULTIASIC_KVM=y INCLUDE_DHCP_SERVER=y ${{ variables.VERSION_CONTROL_OPTIONS }}'
+      jobGroups:
+      - name: vs
+        variables:
+          SKIP_CHECKOUT: true
+      preSteps:
+      - checkout: buildimage
+        submodules: recursive
+        fetchDepth: 0
+        path: s
+      - checkout: self
+        fetchDepth: 0
+        path: kernel
+      - script: |
+          set -ex
+          K=$(Agent.BuildDirectory)/kernel
+          git -C src/sonic-linux-kernel fetch $K HEAD
+          git -C src/sonic-linux-kernel checkout FETCH_HEAD
+          old=$(sed -n 's/^KERNEL_VERSION = //p' rules/linux-kernel.mk)
+          new=$(sed -n 's/^KERNEL_VERSION ?= //p' $K/Makefile)
+          sub=$(sed -n 's/^KERNEL_SUBVERSION ?= //p' $K/Makefile)
+          sed -i "s/^KERNEL_SUBVERSION = .*/KERNEL_SUBVERSION = $sub/" rules/linux-kernel.mk
+          [ "$old" = "$new" ] || git grep -lF "$old" -- . ':!src' | xargs sed -i "s/${old//./\\.}/$new/g"
+          git -c user.name=ci -c user.email=ci@localhost commit -qam "Update sonic-linux-kernel"
+        displayName: 'Use PR kernel'
+
+- stage: Test
+  dependsOn: BuildVS
+  variables:
+  - group: SONiC-Elastictest
+  jobs:
+  - template: .azure-pipelines/pr_test_template.yml@sonic-mgmt
+    parameters:
+      CHECKOUT_SONIC_MGMT: true
+      PTF_IMAGE_TAG: latest
+      KVM_BUILD_ID: $(Build.BuildId)
+      KVM_IMAGE_BUILD_PIPELINE_ID: $(System.DefinitionId)
+      INCLUDE_JOBS: t0_job,t0_csonic_job,t0_2vlans_job,t1_job,dualtor_job,t0_sonic_job,dpu_job,t1_multi_asic_job,t2_job
