@@ -75,7 +75,7 @@ fi
 
 # Read kernel version from kernel-version.mk
 KERNEL_VERSION=$(sed -nE 's/^KERNEL_VERSION[[:space:]]*[?:+]?=[[:space:]]*//p' "$KERNEL_DIR/kernel-version.mk")
-SONIC_KERNEL_URL="https://packages.trafficmanager.net/public/debian-security/pool/updates/main/l/linux/linux_${KERNEL_VERSION}.orig.tar.xz"
+SONIC_KERNEL_URL=${SONIC_KERNEL_URL:-"https://packages.trafficmanager.net/public/debian-security/pool/updates/main/l/linux/linux_${KERNEL_VERSION}.orig.tar.xz"}
 
 # Derive the Aspeed kernel-line branch from the SONiC kernel version (e.g. 6.12).
 ASPEED_KERNEL_LINE=$(printf '%s' "$KERNEL_VERSION" | grep -oE '^[0-9]+\.[0-9]+')

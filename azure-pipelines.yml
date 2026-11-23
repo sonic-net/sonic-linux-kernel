@@ -18,6 +18,15 @@ stages:
 - stage: Build
 
   jobs:
+  - job: CheckPatchRefs
+    condition: eq(variables['Build.Reason'], 'PullRequest')
+    pool: sonicso1ES-amd64
+    steps:
+    - checkout: self
+      fetchDepth: 0
+    - script: scripts/check-patch-refs.sh origin/$(System.PullRequest.TargetBranch)
+      displayName: 'Check new patches have an upstream reference'
+
   - template: .azure-pipelines/build-template.yml
     parameters:
       arch: amd64
