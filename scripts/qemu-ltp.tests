@@ -1,0 +1,7 @@
+# LTP tests run by scripts/qemu-ltp.sh: <runtest file> <regex matched against the start of the test tag>.
+# Sized to finish in about 12 minutes without KVM (5 with KVM). The cve runtest is left out: most entries are
+# race reproducers running minutes each, and the network ones are already covered via syscalls.
+syscalls (socket|bind|connect|accept|listen|send|recv|setsockopt|getsockopt|epoll|poll|select|pipe|eventfd|timerfd|signalfd|futex|clone|fork|vfork|execve|wait|kill|mmap|munmap|mprotect|madvise|mlock|brk|open|read|write|close|dup|fcntl|ioctl|sched_|prctl|unshare|setns)
+containers .
+pty .
+fs_bind .

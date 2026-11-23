@@ -1,0 +1,8 @@
+# LTP tests skipped by scripts/qemu-ltp.sh (kirk regex, one per line). Say why for each entry.
+
+# CVE-2026-53362: NULL dereference in __ip6_flush_pending_frames panics 6.12.94; fixed upstream by
+# 736b380e28d0 ("ipv6: account for fraggap on the paged allocation path"). Drop once backported.
+^(setsockopt11|cve-2026-53362)$
+
+# Runtime: race reproducers and stress loops that take 2.5 to 8.5 minutes each even with KVM.
+^(fork13|writev03|bind06|setsockopt06|pty03|pty06|pty07)$

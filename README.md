@@ -56,3 +56,11 @@ Also, the final kernel configuration will be checked to verify that:
 During Kernel Upgrades, the maintainer must update the configuration diff in the wiki of this repo. This acts as a guide for keeping track of configuration changes between Kernel upgrades. Applies for minor version upgrades as well
 
 The diff is saved as kconfig-diff-{platform}-{arch}.rst under the artifacts of Azure.sonic-linux-kernel job runs.
+## Runtime Testing with LTP
+
+The pipeline boots the amd64 kernel in QEMU and runs a subset of the [Linux Test Project](https://github.com/linux-test-project/ltp) against it, using KVM when `/dev/kvm` is available and TCG otherwise. The same script runs locally on a Debian trixie host (or in the sonic-slave-trixie container started with `--privileged`):
+
+    sudo apt-get install mmdebstrap qemu-system-x86
+    sudo scripts/qemu-ltp.sh linux-image-<version>-amd64-unsigned_<version>_amd64.deb ltp-results
+
+The tests that run are selected in `scripts/qemu-ltp.tests`. Tests that cannot pass yet are listed, each with the reason, in `scripts/qemu-ltp.skip`.
