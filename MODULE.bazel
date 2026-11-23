@@ -4,13 +4,13 @@ module(
 )
 
 # Keep the shared build tools' transitive rules at the registered versions.
-bazel_dep(name = "gazelle", version = "0.54.0.sonic.1", repo_name = None)
-bazel_dep(name = "rules_distroless", version = "0.9.4.sonic.22", repo_name = None)
+bazel_dep(name = "gazelle", version = "0.54.0.sonic.2", repo_name = None)
+bazel_dep(name = "rules_distroless", version = "0.9.4.sonic.26", repo_name = None)
 
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "patchelf", version = "0.18.0.bcr.1")
-bazel_dep(name = "rules_python", version = "1.9.0.sonic.1")
-bazel_dep(name = "sonic-build-infra", version = "0.0.38-0baa4acc9eac9ccc793b81104b1580d530271cbe", repo_name = "sonic_build_infra")
+bazel_dep(name = "rules_python", version = "1.9.0.sonic.2")
+bazel_dep(name = "sonic-build-infra", version = "0.0.44-35726399908a3beb947174e9359f902077928289", repo_name = "sonic_build_infra")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(python_version = "3.13")
