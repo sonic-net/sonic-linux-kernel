@@ -37,6 +37,36 @@ stages:
       linux_deb_pattern: linux-image-*-unsigned_*deb
       secure_boot: true
 
+  - job: qemu_ltp_amd64
+    displayName: LTP in QEMU (vs-amd64)
+    dependsOn: build_vs_amd64_secure_False
+    pool: sonicso1ES-amd64
+    timeoutInMinutes: 60
+    container:
+      image: sonicdev-microsoft.azurecr.io:443/sonic-slave-trixie:$(BUILD_BRANCH)-amd64
+      options: --privileged
+    steps:
+    - checkout: self
+      clean: true
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        artifact: sonic-linux-kernel.amd64
+        itemPattern: linux-image-*-unsigned_*deb
+        targetPath: $(Agent.TempDirectory)/kernel
+      displayName: "Download the linux-image artifact"
+    - script: |
+        set -ex
+        mkdir -p $(Build.ArtifactStagingDirectory)/ltp
+        sudo apt-get update
+        sudo apt-get install -y mmdebstrap
+        sudo env WORK=$(Agent.TempDirectory)/ltp-work scripts/qemu-ltp.sh \
+            $(Agent.TempDirectory)/kernel/linux-image-*-unsigned_*.deb $(Build.ArtifactStagingDirectory)/ltp
+      displayName: "Boot the kernel in QEMU and run LTP"
+    - publish: $(Build.ArtifactStagingDirectory)/ltp
+      artifact: ltp-results.amd64.$(System.JobAttempt)
+      displayName: "Archive LTP results"
+      condition: always()
+
   - template: .azure-pipelines/build-template.yml
     parameters:
       arch: arm64

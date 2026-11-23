@@ -43,7 +43,7 @@ parameters:
   default: false
 
 jobs:
-- job:
+- job: build_${{ parameters.platform }}_${{ parameters.arch }}_secure_${{ parameters.secure_boot }}
   pool: ${{ parameters.pool }}
   displayName: ${{ parameters.platform }}-${{ parameters.arch }} (Secure boot ${{ parameters.secure_boot }})
   timeoutInMinutes: ${{ parameters.timeout }}
