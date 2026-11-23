@@ -13,6 +13,7 @@ This repository contains the scripts and patches to build the kernel for SONiC. 
 - Existing kernel modules need to be enabled.
 - Existing kernel modules need to be patched and those patches are available in upstream.
   - Please include the original upstream commit id and message in the patch. This allows the maintainer to remove upstream patches during the kernel upgrade.
+- Every new patch needs an upstream reference: a `Link:` to its submission on lore.kernel.org or patch.msgid.link, a `(cherry picked from commit <id>)` line, or an `Upstream-Status:` line (e.g. `Upstream-Status: Pending`). `scripts/kernel-bump.sh` uses the message-id or commit id to drop the patch once stable has it; PR CI checks this.
 - New kernel modules which are common to all platforms.
 - Platform specific kernel modules which are impossible or very difficult to be built out of kernel tree.
 

@@ -264,6 +264,8 @@ driver-tty-serial-8250-add-support-for-fintek-F81214E.patch # Linux upstream pen
 0008-PCI-AER-Ratelimit-correctable-and-non-fatal-error-lo.patch
 0009-PCI-AER-Add-sysfs-attributes-for-log-ratelimits.patch
 0010-fix-aer-ratelimiting-sysfs-output-units.patch
+CVE-2025-68309-PCI-AER-Fix-NULL-pointer-access-by-aer_info.patch
+CVE-2025-40034-PCI-AER-Avoid-NULL-pointer-dereference-in-aer_rateli.patch
 
 # Patches for EVPN MH
 0001-vxlan-bridge-Add-NDA_FLAGS_EXT-support-with-NTF_EXT_.patch
@@ -337,8 +339,6 @@ micas-m2-w6950-128oc-dts.patch
 # among the public patches so a fix never reorders what it is applied
 # on top of.
 ###-> security-start
-security/CVE-2025-68309-PCI-AER-Fix-NULL-pointer-access-by-aer_info.patch
-security/CVE-2025-40034-PCI-AER-Avoid-NULL-pointer-dereference-in-aer_rateli.patch
 security/CVE-2026-74584-RDMA-bnxt_re-zero-shared-page-before-exposing-to-use.patch
 security/CVE-2026-64191-i2c-stub-Reject-I2C-block-transfers-with-invalid-len.patch
 security/CVE-2026-64188-net-qualcomm-rmnet-fix-endpoint-use-after-free-in-rm.patch
