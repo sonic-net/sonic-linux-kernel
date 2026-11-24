@@ -1,0 +1,57 @@
+From: Yury Murashka <yurypm@arista.com>
+Date: Fri, 18 Sep 2026 13:48:03 +0000
+Subject: PCI: pciehp: Add PLX 8600/8700 quirk for missing Command Completed events
+
+All PLX PEX 8600- and 8700-series data books say the Command Completed bit
+is set only after the Hot Plug Controller completes a command that changes
+the Attention Indicator Control, Power Indicator Control, Power Controller
+Control, or Electromechanical Interlock Control fields.  It is not set
+after writes that only change the Presence Detect Changed Enable or Command
+Completed Interrupt Enable bits.
+
+Consequently, pciehp waits for Command Completed after changing these
+notification Enable bits and logs a timeout, for example:
+
+  pcieport 0000:90:02.0: pciehp: Timeout on hotplug command 0x07c0 (issued 2032 msec ago)
+
+This behavior exactly matches the conditions described when
+quirk_cmd_compl() was first added: both controllers report completion only
+when the same four Control fields change and fail to report completion for
+notification Enable-only writes.
+
+Add only the PLX PEX 8600- and 8700-series switches on which this fix was
+tested to quirk_cmd_compl().  This makes pciehp mark Enable-only writes
+complete immediately while continuing to wait for commands that change
+Control fields.
+
+Signed-off-by: Yury Murashka <yurypm@arista.com>
+---
+ drivers/pci/hotplug/pciehp_hpc.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/drivers/pci/hotplug/pciehp_hpc.c b/drivers/pci/hotplug/pciehp_hpc.c
+index 4c62140a3..e48e140ba 100644
+--- a/drivers/pci/hotplug/pciehp_hpc.c
++++ b/drivers/pci/hotplug/pciehp_hpc.c
+@@ -1122,3 +1122,17 @@ DECLARE_PCI_FIXUP_CLASS_EARLY(PCI_VENDOR_ID_QCOM, 0x0401,
+ 			      PCI_CLASS_BRIDGE_PCI, 8, quirk_cmd_compl);
+ DECLARE_PCI_FIXUP_CLASS_EARLY(PCI_VENDOR_ID_HXT, 0x0401,
+ 			      PCI_CLASS_BRIDGE_PCI, 8, quirk_cmd_compl);
++DECLARE_PCI_FIXUP_CLASS_EARLY(PCI_VENDOR_ID_PLX, 0x8604,
++			      PCI_CLASS_BRIDGE_PCI, 8, quirk_cmd_compl);
++DECLARE_PCI_FIXUP_CLASS_EARLY(PCI_VENDOR_ID_PLX, 0x8608,
++			      PCI_CLASS_BRIDGE_PCI, 8, quirk_cmd_compl);
++DECLARE_PCI_FIXUP_CLASS_EARLY(PCI_VENDOR_ID_PLX, 0x8609,
++			      PCI_CLASS_BRIDGE_PCI, 8, quirk_cmd_compl);
++DECLARE_PCI_FIXUP_CLASS_EARLY(PCI_VENDOR_ID_PLX, 0x8614,
++			      PCI_CLASS_BRIDGE_PCI, 8, quirk_cmd_compl);
++DECLARE_PCI_FIXUP_CLASS_EARLY(PCI_VENDOR_ID_PLX, 0x8717,
++			      PCI_CLASS_BRIDGE_PCI, 8, quirk_cmd_compl);
++DECLARE_PCI_FIXUP_CLASS_EARLY(PCI_VENDOR_ID_PLX, 0x8725,
++			      PCI_CLASS_BRIDGE_PCI, 8, quirk_cmd_compl);
++DECLARE_PCI_FIXUP_CLASS_EARLY(PCI_VENDOR_ID_PLX, 0x8749,
++			      PCI_CLASS_BRIDGE_PCI, 8, quirk_cmd_compl);
+
+-- 
+2.51.0
+

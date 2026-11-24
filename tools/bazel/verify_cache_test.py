@@ -104,7 +104,7 @@ class CacheProofTest(unittest.TestCase):
         # Matching producer/consumer JSON cannot turn a contradictory native
         # build or the wrong ARMHF ABI into valid cross-build evidence.
         for key, value in (("CROSS_BUILD_ENVIRON", "n"),
-                           ("KVERSION", "6.12.41+deb13-sonic-armhf"),
+                           ("KVERSION", "6.12.94+deb13-sonic-armhf"),
                            ("CONFIGURED_ARCH", "amd64")):
             with self.subTest(key=key), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
