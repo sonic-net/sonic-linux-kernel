@@ -42,9 +42,9 @@ index 2d32896..59d1eba 100644
  #define DW_IC_CLR_RESTART_DET			0xa8
 +#define DW_IC_SCL_STUCK_AT_LOW	0xac
 +#define DW_IC_SDA_STUCK_AT_LOW	0xb0
+ #define DW_IC_SMBUS_INTR_MASK			0xcc
  #define DW_IC_COMP_PARAM_1			0xf4
  #define DW_IC_COMP_VERSION			0xf8
- #define DW_IC_SDA_HOLD_MIN_VERS			0x3131312A /* "111*" == v1.11* */
 @@ -98,6 +100,7 @@
  #define DW_IC_INTR_GEN_CALL			BIT(11)
  #define DW_IC_INTR_RESTART_DET			BIT(12)

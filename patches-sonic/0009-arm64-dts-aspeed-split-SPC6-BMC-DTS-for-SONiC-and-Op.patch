@@ -24,13 +24,20 @@ SONiC FIT configs stay unchanged.
 Add aspeed-nvidia-spc6-bmc-openbmc.dts for OpenBMC (phram/SPI)
 with the existing ramrofs node and irot.dtsi.
 
+On the OpenBMC DTS, also describe the eMMC as an 8-bit bus at 200 MHz
+with the eMMC pinctrl group, and add an mmc-pwrseq-emmc node that drives
+the eMMC hardware reset (RST_n) from GPIOQ7 (EMMC_1V8_RST*).
+
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+
+Upstream-Status: Pending [downstream: SPC6 BMC board DTS, not submitted]
+
 ---
- .../aspeed/aspeed-nvidia-spc6-bmc-openbmc.dts | 527 ++++++++++++++++++
+ .../aspeed/aspeed-nvidia-spc6-bmc-openbmc.dts | 536 ++++++++++++++++++
  .../dts/aspeed/aspeed-nvidia-spc6-bmc.dts     |   2 +-
  .../dts/aspeed/nvidia-ast27xx-irot-sonic.dtsi |  14 +
  .../aspeed/nvidia-ast27xx-sunda-sonic.dtsi    |   8 +
- 4 files changed, 549 insertions(+), 1 deletion(-)
+ 4 files changed, 558 insertions(+), 1 deletion(-)
  create mode 100644 arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc-openbmc.dts
  create mode 100644 arch/arm64/boot/dts/aspeed/nvidia-ast27xx-irot-sonic.dtsi
  create mode 100644 arch/arm64/boot/dts/aspeed/nvidia-ast27xx-sunda-sonic.dtsi
@@ -40,7 +47,7 @@ new file mode 100644
 index 000000000..e825c106d
 --- /dev/null
 +++ b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc-openbmc.dts
-@@ -0,0 +1,527 @@
+@@ -0,0 +1,536 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/dts-v1/;
 +
@@ -86,6 +93,12 @@ index 000000000..e825c106d
 +			reg = <0x00000004 0x237ff000 0x0 0x00001000>;
 +			no-map;
 +		};
++	};
++
++	/* eMMC hardware reset (RST_n) driven by EMMC_1V8_RST* on GPIOQ7 (ball N15). */
++	mmc_pwrseq: mmc-pwrseq {
++		compatible = "mmc-pwrseq-emmc";
++		reset-gpios = <&gpio1 ASPEED_GPIO(Q, 7) GPIO_ACTIVE_LOW>;
 +	};
 +};
 +
@@ -464,8 +477,11 @@ index 000000000..e825c106d
 +&emmc {
 +	status = "okay";
 +	non-removable;
-+	bus-width = <4>;
-+	max-frequency = <52000000>;
++	bus-width = <8>;
++	max-frequency = <200000000>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_emmcg8_default>;
++	mmc-pwrseq = <&mmc_pwrseq>;
 +};
 +
 +/* eSPI Controller - Communication with host CPU */
