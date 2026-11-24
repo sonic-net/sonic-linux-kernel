@@ -4,16 +4,16 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 
 KERNEL_SOURCES = {
     "kernel_dsc": struct(
-        name = "linux_6.12.41-1.dsc",
-        sha256 = "65bbf4e35635465326c9470605da1886ce3d3cf7e2a6d93392c4c6245d895b34",
+        name = "linux_6.12.94-1.dsc",
+        sha256 = "985a33d437c11f73f672b808b62589a0db3e97c6c286f315dbe14d1fc43f1191",
     ),
     "kernel_orig": struct(
-        name = "linux_6.12.41.orig.tar.xz",
-        sha256 = "78afa637ca891174c22b332e4c1f87cf6aaa81861a6cca3b529e861843fa2fd3",
+        name = "linux_6.12.94.orig.tar.xz",
+        sha256 = "3eea3dd18f67a103f6f8312e314075f695a27eaddd839e7b6c4641e6616dabba",
     ),
     "kernel_debian": struct(
-        name = "linux_6.12.41-1.debian.tar.xz",
-        sha256 = "b62680107fc155ad3d2c421ba0af1d5848812674fe767fcd40ba81a414e4ce2a",
+        name = "linux_6.12.94-1.debian.tar.xz",
+        sha256 = "8c5130fd9dee8d6efcc594dc3357809ad8e0d0234357139f85f5ed39b37922b4",
     ),
 }
 
