@@ -88,13 +88,13 @@ jobs:
           root = Path(os.environ["RUNNER_TEMP"]) / "kernel-private"
           root.mkdir(mode=0o700)
           template = Path("tools/bazel/cache-consumer")
-          prefix = "common --registry=https://raw.githubusercontent.com/securely1g/sonic-bazel-registry/"
+          prefix = "common --registry=https://raw.githubusercontent.com/sonic-net/sonic-bazel-registry/"
           original = (template / ".bazelrc").read_text()
           if [line for line in original.splitlines() if line.startswith(prefix)] != [prefix + "main"]:
               raise SystemExit("Expected one SONiC registry entry selecting main")
           ref = "refs/heads/main"
           advertised = subprocess.check_output(["git", "ls-remote",
-              "https://github.com/securely1g/sonic-bazel-registry.git", ref], text=True).split()
+              "https://github.com/sonic-net/sonic-bazel-registry.git", ref], text=True).split()
           if len(advertised) != 2 or advertised[1] != ref:
               raise SystemExit("Could not determine the maintained registry revision")
           revision = advertised[0]
