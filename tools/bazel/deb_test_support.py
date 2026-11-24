@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 
 
-def write_deb(path, package=None, architecture=None, version="6.12.41-1"):
+def write_deb(path, package=None, architecture=None, version="6.12.94-1"):
     name, _version, binary_arch = path.name[:-4].split("_")
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
@@ -18,4 +18,4 @@ def write_deb(path, package=None, architecture=None, version="6.12.41-1"):
         payload.write_text("Public domain test fixture\n")
         subprocess.run(["/usr/bin/dpkg-deb", "--root-owner-group", "-Znone", "--build", str(root), str(path)],
                        check=True, stdout=subprocess.DEVNULL,
-                       env={**os.environ, "SOURCE_DATE_EPOCH": "1754969284"})
+                       env={**os.environ, "SOURCE_DATE_EPOCH": "1781938986"})

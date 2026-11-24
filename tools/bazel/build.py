@@ -52,7 +52,7 @@ def kernel_configuration(architecture, requested, host_architecture=None):
     values = {
         "CONFIGURED_ARCH": architecture, "CONFIGURED_PLATFORM": "vs", "BLDENV": "trixie",
         "CROSS_BUILD_ENVIRON": "y" if host_architecture != architecture else "n", "MULTIARCH_QEMU_ENVIRON": "n",
-        "KERNEL_VERSION": "6.12.41", "KERNEL_ABISUFFIX": "+deb13", "KERNEL_SUBVERSION": "1",
+        "KERNEL_VERSION": "6.12.94", "KERNEL_ABISUFFIX": "+deb13", "KERNEL_SUBVERSION": "1",
         "KERNEL_FEATURESET": "sonic", "ADDITIONAL_BUILD_PROFILES": "",
         "SECURE_UPGRADE_MODE": "no_sign", "SECURE_UPGRADE_KERNEL_CAFILE": "",
         "INCLUDE_EXTERNAL_PATCHES": "n", "EXTERNAL_KERNEL_PATCH_URL": "", "EXTERNAL_KERNEL_PATCH_LOC": "",

@@ -2,10 +2,10 @@ From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Dvir Zaguri <dzaguri@nvidia.com>
 Date: Sun, 31 May 2026 10:15:00 +0300
 Subject: [PATCH 6.12 1/1] arm64: dts: aspeed: spc6-bmc: phram-env, TPM init,
- GPIO expander reset, I3C pull-ups
+ GPIO expander reset, I3C pull-ups, eMMC HS200
 
 Extend arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts
-(AST2700-A2 SPC6 CPU BMC) with four downstream fixes taken from
+(AST2700-A2 SPC6 CPU BMC) with five downstream fixes taken from
 the OpenBMC Switch-26.05-1_br branch. Only the kernel DTS hunks
 from each commit are taken; the matching userspace / U-Boot /
 kconfig changes live in their own layers and are out of scope.
@@ -55,15 +55,31 @@ kconfig changes live in their own layers and are out of scope.
       bus pull-ups and the controller comes up at boot without the
       previous late user-space bind workaround.
 
+  4148acb3e1d418f46069af41d3da3e5fd76b206e
+  "L1 Switch: increase emmc frequency to 200Mhz"
+  Sergejs Hatinecs <shatinecs@nvidia.com>, Jul 2 2026
+
+    * Bump the eMMC to HS200 8-bit / 200 MHz: set &emmc bus-width = <8>
+      and max-frequency = <200000000>, and add
+      pinctrl-0 = <&pinctrl_emmcg8_default> for the 8-bit data lines.
+    * Add an mmc-pwrseq-emmc node (mmc_pwrseq) that hardware-resets the
+      device via EMMC_1V8_RST* on gpio1 ASPEED_GPIO(Q, 7) (active-low)
+      and reference it from &emmc through mmc-pwrseq, so the card is
+      reset to a known state before the faster mode is negotiated.
+
 Signed-off-by: Dvir Zaguri <dzaguri@nvidia.com>
+
+Upstream-Status: Pending [downstream: SPC6 BMC board DTS, not submitted]
+
 ---
- .../boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts     | 59 ++++++++++++++++++++++
- 1 file changed, 59 insertions(+)
+ .../boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts     | 70 +++++++++++++++++++---
+ 1 file changed, 70 insertions(+), 2 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts
+index 81f4bee..1dd843e 100644
 --- a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts
 +++ b/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts
-@@ -29,6 +29,15 @@
+@@ -29,6 +29,21 @@
  		ranges;
  
  		#include "ast2700-reserved-mem.dtsi"
@@ -76,10 +92,16 @@ diff --git a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts b/arch/arm64/
 +			reg = <0x00000004 0x237ff000 0x0 0x00001000>;
 +			no-map;
 +		};
++	};
++
++	/* eMMC hardware reset (RST_n) driven by EMMC_1V8_RST* on GPIOQ7 (ball N15). */
++	mmc_pwrseq: mmc-pwrseq {
++		compatible = "mmc-pwrseq-emmc";
++		reset-gpios = <&gpio1 ASPEED_GPIO(Q, 7) GPIO_ACTIVE_LOW>;
  	};
  };
  
-@@ -55,6 +64,30 @@
+@@ -55,6 +70,30 @@
  		compatible = "st,st33htpm-spi", "infineon,slb9670", "tcg,tpm_tis-spi";
  		reg = <1>;
  		spi-max-frequency = <10000000>;
@@ -110,7 +132,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts b/arch/arm64/
  	};
  };
  
-@@ -243,6 +276,7 @@
+@@ -243,6 +282,7 @@
  		#gpio-cells = <2>;
  		#address-cells = <1>;
  		#size-cells = <0>;
@@ -118,7 +140,7 @@ diff --git a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts b/arch/arm64/
  
  		gpio-line-names =
  			"RSRVD_0", "GP_EROT_RST_IN_L",
-@@ -257,6 +291,30 @@
+@@ -257,6 +297,30 @@
  			"RSRVD_7", "GP_PROD_CS_FLASH0_EN",
  			"RSRVD_8", "GP_PROD_CS_FLASH1_EN",
  			"RSRVD_9", "RSRVD_10";
@@ -149,7 +171,21 @@ diff --git a/arch/arm64/boot/dts/aspeed/aspeed-nvidia-spc6-bmc.dts b/arch/arm64/
  	};
  };
  
-@@ -463,5 +521,6 @@
+@@ -357,8 +421,11 @@
+ &emmc {
+ 	status = "okay";
+ 	non-removable;
+-	bus-width = <4>;
+-	max-frequency = <52000000>;
++	bus-width = <8>;
++	max-frequency = <200000000>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_emmcg8_default>;
++	mmc-pwrseq = <&mmc_pwrseq>;
+ };
+ 
+ /* eSPI Controller - Communication with host CPU */
+@@ -463,5 +530,6 @@
  	status = "okay";
  	pinctrl-names = "default";
  	i3c-scl-hz = <12500000>;

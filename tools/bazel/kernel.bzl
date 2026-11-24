@@ -50,7 +50,7 @@ def kernel_configuration(architecture, requested, host_architecture = None):
         "BLDENV": "trixie",
         "CROSS_BUILD_ENVIRON": "y" if host_architecture != architecture else "n",
         "MULTIARCH_QEMU_ENVIRON": "n",
-        "KERNEL_VERSION": "6.12.41",
+        "KERNEL_VERSION": "6.12.94",
         "KERNEL_ABISUFFIX": "+deb13",
         "KERNEL_SUBVERSION": "1",
         "KERNEL_FEATURESET": "sonic",
@@ -73,7 +73,7 @@ def kernel_configuration(architecture, requested, host_architecture = None):
     if "KVERSION" not in requested:
         suffix = "armmp" if values["CONFIGURED_ARCH"] == "armhf" else values["CONFIGURED_ARCH"]
         values["KVERSION"] = values["KERNEL_VERSION"] + values["KERNEL_ABISUFFIX"] + "-" + values["KERNEL_FEATURESET"] + "-" + suffix
-    defaults["KVERSION"] = "6.12.41+deb13-sonic-" + ("armmp" if architecture == "armhf" else architecture)
+    defaults["KVERSION"] = "6.12.94+deb13-sonic-" + ("armmp" if architecture == "armhf" else architecture)
     for key in sorted(values):
         # Make does not read these inputs while their features are disabled.
         if key == "SECURE_UPGRADE_KERNEL_CAFILE" and values["SECURE_UPGRADE_MODE"] == "no_sign":
@@ -85,15 +85,15 @@ def kernel_configuration(architecture, requested, host_architecture = None):
     return values
 
 def _packages(architecture):
-    abi = "6.12.41+deb13-sonic-" + ("armmp" if architecture == "armhf" else architecture)
+    abi = "6.12.94+deb13-sonic-" + ("armmp" if architecture == "armhf" else architecture)
     unsigned = "" if architecture == "armhf" else "-unsigned"
-    suffix = "_6.12.41-1_" + architecture + ".deb"
+    suffix = "_6.12.94-1_" + architecture + ".deb"
     return [
         "linux-image-" + abi + unsigned + suffix,
         "linux-image-" + abi + "-dbg" + suffix,
         "linux-headers-" + abi + suffix,
-        "linux-headers-6.12.41+deb13-common-sonic_6.12.41-1_all.deb",
-        "linux-kbuild-6.12.41+deb13" + suffix,
+        "linux-headers-6.12.94+deb13-common-sonic_6.12.94-1_all.deb",
+        "linux-kbuild-6.12.94+deb13" + suffix,
     ]
 
 def _kernel_packages_impl(ctx):
@@ -141,7 +141,7 @@ def _kernel_packages_impl(ctx):
             "PYTHONHASHSEED": "0",
         },
         mnemonic = "SonicKernelBuild",
-        progress_message = "Compiling SONiC 6.12.41 %s VS kernel Debian image/debug/headers/kbuild packages" % architecture.upper(),
+        progress_message = "Compiling SONiC 6.12.94 %s VS kernel Debian image/debug/headers/kbuild packages" % architecture.upper(),
         execution_requirements = {"block-network": "", "no-remote-exec": "1"},
     )
     return [

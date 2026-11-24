@@ -68,7 +68,7 @@ class KernelLauncherTest(unittest.TestCase):
                     config = json.loads(value)
                     self.assertEqual(config["SECURE_UPGRADE_MODE"], "unsupported")
                     self.assertEqual(config["CONFIGURED_ARCH"], "armhf")
-                    self.assertEqual(config["KVERSION"], "6.12.41+deb13-sonic-armmp")
+                    self.assertEqual(config["KVERSION"], "6.12.94+deb13-sonic-armmp")
                 self.assertFalse(any(":kernel_config=" in option for option in commands["graph"]))
 
     def test_configuration_rejects_non_string_values_and_normalizes_make_false_flags(self):
@@ -100,7 +100,7 @@ class KernelLauncherTest(unittest.TestCase):
             self.assertEqual(namespace["kernel_configuration"](architecture, {}, host), default)
             self.assertEqual(namespace["kernel_configuration"](architecture, default, host), default)
             self.assertEqual(default["CROSS_BUILD_ENVIRON"], "y" if host != architecture else "n")
-            self.assertEqual(default["KVERSION"], "6.12.41+deb13-sonic-"
+            self.assertEqual(default["KVERSION"], "6.12.94+deb13-sonic-"
                              + ("armmp" if architecture == "armhf" else architecture))
             inactive = {
                 "SECURE_UPGRADE_KERNEL_CAFILE": "/nonexistent/signing/certificate.pem",
@@ -182,7 +182,7 @@ class KernelLauncherTest(unittest.TestCase):
                     config, = [json.loads(value[len(setting):]) for value in command if value.startswith(setting)]
                     self.assertEqual(config["CROSS_BUILD_ENVIRON"], "y")
                     self.assertEqual(config["CONFIGURED_ARCH"], target)
-                    self.assertEqual(config["KVERSION"], "6.12.41+deb13-sonic-"
+                    self.assertEqual(config["KVERSION"], "6.12.94+deb13-sonic-"
                                      + ("armmp" if target == "armhf" else target))
 
     def test_cross_launcher_downloads_host_bazel_and_records_host_target(self):

@@ -9,7 +9,7 @@ import subprocess
 
 ARCHITECTURES = ("amd64", "arm64", "armhf")
 HOST_ARCHITECTURES = ("amd64", "arm64")
-ABINAME = "6.12.41+deb13"
+ABINAME = "6.12.94+deb13"
 
 
 def validate_architecture(architecture):

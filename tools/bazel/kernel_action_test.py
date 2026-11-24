@@ -159,15 +159,15 @@ class KernelActionTest(unittest.TestCase):
 
     def test_armhf_package_names_match_maintained_armmp_contract(self):
         names = action.package_names("armhf")
-        self.assertIn("linux-image-6.12.41+deb13-sonic-armmp_6.12.41-1_armhf.deb", names)
-        self.assertIn("linux-headers-6.12.41+deb13-sonic-armmp_6.12.41-1_armhf.deb", names)
+        self.assertIn("linux-image-6.12.94+deb13-sonic-armmp_6.12.94-1_armhf.deb", names)
+        self.assertIn("linux-headers-6.12.94+deb13-sonic-armmp_6.12.94-1_armhf.deb", names)
         self.assertFalse(any("unsigned" in name for name in names))
 
     def test_recipe_uses_the_selected_configuration(self):
         config = build.kernel_configuration("arm64", {"SECURE_UPGRADE_MODE": ""})
         commands = action.compilation_commands("arm64", Path("/source"), Path("/archives"), config)
         self.assertEqual(commands[5], ["bash", "/source/manage-config", "arm64", "no_sign", ""])
-        self.assertEqual(action.SOURCE_DATE_EPOCH, 1754969284)
+        self.assertEqual(action.SOURCE_DATE_EPOCH, 1781938986)
 
     def test_configuration_binds_execution_host_target_and_armmp_abi(self):
         for host, target in (("amd64", "amd64"), ("arm64", "arm64"),
@@ -226,7 +226,7 @@ class KernelActionTest(unittest.TestCase):
                 root = Path(directory)
                 for name in action.package_names(architecture):
                     write_deb(root / name)
-                extra = root / f"linux-libc-dev_6.12.41-1_{architecture}.deb"
+                extra = root / f"linux-libc-dev_6.12.94-1_{architecture}.deb"
                 write_deb(extra)
                 records = action.created_package_records(root, architecture)
                 self.assertEqual(len(records), 6)
