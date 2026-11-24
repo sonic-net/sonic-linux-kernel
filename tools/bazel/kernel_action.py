@@ -14,9 +14,9 @@ import tempfile
 from kernel_arch import (ARCHITECTURES, HOST_ARCHITECTURES, kernel_abi,
                          validate_architecture, validate_build_pair)
 
-SOURCE_DATE_EPOCH = 1754969284  # Debian linux 6.12.41-1 changelog timestamp.
+SOURCE_DATE_EPOCH = 1781938986  # Debian linux 6.12.94-1 changelog timestamp.
 MANIFEST = "kernel-packages.json"
-PACKAGE_VERSION = "6.12.41-1"
+PACKAGE_VERSION = "6.12.94-1"
 EXTRA_SOURCES = ("tools/bazel/kernel_arch.py", "tools/bazel/stage_kernel.py")
 
 # Debian's control-real target deliberately fails after regeneration, to reject
@@ -36,8 +36,8 @@ def package_kinds(architecture="amd64"):
         "linux-image-" + abi + ("" if architecture == "armhf" else "-unsigned") + suffix: "runtime",
         "linux-image-" + abi + "-dbg" + suffix: "debug",
         "linux-headers-" + abi + suffix: "headers",
-        "linux-headers-6.12.41+deb13-common-sonic_" + PACKAGE_VERSION + "_all.deb": "headers_common",
-        "linux-kbuild-6.12.41+deb13" + suffix: "kbuild",
+        "linux-headers-6.12.94+deb13-common-sonic_" + PACKAGE_VERSION + "_all.deb": "headers_common",
+        "linux-kbuild-6.12.94+deb13" + suffix: "kbuild",
     }
 
 
@@ -173,7 +173,7 @@ def validate_configuration(kernel_config, architecture, host_architecture):
     expected = {
         "CONFIGURED_ARCH": architecture, "CONFIGURED_PLATFORM": "vs", "BLDENV": "trixie",
         "CROSS_BUILD_ENVIRON": "y" if host_architecture != architecture else "n",
-        "MULTIARCH_QEMU_ENVIRON": "n", "KERNEL_VERSION": "6.12.41", "KERNEL_ABISUFFIX": "+deb13",
+        "MULTIARCH_QEMU_ENVIRON": "n", "KERNEL_VERSION": "6.12.94", "KERNEL_ABISUFFIX": "+deb13",
         "KERNEL_SUBVERSION": "1", "KERNEL_FEATURESET": "sonic", "KVERSION": kernel_abi(architecture),
         "ADDITIONAL_BUILD_PROFILES": "", "SECURE_UPGRADE_MODE": "no_sign", "INCLUDE_EXTERNAL_PATCHES": "n",
     }
@@ -335,7 +335,7 @@ def build(config):
             "schema": 4, "architecture": architecture, "host_architecture": host_architecture,
             "platform": kernel_config["CONFIGURED_PLATFORM"], "kernel_config": kernel_config,
             "kernel_version": kernel_config["KERNEL_VERSION"], "kernel_abi": kernel_config["KVERSION"],
-            "package_version": "6.12.41-1", "signing": "unsigned",
+            "package_version": "6.12.94-1", "signing": "unsigned",
             "source_date_epoch": SOURCE_DATE_EPOCH,
             "source_archives": sorted(archive_records, key=lambda entry: entry["name"]),
             "source_tree_sha256": source_tree_sha256(inventory),

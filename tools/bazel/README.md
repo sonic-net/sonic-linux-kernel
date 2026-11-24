@@ -7,7 +7,7 @@ five real Debian packages. `//:kernel_artifacts` remains an aggregate alias.
 | --- | --- | --- |
 | `//:runtime_deb` | `linux-image-<ABI>-unsigned` | Kernel image, config, modules, native device trees and maintained postinst hooks |
 | `//:debug_deb` | `linux-image-<ABI>-dbg` | Matched vmlinux/module symbols, GNU build-ID links, patched sources and generated headers |
-| `//:development_debs` | `linux-headers-<ABI>`, `linux-headers-6.12.41+deb13-common-sonic`, `linux-kbuild-6.12.41+deb13` | Configured headers, Module.symvers, BTF and native module build tools |
+| `//:development_debs` | `linux-headers-<ABI>`, `linux-headers-6.12.94+deb13-common-sonic`, `linux-kbuild-6.12.94+deb13` | Configured headers, Module.symvers, BTF and native module build tools |
 | `//:manifest` | `kernel-packages.json` | Schema4 host/target identity, package size/hash, source/tool provenance, all created packages, and debug pairing |
 
 The supported host/target pairs are:
@@ -19,9 +19,9 @@ The supported host/target pairs are:
 | AMD64 | ARM64 | Cross compilation |
 | AMD64 | ARMHF | Cross compilation |
 
-All use the VS configuration, kernel version `6.12.41-1`, and an unsigned boot
+All use the VS configuration, kernel version `6.12.94-1`, and an unsigned boot
 image. The ABI suffix is `sonic-amd64`, `sonic-arm64`, or `sonic-armmp` for ARMHF.
-Package filenames follow `<package>_6.12.41-1_<architecture>.deb`; common headers
+Package filenames follow `<package>_6.12.94-1_<architecture>.deb`; common headers
 use architecture `all`. Debian's ARMHF image package has no `-unsigned` suffix.
 Native ARMHF builds and ARM64-host cross builds are not supported.
 
@@ -92,7 +92,7 @@ to Make. ARMHF uses the `armmp` kernel ABI suffix.
 The normalized configuration is a declared action input and is recorded as
 `kernel_config` in both `invocation.json` and `kernel-packages.json`. Cache proof
 checks require these records to agree in both consumers. The source timestamp
-remains pinned to Debian's changelog (`SOURCE_DATE_EPOCH=1754969284`); unknown Make
+remains pinned to Debian's changelog (`SOURCE_DATE_EPOCH=1781938986`); unknown Make
 keys are rejected rather than silently ignored.
 
 ## Shared build tools

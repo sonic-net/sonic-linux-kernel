@@ -18,7 +18,7 @@ import verify_debug
 
 class StageKernelTest(unittest.TestCase):
     def test_armhf_uses_the_existing_armmp_package_flavour(self):
-        self.assertEqual(kernel_arch.kernel_abi("armhf"), "6.12.41+deb13-sonic-armmp")
+        self.assertEqual(kernel_arch.kernel_abi("armhf"), "6.12.94+deb13-sonic-armmp")
         self.assertEqual(kernel_arch.build_directory("armhf"), "build_armhf_sonic_armmp")
         self.assertEqual(kernel_arch.kernel_architecture("armhf"), "arm")
         for host, target in (("amd64", "amd64"), ("amd64", "arm64"), ("amd64", "armhf"), ("arm64", "arm64")):
