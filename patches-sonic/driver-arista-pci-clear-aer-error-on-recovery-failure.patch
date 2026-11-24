@@ -135,6 +135,6 @@ index bb5ec0c..898d4d4 100644
 +
  	pci_walk_bridge(bridge, pci_pm_runtime_put, NULL);
 
- 	pci_uevent_ers(bridge, PCI_ERS_RESULT_DISCONNECT);
+ 	pci_walk_bridge(bridge, report_perm_failure_detected, NULL);
 --
 2.51.0

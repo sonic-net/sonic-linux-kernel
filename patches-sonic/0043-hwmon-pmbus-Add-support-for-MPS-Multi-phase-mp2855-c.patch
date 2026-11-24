@@ -25,12 +25,21 @@ The device:
 
 The device is available in a TQFN-40 (5mmx5mm) package.
 
+The MP2855 dynamically changes its VOUT over-voltage and under-voltage
+fault thresholds depending on the operating point. Read the current
+threshold selector whenever the limit is requested, and mark the
+registers with pmbus_set_update() so inX_crit and inX_lcrit do not go
+stale.
+
 Signed-off-by: Vadim Pasternak <vadimp@nvidia.com>
+
+Upstream-Status: Pending
+
 ---
  drivers/hwmon/pmbus/Kconfig  |  10 ++
  drivers/hwmon/pmbus/Makefile |   1 +
- drivers/hwmon/pmbus/mp2855.c | 380 +++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 391 insertions(+)
+ drivers/hwmon/pmbus/mp2855.c |  372 +++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 383 insertions(+)
  create mode 100644 drivers/hwmon/pmbus/mp2855.c
 
 diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
@@ -71,7 +80,7 @@ new file mode 100644
 index 00000000..3cffd09
 --- /dev/null
 +++ b/drivers/hwmon/pmbus/mp2855.c
-@@ -0,0 +1,380 @@
+@@ -0,0 +1,372 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + * Hardware monitoring driver for MPS Multi-phase Digital VR Controllers(MP2855)
@@ -117,8 +126,6 @@ index 00000000..3cffd09
 +	int iout_scale[MP2855_PAGE_NUM];
 +	int vout_scale[MP2855_PAGE_NUM];
 +	int vout_shift[MP2855_PAGE_NUM];
-+	int uv_off[MP2855_PAGE_NUM];
-+	int ov_off[MP2855_PAGE_NUM];
 +};
 +
 +struct mp2855_data data;
@@ -141,11 +148,61 @@ index 00000000..3cffd09
 +	}
 +}
 +
++static int mp2855_vout_ov_offset_get(struct i2c_client *client)
++{
++	int ret;
++
++	ret = i2c_smbus_read_word_data(client, PMBUS_VOUT_OV_FAULT_LIMIT);
++	if (ret < 0)
++		return ret;
++
++	switch ((ret & MP2891_OV_TH_MASK) >> MP2891_OV_TH_POS) {
++	case 0:
++		return 200;
++	case 1:
++		return 325;
++	case 2:
++		return 450;
++	default:
++		return -EINVAL;
++	}
++}
++
++static int mp2855_vout_uv_offset_get(struct i2c_client *client)
++{
++	int ret;
++
++	ret = i2c_smbus_read_word_data(client, PMBUS_VOUT_UV_FAULT_LIMIT);
++	if (ret < 0)
++		return ret;
++
++	switch ((ret & MP2891_UV_TH_MASK) >> MP2891_UV_TH_POS) {
++	case 0:
++		return 425;
++	case 1:
++		return 375;
++	case 2:
++		return 325;
++	case 3:
++		return 275;
++	case 4:
++		return 225;
++	case 5:
++		return 175;
++	case 6:
++		return 125;
++	case 7:
++		return 75;
++	default:
++		return -EINVAL;
++	}
++}
++
 +static int mp2855_read_word_data(struct i2c_client *client, int page, int phase, int reg)
 +{
 +	const struct pmbus_driver_info *info = pmbus_get_driver_info(client);
 +	struct mp2855_data *data = to_mp2855_data(info);
-+	int ret;
++	int ret, offset;
 +
 +	switch (reg) {
 +	case PMBUS_READ_VIN:
@@ -169,16 +226,26 @@ index 00000000..3cffd09
 +		return (ret < 0) ? ret : (ret & GENMASK(7, 0)) * data->iout_scale[page];
 +	case PMBUS_VOUT_OV_FAULT_LIMIT:
 +		ret = pmbus_read_word_data(client, page, phase, PMBUS_READ_VOUT);
-+		if (ret <= 0)
++		if (ret < 0)
 +			return ret;
 +
-+		return (ret & GENMASK(10, 0)) * data->vout_scale[page] / 100 + data->ov_off[page];
++		offset = mp2855_vout_ov_offset_get(client);
++		if (offset < 0)
++			return offset;
++
++		return (ret & GENMASK(10, 0)) *
++		       data->vout_scale[page] / 100 + offset;
 +	case PMBUS_VOUT_UV_FAULT_LIMIT:
 +		ret = pmbus_read_word_data(client, page, phase, PMBUS_READ_VOUT);
-+		if (ret <= 0)
++		if (ret < 0)
 +			return ret;
 +
-+		return (ret & GENMASK(10, 0)) * data->vout_scale[page] / 100 - data->uv_off[page];
++		offset = mp2855_vout_uv_offset_get(client);
++		if (offset < 0)
++			return offset;
++
++		return (ret & GENMASK(10, 0)) *
++		       data->vout_scale[page] / 100 - offset;
 +	case PMBUS_OT_FAULT_LIMIT:
 +		ret = pmbus_read_word_data(client, 1, phase, reg);
 +		return (ret <= 0) ? ret : MP2891_TMP_TH_GET(ret);
@@ -326,79 +393,6 @@ index 00000000..3cffd09
 +	return ret < 0 ? ret : mp2855_iout_scale_get(client, data, PMBUS_READ_IOUT, 1);
 +}
 +
-+static int
-+mp2855_vout_thresholds_get(struct i2c_client *client, struct mp2855_data *data, int page)
-+{
-+	int ret;
-+
-+	ret = i2c_smbus_write_byte_data(client, PMBUS_PAGE, page);
-+	if (ret < 0)
-+		return ret;
-+
-+	ret = i2c_smbus_read_word_data(client, PMBUS_VOUT_OV_FAULT_LIMIT);
-+	if (ret < 0)
-+		return ret;
-+
-+	switch ((ret & MP2891_OV_TH_MASK) >> MP2891_OV_TH_POS) {
-+	case 0:
-+		data->ov_off[page] = 200;
-+		break;
-+	case 1:
-+		data->ov_off[page] = 325;
-+		break;
-+	case 2:
-+		data->ov_off[page] = 450;
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+
-+	ret = i2c_smbus_read_word_data(client, PMBUS_VOUT_UV_FAULT_LIMIT);
-+	if (ret < 0)
-+		return ret;
-+
-+	switch ((ret & MP2891_UV_TH_MASK) >> MP2891_UV_TH_POS) {
-+	case 0:
-+		data->uv_off[page] = 425;
-+		break;
-+	case 1:
-+		data->uv_off[page] = 375;
-+		break;
-+	case 2:
-+		data->uv_off[page] = 325;
-+		break;
-+	case 3:
-+		data->uv_off[page] = 275;
-+		break;
-+	case 4:
-+		data->uv_off[page] = 225;
-+		break;
-+	case 5:
-+		data->uv_off[page] = 175;
-+		break;
-+	case 6:
-+		data->uv_off[page] = 125;
-+		break;
-+	case 7:
-+		data->uv_off[page] = 75;
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+
-+	return 0;
-+}
-+
-+static int mp2855_rails_vout_thresholds_get(struct i2c_client *client, struct mp2855_data *data)
-+{
-+	int ret;
-+
-+	/* Get vout thresholds for rail 1. */
-+	ret = mp2855_vout_thresholds_get(client, data, 0);
-+	/* Get vout thresholds for rail 2. */
-+	return ret < 0 ? ret : mp2855_vout_thresholds_get(client, data, 1);
-+}
-+
 +static int mp2855_probe(struct i2c_client *client)
 +{
 +	struct pmbus_driver_info *info;
@@ -419,11 +413,18 @@ index 00000000..3cffd09
 +	if (ret < 0)
 +		return ret;
 +
-+	mp2855_rails_vout_thresholds_get(client, data);
++	ret = pmbus_do_probe(client, info);
 +	if (ret < 0)
 +		return ret;
 +
-+	return pmbus_do_probe(client, info);
++	/*
++	 * MP2855 VOUT OV/UV fault limits are dynamic. Do not cache them
++	 * in the PMBus core.
++	 */
++	pmbus_set_update(client, PMBUS_VOUT_OV_FAULT_LIMIT, true);
++	pmbus_set_update(client, PMBUS_VOUT_UV_FAULT_LIMIT, true);
++
++	return 0;
 +}
 +
 +static const struct i2c_device_id mp2855_id[] = {
