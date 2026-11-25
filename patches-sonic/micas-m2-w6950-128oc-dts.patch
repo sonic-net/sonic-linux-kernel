@@ -1,0 +1,2573 @@
+diff --git a/arch/arm64/boot/dts/aspeed/Makefile b/arch/arm64/boot/dts/aspeed/Makefile
+index 410778816..0460964 100644
+--- a/arch/arm64/boot/dts/aspeed/Makefile
++++ b/arch/arm64/boot/dts/aspeed/Makefile
+@@ -34,2 +34,3 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
+ 	aspeed-nvidia-spc6-a1-bmc.dtb \
+-	aspeed-nvidia-spc6-bmc.dtb
++	aspeed-nvidia-spc6-bmc.dtb \
++	micas-m2-w6950-128oc.dtb
+diff --git a/arch/arm64/boot/dts/aspeed/micas-m2-w6950-128oc.dts b/arch/arm64/boot/dts/aspeed/micas-m2-w6950-128oc.dts
+new file mode 100644
+--- /dev/null
++++ b/arch/arm64/boot/dts/aspeed/micas-m2-w6950-128oc.dts
+@@ -0,0 +1,2522 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++
++/dts-v1/;
++
++#include "aspeed-g7.dtsi"
++#include <dt-bindings/gpio/aspeed-gpio.h>
++#include <dt-bindings/i2c/i2c.h>
++#include <dt-bindings/net/ti-dp83867.h>
++
++#define DUAL_NODE 0    // 1: DUAL_NODE, 0: SINGLE_NODE
++#define PCIE0_EP 1 // 1: EP, 0: RC
++#define PCIE1_EP 0 // 1: EP, 0: RC
++#define PCIE2_RC 0 // 1: RC, 0: SGMII
++
++/ {
++   model = "Micas M2-W6950-128OC BMC";
++   compatible = "micas,m2-w6950-128oc", "aspeed,ast2700";
++
++   aliases {
++       spi4 = &spi_gpio;   /* 53134 */
++       spi6 = &spi_gpio1;  /* MGMT CPLD */
++       i2c401 = &fpga0_i2c0;
++       i2c402 = &fpga0_i2c1;
++       i2c403 = &fpga0_i2c2;
++       i2c404 = &fpga0_i2c3;
++       i2c405 = &fpga0_i2c4;
++       i2c406 = &fpga0_i2c5;
++       i2c407 = &fpga0_i2c6;
++       i2c408 = &fpga0_i2c7;
++       i2c409 = &fpga0_i2c8;
++       i2c410 = &fpga0_i2c9;
++       i2c427 = &fpga1_i2c0;
++       i2c436 = &fpga2_i2c0;
++       i2c445 = &cpld_i2c0;
++   };
++
++   chosen {
++       stdout-path = "serial12:115200n8";
++   };
++
++   memory@400000000 {
++       device_type = "memory";
++       reg = <0x4 0x00000000 0x0 0x40000000>;
++   };
++
++   reserved-memory {
++       #address-cells = <2>;
++       #size-cells = <2>;
++       ranges;
++
++       #include "ast2700-reserved-mem.dtsi"
++
++       video_engine_memory0: video0 {
++           size = <0x0 0x02000000>;
++           alignment = <0x0 0x00010000>;
++           compatible = "shared-dma-pool";
++           reusable;
++       };
++
++       video_engine_memory1: video1 {
++           size = <0x0 0x02000000>;
++           alignment = <0x0 0x00010000>;
++           compatible = "shared-dma-pool";
++           reusable;
++       };
++
++#if 0
++       gfx_memory: framebuffer {
++           size = <0x0 0x01000000>;
++           alignment = <0x0 0x01000000>;
++           compatible = "shared-dma-pool";
++           reusable;
++       };
++#endif
++
++       espi0_mcyc_memory: mcyc0 {
++           size = <0x0 0x01000000>;
++           alignment = <0x0 0x00010000>;
++           compatible = "shared-dma-pool";
++           reusable;
++       };
++   };
++
++#if 0
++   fan0: pwm-fan0 {
++       compatible = "pwm-fan";
++       pwms = <&pwm_tach 0 40000 0>;   /* Target freq:25 kHz */
++       cooling-min-state = <0>;
++       cooling-max-state = <3>;
++       #cooling-cells = <2>;
++       cooling-levels = <0 15 128 255>;
++   };
++
++   fan1: pwm-fan1 {
++       compatible = "pwm-fan";
++       pwms = <&pwm_tach 1 40000 0>;   /* Target freq:25 kHz */
++       cooling-min-state = <0>;
++       cooling-max-state = <3>;
++       #cooling-cells = <2>;
++       cooling-levels = <0 15 128 255>;
++   };
++
++   fan2: pwm-fan2 {
++       compatible = "pwm-fan";
++       pwms = <&pwm_tach 2 40000 0>;   /* Target freq:25 kHz */
++       cooling-min-state = <0>;
++       cooling-max-state = <3>;
++       #cooling-cells = <2>;
++       cooling-levels = <0 15 128 255>;
++   };
++
++   fan3: pwm-fan3 {
++       compatible = "pwm-fan";
++       pwms = <&pwm_tach 3 40000 0>;   /* Target freq:25 kHz */
++       cooling-min-state = <0>;
++       cooling-max-state = <3>;
++       #cooling-cells = <2>;
++       cooling-levels = <0 15 128 255>;
++   };
++
++   fan4: pwm-fan4 {
++       compatible = "pwm-fan";
++       pwms = <&pwm_tach 4 40000 0>;   /* Target freq:25 kHz */
++       cooling-min-state = <0>;
++       cooling-max-state = <3>;
++       #cooling-cells = <2>;
++       cooling-levels = <0 15 128 255>;
++   };
++
++   fan5: pwm-fan5 {
++       compatible = "pwm-fan";
++       pwms = <&pwm_tach 5 40000 0>;   /* Target freq:25 kHz */
++       cooling-min-state = <0>;
++       cooling-max-state = <3>;
++       #cooling-cells = <2>;
++       cooling-levels = <0 15 128 255>;
++   };
++
++   fan6: pwm-fan6 {
++       compatible = "pwm-fan";
++       pwms = <&pwm_tach 6 40000 0>;   /* Target freq:25 kHz */
++       cooling-min-state = <0>;
++       cooling-max-state = <3>;
++       #cooling-cells = <2>;
++       cooling-levels = <0 15 128 255>;
++   };
++
++   fan7: pwm-fan7 {
++       compatible = "pwm-fan";
++       pwms = <&pwm_tach 7 40000 0>;   /* Target freq:25 kHz */
++       cooling-min-state = <0>;
++       cooling-max-state = <3>;
++       #cooling-cells = <2>;
++       cooling-levels = <0 15 128 255>;
++   };
++
++   fan8: pwm-fan8 {
++       compatible = "pwm-fan";
++       pwms = <&pwm_tach 8 40000 0>;   /* Target freq:25 kHz */
++       cooling-min-state = <0>;
++       cooling-max-state = <3>;
++       #cooling-cells = <2>;
++       cooling-levels = <0 15 128 255>;
++   };
++
++   iio-hwmon {
++       compatible = "iio-hwmon";
++       status = "okay";
++       io-channels = <&adc0 0>, <&adc0 1>, <&adc0 2>, <&adc0 3>,
++               <&adc0 4>, <&adc0 5>, <&adc0 6>, <&adc0 7>,
++               <&adc1 0>, <&adc1 1>, <&adc1 2>, <&adc1 3>,
++               <&adc1 4>, <&adc1 5>, <&adc1 6>, <&adc1 7>;
++   };
++#endif
++
++    /* mac fpga i2c master */
++    fpga0_i2c0: fpga0-i2c0 {
++        compatible = "wb-fpga-i2c";
++        i2c_timeout             = <3000>;
++        i2c_scale               = <0x2000>;
++        i2c_filter              = <0x2004>;
++        i2c_stretch             = <0x2008>;
++        i2c_ext_9548_exits_flag = <0x200c>;
++        i2c_ext_9548_addr       = <0x2010>;
++        i2c_ext_9548_chan       = <0x2014>;
++        i2c_in_9548_chan        = <0x2018>;
++        i2c_slave               = <0x201c>;
++        i2c_reg                 = <0x2020>;
++        i2c_reg_len             = <0x2030>;
++        i2c_data_len            = <0x2034>;
++        i2c_ctrl                = <0x2038>;
++        i2c_status              = <0x203c>;
++        i2c_err_vec             = <0x2048>;
++        i2c_data_buf            = <0x2100>;
++        i2c_data_buf_len        = <256>;
++        dev_name                = "/dev/fpga0";
++        i2c_scale_value         = <0x4e>;
++        i2c_filter_value        = <0x7c>;
++        i2c_stretch_value       = <0x7c>;
++        i2c_func_mode           = <5>;
++        i2c_adap_reset_flag     = <0>;
++        i2c_reset_addr          = <0x207c>;
++        i2c_reset_on            = <0x00000001>;
++        i2c_reset_off           = <0x00000000>;
++        i2c_rst_delay_b         = <0>; /* delay time before reset(us) */
++        i2c_rst_delay           = <1>; /* reset time(us) */
++        i2c_rst_delay_a         = <1>; /* delay time after reset(us) */
++        pca9548@70 {
++            compatible = "wb_fpga_pca9541";
++            reg = <0x70>;
++            #address-cells = <1>;
++            #size-cells = <0>;
++            pca9548_base_nr = <451>;
++            fpga_9548_flag = <1>;        /* 1: internal 9548 2: external 9548 */
++            fpga_9548_reset_flag = <0>;  /* 1: reset, 0: no bit */
++            i2c@0 {
++                reg = <0>;
++                pca9548@77 {
++                    compatible = "wb_fpga_pca9548";
++                    reg = <0x77>;
++                    #address-cells = <1>;
++                    #size-cells = <0>;
++                    pca9548_base_nr = <51>;
++                    fpga_9548_flag = <2>;
++                    fpga_9548_reset_flag = <1>;
++                };
++                pca9548@75 {
++                    compatible = "wb_fpga_pca9548";
++                    reg = <0x75>;
++                    #address-cells = <1>;
++                    #size-cells = <0>;
++                    pca9548_base_nr = <59>;
++                    fpga_9548_flag = <2>;
++                    fpga_9548_reset_flag = <1>;
++                };
++            };
++        };
++    };
++
++    fpga0_i2c1: fpga0-i2c1 {
++        compatible = "wb-fpga-i2c";
++        i2c_timeout             = <3000>;
++        i2c_scale               = <0x2200>;
++        i2c_filter              = <0x2204>;
++        i2c_stretch             = <0x2208>;
++        i2c_ext_9548_exits_flag = <0x220c>;
++        i2c_ext_9548_addr       = <0x2210>;
++        i2c_ext_9548_chan       = <0x2214>;
++        i2c_in_9548_chan        = <0x2218>;
++        i2c_slave               = <0x221c>;
++        i2c_reg                 = <0x2220>;
++        i2c_reg_len             = <0x2230>;
++        i2c_data_len            = <0x2234>;
++        i2c_ctrl                = <0x2238>;
++        i2c_status              = <0x223c>;
++        i2c_err_vec             = <0x2248>;
++        i2c_data_buf            = <0x2300>;
++        i2c_data_buf_len        = <256>;
++        dev_name                = "/dev/fpga0";
++        i2c_scale_value         = <0x4e>;
++        i2c_filter_value        = <0x7c>;
++        i2c_stretch_value       = <0x7c>;
++        i2c_func_mode           = <5>;
++        i2c_adap_reset_flag     = <0>;
++        i2c_reset_addr          = <0x227c>;
++        i2c_reset_on            = <0x00000001>;
++        i2c_reset_off           = <0x00000000>;
++        i2c_rst_delay_b         = <0>;
++        i2c_rst_delay           = <1>;
++        i2c_rst_delay_a         = <1>;
++        pca9548@70 {
++            compatible = "wb_fpga_pca9541";
++            reg = <0x70>;
++            #address-cells = <1>;
++            #size-cells = <0>;
++            pca9548_base_nr = <452>;
++            fpga_9548_flag = <1>;
++            fpga_9548_reset_flag = <0>;
++            i2c@0 {
++                reg = <0>;
++                pca9548@76 {
++                    compatible = "wb_fpga_pca9548";
++                    reg = <0x76>;
++                    #address-cells = <1>;
++                    #size-cells = <0>;
++                    pca9548_base_nr = <67>;
++                    fpga_9548_flag = <2>;
++                    fpga_9548_reset_flag = <1>;
++                };
++            };
++        };
++    };
++
++    fpga0_i2c2: fpga0-i2c2 {
++        compatible = "wb-fpga-i2c";
++        i2c_timeout             = <3000>;
++        i2c_scale               = <0x2400>;
++        i2c_filter              = <0x2404>;
++        i2c_stretch             = <0x2408>;
++        i2c_ext_9548_exits_flag = <0x240c>;
++        i2c_ext_9548_addr       = <0x2410>;
++        i2c_ext_9548_chan       = <0x2414>;
++        i2c_in_9548_chan        = <0x2418>;
++        i2c_slave               = <0x241c>;
++        i2c_reg                 = <0x2420>;
++        i2c_reg_len             = <0x2430>;
++        i2c_data_len            = <0x2434>;
++        i2c_ctrl                = <0x2438>;
++        i2c_status              = <0x243c>;
++        i2c_err_vec             = <0x2448>;
++        i2c_data_buf            = <0x2500>;
++        i2c_data_buf_len        = <256>;
++        dev_name                = "/dev/fpga0";
++        i2c_scale_value         = <0x4e>;
++        i2c_filter_value        = <0x7c>;
++        i2c_stretch_value       = <0x7c>;
++        i2c_func_mode           = <5>;
++        i2c_adap_reset_flag     = <0>;
++        i2c_reset_addr          = <0x247c>;
++        i2c_reset_on            = <0x00000001>;
++        i2c_reset_off           = <0x00000000>;
++        i2c_rst_delay_b         = <0>;
++        i2c_rst_delay           = <1>;
++        i2c_rst_delay_a         = <1>;
++        pca9548@70 {
++            compatible = "wb_fpga_pca9541";
++            reg = <0x70>;
++            #address-cells = <1>;
++            #size-cells = <0>;
++            pca9548_base_nr = <453>;
++            fpga_9548_flag = <1>;
++            fpga_9548_reset_flag = <0>;
++            i2c@0 {
++                reg = <0>;
++                pca9548@77 {
++                    compatible = "wb_fpga_pca9548";
++                    reg = <0x77>;
++                    #address-cells = <1>;
++                    #size-cells = <0>;
++                    pca9548_base_nr = <75>;
++                    fpga_9548_flag = <2>;
++                    fpga_9548_reset_flag = <1>;
++                };
++            };
++        };
++    };
++
++    fpga0_i2c3: fpga0-i2c3 {
++        compatible = "wb-fpga-i2c";
++        i2c_timeout             = <3000>;
++        i2c_scale               = <0x2600>;
++        i2c_filter              = <0x2604>;
++        i2c_stretch             = <0x2608>;
++        i2c_ext_9548_exits_flag = <0x260c>;
++        i2c_ext_9548_addr       = <0x2610>;
++        i2c_ext_9548_chan       = <0x2614>;
++        i2c_in_9548_chan        = <0x2618>;
++        i2c_slave               = <0x261c>;
++        i2c_reg                 = <0x2620>;
++        i2c_reg_len             = <0x2630>;
++        i2c_data_len            = <0x2634>;
++        i2c_ctrl                = <0x2638>;
++        i2c_status              = <0x263c>;
++        i2c_err_vec             = <0x2648>;
++        i2c_data_buf            = <0x2700>;
++        i2c_data_buf_len        = <256>;
++        dev_name                = "/dev/fpga0";
++        i2c_scale_value         = <0x4e>;
++        i2c_filter_value        = <0x7c>;
++        i2c_stretch_value       = <0x7c>;
++        i2c_func_mode           = <5>;
++        i2c_adap_reset_flag     = <0>;
++        i2c_reset_addr          = <0x267c>;
++        i2c_reset_on            = <0x00000001>;
++        i2c_reset_off           = <0x00000000>;
++        i2c_rst_delay_b         = <0>;
++        i2c_rst_delay           = <1>;
++        i2c_rst_delay_a         = <1>;
++        pca9548@70 {
++            compatible = "wb_fpga_pca9541";
++            reg = <0x70>;
++            #address-cells = <1>;
++            #size-cells = <0>;
++            pca9548_base_nr = <454>;
++            fpga_9548_flag = <1>;
++            fpga_9548_reset_flag = <0>;
++            i2c@0 {
++                reg = <0>;
++                pca9548@77 {
++                    compatible = "wb_fpga_pca9548";
++                    reg = <0x77>;
++                    #address-cells = <1>;
++                    #size-cells = <0>;
++                    pca9548_base_nr = <83>;
++                    fpga_9548_flag = <2>;
++                    fpga_9548_reset_flag = <1>;
++                };
++            };
++        };
++    };
++
++    fpga0_i2c4: fpga0-i2c4 {
++        compatible = "wb-fpga-i2c";
++        i2c_timeout             = <3000>;
++        i2c_scale               = <0x2800>;
++        i2c_filter              = <0x2804>;
++        i2c_stretch             = <0x2808>;
++        i2c_ext_9548_exits_flag = <0x280c>;
++        i2c_ext_9548_addr       = <0x2810>;
++        i2c_ext_9548_chan       = <0x2814>;
++        i2c_in_9548_chan        = <0x2818>;
++        i2c_slave               = <0x281c>;
++        i2c_reg                 = <0x2820>;
++        i2c_reg_len             = <0x2830>;
++        i2c_data_len            = <0x2834>;
++        i2c_ctrl                = <0x2838>;
++        i2c_status              = <0x283c>;
++        i2c_err_vec             = <0x2848>;
++        i2c_data_buf            = <0x2900>;
++        i2c_data_buf_len        = <256>;
++        dev_name                = "/dev/fpga0";
++        i2c_scale_value         = <0x4e>;
++        i2c_filter_value        = <0x7c>;
++        i2c_stretch_value       = <0x7c>;
++        i2c_func_mode           = <5>;
++        i2c_adap_reset_flag     = <0>;
++        i2c_reset_addr          = <0x287c>;
++        i2c_reset_on            = <0x00000001>;
++        i2c_reset_off           = <0x00000000>;
++        i2c_rst_delay_b         = <0>;
++        i2c_rst_delay           = <1>;
++        i2c_rst_delay_a         = <1>;
++        pca9548@70 {
++            compatible = "wb_fpga_pca9541";
++            reg = <0x70>;
++            #address-cells = <1>;
++            #size-cells = <0>;
++            pca9548_base_nr = <455>;
++            fpga_9548_flag = <1>;
++            fpga_9548_reset_flag = <0>;
++            i2c@0 {
++                reg = <0>;
++                pca9548@71 {
++                    compatible = "wb_fpga_pca9548";
++                    reg = <0x71>;
++                    #address-cells = <1>;
++                    #size-cells = <0>;
++                    pca9548_base_nr = <91>;
++                    fpga_9548_flag = <2>;
++                    fpga_9548_reset_flag = <1>;
++                };
++                pca9548@72 {
++                    compatible = "wb_fpga_pca9548";
++                    reg = <0x72>;
++                    #address-cells = <1>;
++                    #size-cells = <0>;
++                    pca9548_base_nr = <99>;
++                    fpga_9548_flag = <2>;
++                    fpga_9548_reset_flag = <1>;
++                };
++            };
++        };
++    };
++
++    fpga0_i2c5: fpga0-i2c5 {
++        compatible = "wb-fpga-i2c";
++        i2c_timeout             = <3000>;
++        i2c_scale               = <0x2a00>;
++        i2c_filter              = <0x2a04>;
++        i2c_stretch             = <0x2a08>;
++        i2c_ext_9548_exits_flag = <0x2a0c>;
++        i2c_ext_9548_addr       = <0x2a10>;
++        i2c_ext_9548_chan       = <0x2a14>;
++        i2c_in_9548_chan        = <0x2a18>;
++        i2c_slave               = <0x2a1c>;
++        i2c_reg                 = <0x2a20>;
++        i2c_reg_len             = <0x2a30>;
++        i2c_data_len            = <0x2a34>;
++        i2c_ctrl                = <0x2a38>;
++        i2c_status              = <0x2a3c>;
++        i2c_err_vec             = <0x2a48>;
++        i2c_data_buf            = <0x2b00>;
++        i2c_data_buf_len        = <256>;
++        dev_name                = "/dev/fpga0";
++        i2c_scale_value         = <0x4e>;
++        i2c_filter_value        = <0x7c>;
++        i2c_stretch_value       = <0x7c>;
++        i2c_func_mode           = <5>;
++        i2c_adap_reset_flag     = <0>;
++        i2c_reset_addr          = <0x2a7c>;
++        i2c_reset_on            = <0x00000001>;
++        i2c_reset_off           = <0x00000000>;
++        i2c_rst_delay_b         = <0>;
++        i2c_rst_delay           = <1>;
++        i2c_rst_delay_a         = <1>;
++        pca9548@70 {
++            compatible = "wb_fpga_pca9541";
++            reg = <0x70>;
++            #address-cells = <1>;
++            #size-cells = <0>;
++            pca9548_base_nr = <456>;
++            fpga_9548_flag = <1>;
++            fpga_9548_reset_flag = <0>;
++            i2c@0 {
++                reg = <0>;
++                pca9548@71 {
++                    compatible = "wb_fpga_pca9548";
++                    reg = <0x71>;
++                    #address-cells = <1>;
++                    #size-cells = <0>;
++                    pca9548_base_nr = <107>;
++                    fpga_9548_flag = <2>;
++                    fpga_9548_reset_flag = <1>;
++                };
++            };
++        };
++    };
++
++    fpga0_i2c6: fpga0-i2c6 {
++        compatible = "wb-fpga-i2c";
++        i2c_timeout             = <3000>;
++        i2c_scale               = <0x2c00>;
++        i2c_filter              = <0x2c04>;
++        i2c_stretch             = <0x2c08>;
++        i2c_ext_9548_exits_flag = <0x2c0c>;
++        i2c_ext_9548_addr       = <0x2c10>;
++        i2c_ext_9548_chan       = <0x2c14>;
++        i2c_in_9548_chan        = <0x2c18>;
++        i2c_slave               = <0x2c1c>;
++        i2c_reg                 = <0x2c20>;
++        i2c_reg_len             = <0x2c30>;
++        i2c_data_len            = <0x2c34>;
++        i2c_ctrl                = <0x2c38>;
++        i2c_status              = <0x2c3c>;
++        i2c_err_vec             = <0x2c48>;
++        i2c_data_buf            = <0x2d00>;
++        i2c_data_buf_len        = <256>;
++        dev_name                = "/dev/fpga0";
++        i2c_scale_value         = <0x4e>;
++        i2c_filter_value        = <0x7c>;
++        i2c_stretch_value       = <0x7c>;
++        i2c_func_mode           = <5>;
++        i2c_adap_reset_flag     = <0>;
++        i2c_reset_addr          = <0x2c7c>;
++        i2c_reset_on            = <0x00000001>;
++        i2c_reset_off           = <0x00000000>;
++        i2c_rst_delay_b         = <0>;
++        i2c_rst_delay           = <1>;
++        i2c_rst_delay_a         = <1>;
++        pca9548@70 {
++            compatible = "wb_fpga_pca9541";
++            reg = <0x70>;
++            #address-cells = <1>;
++            #size-cells = <0>;
++            pca9548_base_nr = <457>;
++            fpga_9548_flag = <1>;
++            fpga_9548_reset_flag = <0>;
++            i2c@0 {
++                reg = <0>;
++                pca9548@72 {
++                    compatible = "wb_fpga_pca9548";
++                    reg = <0x72>;
++                    #address-cells = <1>;
++                    #size-cells = <0>;
++                    pca9548_base_nr = <115>;
++                    fpga_9548_flag = <2>;
++                    fpga_9548_reset_flag = <1>;
++                };
++            };
++        };
++    };
++
++    fpga0_i2c7: fpga0-i2c7 {
++        compatible = "wb-fpga-i2c";
++        i2c_timeout             = <3000>;
++        i2c_scale               = <0x2e00>;
++        i2c_filter              = <0x2e04>;
++        i2c_stretch             = <0x2e08>;
++        i2c_ext_9548_exits_flag = <0x2e0c>;
++        i2c_ext_9548_addr       = <0x2e10>;
++        i2c_ext_9548_chan       = <0x2e14>;
++        i2c_in_9548_chan        = <0x2e18>;
++        i2c_slave               = <0x2e1c>;
++        i2c_reg                 = <0x2e20>;
++        i2c_reg_len             = <0x2e30>;
++        i2c_data_len            = <0x2e34>;
++        i2c_ctrl                = <0x2e38>;
++        i2c_status              = <0x2e3c>;
++        i2c_err_vec             = <0x2e48>;
++        i2c_data_buf            = <0x2f00>;
++        i2c_data_buf_len        = <256>;
++        dev_name                = "/dev/fpga0";
++        i2c_scale_value         = <0x4e>;
++        i2c_filter_value        = <0x7c>;
++        i2c_stretch_value       = <0x7c>;
++        i2c_func_mode           = <5>;
++        i2c_adap_reset_flag     = <0>;
++        i2c_reset_addr          = <0x2e7c>;
++        i2c_reset_on            = <0x00000001>;
++        i2c_reset_off           = <0x00000000>;
++        i2c_rst_delay_b         = <0>;
++        i2c_rst_delay           = <1>;
++        i2c_rst_delay_a         = <1>;
++        pca9548@70 {
++            compatible = "wb_fpga_pca9541";
++            reg = <0x70>;
++            #address-cells = <1>;
++            #size-cells = <0>;
++            pca9548_base_nr = <458>;
++            fpga_9548_flag = <1>;
++            fpga_9548_reset_flag = <0>;
++            i2c@0 {
++                reg = <0>;
++                pca9548@73 {
++                    compatible = "wb_fpga_pca9548";
++                    reg = <0x73>;
++                    #address-cells = <1>;
++                    #size-cells = <0>;
++                    pca9548_base_nr = <123>;
++                    fpga_9548_flag = <2>;
++                    fpga_9548_reset_flag = <1>;
++                };
++            };
++        };
++    };
++
++    fpga0_i2c8: fpga0-i2c8 {
++        compatible = "wb-fpga-i2c";
++        i2c_timeout             = <3000>;
++        i2c_scale               = <0x3000>;
++        i2c_filter              = <0x3004>;
++        i2c_stretch             = <0x3008>;
++        i2c_ext_9548_exits_flag = <0x300c>;
++        i2c_ext_9548_addr       = <0x3010>;
++        i2c_ext_9548_chan       = <0x3014>;
++        i2c_in_9548_chan        = <0x3018>;
++        i2c_slave               = <0x301c>;
++        i2c_reg                 = <0x3020>;
++        i2c_reg_len             = <0x3030>;
++        i2c_data_len            = <0x3034>;
++        i2c_ctrl                = <0x3038>;
++        i2c_status              = <0x303c>;
++        i2c_err_vec             = <0x3048>;
++        i2c_data_buf            = <0x3100>;
++        i2c_data_buf_len        = <256>;
++        dev_name                = "/dev/fpga0";
++        i2c_scale_value         = <0x4e>;
++        i2c_filter_value        = <0x7c>;
++        i2c_stretch_value       = <0x7c>;
++        i2c_func_mode           = <5>;
++        i2c_adap_reset_flag     = <0>;
++        i2c_reset_addr          = <0x307c>;
++        i2c_reset_on            = <0x00000001>;
++        i2c_reset_off           = <0x00000000>;
++        i2c_rst_delay_b         = <0>;
++        i2c_rst_delay           = <1>;
++        i2c_rst_delay_a         = <1>;
++        pca9548@70 {
++            compatible = "wb_fpga_pca9541";
++            reg = <0x70>;
++            #address-cells = <1>;
++            #size-cells = <0>;
++            pca9548_base_nr = <459>;
++            fpga_9548_flag = <1>;
++            fpga_9548_reset_flag = <0>;
++            i2c@0 {
++                reg = <0>;
++                pca9548@74 {
++                    compatible = "wb_fpga_pca9548";
++                    reg = <0x74>;
++                    #address-cells = <1>;
++                    #size-cells = <0>;
++                    pca9548_base_nr = <131>;
++                    fpga_9548_flag = <2>;
++                    fpga_9548_reset_flag = <1>;
++                };
++            };
++        };
++    };
++
++    fpga0_i2c9: fpga0-i2c9 {
++        compatible = "wb-fpga-i2c";
++        i2c_timeout             = <3000>;
++        i2c_scale               = <0x3200>;
++        i2c_filter              = <0x3204>;
++        i2c_stretch             = <0x3208>;
++        i2c_ext_9548_exits_flag = <0x320c>;
++        i2c_ext_9548_addr       = <0x3210>;
++        i2c_ext_9548_chan       = <0x3214>;
++        i2c_in_9548_chan        = <0x3218>;
++        i2c_slave               = <0x321c>;
++        i2c_reg                 = <0x3220>;
++        i2c_reg_len             = <0x3230>;
++        i2c_data_len            = <0x3234>;
++        i2c_ctrl                = <0x3238>;
++        i2c_status              = <0x323c>;
++        i2c_err_vec             = <0x3248>;
++        i2c_data_buf            = <0x3300>;
++        i2c_data_buf_len        = <256>;
++        dev_name                = "/dev/fpga0";
++        i2c_scale_value         = <0x4e>;
++        i2c_filter_value        = <0x7c>;
++        i2c_stretch_value       = <0x7c>;
++        i2c_func_mode           = <5>;
++        i2c_adap_reset_flag     = <0>;
++        i2c_reset_addr          = <0x327c>;
++        i2c_reset_on            = <0x00000001>;
++        i2c_reset_off           = <0x00000000>;
++        i2c_rst_delay_b         = <0>;
++        i2c_rst_delay           = <1>;
++        i2c_rst_delay_a         = <1>;
++        pca9548@70 {
++            compatible = "wb_fpga_pca9548";
++            reg = <0x70>;
++            #address-cells = <1>;
++            #size-cells = <0>;
++            pca9548_base_nr = <139>;
++            fpga_9548_flag = <1>;
++            fpga_9548_reset_flag = <0>;
++        };
++    };
++
++    /* uport fpga i2c master */
++    fpga1_i2c0: fpga1-i2c0 {
++        compatible = "wb-fpga-i2c";
++        i2c_timeout             = <3000>;
++        i2c_scale               = <0x42000>;
++        i2c_filter              = <0x42004>;
++        i2c_stretch             = <0x42008>;
++        i2c_ext_9548_exits_flag = <0x4200c>;
++        i2c_ext_9548_addr       = <0x42010>;
++        i2c_ext_9548_chan       = <0x42014>;
++        i2c_in_9548_chan        = <0x42018>;
++        i2c_slave               = <0x4201c>;
++        i2c_reg                 = <0x42020>;
++        i2c_reg_len             = <0x42030>;
++        i2c_data_len            = <0x42034>;
++        i2c_ctrl                = <0x42038>;
++        i2c_status              = <0x4203c>;
++        i2c_err_vec             = <0x42048>;
++        i2c_data_buf            = <0x42100>;
++        i2c_data_buf_len        = <256>;
++        dev_name                = "/dev/fpga0";
++        i2c_scale_value         = <0x4e>;
++        i2c_filter_value        = <0x7c>;
++        i2c_stretch_value       = <0x7c>;
++        i2c_func_mode           = <5>;
++        i2c_adap_reset_flag     = <0>;
++        i2c_reset_addr          = <0x4207c>;
++        i2c_reset_on            = <0x00000001>;
++        i2c_reset_off           = <0x00000000>;
++        i2c_rst_delay_b         = <0>;
++        i2c_rst_delay           = <1>;
++        i2c_rst_delay_a         = <1>;
++        pca9548@70 {
++            compatible = "wb_fpga_pca9548";
++            reg = <0x70>;
++            #address-cells = <1>;
++            #size-cells = <0>;
++            pca9548_base_nr = <147>;
++            fpga_9548_flag = <1>;
++            fpga_9548_reset_flag = <0>;
++        };
++    };
++
++    /* dport fpga i2c master */
++    fpga2_i2c0: fpga2-i2c0 {
++        compatible = "wb-fpga-i2c";
++        i2c_timeout             = <3000>;
++        i2c_scale               = <0x82000>;
++        i2c_filter              = <0x82004>;
++        i2c_stretch             = <0x82008>;
++        i2c_ext_9548_exits_flag = <0x8200c>;
++        i2c_ext_9548_addr       = <0x82010>;
++        i2c_ext_9548_chan       = <0x82014>;
++        i2c_in_9548_chan        = <0x82018>;
++        i2c_slave               = <0x8201c>;
++        i2c_reg                 = <0x82020>;
++        i2c_reg_len             = <0x82030>;
++        i2c_data_len            = <0x82034>;
++        i2c_ctrl                = <0x82038>;
++        i2c_status              = <0x8203c>;
++        i2c_err_vec             = <0x82048>;
++        i2c_data_buf            = <0x82100>;
++        i2c_data_buf_len        = <256>;
++        dev_name                = "/dev/fpga0";
++        i2c_scale_value         = <0x4e>;
++        i2c_filter_value        = <0x7c>;
++        i2c_stretch_value       = <0x7c>;
++        i2c_func_mode           = <5>;
++        i2c_adap_reset_flag     = <0>;
++        i2c_reset_addr          = <0x8207c>;
++        i2c_reset_on            = <0x00000001>;
++        i2c_reset_off           = <0x00000000>;
++        i2c_rst_delay_b         = <0>;
++        i2c_rst_delay           = <1>;
++        i2c_rst_delay_a         = <1>;
++        pca9548@70 {
++            compatible = "wb_fpga_pca9548";
++            reg = <0x70>;
++            #address-cells = <1>;
++            #size-cells = <0>;
++            pca9548_base_nr = <155>;
++            fpga_9548_flag = <1>;
++            fpga_9548_reset_flag = <0>;
++        };
++    };
++
++    /* CPU_CPLD */
++    firmware_cpld0 {
++        compatible  = "firmware_cpld_ispvme";
++        type        = "JTAG";
++        tdi      = <713>;
++        tck      = <710>;
++        tms      = <711>;
++        tdo      = <712>;
++        chain        = <1>;
++        chip_index  = <1>;
++    };
++
++    /* MGMT_CPLD */
++    firmware_cpld1 {
++        compatible  = "firmware_cpld_ispvme";
++        type        = "JTAG";
++        tdi      = <713>;
++        tck      = <710>;
++        tms      = <711>;
++        tdo      = <712>;
++        chain        = <2>;
++        chip_index  = <1>;
++    };
++
++    /* MAC_CPLD_AB */
++    firmware_cpld2 {
++        compatible  = "firmware_cpld_ispvme";
++        type        = "JTAG";
++        tdi      = <713>;
++        tck      = <710>;
++        tms      = <711>;
++        tdo      = <712>;
++        chain        = <3>;
++        chip_index  = <1>;
++    };
++
++    /* MAC_CPLD_C */
++    firmware_cpld3 {
++        compatible  = "firmware_cpld_ispvme";
++        type        = "JTAG";
++        tdi      = <713>;
++        tck      = <710>;
++        tms      = <711>;
++        tdo      = <712>;
++        chain        = <4>;
++        chip_index  = <1>;
++    };
++
++    /* UPORT_CPLD */
++    firmware_cpld4 {
++        compatible  = "firmware_cpld_ispvme";
++        type        = "JTAG";
++        tdi      = <713>;
++        tck      = <710>;
++        tms      = <711>;
++        tdo      = <712>;
++        chain        = <5>;
++        chip_index  = <1>;
++    };
++
++    /* DPORT_CPLD */
++    firmware_cpld5 {
++        compatible  = "firmware_cpld_ispvme";
++        type        = "JTAG";
++        tdi      = <713>;
++        tck      = <710>;
++        tms      = <711>;
++        tdo      = <712>;
++        chain        = <6>;
++        chip_index  = <1>;
++    };
++
++    /* UFAN_CPLD */
++    firmware_cpld6 {
++        compatible  = "firmware_cpld_ispvme";
++        type        = "JTAG";
++        tdi      = <713>;
++        tck      = <710>;
++        tms      = <711>;
++        tdo      = <712>;
++        chain        = <7>;
++        chip_index  = <1>;
++    };
++
++    /* DFAN_CPLD */
++    firmware_cpld7 {
++        compatible  = "firmware_cpld_ispvme";
++        type        = "JTAG";
++        tdi      = <713>;
++        tck      = <710>;
++        tms      = <711>;
++        tdo      = <712>;
++        chain        = <8>;
++        chip_index  = <1>;
++    };
++
++    /* MAC_CPLDD */
++    firmware_cpld8 {
++        compatible  = "firmware_cpld_ispvme";
++        type        = "JTAG";
++        tdi      = <713>;
++        tck      = <710>;
++        tms      = <711>;
++        tdo      = <712>;
++        chain        = <9>;
++        chip_index  = <1>;
++    };
++
++    /* MAC FPGA upgrade link */
++    firmware_mac_fpga_up {
++        compatible  = "firmware_sysfs";
++        type        = "MTD_DEV";
++        chain        = <1>;
++        chip_index  = <1>;
++        mtd_name    = "spi5.0";
++        flash_base  = <0x2f0000>;
++        test_base   = <0x7F0000>;
++        test_size   = <0x10000>;
++    };
++
++    /* MAC FPGA upgrade link */
++    firmware_mac_fpga_shaopian {
++        compatible  = "firmware_sysfs";
++        type        = "MTD_DEV";
++        chain        = <2>;
++        chip_index  = <1>;
++        mtd_name    = "spi5.0";
++        flash_base  = <0x0>;
++        test_base   = <0x7F0000>;
++        test_size   = <0x10000>;
++    };
++
++    /* UPORT FPGA upgrade link */
++    firmware_uport_fpga_up {
++        compatible  = "firmware_sysfs";
++        type        = "MTD_DEV";
++        chain        = <3>;
++        chip_index  = <1>;
++        mtd_name    = "spi5.0";
++        flash_base  = <0x2f0000>;
++        test_base   = <0x7F0000>;
++        test_size   = <0x10000>;
++    };
++
++    /* UPORT FPGA upgrade link */
++    firmware_uport_fpga_shaopian {
++        compatible  = "firmware_sysfs";
++        type        = "MTD_DEV";
++        chain        = <4>;
++        chip_index  = <1>;
++        mtd_name    = "spi5.0";
++        flash_base  = <0x0>;
++        test_base   = <0x7F0000>;
++        test_size   = <0x10000>;
++    };
++
++    /* DPORT FPGA upgrade link */
++    firmware_dport_fpga_up {
++        compatible  = "firmware_sysfs";
++        type        = "MTD_DEV";
++        chain        = <5>;
++        chip_index  = <1>;
++        mtd_name    = "spi5.0";
++        flash_base  = <0x2f0000>;
++        test_base   = <0x7F0000>;
++        test_size   = <0x10000>;
++    };
++
++    /* DPORT FPGA upgrade link */
++    firmware_dport_fpga_shaopian {
++        compatible  = "firmware_sysfs";
++        type        = "MTD_DEV";
++        chain        = <6>;
++        chip_index  = <1>;
++        mtd_name    = "spi5.0";
++        flash_base  = <0x0>;
++        test_base   = <0x7F0000>;
++        test_size   = <0x10000>;
++    };
++
++    /* for 53134 firmware upgrade */
++    spi_gpio: spi-gpio {
++        compatible = "spi-gpio";
++        status = "okay";
++        #address-cells = <1>;
++        #size-cells = <0>;
++        num-chipselects = <1>;
++
++        cs-gpios = <&gpio1 ASPEED_GPIO(P, 0) GPIO_ACTIVE_HIGH>;
++        gpio-sck = <&gpio1 ASPEED_GPIO(P, 1) GPIO_ACTIVE_HIGH>;
++        gpio-mosi = <&gpio1 ASPEED_GPIO(P, 2) GPIO_ACTIVE_HIGH>;
++        gpio-miso = <&gpio1 ASPEED_GPIO(P, 3) GPIO_ACTIVE_HIGH>;
++    };
++
++    /* 53134 upgrade */
++    firmware_bcm53134 {
++        compatible  = "firmware_sysfs";
++        type        = "SYSFS";
++        chain        = <8>;
++        chip_index  = <1>;
++        sysfs_name    = "/sys/bus/spi/devices/spi4.0/eeprom";
++        en_gpio_0  = <555>;
++        en_level_0 = <0>;
++        en_logic_dev_0 = "/dev/cpld1";
++        en_logic_addr_0 = <0x54>;
++        en_logic_mask_0 = <0xfc>;
++        en_logic_en_val_0 = <0x2>;
++        en_logic_dis_val_0 = <0x0>;
++        en_logic_width_0 = <1>;
++        en_logic_dev_1 = "/dev/cpld1";
++        en_logic_addr_1 = <0x55>;
++        en_logic_mask_1 = <0xf8>;
++        en_logic_en_val_1 = <0x5>;
++        en_logic_dis_val_1 = <0x0>;
++        en_logic_width_1 = <1>;
++        en_logic_dev_2 = "/dev/cpld1";
++        en_logic_addr_2 = <0x4c>;
++        en_logic_mask_2 = <0>;
++        en_logic_en_val_2 = <0xb2>;
++        en_logic_dis_val_2 = <0xb3>;
++        en_logic_width_2 = <1>;
++    };
++
++    /* mac pcie upgrade */
++    firmware_mac_pcie {
++        compatible  = "firmware_sysfs";
++        type        = "MTD_DEV";
++        chain        = <9>;
++        chip_index  = <1>;
++        mtd_name    = "spi5.0";
++        flash_base  = <0>;
++    };
++
++    /* BIOS */
++    firmware_bios {
++        compatible  = "firmware_sysfs";
++        type        = "MTD_DEV";
++        chain       = <7>;
++        chip_index  = <1>;
++        mtd_name    = "BIOS";
++        flash_base  = <0x0>;
++    };
++
++
++    led_wdt: led_wdt {
++        compatible = "wb_wdt";
++        feed_wdt_type = /bits/ 8 <0x2>;   /* 0: does not feed the dog, 1:hrtimer feeds the dog, 2: threads feed the dog */
++        hw_margin_ms = <180000>;          /* Timeout period */
++        feed_time = <30000>;              /* Dog feeding time */
++        config_dev_name = "/dev/cpld1";   /* Configuring CPLD */
++        config_mode = /bits/ 8 <2>;       /* 1:GPIO feed the dog, 2: logic device feed the dog */
++        priv_func_mode = /bits/ 8 <1>;    /* 1:i2c, 2:pcie, 3:IO, 4:Device file */
++        enable_reg = <0xc8>;              /* Enable register. Note: This led_wdt has no enable register and is compatible with driver configuration as a dog feed register */
++        enable_val = /bits/ 8 <0x1>;      /* Enable value */
++        disable_val = /bits/ 8 <0x0>;     /* Disabled value */
++        enable_mask = /bits/ 8 <0x1>;     /* Enable the mask */
++        timeout_cfg_reg = <0xca>;         /* Time setting register */
++        timeleft_cfg_reg = <0xcb>;        /* Residual time register */
++        hw_algo = "eigenvalues";          /* write 1 to feed wdt */
++        feed_dev_name = "/dev/cpld1";     /* Logic device feed dog register */
++        feed_reg = <0xcc>;                /* Dog feed register */
++        active_val = /bits/ 8 <0x1>;      /* Dog feed value */
++        logic_func_mode = /bits/ 8 <0x1>; /* 1:i2c, 2:pcie, 3:IO, 4:Device file */
++        timer_accuracy = <1600>;          /* 1.6s */
++    };
++    wb_mmc_resume@0 {
++        compatible = "dev_resume_drv";
++        dev_type   = <1>;                             /* 1: MMC; 2: SSD */
++        slot_id    = <0>;                             /* emmc controller0 */
++        bit_mask   = <0x01>;
++        reg_intf_name   = "mmc_resume_register";
++        unreg_intf_name = "mmc_resume_unregister";
++
++        resume_way0 {
++            resume_way    = <6>;                    /* DEV_RESUME_WAY_AST2700 */
++            rst_gpio_flag       = <1>;              /* if have no rst_gpio, set flag 0 */
++            rst_gpio_num        = <524>;
++            rst_active_level    = <0>;
++            power_gpio_flag     = <1>;              /* if have no power_gpio, set flag 0 */
++            power_gpio_num      = <545>;
++            power_active_level  = <0>;
++            reset_delay   = <200000>;
++            dereset_delay = <10000>;
++        };
++    };
++
++    spi_gpio1: spi_gpio@1 {
++        compatible = "spi-gpio";
++        status = "okay";
++        #address-cells = <1>;
++        #size-cells = <0>;
++        num-chipselects = <1>;
++
++        cs-gpios = <&gpio1 ASPEED_GPIO(D, 5) GPIO_ACTIVE_HIGH>;
++        gpio-sck = <&gpio1 ASPEED_GPIO(D, 6) GPIO_ACTIVE_HIGH>;
++        gpio-mosi = <&gpio1 ASPEED_GPIO(D, 4) GPIO_ACTIVE_HIGH>;
++        gpio-miso = <&gpio1 ASPEED_GPIO(D, 3) GPIO_ACTIVE_HIGH>;
++
++        spi@0 {
++            compatible = "wb-spi-dev";
++            reg = <0>;
++            spi-max-frequency = <6250000>;
++            spi-cpha;
++            spi-cpol;
++            spi_dev_name = "cpld10";
++            data_bus_width    = <4>;
++            addr_bus_width    = <2>;
++            per_rd_len        = <4>;
++            per_wr_len        = <4>;
++            spi_len        = <0x200>;
++        };
++    };
++#if 0
++    cpld-i2c-master-0 {
++        compatible = "wb-indirect-dev";
++        logic_func_mode = <5>;
++        dev_name = "cpld11";
++        logic_dev_name = "/dev/cpld10";
++        data_bus_width    = <4>;
++        wr_data        = <0x00>;
++        addr_low       = <0x04>;
++        addr_high      = <0x05>;
++        rd_data        = <0x06>;
++        opt_ctl        = <0x0a>;
++        indirect_len   = <0x200>;
++        lock_mode      = <0x2>;
++    };
++#endif
++    cpld_i2c0: cpld-i2c0 {
++       compatible = "wb-fpga-i2c";
++       i2c_timeout             = <3000>;
++       i2c_scale               = <0x00>;
++       i2c_filter              = <0x04>;
++       i2c_stretch             = <0x08>;
++       i2c_ext_9548_exits_flag = <0x0c>;
++       i2c_ext_9548_addr       = <0x10>;
++       i2c_ext_9548_chan       = <0x14>;
++       i2c_in_9548_chan        = <0x18>;
++       i2c_slave               = <0x1c>;
++       i2c_reg                 = <0x20>;
++       i2c_reg_len             = <0x30>;
++       i2c_data_len            = <0x34>;
++       i2c_ctrl                = <0x38>;
++       i2c_status              = <0x3c>;
++       i2c_err_vec             = <0x48>;
++       i2c_data_buf            = <0x100>;
++       i2c_data_buf_len        = <256>;
++       dev_name                = "/dev/cpld10";
++       i2c_scale_value         = <0x4e>;
++       i2c_filter_value        = <0x7c>;
++       i2c_stretch_value       = <0x7c>;
++       i2c_func_mode           = <5>;    /* SYMBOL_SPI_DEV */
++       i2c_adap_reset_flag     = <0>;
++       i2c_reset_addr          = <0x7c>;
++       i2c_reset_on            = <0x00000001>;
++       i2c_reset_off           = <0x00000000>;
++       i2c_rst_delay_b         = <0>; /* delay time before reset(us) */
++       i2c_rst_delay           = <1>; /* reset time(us) */
++       i2c_rst_delay_a         = <1>; /* delay time after reset(us) */
++       pca9548@70 {
++           compatible = "wb_fpga_pca9548";
++           reg = <0x70>;
++           #address-cells = <1>;
++           #size-cells = <0>;
++           pca9548_base_nr = <329>;
++           fpga_9548_flag = <1>;        /* 1: internal 9548 2: external 9548 */
++           fpga_9548_reset_flag = <0>;  /* 1: reset, 0: no bit */
++       };
++   };
++    gpio_init {
++        compatible  = "gpio_init";
++        /* start ast2720 common */
++        gpioport@0 {
++            gpio            = <564>;            /* GPIOF0: BASE_CPLD_INT_R#, Input */
++            init_direction  = <1>;              /* 0: OUTPUT 1: INPUT */
++            free_flag       = <1>;
++        };
++        gpioport@1 {
++            gpio            = <539>;            /* GPIOB7: BMC NMI#, Input */
++            init_direction  = <1>;              /* 0: OUTPUT 1: INPUT */
++            free_flag       = <1>;
++        };
++        gpioport@2 {
++            gpio            = <739>;            /* GPIOAA7: BMC_INT_OUT#, Output */
++            init_direction  = <0>;              /* 0: OUTPUT 1: INPUT */
++            init_level      = <1>;              /* 0: LOW, 1: HIGH */
++            free_flag       = <1>;
++        };
++        gpioport@3 {
++            gpio            = <735>;            /* GPIOAA3: BMC_SMI#, Input */
++            init_direction  = <1>;              /* 0: OUTPUT 1: INPUT */
++            free_flag       = <1>;
++        };
++        gpioport@4 {
++            gpio            = <738>;            /* GPIOAA6: BMC_WDO, Output */
++            init_direction  = <0>;              /* 0: OUTPUT 1: INPUT */
++            init_level      = <0>;              /* 0: LOW, 1: HIGH */
++            free_flag       = <1>;
++        };
++        gpioport@5 {
++            gpio            = <544>;            /* GPIOC4: CATERR#, Input */
++            init_direction  = <1>;              /* 0: OUTPUT 1: INPUT */
++            free_flag       = <1>;
++        };
++        gpioport@6 {
++            gpio            = <536>;            /* GPIOB4: CPU_ERROR0#, Input */
++            init_direction  = <1>;              /* 0: OUTPUT 1: INPUT */
++            free_flag       = <1>;
++        };
++        gpioport@7 {
++            gpio            = <538>;            /* GPIOB6: CPU_ERROR1#, Input */
++            init_direction  = <1>;              /* 0: OUTPUT 1: INPUT */
++            free_flag       = <1>;
++        };
++        gpioport@8 {
++            gpio            = <540>;            /* GPIOC0: CPU_ERROR2#, Input */
++            init_direction  = <1>;              /* 0: OUTPUT 1: INPUT */
++            free_flag       = <1>;
++        };
++        gpioport@9 {
++            gpio            = <733>;            /* GPIOAA1: CPU_RST_IN_R#, Input */
++            init_direction  = <1>;              /* 0: OUTPUT 1: INPUT */
++            free_flag       = <1>;
++        };
++        //gpioport@10 {
++        //    gpio            = <578>;          /* GPIOG6: PWRBT#, Output,Operations under U-Boot */
++        //    init_direction  = <0>;            /* 0: OUTPUT 1: INPUT */
++        //    init_level      = <1>;            /* 0: LOW, 1: HIGH */
++        //    free_flag       = <1>;
++        //};
++        gpioport@10 {
++            gpio            = <537>;            /* GPIOB5: THERMTRIP#, Input */
++            init_direction  = <1>;              /* 0: OUTPUT 1: INPUT */
++            free_flag       = <1>;
++        };
++        gpioport@11 {
++            gpio            = <732>;            /* GPIOAA0: CPU_RST_OUT#, Output */
++            init_direction  = <0>;              /* 0: OUTPUT 1: INPUT */
++            init_level      = <1>;              /* 0: LOW, 1: HIGH */
++            free_flag       = <1>;
++        };
++        gpioport@12 {
++            gpio            = <582>;            /* GPIOH2: ONLINE_JTAG_EN, Output */
++            init_direction  = <0>;              /* 0: OUTPUT 1: INPUT */
++            init_level      = <0>;              /* 0: LOW, 1: HIGH */
++            free_flag       = <1>;
++        };
++        gpioport@13 {
++            gpio            = <580>;            /* GPIOH0: ONLINE_JTAG_SEL2, Output */
++            init_direction  = <0>;              /* 0: OUTPUT 1: INPUT */
++            init_level      = <0>;              /* 0: LOW, 1: HIGH */
++            free_flag       = <1>;
++        };
++        gpioport@14 {
++            gpio            = <579>;            /* GPIOG7: ONLINE_JTAG_SEL1, Output */
++            init_direction  = <0>;              /* 0: OUTPUT 1: INPUT */
++            init_level      = <0>;              /* 0: LOW, 1: HIGH */
++            free_flag       = <1>;
++        };
++        gpioport@15 {
++            gpio            = <567>;            /* GPIOF3: BIOS_SEL, Output */
++            init_direction  = <0>;              /* 0: OUTPUT 1: INPUT */
++            init_level      = <0>;              /* 0: LOW, 1: HIGH */
++            free_flag       = <1>;
++        };
++        gpioport@16 {
++            gpio            = <555>;            /* GPIOD7: BMC_UPGRADE_EN# 53134, Output */
++            init_direction  = <0>;              /* 0: OUTPUT 1: INPUT */
++            init_level      = <1>;              /* 0: LOW, 1: HIGH */
++            free_flag       = <1>;
++        };
++        /* end ast2720 common */
++        gpioport@17 {
++            gpio            = <565>;            /* GPIOF1: BMC_I2C_EN#, Output */
++            init_direction  = <0>;              /* 0: OUTPUT 1: INPUT */
++            init_level      = <1>;              /* 0: LOW, 1: HIGH */
++            free_flag       = <1>;
++        };
++        gpioport@18 {
++            gpio            = <736>;            /* GPIOAA4: , Output */
++            init_direction  = <0>;              /* 0: OUTPUT 1: INPUT */
++            init_level      = <1>;              /* 0: LOW, 1: HIGH */
++            free_flag       = <1>;
++        };
++    };
++};
++
++#if 0
++&pwm_tach {
++   status = "okay";
++   pinctrl-names = "default";
++   pinctrl-0 = <&pinctrl_pwm0_default &pinctrl_pwm1_default
++            &pinctrl_pwm2_default &pinctrl_pwm3_default
++            &pinctrl_pwm4_default &pinctrl_pwm5_default
++            &pinctrl_pwm6_default &pinctrl_pwm7_default
++            &pinctrl_pwm8_default
++            &pinctrl_tach0_default &pinctrl_tach1_default
++            &pinctrl_tach2_default &pinctrl_tach3_default
++            &pinctrl_tach4_default &pinctrl_tach5_default
++            &pinctrl_tach6_default &pinctrl_tach7_default
++            &pinctrl_tach8_default &pinctrl_tach9_default
++            &pinctrl_tach10_default &pinctrl_tach11_default
++            &pinctrl_tach12_default &pinctrl_tach13_default
++            &pinctrl_tach14_default &pinctrl_tach15_default>;
++   fan-0 {
++       tach-ch = /bits/ 8 <0x0>;
++   };
++   fan-1 {
++       tach-ch = /bits/ 8 <0x1>;
++   };
++   fan-2 {
++       tach-ch = /bits/ 8 <0x2>;
++   };
++   fan-3 {
++       tach-ch = /bits/ 8 <0x3>;
++   };
++   fan-4 {
++       tach-ch = /bits/ 8 <0x4>;
++   };
++   fan-5 {
++       tach-ch = /bits/ 8 <0x5>;
++   };
++   fan-6 {
++       tach-ch = /bits/ 8 <0x6>;
++   };
++   fan-7 {
++       tach-ch = /bits/ 8 <0x7>;
++   };
++   fan-8 {
++       tach-ch = /bits/ 8 <0x8>;
++   };
++   fan-9 {
++       tach-ch = /bits/ 8 <0x9>;
++   };
++   fan-10 {
++       tach-ch = /bits/ 8 <0xA>;
++   };
++   fan-11 {
++       tach-ch = /bits/ 8 <0xB>;
++   };
++   fan-12 {
++       tach-ch = /bits/ 8 <0xC>;
++   };
++   fan-13 {
++       tach-ch = /bits/ 8 <0xD>;
++   };
++   fan-14 {
++       tach-ch = /bits/ 8 <0xE>;
++   };
++   fan-15 {
++       tach-ch = /bits/ 8 <0xF>;
++   };
++};
++#endif
++
++&edac {
++   status = "okay";
++};
++
++&mctp0 {
++   status = "disabled";
++   memory-region = <&mctp0_reserved>;
++};
++
++&mctp1 {
++   status = "disabled";
++   memory-region = <&mctp1_reserved>;
++};
++
++&mctp2 {
++   status = "disabled";
++   memory-region = <&mctp2_reserved>;
++};
++
++&sgpiom0 {
++   status = "disabled";
++};
++
++&sgpiom1 {
++   status = "disabled";
++};
++
++&jtag1 {
++   status = "disabled";
++};
++
++&adc0 {
++   aspeed,int-vref-microvolt = <2500000>;
++   status = "disabled";
++
++   pinctrl-names = "default";
++   pinctrl-0 = <&pinctrl_adc0_default &pinctrl_adc1_default
++       &pinctrl_adc2_default &pinctrl_adc3_default
++       &pinctrl_adc4_default &pinctrl_adc5_default
++       &pinctrl_adc6_default &pinctrl_adc7_default>;
++};
++
++&adc1 {
++   aspeed,int-vref-microvolt = <2500000>;
++   status = "disabled";
++
++   pinctrl-names = "default";
++   pinctrl-0 = <&pinctrl_adc8_default &pinctrl_adc9_default
++       &pinctrl_adc10_default &pinctrl_adc11_default
++       &pinctrl_adc12_default &pinctrl_adc13_default
++       &pinctrl_adc14_default &pinctrl_adc15_default>;
++};
++
++&pinctrl0 {
++   pinctrl_emmcclk_driving: emmcclk-driving {
++       pins = "AC14";
++       drive-strength = <2>;
++   };
++
++   pinctrl_emmccmd_driving: emmccmd-driving {
++       pins = "AE15";
++       drive-strength = <1>;
++   };
++   pinctrl_emmcdat_driving: emmcdat-driving {
++       pins = "AD14", "AE14", "AF14", "AB13";
++       drive-strength = <1>;
++   };
++};
++
++&pinctrl1 {
++   pinctrl_i3c0_3_hv_voltage: i3chv-voltage {
++       pins = "U25";
++       power-source = <1800>;
++   };
++
++   pinctrl_i3c0_driving: i3c0-driving {
++       pins = "U25", "U26";
++       drive-strength = <2>;
++   };
++
++   pinctrl_i3c1_driving: i3c1-driving {
++       pins = "Y26", "AA24";
++       drive-strength = <2>;
++   };
++
++   pinctrl_i3c2_driving: i3c2-driving {
++       pins = "R25", "AA26";
++       drive-strength = <2>;
++   };
++
++   pinctrl_i3c3_driving: i3c3-driving {
++       pins = "R26", "Y25";
++       drive-strength = <2>;
++   };
++
++   pinctrl_i3c12_15_hv_voltage: i3chv-voltage {
++       pins = "W25";
++       power-source = <1800>;
++   };
++
++   pinctrl_i3c12_driving: i3c12-driving {
++       pins = "W25", "Y23";
++       drive-strength = <2>;
++   };
++
++   pinctrl_i3c13_driving: i3c13-driving {
++       pins = "Y24", "W21";
++       drive-strength = <2>;
++   };
++
++   pinctrl_i3c14_driving: i3c14-driving {
++       pins = "AA23", "AC22";
++       drive-strength = <2>;
++   };
++
++   pinctrl_i3c15_driving: i3c15-driving {
++       pins = "AB22", "Y21";
++       drive-strength = <2>;
++   };
++
++   pinctrl_rgmii0_driving: rgmii0-driving {
++       pins = "C20", "C19", "A8", "R14", "A7", "P14",
++              "D20", "A6", "B6", "N14", "B7", "B8";
++       drive-strength = <1>;
++   };
++
++   pinctrl_rgmii1_driving: rgmii1-driving {
++       pins = "D19", "C19", "D15", "B12", "B10", "P13",
++              "C18", "C6", "C7", "D7", "N13", "C8";
++       drive-strength = <1>;
++   };
++};
++
++&gpio1 {
++   pinctrl-0 = <&pinctrl_i3c0_3_hv_voltage &pinctrl_i3c12_15_hv_voltage
++            &pinctrl_i3c0_driving &pinctrl_i3c1_driving
++            &pinctrl_i3c2_driving &pinctrl_i3c3_driving
++            &pinctrl_i3c12_driving &pinctrl_i3c13_driving
++            &pinctrl_i3c14_driving &pinctrl_i3c15_driving>;
++   pinctrl-names = "default";
++};
++
++&i3c0 {
++   initial-role = "target";
++   pid = <0x000007ec 0x06010000>;
++   dcr = /bits/ 8 <0xcc>;
++   status = "disabled";
++};
++
++&i3c1 {
++   initial-role = "primary";
++   status = "disabled";
++};
++
++&i3c2 {
++   initial-role = "target";
++   pid = <0x000007ec 0x06012000>;
++   dcr = /bits/ 8 <0xcc>;
++   status = "disabled";
++};
++
++&i3c3 {
++   initial-role = "primary";
++   status = "disabled";
++};
++
++&i3c4 {
++   initial-role = "target";
++   pid = <0x000007ec 0x06014000>;
++   dcr = /bits/ 8 <0xcc>;
++   status = "disabled";
++};
++
++&i3c5 {
++   initial-role = "primary";
++   status = "disabled";
++};
++
++&i3c6 {
++   initial-role = "target";
++   pid = <0x000007ec 0x06016000>;
++   dcr = /bits/ 8 <0xcc>;
++   status = "disabled";
++};
++
++&i3c7 {
++   initial-role = "primary";
++   status = "disabled";
++};
++
++&i3c8 {
++   initial-role = "target";
++   pid = <0x000007ec 0x06018000>;
++   dcr = /bits/ 8 <0xcc>;
++   status = "disabled";
++};
++
++&i3c9 {
++   initial-role = "primary";
++   status = "disabled";
++};
++
++&i3c10 {
++   initial-role = "target";
++   pid = <0x000007ec 0x0601A000>;
++   dcr = /bits/ 8 <0xcc>;
++   status = "disabled";
++};
++
++&i3c11 {
++   initial-role = "primary";
++   status = "disabled";
++};
++
++&i3c12 {
++   initial-role = "target";
++   pid = <0x000007ec 0x0601C000>;
++   dcr = /bits/ 8 <0xcc>;
++   status = "disabled";
++};
++
++&i3c13 {
++   initial-role = "primary";
++   status = "disabled";
++};
++
++&i3c14 {
++   initial-role = "target";
++   pid = <0x000007ec 0x0601E000>;
++   dcr = /bits/ 8 <0xcc>;
++   status = "disabled";
++};
++
++&i3c15 {
++   initial-role = "primary";
++   status = "disabled";
++};
++
++&uart0 {
++   status = "disabled";
++};
++
++&uart1 {
++	status = "okay";
++};
++
++&uart2 {
++	status = "okay";
++};
++
++&uart12 {
++   status = "okay";
++};
++
++&vuart0 {
++   virtual;
++   port = <0x3f8>;
++   sirq = <4>;
++   sirq-polarity = <0>;
++   status = "disabled";
++};
++
++&vuart1 {
++	virtual;
++	port = <0x2f8>;
++	sirq = <3>;
++	sirq-polarity = <0>;
++	status = "disabled";
++};
++
++&fmc {
++   status = "okay";
++   pinctrl-0 = <&pinctrl_fwspi_quad_default>;
++   pinctrl-names = "default";
++
++   flash@0 {
++       status = "okay";
++       m25p,fast-read;
++       label = "bmc";
++       spi-max-frequency = <5000000>;
++       spi-tx-bus-width = <4>;
++       spi-rx-bus-width = <4>;
++#include "aspeed-evb-flash-layout-128.dtsi"
++   };
++
++   flash@1 {
++       status = "okay";
++       m25p,fast-read;
++       label = "bmc-alt";
++       spi-max-frequency = <50000000>;
++       spi-tx-bus-width = <4>;
++       spi-rx-bus-width = <4>;
++#include "aspeed-g7-alt-flash-layout-64.dtsi"
++   };
++
++   flash@2 {
++       status = "disabled";
++       m25p,fast-read;
++       label = "fmc0:2";
++       spi-max-frequency = <50000000>;
++       spi-tx-bus-width = <4>;
++       spi-rx-bus-width = <4>;
++   };
++};
++
++&spi0 {
++	compatible = "aspeed,ast2700-spi-txrx";
++	status = "okay";
++	pinctrl-0 = <&pinctrl_spi0_default &pinctrl_spi0_cs1_default>;
++	pinctrl-names = "default";
++
++	spi-aspeed-full-duplex;
++
++	tpm0: tpmdev@0 {
++		compatible = "tcg,tpm_tis-spi";
++		spi-max-frequency = <17000000>;
++		reg = <0>;
++		status = "okay";
++	};
++
++	flash@1 {
++		status = "okay";
++		m25p,fast-read;
++		label = "BIOS";
++		spi-max-frequency = <5000000>;
++		reg = <1>;
++		spi-tx-bus-width = <1>;
++		spi-rx-bus-width = <1>;
++	};
++};
++
++&spi1 {
++   compatible = "aspeed,ast2700-spi-txrx";
++   status = "okay";
++   pinctrl-0 = <&pinctrl_spi1_default &pinctrl_spi1_cs1_default>;
++   pinctrl-names = "default";
++
++   fpga@0 {
++       status = "okay";
++       compatible = "wb-spi-dev";
++       reg = <0>;
++       spi-max-frequency = <6250000>;
++       /* spi-cpha; */
++       /* spi-cpol; */
++       spi_dev_name = "fpga0";
++       data_bus_width    = <4>;
++       addr_bus_width    = <4>;
++       per_rd_len        = <4>;
++       per_wr_len        = <4>;
++       spi_len        = <0xc0000>;
++   };
++};
++
++#if 1
++&spi2 {
++   compatible = "aspeed,ast2700-spi-txrx";
++   pinctrl-0 = <&pinctrl_spi2_default>;
++   pinctrl-names = "default";
++   status = "disabled";
++
++   spi-aspeed-full-duplex;
++};
++#else
++&spi2 {
++   compatible = "aspeed,ast2700-spi";
++   pinctrl-0 = <&pinctrl_spi2_default &pinctrl_spi2_cs1_default>;
++   pinctrl-names = "default";
++   status = "disabled";
++
++   flash@0 {
++       status = "okay";
++       reg = < 0 >;
++       compatible = "jedec,spi-nor";
++       m25p,fast-read;
++       label = "spi2:0";
++       spi-max-frequency = <50000000>;
++       spi-tx-bus-width = <2>;
++       spi-rx-bus-width = <2>;
++   };
++
++   flash@1 {
++       status = "okay";
++       reg = < 1 >;
++       compatible = "jedec,spi-nor";
++       m25p,fast-read;
++       label = "spi2:1";
++       spi-max-frequency = <50000000>;
++       spi-tx-bus-width = <2>;
++       spi-rx-bus-width = <2>;
++   };
++};
++#endif
++
++&can0 {
++   status = "disabled";
++};
++
++&emmc_controller {
++   status = "okay";
++   mmc-hs200-1_8v;
++};
++
++&emmc {
++	status = "okay";
++   pinctrl-names = "default";
++   max-frequency = <50000000>;
++   bus-width = <4>;
++   pinctrl-0 = <&pinctrl_emmc_default &pinctrl_emmcclk_driving &pinctrl_emmccmd_driving &pinctrl_emmcdat_driving>;
++
++   non-removable;
++	no-sd;
++	no-sdio;
++
++	cap-mmc-hw-reset;
++	reset_gpio = <524>; /* reset emmc gpio GPIOA0 */
++	reset_on = <0>;
++	reset_off = <1>;
++	fix_clk_phase = <0x001000BF>;
++};
++
++&ufs_controller {
++   status = "disabled";
++};
++
++&ufs {
++   status = "disabled";
++   lanes-per-direction = <2>;
++   ref-clk-freq = <26000000>;
++};
++
++&chassis {
++   status = "okay";
++};
++
++&mdio0 {
++   status = "disabled";
++   #address-cells = <1>;
++   #size-cells = <0>;
++
++   ethphy0: ethernet-phy@0 {
++       compatible = "ethernet-phy-ieee802.3-c22";
++       reg = <0>;
++   };
++};
++
++&mdio1 {
++   status = "okay";
++   #address-cells = <1>;
++   #size-cells = <0>;
++
++   ethphy1: ethernet-phy@0 {
++       compatible = "ethernet-phy-ieee802.3-c22";
++       reg = <0>;
++       /* For DDR5 board */
++       ti,rx-internal-delay = <DP83867_RGMIIDCTL_2_00_NS>;
++       ti,tx-internal-delay = <DP83867_RGMIIDCTL_2_00_NS>;
++   };
++};
++
++&mac0 {
++   status = "disabled";
++
++   phy-mode = "rgmii-id";
++   phy-handle = <&ethphy0>;
++
++   pinctrl-names = "default";
++   pinctrl-0 = <&pinctrl_rgmii0_default &pinctrl_rgmii0_driving>;
++};
++
++&mac1 {
++    status = "okay";
++
++    phy-mode = "rgmii";
++    phy-handle;
++
++    pinctrl-names = "default";
++    pinctrl-0 = <&pinctrl_rgmii1_default &pinctrl_rgmii1_driving>;
++
++    fixed-link {
++        speed = <1000>;
++        full-duplex;
++    };
++};
++
++#if PCIE2_RC
++&pcie2 {
++   status = "disabled";
++};
++#else
++&mdio2 {
++   status = "disabled";
++   #address-cells = <1>;
++   #size-cells = <0>;
++
++   ethphy2: ethernet-phy@0 {
++       compatible = "ethernet-phy-ieee802.3-c22";
++       reg = <0>;
++   };
++};
++
++&sgmii {
++   status = "disabled";
++};
++
++&mac2 {
++   status = "disabled";
++
++   phy-mode = "sgmii";
++   phy-handle = <&ethphy2>;
++};
++#endif
++
++&syscon1 {
++   assigned-clocks = <&syscon1 SCU1_CLK_MACHCLK>,
++             <&syscon1 SCU1_CLK_RGMII>,
++             <&syscon1 SCU1_CLK_RMII>;
++   assigned-clock-rates = <200000000>, <125000000>, <50000000>;
++};
++
++&espi0 {
++   status = "okay";
++   perif-dma-mode;
++   perif-mmbi-enable;
++   perif-mmbi-src-addr = <0x0 0xa8000000>;
++   perif-mmbi-tgt-memory = <&espi0_mmbi_memory>;
++   perif-mmbi-instance-num = <0x1>;
++   perif-mcyc-enable;
++   perif-mcyc-src-addr = <0x0 0x98000000>;
++   perif-mcyc-size = <0x0 0x10000>;
++   memory-region = <&espi0_mcyc_memory>;
++   perif-rtc-enable;
++   oob-dma-mode;
++   flash-dma-mode;
++#if 0  // eDAF mode: Change 1 to enable MIX mode in Linux, but HW mode in SPL would be overwritten
++   flash-edaf-mode = <0x0>;
++   flash-edaf-tgt-addr = <&edaf0>;
++   flash-edaf-size = <0x0 0x4000000>;
++#endif
++};
++
++&rtc_over_espi0 {
++   status = "disabled";
++};
++
++#if DUAL_NODE
++&espi1 {
++   status = "okay";
++   perif-dma-mode;
++   perif-mmbi-enable;
++   perif-mmbi-src-addr = <0x0 0xa8000000>;
++   perif-mmbi-tgt-memory = <&espi1_mmbi_memory>;
++   perif-mmbi-instance-num = <0x1>;
++   perif-mcyc-enable;
++   perif-mcyc-src-addr = <0x0 0x98000000>;
++   perif-mcyc-size = <0x0 0x10000>;
++   perif-rtc-enable;
++   oob-dma-mode;
++   flash-dma-mode;
++#if 0  // eDAF mode: Change 1 to enable MIX mode in Linux, but HW mode in SPL would be overwritten
++   flash-edaf-mode = <0x0>;
++   flash-edaf-tgt-addr = <&edaf1>;
++   flash-edaf-size = <0x0 0x4000000>;
++#endif
++};
++
++&rtc_over_espi1 {
++   status = "okay";
++};
++#endif /* DUAL_NODE */
++
++&lpc0_kcs0 {
++   status = "disabled";
++   kcs-io-addr = <0xca0>;
++   kcs-channel = <0>;
++};
++
++&lpc0_kcs1 {
++   status = "disabled";
++   kcs-io-addr = <0xca8>;
++   kcs-channel = <1>;
++};
++
++&lpc0_kcs2 {
++   status = "okay";
++   kcs-io-addr = <0xca2>;
++   kcs-channel = <3>;
++};
++
++&lpc0_kcs3 {
++   status = "disabled";
++   kcs-io-addr = <0xca4>;
++   kcs-channel = <3>;
++};
++
++&lpc0_ibt {
++   status = "disabled";
++};
++
++&lpc0_mbox {
++   status = "okay";
++};
++
++#if 0
++&lpc0_snoop {
++   status = "okay";
++   snoop-ports = <0x80>, <0x81>;
++};
++#else
++&lpc0_pcc {
++   status = "okay";
++   pcc-ports = <0x80>;
++};
++#endif
++
++&lpc0_uart_routing {
++   status = "okay";
++};
++
++&lpc1_kcs0 {
++   status = "disabled";
++   kcs-io-addr = <0xca0>;
++   kcs-channel = <4>;
++};
++
++&lpc1_kcs1 {
++   status = "disabled";
++   kcs-io-addr = <0xca8>;
++   kcs-channel = <5>;
++};
++
++&lpc1_kcs2 {
++   status = "disabled";
++   kcs-io-addr = <0xca2>;
++   kcs-channel = <6>;
++};
++
++&lpc1_kcs3 {
++   status = "disabled";
++   kcs-io-addr = <0xca4>;
++   kcs-channel = <7>;
++};
++
++&lpc1_ibt {
++   status = "disabled";
++};
++
++&lpc1_mbox {
++   status = "okay";
++};
++
++#if 0
++&lpc1_snoop {
++   status = "okay";
++   snoop-ports = <0x80>, <0x81>;
++};
++#else
++&lpc1_pcc {
++   status = "okay";
++   pcc-ports = <0x80>;
++};
++#endif
++
++&lpc1_uart_routing {
++   status = "okay";
++};
++
++&video0 {
++   status = "disabled";
++   memory-region = <&video_engine_memory0>;
++};
++
++&video1 {
++   status = "disabled";
++   memory-region = <&video_engine_memory1>;
++};
++
++&disp_intf {
++   status = "disabled";
++};
++
++&rtc {
++   status = "disabled";
++};
++
++&rsss {
++   status = "disabled";
++};
++
++&ecdsa {
++   status = "disabled";
++};
++
++&hace {
++   status = "disabled";
++};
++
++#if PCIE0_EP
++&bmc_dev0 {
++   status = "okay";
++   memory-region = <&bmc_dev0_memory>;
++};
++
++&xdma0 {
++   status = "okay";
++   memory-region = <&xdma_memory0>;
++};
++
++&pcie_vuart0 {
++   port = <0x3f8>;
++   sirq = <4>;
++   sirq-polarity = <0>;
++
++   status = "okay";
++};
++
++&pcie_vuart1 {
++   port = <0x2f8>;
++   sirq = <3>;
++   sirq-polarity = <0>;
++
++   status = "disabled";
++};
++
++&pcie_lpc0_kcs0 {
++   status = "okay";
++   kcs-io-addr = <0x3a0>;
++   kcs-channel = <8>;
++};
++
++&pcie_lpc0_kcs1 {
++   status = "okay";
++   kcs-io-addr = <0x3a8>;
++   kcs-channel = <9>;
++};
++
++&pcie_lpc0_kcs2 {
++   status = "okay";
++   kcs-io-addr = <0x3a2>;
++   kcs-channel = <10>;
++};
++
++&pcie_lpc0_kcs3 {
++   status = "okay";
++   kcs-io-addr = <0x3a4>;
++   kcs-channel = <11>;
++};
++
++&pcie_lpc0_ibt {
++   status = "okay";
++   bt-channel = <2>;
++};
++
++&pcie0_mmbi0 {
++   status = "okay";
++   memory-region = <&pcie0_mmbi0_memory>;
++
++   bmc-int-value = /bits/ 8 <0x00>;
++   bmc-int-location = <0>;
++};
++#else /* !PCIE0_EP */
++&pcie0 {
++   status = "okay";
++};
++#endif /* PCIE0_EP */
++
++#if PCIE1_EP
++&bmc_dev1 {
++   status = "okay";
++   memory-region = <&bmc_dev1_memory>;
++};
++
++&xdma1 {
++   status = "okay";
++   memory-region = <&xdma_memory1>;
++};
++
++&pcie_vuart2 {
++   port = <0x3f8>;
++   sirq = <4>;
++   sirq-polarity = <0>;
++
++   status = "okay";
++};
++
++&pcie_vuart3 {
++   port = <0x2f8>;
++   sirq = <3>;
++   sirq-polarity = <0>;
++
++   status = "okay";
++};
++
++&pcie_lpc1_kcs0 {
++   status = "okay";
++   kcs-io-addr = <0x3a0>;
++   kcs-channel = <12>;
++};
++
++&pcie_lpc1_kcs1 {
++   status = "okay";
++   kcs-io-addr = <0x3a8>;
++   kcs-channel = <13>;
++};
++
++&pcie_lpc1_kcs2 {
++   status = "okay";
++   kcs-io-addr = <0x3a2>;
++   kcs-channel = <14>;
++};
++
++&pcie_lpc1_kcs3 {
++   status = "okay";
++   kcs-io-addr = <0x3a4>;
++   kcs-channel = <15>;
++};
++
++&pcie_lpc1_ibt {
++   status = "okay";
++   bt-channel = <3>;
++};
++
++&pcie1_mmbi4 {
++   status = "okay";
++   memory-region = <&pcie1_mmbi4_memory>;
++
++   bmc-int-value = /bits/ 8 <0x00>;
++   bmc-int-location = <0>;
++};
++#else /* !PCIE1_EP */
++&pcie1 {
++   status = "okay";
++};
++#endif /* PCIE1_EP */
++
++#if 0
++&i3c0 {
++   status = "okay";
++};
++
++&jtag0 {
++   status = "okay";
++};
++#endif
++
++&sdio_controller {
++   status = "disabled";
++   mmc-hs200-1_8v;
++
++   vcc_sdhci0: regulator-vcc-sdhci0 {
++       compatible = "regulator-fixed";
++       regulator-name = "SDHCI0 Vcc";
++       regulator-min-microvolt = <3300000>;
++       regulator-max-microvolt = <3300000>;
++       gpios = <&gpio1 ASPEED_GPIO(G, 6) GPIO_ACTIVE_HIGH>;
++       enable-active-high;
++   };
++
++   vccq_sdhci0: regulator-vccq-sdhci0 {
++       compatible = "regulator-gpio";
++       regulator-name = "SDHCI0 VccQ";
++       regulator-min-microvolt = <1800000>;
++       regulator-max-microvolt = <3300000>;
++       gpios = <&gpio1 ASPEED_GPIO(G, 7) GPIO_ACTIVE_HIGH>;
++       gpios-states = <1>;
++       states = <3300000 1>,
++            <1800000 0>;
++   };
++
++};
++
++&sdhci {
++   status = "disabled";
++   bus-width = <4>;
++   max-frequency = <125000000>;
++   /* DDR50 bits in CAPA2 are not supported */
++   sdhci-caps-mask = <0x6 0x0>;
++   sdhci-drive-type = /bits/ 8 <3>;
++   pinctrl-names = "default";
++   pinctrl-0 = <&pinctrl_sd_default>;
++   vmmc-supply = <&vcc_sdhci0>;
++   vqmmc-supply = <&vccq_sdhci0>;
++   sd-uhs-sdr104; /* enable sdr104 to execute tuning */
++};
++
++&i2c0 {
++    status = "okay";
++    mgmt_cpld@3b {
++        compatible = "wb-i2c-dev";
++        reg = <0x3b>;
++        i2c_name = "cpld1";
++        i2c_alias = "MGMT_CPLD";
++        data_bus_width = <1>;
++        addr_bus_width = <1>;
++        per_rd_len = <256>;
++        per_wr_len = <256>;
++        i2c_len    = <0x100>;
++    };
++};
++
++&i2c1 {
++    status = "okay";
++    cpu_cpld@0d {
++        compatible = "wb-i2c-dev";
++        reg = <0x0d>;
++        i2c_name = "cpld0";
++        i2c_alias = "CPU_CPLD";
++        data_bus_width = <1>;
++        addr_bus_width = <1>;
++        per_rd_len = <256>;
++        per_wr_len = <256>;
++        i2c_len    = <0x100>;
++    };
++};
++
++&i2c2 {
++    status = "okay";
++    mac_cpldd@4b {
++        compatible = "wb-i2c-dev";
++        reg = <0x4b>;
++        i2c_name = "cpld9";
++        i2c_alias = "MAC_CPLDD";
++        data_bus_width = <1>;
++        addr_bus_width = <1>;
++        per_rd_len = <256>;
++        per_wr_len = <256>;
++        i2c_len    = <0x100>;
++    };
++    i2cswitch@72 {
++        compatible = "nxp,wb_pca9548";
++        reg = <0x72>;
++        probe_disable;
++        probe_hw_init;
++        pca9548_base_nr = <14>;
++        status = "okay";
++        pca9548_reset_type  = <5>;      /* 1:I2C 2:GPIO 3:IO 4:FILE 5:LOGIC*/
++        rst_delay_b = <0>;              /* delay time before reset(us) */
++        rst_delay   = <1000>;           /* reset time(us) */
++        rst_delay_a = <1000>;           /* delay time after reset(us) */
++        reset_reg_mode = <1>;           /* REG_MODE_REGKEY */
++        dev_name = "/dev/cpld1";
++        offset = <0x2d>;
++        reset_on = <0x0>;
++        reset_off = <0x1>;
++        logic_func_mode = <0x1>;        /* I2C */
++        i2c@0 {
++            reg = <0>;
++            mac-cpldc@3b {
++                compatible = "wb-i2c-dev";
++                reg = <0x3b>;
++                i2c_name = "cpld4";
++                i2c_alias = "MAC_CPLDC";
++                data_bus_width = <1>;
++                addr_bus_width = <1>;
++                per_rd_len = <256>;
++                per_wr_len = <256>;
++                i2c_len = <0x100>;
++            };
++        };
++
++        i2c@1 {
++            reg = <1>;
++            mac-cplda@1b {
++                compatible = "wb-i2c-dev";
++                reg = <0x1b>;
++                i2c_name = "cpld2";
++                i2c_alias = "MAC_CPLDA";
++                data_bus_width = <1>;
++                addr_bus_width = <1>;
++                per_rd_len = <256>;
++                per_wr_len = <256>;
++                i2c_len = <0x100>;
++            };
++        };
++
++        i2c@2 {
++            reg = <2>;
++            mac-cpldb@2b {
++                compatible = "wb-i2c-dev";
++                reg = <0x2b>;
++                i2c_name = "cpld3";
++                i2c_alias = "MAC_CPLDB";
++                data_bus_width = <1>;
++                addr_bus_width = <1>;
++                per_rd_len = <256>;
++                per_wr_len = <256>;
++                i2c_len = <0x100>;
++            };
++        };
++
++        i2c@4 {
++            reg = <4>;
++            uport-cpld@3b {
++                compatible = "wb-i2c-dev";
++                reg = <0x3b>;
++                i2c_name = "cpld5";
++                i2c_alias = "UPORT_CPLD";
++                data_bus_width = <1>;
++                addr_bus_width = <1>;
++                per_rd_len = <256>;
++                per_wr_len = <256>;
++                i2c_len = <0x100>;
++            };
++        };
++
++        i2c@6 {
++            reg = <6>;
++            dport-cpld@3b {
++                compatible = "wb-i2c-dev";
++                reg = <0x3b>;
++                i2c_name = "cpld6";
++                i2c_alias = "DPORT_CPLD";
++                data_bus_width = <1>;
++                addr_bus_width = <1>;
++                per_rd_len = <256>;
++                per_wr_len = <256>;
++                i2c_len = <0x100>;
++            };
++        };
++    };
++};
++
++&i2c3 {
++    status = "okay";
++};
++
++&i2c4 {
++    status = "okay";
++};
++
++&i2c5 {
++    status = "okay";
++};
++
++&i2c6 {
++    status = "okay";
++    rtc@51 {
++        compatible = "nxp,pcf8563";
++        reg = <0x51>;
++        status = "okay";
++        cap-mode = /bits/ 8 <0x00>;
++        clock-freq = /bits/ 8 <0x07>;
++        accuracy-value = /bits/ 8 <0x09>;
++    };
++    sbrmi@3c {
++        compatible = "amd,sbrmi";
++        reg = <0x3c>;
++    };
++
++    sbtsi@4c {
++        compatible = "amd,sbtsi";
++        reg = <0x4c>;
++    };
++};
++
++&i2c7 {
++    status = "okay";
++};
++
++&i2c8 {
++    status = "okay";
++};
++
++&i2c11 {
++   status = "okay";
++};
++
++&i2c13 {
++   status = "okay";
++};
++
++&peci0 {
++    status = "okay";
++};
++
++#if 0
++&ehci0 {
++   status = "okay";
++};
++
++&ehci1 {
++   status = "okay";
++};
++
++&uhci0 {
++   status = "okay";
++   memory-region = <&uhci0_reserved>;
++};
++
++#endif
++
++#if 1
++&uphy3a {
++   status = "disabled";
++};
++
++&uphy3b {
++   status = "disabled";
++};
++#endif
++
++#if 0
++&xhci0 {
++   status = "okay";
++};
++
++&xhci1 {
++   status = "okay";
++};
++#endif
++
++&vhuba0 {
++   status = "okay";
++};
++
++&usb3ahp {
++   status = "disabled";
++   pinctrl-0 = <&pinctrl_usb3axhp_default &pinctrl_usb2axhp_default>;
++};
++
++&usb3bhp {
++   status = "disabled";
++};
++
++&uphy2b {
++   status = "disabled";
++};
++
++&vhubb1 {
++   status = "disabled";
++};
++
++&vhubc {
++   status = "disabled";
++#if 0
++   pinctrl-0 = <&pinctrl_usb2cud_default>;
++   aspeed,uart-ports = <12>;
++#endif
++};
++
++&ehci3 {
++   status = "disabled";
++};
++
++&uhci1 {
++   status = "disabled";
++   memory-region = <&uhci1_reserved>;
++};
++
++&wdt0 {
++   status = "okay";
++};
++
++&wdt1 {
++   status = "okay";
++};
++
++&otp {
++   status = "okay";
++};
+diff --git a/arch/arm64/boot/dts/aspeed/aspeed-g7-alt-flash-layout-64.dtsi b/arch/arm64/boot/dts/aspeed/aspeed-g7-alt-flash-layout-64.dtsi
+new file mode 100644
+--- /dev/null
++++ b/arch/arm64/boot/dts/aspeed/aspeed-g7-alt-flash-layout-64.dtsi
+@@ -0,0 +1,32 @@
++// SPDX-License-Identifier: GPL-2.0+
++
++partitions {
++   compatible = "fixed-partitions";
++   #address-cells = <1>;
++   #size-cells = <1>;
++
++   u-boot@0 {
++       reg = <0x0 0x400000>; // 4MB
++       label = "u-boot-alt";
++   };
++
++   u-boot-env@400000 {
++       reg = <0x400000 0x20000>; // 128KB
++       label = "u-boot-env-alt";
++   };
++
++   kernel@420000 {
++       reg = <0x420000 0x900000>; // 9MB
++       label = "kernel-alt";
++   };
++
++   rofs@d20000 {
++       reg = <0xd20000 0x2AE0000>; // 42.875MB
++       label = "rofs-alt";
++   };
++
++   data@3800000 {
++       reg = <0x3800000 0x800000>; // 8MB
++       label = "data-alt";
++   };
++};
