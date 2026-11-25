@@ -1,0 +1,38 @@
+From: Tommy Huang <tommy_huang@aspeedtech.com>
+Date: Fri, 5 Jun 2026 17:55:43 +0800
+Subject: [PATCH 6.12 1/1] i2c: ast2600: revert back AST2700 obtains data buffer holding
+
+Upstream-Status: Backport [AspeedTech-BMC/linux aspeed-master-v6.12 20bfd2bf458cc9e6baacaecb43c29d7db0cee737, SDK v00.07.04]
+
+Rever AST2700 data buffer handling method.
+The data should be obtained from data log on AST2700.
+
+Signed-off-by: Tommy Huang <tommy_huang@aspeedtech.com>
+Change-Id: I84910765d4a6d4be529d1d854e172626829d5dd1
+(cherry picked from commit f9938ec5799e83f5b09d3a7acac7287c0cde2c26)
+---
+ drivers/i2c/busses/i2c-ast2600.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-ast2600.c b/drivers/i2c/busses/i2c-ast2600.c
+index f71fe7a5b..f893ddfef 100644
+--- a/drivers/i2c/busses/i2c-ast2600.c
++++ b/drivers/i2c/busses/i2c-ast2600.c
+@@ -2422,8 +2422,15 @@ static void ast2600_i2c_controller_packet_irq(struct ast2600_i2c_bus *i2c_bus, u
+ 		}
+ 
+ 		if (msg->flags & I2C_M_RECV_LEN) {
+-			u8 recv_len = AST2600_I2CC_GET_RX_BUFF(readl(i2c_bus->reg_base
+-							+ AST2600_I2CC_STS_AND_BUFF));
++			u8 recv_len = 0;
++
++			if (i2c_bus->version == AST2700) {
++				recv_len = AST2700_I2CC_GET_BUFF(readl(i2c_bus->reg_base
++											   + BYTE_DATA_LOG));
++			} else {
++				recv_len = AST2600_I2CC_GET_RX_BUFF(readl(i2c_bus->reg_base
++											   + AST2600_I2CC_STS_AND_BUFF));
++			}
+ 
+ 			msg->len = min_t(unsigned int, recv_len, I2C_SMBUS_BLOCK_MAX);
+ 			msg->len += ((msg->flags & I2C_CLIENT_PEC) ? 2 : 1);

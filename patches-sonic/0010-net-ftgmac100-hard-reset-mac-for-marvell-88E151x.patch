@@ -1,0 +1,61 @@
+From: Vivek Kumar Verma <vivekverma@arista.com>
+Date: Fri, 23 Oct 2026 06:31:13 +0000
+Subject: [PATCH 6.12 1/1] net: ftgmac100: hard-reset MAC only for Marvell 88E151x
+
+Upstream-Status: Pending
+
+On AST2700 + Marvell 88E151x over SGMII, an "ifconfig down/up" (or a
+partner-side link flap) intermittently leaves the MAC receive path wedged:
+the link comes back up and reports resolved, TX works, but RX stays frozen
+(no DHCP, no ping). The MDIO/serdes registers look identical to a healthy
+link in this state, so the wedge is below the register layer.
+
+The only reliable recovery is "modprobe -r ftgmac100 / modprobe ftgmac100",
+which re-runs probe and performs a full reset_control cycle of the MAC IP
+block. The ndo_open/ftgmac100_reset() path only issues the soft MACCR reset,
+which does not clear the wedged RX path.
+
+ftgmac100_reset_and_config_mac() already hard-resets RMII. For SGMII, run
+the reset_control cycle only when the Clause 22 PHY ID matches
+MARVELL_PHY_ID_88E1510 under MARVELL_PHY_ID_MASK. This limits the
+workaround to the Marvell 88E151x family and avoids breaking Broadcom
+SGMII links.
+
+Signed-off-by: Vivek Kumar Verma <vivekverma@arista.com>
+---
+ drivers/net/ethernet/faraday/ftgmac100.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/faraday/ftgmac100.c b/drivers/net/ethernet/faraday/ftgmac100.c
+index 035fa1c2b1fb..24fff91b1db4 100644
+--- a/drivers/net/ethernet/faraday/ftgmac100.c
++++ b/drivers/net/ethernet/faraday/ftgmac100.c
+@@ -20,6 +20,7 @@
+ #include <linux/of.h>
+ #include <linux/of_mdio.h>
+ #include <linux/phy.h>
++#include <linux/marvell_phy.h>
+ #include <linux/phy/phy.h>
+ #include <linux/platform_device.h>
+ #include <linux/property.h>
+@@ -156,9 +157,18 @@ static int ftgmac100_reset_and_config_mac(struct ftgmac100 *priv)
+ static int ftgmac100_reset_and_config_mac(struct ftgmac100 *priv)
+ {
++	struct phy_device *phydev = priv->netdev->phydev;
+ 	u32 maccr = 0;
+ 
+-	/* RMII needs SCU reset to clear status */
+-	if (priv->netdev->phydev->interface == PHY_INTERFACE_MODE_RMII) {
++	/*
++	 * RMII needs SCU reset to clear status. AST2700 SGMII links with
++	 * Marvell 88E151x can wedge MAC RX after a down/up or link flap.
++	 * Limit this hard reset to that PHY family; Broadcom links fail
++	 * when subjected to it.
++	 */
++	if (phydev->interface == PHY_INTERFACE_MODE_RMII ||
++	    (phydev->interface == PHY_INTERFACE_MODE_SGMII &&
++	     phy_id_compare(phydev->phy_id, MARVELL_PHY_ID_88E1510,
++			    MARVELL_PHY_ID_MASK))) {
+ 		int err;
+ 
+ 		err = reset_control_assert(priv->rst);
