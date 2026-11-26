@@ -41,7 +41,7 @@ def _kernel_version():
     v = os.environ.get("KERNEL_VERSION", "").strip()
     if v:
         return v
-    mk = os.path.join(KERNEL_DIR, "Makefile")
+    mk = os.path.join(KERNEL_DIR, "kernel-version.mk")
     with open(mk, "r", errors="surrogateescape") as fh:
         for line in fh:
             m = re.match(r"^KERNEL_VERSION[ \t]*[?:+]?=[ \t]*(.+?)[ \t]*$", line)

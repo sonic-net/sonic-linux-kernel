@@ -2,10 +2,7 @@
 SHELL = /bin/bash
 .SHELLFLAGS += -ex
 
-KERNEL_VERSION ?= 6.12.94
-KERNEL_ABISUFFIX ?= +deb13
-KERNEL_SUBVERSION ?= 1
-KERNEL_FEATURESET ?= sonic
+include $(dir $(lastword $(MAKEFILE_LIST)))kernel-version.mk
 CONFIGURED_ARCH ?= amd64
 CONFIGURED_PLATFORM ?= vs
 CROSS_BUILD_ENVIRON ?= n
