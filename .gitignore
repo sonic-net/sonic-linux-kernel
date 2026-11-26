@@ -3,3 +3,6 @@
 *.dsc
 *.orig.tar.xz
 linux-[0-9]*.[0-9]*.[0-9]*/
+MODULE.bazel.lock
+/bazel-*
+__pycache__/

@@ -1,0 +1,6 @@
+# Keep this small external-consumer graph aligned with buildimage's
+# tools/bazel/kernel/MODULE.bazel so both execute the same kernel action.
+module(name = "sonic-kernel-cache-consumer")
+
+bazel_dep(name = "sonic-linux-kernel", version = "0.0.2", repo_name = "sonic_linux_kernel")
+bazel_dep(name = "sonic-build-infra", version = "0.0.45-77ef625a4ddafc8cdc15f3cc6aee31eabac8a5de", repo_name = "sonic_build_infra")

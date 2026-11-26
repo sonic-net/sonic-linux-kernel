@@ -1,0 +1,23 @@
+common --enable_bzlmod
+common --lockfile_mode=update
+# Local builds and normal CI use the same maintained SONiC registry.
+common --registry=https://raw.githubusercontent.com/sonic-net/sonic-bazel-registry/main
+common --registry=https://bcr.bazel.build
+common --host_platform=@sonic_build_infra//platforms:x86_64_trixie
+common --platforms=@sonic_build_infra//platforms:x86_64_trixie
+common:arm64 --host_platform=@sonic_build_infra//platforms:aarch64_trixie
+common:arm64 --platforms=@sonic_build_infra//platforms:aarch64_trixie
+# Cross builds execute tools on AMD64 while compiling the requested ARM target.
+common:cross_arm64 --host_platform=@sonic_build_infra//platforms:x86_64_trixie
+common:cross_arm64 --platforms=@sonic_build_infra//platforms:aarch64_trixie
+common:cross_armhf --host_platform=@sonic_build_infra//platforms:x86_64_trixie
+common:cross_armhf --platforms=@sonic_build_infra//platforms:armv7_trixie
+build --sandbox_default_allow_network=false
+build --strategy=SonicKernelBuild=linux-sandbox
+# Bootstrap executables must run independently of the host's glibc version.
+build --host_features=fully_static_link
+build --remote_download_outputs=all
+test --test_output=errors
+
+# Dependencies do not import their .bazelrc; select cached kernel tools here.
+build --remote_download_regex=(^|.*/)tools/build_tools/kernel_runtime_(amd64|arm64)(/.*)?$

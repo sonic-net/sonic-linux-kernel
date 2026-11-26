@@ -1,0 +1,144 @@
+--- a/debian/rules
++++ b/debian/rules
+@@ -1,11 +1,12 @@
+ #!/usr/bin/make -f
+ 
+-include /usr/share/dpkg/architecture.mk
+-include /usr/share/dpkg/pkg-info.mk
++include $(DPKG_DATADIR)/architecture.mk
++include $(DPKG_DATADIR)/pkg-info.mk
+ 
+ DEB_VERSION_SOURCE = $(shell echo '$(DEB_VERSION)' | sed -re 's/\+b([0-9]+)$$//')
+ 
+-SHELL    := sh -e
++SHELL := $(SONIC_KERNEL_TOOLS)/bash
++.SHELLFLAGS := -e -c
+ 
+ include debian/rules.defs
+ 
+--- a/debian/rules.real
++++ b/debian/rules.real
+@@ -6,9 +6,10 @@
+ # expected to be available (need to be exported from the parent process).
+ #
+ 
+-include /usr/share/dpkg/default.mk
+-
+-SHELL  := bash -e
++include $(DPKG_DATADIR)/default.mk
++
++SHELL := $(SONIC_KERNEL_TOOLS)/bash
++.SHELLFLAGS := -e -c
+ MAINTAINER := $(shell sed -ne 's,^Maintainer: .[^<]*<\([^>]*\)>,\1,p' debian/control)
+ SOURCE_DATE_UTC_ISO := $(shell date -u -d '@$(SOURCE_DATE_EPOCH)' +%Y-%m-%d)
+ 
+@@ -43,7 +44,8 @@
+ setup_env += DISTRIBUTION_OFFICIAL_BUILD=1 DISTRIBUTOR="$(DEB_VENDOR)" DISTRIBUTION_VERSION="$(SOURCEVERSION)" KBUILD_BUILD_TIMESTAMP="@$(SOURCE_DATE_EPOCH)" KBUILD_BUILD_VERSION_TIMESTAMP="$(DEB_VENDOR) $(SOURCEVERSION) ($(SOURCE_DATE_UTC_ISO))" KBUILD_BUILD_USER="$(word 1,$(subst @, ,$(MAINTAINER)))" KBUILD_BUILD_HOST="$(word 2,$(subst @, ,$(MAINTAINER)))"
+ setup_env += KBUILD_VERBOSE=$(if $(filter terse,$(DEB_BUILD_OPTIONS)),0,1)
+ 
+-MAKE_CLEAN = $(setup_env) $(MAKE) KCFLAGS=-fdebug-prefix-map=$(CURDIR)/= KAFLAGS=-fdebug-prefix-map=$(CURDIR)/=
++SONIC_DEBUG_SOURCE = /usr/src/debug/linux-$(REAL_VERSION)
++MAKE_CLEAN = $(setup_env) $(MAKE) SHELL=$(SONIC_KERNEL_TOOLS)/bash CONFIG_SHELL=$(SONIC_KERNEL_TOOLS)/bash HOSTCC=$(SONIC_KERNEL_TOOLS)/host-gcc HOSTCXX=$(SONIC_KERNEL_TOOLS)/host-g++ KCFLAGS=-fdebug-prefix-map=$(CURDIR)=$(SONIC_DEBUG_SOURCE) KAFLAGS=-fdebug-prefix-map=$(CURDIR)=$(SONIC_DEBUG_SOURCE)
+ MAKE_SELF := $(MAKE) -f debian/rules.real $(MAKEOVERRIDES)
+ MAKEOVERRIDES =
+ 
+@@ -263,6 +265,7 @@
+ 	dh_compress $(DH_COMPRESS_ARGS)
+ 	dh_fixperms
+ 	dh_missing
++	python3 "$(SONIC_KERNEL_DEBUG_STAGE)" --normalize-tools "$(DESTDIR)" --architecture "$(SONIC_KERNEL_ARCHITECTURE)"
+ 	dh_strip $(DH_STRIP_ARGS) -Xvmlinux -Xvmlinuz
+ 	dh_makeshlibs -Xvdso -Xvmlinux -Xvmlinuz
+ 	dh_shlibdeps $(DH_SHLIBDEPS_ARGS)
+@@ -601,7 +604,7 @@
+ 
+ $(STAMPS_DIR)/build-tools-headers:
+ 	mkdir -p $(BUILD_DIR)/build-tools/headers-tools
+-	$(MAKE) ARCH=$(KERNEL_ARCH) O=$(BUILD_DIR)/build-tools/headers-tools \
++	$(MAKE_CLEAN) ARCH=$(KERNEL_ARCH) O=$(BUILD_DIR)/build-tools/headers-tools \
+ 		INSTALL_HDR_PATH=$(CURDIR)/$(BUILD_DIR)/build-tools \
+ 		headers_install
+ 	@$(stamp)
+--- a/debian/rules.d/Makefile.inc
++++ b/debian/rules.d/Makefile.inc
+@@ -3,7 +3,8 @@
+ 
+ VPATH = $(top_rulesdir)/$(OUTDIR) $(top_srcdir)/$(OUTDIR)
+ 
+-SHELL = /bin/sh -e
++SHELL = $(SONIC_KERNEL_TOOLS)/bash
++.SHELLFLAGS := -e -c
+ 
+ CC = $(CROSS_COMPILE)gcc
+ CXX = $(CROSS_COMPILE)g++
+--- a/debian/bin/gencontrol.py
++++ b/debian/bin/gencontrol.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python3
++#!/usr/bin/env python3
+ 
+ from __future__ import annotations
+ 
+--- a/debian/bin/buildcheck.py
++++ b/debian/bin/buildcheck.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python3
++#!/usr/bin/env python3
+ 
+ import itertools
+ import os
+--- a/debian/bin/kconfig.py
++++ b/debian/bin/kconfig.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python3
++#!/usr/bin/env python3
+ 
+ import optparse
+ import re
+--- a/debian/bin/no-depmod
++++ b/debian/bin/no-depmod
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/usr/bin/env sh
+ 
+ set -e
+ 
+--- a/debian/bin/fix-shebang
++++ b/debian/bin/fix-shebang
+@@ -1,4 +1,4 @@
+-#!/usr/bin/perl -pi
++#!/usr/bin/env -S perl -pi
+ 
+ # Change "#!/usr/bin/env perl" to "#!/usr/bin/perl" (policy §10.4).
+ # Other uses of /usr/bin/env should probably be converted as well, but
+--- a/debian/rules.d/tools/objtool/Makefile
++++ b/debian/rules.d/tools/objtool/Makefile
+@@ -16,7 +16,7 @@
+ 		HOSTCC=$(CC) KBUILD_HOSTCFLAGS='$(CFLAGS) $(CPPFLAGS)' \
+ 		HOSTLD=$(CROSS_COMPILE)ld KBUILD_HOSTLDFLAGS='$(LDFLAGS)' \
+ 		HOSTAR=$(CROSS_COMPILE)ar \
+-		REALHOSTCC=gcc REALHOSTLD=ld \
++		REALHOSTCC=$(SONIC_KERNEL_TOOLS)/host-gcc REALHOSTLD=$(SONIC_KERNEL_TOOLS)/ld \
+ 		V=1
+ 	ln -f $*/objtool $@
+ 
+--- a/debian/rules.d/tools/bpf/resolve_btfids/Makefile
++++ b/debian/rules.d/tools/bpf/resolve_btfids/Makefile
+@@ -12,5 +12,5 @@
+ 		HOSTCC=$(CC) HOSTCFLAGS='$(CFLAGS) $(CPPFLAGS)' \
+ 		HOSTLD=$(CROSS_COMPILE)ld KBUILD_HOSTLDFLAGS='$(LDFLAGS)' \
+ 		HOSTAR=$(CROSS_COMPILE)ar \
+-		REALHOSTCC=gcc REALHOSTLD=ld \
++		REALHOSTCC=$(SONIC_KERNEL_TOOLS)/host-gcc REALHOSTLD=$(SONIC_KERNEL_TOOLS)/ld \
+ 		V=1
+--- a/debian/rules.d/scripts/mod/Makefile
++++ b/debian/rules.d/scripts/mod/Makefile
+@@ -16,7 +16,7 @@
+ 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+ 
+ modpost-opts.h: $(top_srcdir)/scripts/mod/modpost.c
+-	$(wrapperdir)/gendef.py $< > $@
++	python3 $(wrapperdir)/gendef.py $< > $@
+ 
+ modpost.o: modpost.c modpost-opts.h
+ 	$(CC) $(CFLAGS) $(CPPFLAGS) -I $(CURDIR) -c -o $@ $<

@@ -26,6 +26,10 @@ Usage:
 
 If DEST is not set, package will stay in current directory.
 
+The optional [Bazel source build](tools/bazel/README.md) produces native AMD64 and ARM64 VS
+kernel image, debug, headers and kbuild Debian packages and supports sharing them through a Bazel
+remote action cache.
+
 ## Kernel Configuration Changes
 
 The Debian kernel used with SONiC includes almost all available hardware that can be found on a system using Linux. This increases considerably the time needed to build the kernel Debian image. Since there are many drivers, protocols or filesystems which will never be used on a switch, there is a simple mechanism to remove kernel options which does not require creating a kernel configuration patch. The options which need to be excluded from the kernel are simply listed in a flat text file:
