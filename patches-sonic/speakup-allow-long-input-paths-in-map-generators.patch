@@ -1,0 +1,44 @@
+Subject: [PATCH] speakup: allow long input paths in the keymap generators
+
+Kbuild can pass absolute source paths longer than 255 bytes when building
+out of tree. Both makemapdata and genmap then open a truncated filename.
+Size the pathname buffer for a Linux host path and check snprintf before
+opening it. Keymap contents and the target driver are unaffected.
+
+Signed-off-by: securely1g <securely1g@gmail.com>
+---
+--- a/drivers/accessibility/speakup/utils.h
++++ b/drivers/accessibility/speakup/utils.h
+@@ -6,6 +6,7 @@
+  *  Copyright (C) 2003  David Borowski.
+  */
+ 
++#include <limits.h>
+ #include <stdio.h>
+ 
+ #define MAXKEYS 512
+@@ -27,14 +28,21 @@
+ FILE *infile;
+ int lc;
+ 
+-char filename[256];
++static char filename[PATH_MAX];
+ 
+ static inline void open_input(const char *dir_name, const char *name)
+ {
++	int len;
++
+ 	if (dir_name)
+-		snprintf(filename, sizeof(filename), "%s/%s", dir_name, name);
++		len = snprintf(filename, sizeof(filename), "%s/%s", dir_name, name);
+ 	else
+-		snprintf(filename, sizeof(filename), "%s", name);
++		len = snprintf(filename, sizeof(filename), "%s", name);
++	if (len < 0 || (size_t)len >= sizeof(filename)) {
++		fprintf(stderr, "input path too long: %s%s%s\n",
++			dir_name ? dir_name : "", dir_name ? "/" : "", name);
++		exit(1);
++	}
+ 	infile = fopen(filename, "r");
+ 	if (infile == 0) {
+ 		fprintf(stderr, "can't open %s\n", filename);

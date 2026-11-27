@@ -180,6 +180,13 @@ jobs:
             echo "Kernel source command failed with exit code $status."
             exit "$status"
           fi
+      - name: Verify Speakup map generation from long absolute source paths
+        if: matrix.id == 'amd64'
+        run: |
+          shopt -s nullglob
+          archives=("$RUNNER_TEMP"/kernel-private/cold/output/*/external/*kernel_orig/file/linux_*.orig.tar.xz)
+          test "${#archives[@]}" -eq 1
+          tools/bazel/verify_speakup_paths.sh "${archives[0]}"
       - name: Fetch from the remote cache in a fresh Bazel output directory
         timeout-minutes: 10
         run: |
